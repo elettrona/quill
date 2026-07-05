@@ -245,6 +245,7 @@ def assemble_chaptered_audio(
     *,
     work_dir: Path,
     synthesizers: list[Synthesizer] | None = None,
+    synthesizer_for: Callable[[int, str], Synthesizer | None] | None = None,
     on_progress: Callable[[int, int], None] | None = None,
 ) -> ChapterAssembleResult:
     """Synthesize, concat (with gap/earcon), tag, and write the chaptered file(s).
@@ -255,8 +256,11 @@ def assemble_chaptered_audio(
     When *synthesizers* is given (round-robin voices), section ``i`` is voiced by
     ``synthesizers[i % len(synthesizers)]`` so each article/heading gets the next
     voice in the list; otherwise the single *synthesize* is used for every section.
-    All voices must share one PCM format (use voices of a single engine), since the
-    sections are spliced into one file.
+    *synthesizer_for* (explicit voice casting) is consulted first with the
+    section's index and resolved title — a non-None return overrides both the
+    rotation and the single voice for that section. All voices must share one
+    PCM format (use voices of a single engine), since the sections are spliced
+    into one file.
     """
     if not sections:
         raise AssembleError("No sections to assemble.")
@@ -286,9 +290,13 @@ def assemble_chaptered_audio(
 
     section_wavs: list[Path] = []
     section_durations: list[int] = []
-    for i, (_title, spoken) in enumerate(resolved):
+    for i, (title, spoken) in enumerate(resolved):
         wav = work_dir / f"section_{i:04d}.wav"
         section_synth = rotation[i % len(rotation)] if rotation else synthesize
+        if synthesizer_for is not None:
+            cast = synthesizer_for(i, title)
+            if cast is not None:
+                section_synth = cast
 
         def _tick() -> None:
             nonlocal done_parts

@@ -37,6 +37,33 @@ _EGRESS_CALLEES = frozenset({
 # Reviewed, allowed egress sites: "<relative path>::<enclosing function>" mapped
 # to the reason the call is not silent. Update this when adding a network call.
 _REVIEWED_EGRESS: dict[str, str] = {
+    "core/publish/auphonic.py::_request": (
+        "Single egress site for Auphonic post-production: preset list, account/"
+        "credit check, production upload/start, status poll, result download. "
+        "Reached only from the publish dialog's explicit buttons and the AI Hub "
+        "Services tab's 'Check Account and Credits' button. "
+        "Requires the user's own API token from the Windows Credential Manager "
+        "(never settings); every use is an explicit publish action in a dialog "
+        "that names the service; absent in Safe Mode. HTTPS-only, verified TLS, "
+        "bounded timeout."
+    ),
+    "core/metadata_lookup.py::_http_json": (
+        "Single egress site for the Audio Studio's 'Look up book details' button "
+        "(Open Library + MusicBrainz, both free and keyless). Reached only by that "
+        "explicit button press; the UI names both services before the first call. "
+        "Only the user-typed title/author is sent. HTTPS-only over a verified TLS "
+        "context with a bounded timeout; MusicBrainz's 1-req/s courtesy limit is "
+        "throttled in code. Disabled in Safe Mode with the rest of the Studio's "
+        "network surfaces."
+    ),
+    "core/metadata_lookup.py::fetch_cover": (
+        "Companion to the lookup above: downloads the chosen match's jacket image "
+        "from covers.openlibrary.org (same free, keyless Open Library service) as "
+        "cover.jpg next to the audio folder. Reached only after the user picks a "
+        "match in the consented lookup flow and confirms the cover download. "
+        "HTTPS-only over a verified TLS context with a bounded timeout. Disabled "
+        "in Safe Mode with the rest of the Studio's network surfaces."
+    ),
     "core/mastodon/client.py::_http_json": (
         "Single egress site for the 'Post to Mastodon' feature. Reached only by an "
         "explicit user action -- adding an account (app registration + OAuth token "
@@ -245,7 +272,7 @@ _REVIEWED_EGRESS: dict[str, str] = {
     # service (e.g. Microsoft's Edge cloud voices) to synthesize speech. Path:
     #   read_document_in_browser() (gated behind edge_read_aloud_enabled AND
     #   experimental_acknowledged) -> write local page -> open_preview_url().
-    # On-device voices stay fully local. The settings copy and PRIVACY.md both
+    # On-device voices stay fully local. The settings copy and docs/legal/PRIVACY.md both
     # disclose the cloud-voice behavior, and the page is deleted on app exit
     # (_cleanup_browser_reader_files) so no plaintext copy lingers.
     "io/http_transport.py::download_url": (

@@ -21,6 +21,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from dataclasses import dataclass
+from pathlib import Path
 
 from quill.ui.dialog_contract import (
     apply_listbox_activation,
@@ -58,11 +59,10 @@ class ChapterEditorDialog:
         self._wx = wx
         self._announce_fn = announce
         self._result: list[tuple[str, list[str]]] | None = None
-        # One row per chapter; each starts as a single file.
-        self._chapters: list[_Chapter] = [
-            _Chapter(title=(title.strip() or f"Chapter {i}"), paths=[path])
-            for i, (path, title) in enumerate(rows, start=1)
-        ]
+        # One row per chapter; each starts as a single file. The original rows
+        # are kept so Restore can undo any amount of editing in one press.
+        self._original_rows = list(rows)
+        self._chapters: list[_Chapter] = self._chapters_from_rows(rows)
 
         self.dialog = wx.Dialog(
             parent,
@@ -104,13 +104,28 @@ class ChapterEditorDialog:
         self._up_btn = wx.Button(self.dialog, label="Move &Up")
         self._down_btn = wx.Button(self.dialog, label="Move &Down")
         self._merge_btn = wx.Button(self.dialog, label="&Merge into previous")
+        self._remove_btn = wx.Button(self.dialog, label="Remo&ve")
         self._up_btn.Bind(wx.EVT_BUTTON, lambda _e: self._on_move(-1))
         self._down_btn.Bind(wx.EVT_BUTTON, lambda _e: self._on_move(1))
         self._merge_btn.Bind(wx.EVT_BUTTON, lambda _e: self._on_merge_up())
+        self._remove_btn.Bind(wx.EVT_BUTTON, lambda _e: self._on_remove())
         order_row.Add(self._up_btn, 0, wx.RIGHT, 6)
         order_row.Add(self._down_btn, 0, wx.RIGHT, 6)
-        order_row.Add(self._merge_btn, 0)
+        order_row.Add(self._merge_btn, 0, wx.RIGHT, 6)
+        order_row.Add(self._remove_btn, 0)
         root.Add(order_row, 0, wx.LEFT | wx.RIGHT | wx.TOP, 8)
+
+        io_row = wx.BoxSizer(wx.HORIZONTAL)
+        import_btn = wx.Button(self.dialog, label="Import ti&tles...")
+        export_btn = wx.Button(self.dialog, label="E&xport titles...")
+        restore_btn = wx.Button(self.dialog, label="Rest&ore original")
+        import_btn.Bind(wx.EVT_BUTTON, lambda _e: self._on_import_titles())
+        export_btn.Bind(wx.EVT_BUTTON, lambda _e: self._on_export_titles())
+        restore_btn.Bind(wx.EVT_BUTTON, lambda _e: self._on_restore())
+        io_row.Add(import_btn, 0, wx.RIGHT, 6)
+        io_row.Add(export_btn, 0, wx.RIGHT, 6)
+        io_row.Add(restore_btn, 0)
+        root.Add(io_row, 0, wx.LEFT | wx.RIGHT | wx.TOP, 8)
 
         btn_row = wx.BoxSizer(wx.HORIZONTAL)
         build_btn = wx.Button(self.dialog, id=wx.ID_OK, label="&Build audiobook")
@@ -127,6 +142,13 @@ class ChapterEditorDialog:
         self._refresh_chapter_list()
 
     # ------------------------------------------------------------- chapter edit
+
+    @staticmethod
+    def _chapters_from_rows(rows: list[tuple[str, str]]) -> list[_Chapter]:
+        return [
+            _Chapter(title=(title.strip() or f"Chapter {i}"), paths=[path])
+            for i, (path, title) in enumerate(rows, start=1)
+        ]
 
     def _refresh_chapter_list(self, *, select: int = -1) -> None:
         self._chapter_list.Set([c.label() for c in self._chapters])
@@ -187,6 +209,69 @@ class ChapterEditorDialog:
         previous.paths.extend(folded.paths)
         self._refresh_chapter_list(select=idx - 1)
         self._announce(f"Merged into previous chapter — {previous.label()}")
+
+    def _on_remove(self) -> None:
+        idx = self._selected_index()
+        if idx < 0 or len(self._chapters) <= 1:
+            self._error("At least one chapter must remain in the book.")
+            return
+        dropped = self._chapters.pop(idx)
+        self._refresh_chapter_list(select=min(idx, len(self._chapters) - 1))
+        self._announce(f"Removed {dropped.title}; {len(self._chapters)} chapters remain")
+
+    def _on_restore(self) -> None:
+        self._chapters = self._chapters_from_rows(self._original_rows)
+        self._refresh_chapter_list()
+        self._announce(f"Restored the original {len(self._chapters)} chapters")
+
+    def _on_import_titles(self) -> None:
+        wx = self._wx
+        with wx.FileDialog(
+            self.dialog,
+            "Import chapter titles",
+            wildcard=(
+                "Chapter lists (*.txt;*.cue;*.json;*.csv)|*.txt;*.cue;*.json;*.csv|"
+                "All files (*.*)|*.*"
+            ),
+            style=wx.FD_OPEN | wx.FD_FILE_MUST_EXIST,
+        ) as dlg:
+            if dlg.ShowModal() != wx.ID_OK:  # GATE-42-OK: native file picker
+                return
+            path = dlg.GetPath()
+        from quill.core.speech.chapter_io import titles_from_text
+
+        try:
+            titles = titles_from_text(Path(path).read_text(encoding="utf-8-sig"))
+        except OSError as exc:
+            self._error(f"Could not read that file: {exc}")
+            return
+        if not titles:
+            self._error("No chapter titles were found in that file.")
+            return
+        renamed = 0
+        for chapter, title in zip(self._chapters, titles, strict=False):
+            chapter.title = title
+            renamed += 1
+        self._refresh_chapter_list()
+        self._announce(f"Imported {renamed} title(s) from {Path(path).name}")
+
+    def _on_export_titles(self) -> None:
+        wx = self._wx
+        with wx.FileDialog(
+            self.dialog,
+            "Export chapter titles",
+            wildcard="Text (*.txt)|*.txt",
+            style=wx.FD_SAVE | wx.FD_OVERWRITE_PROMPT,
+        ) as dlg:
+            if dlg.ShowModal() != wx.ID_OK:  # GATE-42-OK: native file picker
+                return
+            path = dlg.GetPath()
+        try:
+            Path(path).write_text("".join(f"{c.title}\n" for c in self._chapters), encoding="utf-8")
+        except OSError as exc:
+            self._error(f"Could not write that file: {exc}")
+            return
+        self._announce(f"Exported {len(self._chapters)} title(s) to {Path(path).name}")
 
     def _announce(self, text: str) -> None:
         if self._announce_fn is not None:

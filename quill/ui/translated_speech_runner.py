@@ -54,6 +54,25 @@ def _write_temp_source(text: str) -> Path:
     return temp
 
 
+def _route_to_audio_studio(frame: Any, source: Path) -> None:
+    """Open the Audio Studio wizard with the saved document pre-filled.
+
+    The wizard's source picker accepts a folder; for a single document we
+    pre-fill the folder and remember the file via the audio-source MRU
+    list. The user is then on the wizard's first page with a meaningful
+    default and can Tab through the rest of the journey.
+    """
+    from quill.core.recent import add_recent_audiobook_file
+    from quill.ui.batch_speech_runner import run_batch_export_to_speech
+
+    # Add the on-disk document to the audiobooks MRU so the user can pick it
+    # back up if they step back out of the wizard. The wizard itself will
+    # appear with the folder choice page so they can confirm before any
+    # synthesis kicks off.
+    add_recent_audiobook_file(source)
+    run_batch_export_to_speech(frame)
+
+
 def run_translated_speech_export(frame: Any) -> None:
     """Entry point bound to the Export to Translated Speech Audio menu item."""
     wx = frame._wx
@@ -79,6 +98,9 @@ def run_translated_speech_export(frame: Any) -> None:
         source = Path(path)
         dialog = TranslatedSpeechExportDialog(frame.frame, document_name=source.name)
         request = dialog.show(frame._show_modal_dialog)
+        if dialog.open_studio_requested:
+            _route_to_audio_studio(frame, source)
+            return
         if request is None:
             frame._set_status("Translated speech export cancelled")
             return
@@ -106,6 +128,13 @@ def run_translated_speech_export(frame: Any) -> None:
 
     dialog = TranslatedSpeechExportDialog(frame.frame, document_name="Untitled")
     request = dialog.show(frame._show_modal_dialog)
+    if dialog.open_studio_requested:
+        # No on-disk source to hand the wizard; the user can pick the file
+        # in the wizard's source picker. The button just opens the wizard.
+        from quill.ui.batch_speech_runner import run_batch_export_to_speech
+
+        run_batch_export_to_speech(frame)
+        return
     if request is None:
         frame._set_status("Translated speech export cancelled")
         return

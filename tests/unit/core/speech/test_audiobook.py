@@ -138,3 +138,137 @@ def test_build_audiobook_rejects_empty_and_unknown_format(tmp_path: Path) -> Non
     chapter = AudiobookChapter(path=tmp_path / "missing.mp3", title="x", duration_ms=1000)
     with pytest.raises(ValueError):
         build_audiobook([chapter], tmp_path / "out.xyz", output_format="xyz")
+
+
+def test_build_audiobook_skips_polish_when_disabled(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """No polish kwargs -> prepare_chapter_files is never called.
+
+    Stubs ffmpeg and the subprocess runner so the test stays millisecond-fast
+    and does not require a real ffmpeg binary.
+    """
+    src = tmp_path / "src"
+    src.mkdir()
+    src_file = src / "01.mp3"
+    src_file.write_bytes(b"")  # existence is what build_audiobook checks
+    out = tmp_path / "book.m4b"
+    chapter = AudiobookChapter(path=src_file, title="Chapter 1", duration_ms=1000)
+
+    called = {"polish": 0}
+
+    def fake_prepare(paths, _work, **_kwargs):  # type: ignore[no-untyped-def]
+        called["polish"] += 1
+        return paths
+
+    monkeypatch.setattr("quill.core.speech.audio_edit.prepare_chapter_files", fake_prepare)
+    monkeypatch.setattr("quill.core.speech.ffmpeg.find_ffmpeg", lambda: "/usr/bin/ffmpeg")
+
+    def fake_run(args, **_kwargs):  # type: ignore[no-untyped-def]
+        for a in args:
+            if a.endswith(".m4b") or a.endswith(".mp3"):
+                Path(a).write_bytes(b"x")
+                break
+        return _FakeCompleted(0, "", "")
+
+    monkeypatch.setattr("quill.stability.safe_subprocess.run_subprocess_safely", fake_run)
+
+    result = build_audiobook([chapter], out, output_format="m4b")
+    assert result.chapter_count == 1
+    assert called["polish"] == 0
+
+
+def test_build_audiobook_runs_polish_when_enabled(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Any polish flag -> prepare_chapter_files is called with the right kwargs."""
+    src = tmp_path / "src"
+    src.mkdir()
+    src_file = src / "01.mp3"
+    src_file.write_bytes(b"")
+    out = tmp_path / "book.m4b"
+    chapter = AudiobookChapter(path=src_file, title="Chapter 1", duration_ms=1000)
+
+    captured: dict[str, object] = {}
+
+    def fake_prepare(paths, work, **kwargs):  # type: ignore[no-untyped-def]
+        captured["paths"] = list(paths)
+        captured["work"] = work
+        captured["kwargs"] = kwargs
+        # Pretend polish produced a new file alongside the original.
+        work.mkdir(parents=True, exist_ok=True)
+        new = work / "01.mp3"
+        new.write_bytes(b"x")
+        return [new]
+
+    monkeypatch.setattr("quill.core.speech.audio_edit.prepare_chapter_files", fake_prepare)
+    monkeypatch.setattr("quill.core.speech.ffmpeg.find_ffmpeg", lambda: "/usr/bin/ffmpeg")
+
+    def fake_run(args, **_kwargs):  # type: ignore[no-untyped-def]
+        for a in args:
+            if a.endswith(".m4b") or a.endswith(".mp3"):
+                Path(a).write_bytes(b"x")
+                break
+        return _FakeCompleted(0, "", "")
+
+    monkeypatch.setattr("quill.stability.safe_subprocess.run_subprocess_safely", fake_run)
+
+    result = build_audiobook(
+        [chapter],
+        out,
+        output_format="m4b",
+        trim_silence_files=True,
+        fade_in_ms=150,
+        fade_out_ms=300,
+        tempo=1.1,
+    )
+    assert result.chapter_count == 1
+    assert captured["paths"] == [src_file]
+    kwargs = captured["kwargs"]
+    assert kwargs["trim_silence_files"] is True
+    assert kwargs["fade_in_ms"] == 150
+    assert kwargs["fade_out_ms"] == 300
+    assert kwargs["tempo"] == 1.1
+
+
+def test_build_audiobook_polish_tempo_only(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Tempo != 1.0 alone should trigger polish (e.g. for foreign-language tracks)."""
+    src = tmp_path / "src"
+    src.mkdir()
+    src_file = src / "01.mp3"
+    src_file.write_bytes(b"")
+    out = tmp_path / "book.m4b"
+    chapter = AudiobookChapter(path=src_file, title="C", duration_ms=500)
+
+    captured: dict[str, object] = {}
+
+    def fake_prepare(paths, work, **kwargs):  # type: ignore[no-untyped-def]
+        captured["kwargs"] = kwargs
+        work.mkdir(parents=True, exist_ok=True)
+        new = work / "01.mp3"
+        new.write_bytes(b"x")
+        return [new]
+
+    monkeypatch.setattr("quill.core.speech.audio_edit.prepare_chapter_files", fake_prepare)
+    monkeypatch.setattr("quill.core.speech.ffmpeg.find_ffmpeg", lambda: "/usr/bin/ffmpeg")
+
+    def fake_run(args, **_kwargs):  # type: ignore[no-untyped-def]
+        for a in args:
+            if a.endswith(".m4b") or a.endswith(".mp3"):
+                Path(a).write_bytes(b"x")
+                break
+        return _FakeCompleted(0, "", "")
+
+    monkeypatch.setattr("quill.stability.safe_subprocess.run_subprocess_safely", fake_run)
+
+    build_audiobook([chapter], out, output_format="m4b", tempo=0.9)
+    assert captured["kwargs"]["tempo"] == 0.9
+
+
+class _FakeCompleted:
+    """Minimal stand-in for subprocess.CompletedProcess returned by the stubbed runner."""
+
+    def __init__(self, returncode: int, stdout: str, stderr: str) -> None:
+        self.returncode = returncode
+        self.stdout = stdout
+        self.stderr = stderr

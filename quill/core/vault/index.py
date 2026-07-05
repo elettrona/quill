@@ -15,6 +15,7 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass
 
+from quill.core.vault.links import code_spans
 from quill.core.vault.resolve import Resolver, resolve_link
 from quill.core.vault.vault import Vault
 
@@ -65,7 +66,9 @@ def build_index(vault: Vault, resolver: Resolver) -> LinkIndex:
             if link.target == "":
                 continue  # same-note anchor, not a cross-note edge
             resolved = resolve_link(vault, resolver, link, path)
-            if resolved is None or resolved.path == path:
+            # Ambiguous names are not edges: guessing a candidate would build a
+            # wrong graph. They stay out until the UI disambiguates (#787).
+            if resolved is None or resolved.ambiguous or resolved.path == path:
                 continue
             if resolved.path not in targets:
                 targets.append(resolved.path)
@@ -121,10 +124,13 @@ def unlinked_mentions(vault: Vault, resolver: Resolver, path: str) -> tuple[Ment
     for other, text in vault.texts.items():
         if other == path:
             continue
-        link_spans = [(link.start, link.end) for link in vault.notes[other].links]
+        # Skip occurrences already inside a link, and anything in code regions
+        # — a name inside a code sample is not a "link this mention" prospect.
+        skip_spans = [(link.start, link.end) for link in vault.notes[other].links]
+        skip_spans += code_spans(text)
         for pattern in patterns:
             for match in pattern.finditer(text):
-                if _within_any(match.start(), link_spans):
+                if _within_any(match.start(), skip_spans):
                     continue
                 mentions.append(
                     Mention(

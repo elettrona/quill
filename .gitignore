@@ -20,15 +20,9 @@ installer-smoke*/
 # Whisper model download cache (populated at runtime/build time).
 .whisper-dl/
 
-# Local profiling / smoke-run artifacts (never committed)
-baseline_stdout.txt
-safemode_stdout.txt
-profile_stdout.txt
-profile_stderr.txt
-profile_run2.txt
-pyspy_run.txt
-startup_pyspy.svg
-x.html
+# Local working files (scratch notes, profiling output, one-off logs)
+/local/
+
 *.log
 .quill-reqs.sha256
 kokoro/_hf_cache/
@@ -104,18 +98,13 @@ docs/planning/source/**/*.log
 # External reference / sample material kept in the working folder but not part of
 # QUILL source — never commit. "Code Samples to Innovate With" is a ~626 MB
 # code-sample corpus (AI_TTS_Studio etc.); examples/audio holds large TTS test
-# fixtures; docs/prototypes is throwaway prototype scratch.
+# fixtures. (docs/prototypes, the Table Studio prototype scratch, was retired
+# 2026-07-05 after the feature shipped; its one unharvested design note lives
+# at docs/design/table-studio-macos-nsaccessibility.md.)
 /Code Samples to Innovate With/
 /examples/audio/
-/docs/prototypes/
 # Local Windows build output (portable bundle, zip, installer) -- multi-GB, regenerated.
 /build-out/
-
-# Local AI provider report (not committed)
-/learned.md
-
-# Local pre-merge test plan (not committed)
-/test.md
 
 # Podcast audio is distributed via the podcast-v1 GitHub release, not git.
 docs/podcast/audio/

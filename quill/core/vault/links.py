@@ -19,7 +19,7 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass
 
-__all__ = ["WikiLink", "parse_links", "link_at_offset"]
+__all__ = ["WikiLink", "parse_links", "link_at_offset", "code_spans"]
 
 # ![[...]] or [[...]]; the inner text is captured lazily and dissected below.
 _LINK_RE = re.compile(r"(!?)\[\[([^\[\]]+?)\]\]")
@@ -43,7 +43,7 @@ class WikiLink:
 
 def parse_links(text: str) -> list[WikiLink]:
     """Return every wikilink in ``text``, in document order (code regions skipped)."""
-    masked = _code_spans(text)
+    masked = code_spans(text)
     links: list[WikiLink] = []
     for match in _LINK_RE.finditer(text):
         if _within_any(match.start(), masked):
@@ -91,7 +91,9 @@ def _dissect(inner: str) -> tuple[str, str | None, str | None, str | None]:
     return inner.strip(), heading, block, alias
 
 
-def _code_spans(text: str) -> list[tuple[int, int]]:
+def code_spans(text: str) -> list[tuple[int, int]]:
+    """(start, end) spans of fenced blocks and inline code — the regions the
+    link and mention scanners must ignore."""
     spans = [(m.start(), m.end()) for m in _FENCE_RE.finditer(text)]
     spans += [(m.start(), m.end()) for m in _INLINE_CODE_RE.finditer(text)]
     return spans

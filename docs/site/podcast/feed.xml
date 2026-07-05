@@ -5,7 +5,7 @@
     <link>https://community-access.github.io/quill/podcast/</link>
     <description>A 36-episode, two-host audio course on QUILL, the free, screen-reader-first writing studio from Community Access. Liam and Jessica lead you from your very first launch to mastery of every feature family: the editor and keyboard, documents and formats, document rescue and OCR, the private speech suite, optional AI, the Accessible Vault, Story Studio, GLOW accessibility review, braille production, extensions, and the trust architecture underneath it all. Episode voices are generated with QUILL&#x27;s own on-device Kokoro neural speech engine.</description>
     <language>en-us</language>
-    <lastBuildDate>Thu, 02 Jul 2026 18:30:21 +0000</lastBuildDate>
+    <lastBuildDate>Sun, 05 Jul 2026 17:18:18 +0000</lastBuildDate>
     <atom:link href="https://community-access.github.io/quill/podcast/feed.xml" rel="self" type="application/rss+xml"/>
     <itunes:author>Community Access / BITS</itunes:author>
     <itunes:subtitle>A complete audio course on the screen-reader-first writing studio</itunes:subtitle>
@@ -244,13 +244,13 @@
       <itunes:explicit>false</itunes:explicit>
     </item>
     <item>
-      <title>24: Text to Audio, Audiobooks, DAISY</title>
-      <description>Documents out to sound: speech audio export in every format, chaptered M4B audiobooks from your heading structure, and native DAISY talking-book export for accessible libraries. Full transcript: https://community-access.github.io/quill/podcast/transcripts/ep24-text-to-audio-audiobooks-daisy.html</description>
-      <link>https://community-access.github.io/quill/podcast/transcripts/ep24-text-to-audio-audiobooks-daisy.html</link>
-      <guid isPermaLink="false">quill-cast-ep24-text-to-audio-audiobooks-daisy</guid>
-      <pubDate>Thu, 02 Jul 2026 08:23:00 +0000</pubDate>
-      <enclosure url="https://github.com/Community-Access/quill/releases/download/podcast-v1/ep24-text-to-audio-audiobooks-daisy.mp3" length="1871205" type="audio/mpeg"/>
-      <itunes:duration>00:03:16</itunes:duration>
+      <title>24: The Audio Studio</title>
+      <description>Documents out to sound, all grown up: the Audio Studio&#x27;s three journeys - narrate documents into audiobooks, combine recordings into chaptered books, and edit any audiobook in the Chapter Workbench - plus incremental rebuilds, voice casting, AI chapter titles, and publishing to a feed, a server, or Auphonic. DAISY export still closes the arc. Full transcript: https://community-access.github.io/quill/podcast/transcripts/ep24-the-audio-studio.html</description>
+      <link>https://community-access.github.io/quill/podcast/transcripts/ep24-the-audio-studio.html</link>
+      <guid isPermaLink="false">quill-cast-ep24-the-audio-studio</guid>
+      <pubDate>Sun, 05 Jul 2026 09:00:00 +0000</pubDate>
+      <enclosure url="https://github.com/Community-Access/quill/releases/download/podcast-v1/ep24-the-audio-studio.mp3" length="2770269" type="audio/mpeg"/>
+      <itunes:duration>00:04:49</itunes:duration>
       <itunes:explicit>false</itunes:explicit>
     </item>
     <item>

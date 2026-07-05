@@ -46,13 +46,14 @@ class EnginesPanel:
         intro = wx.StaticText(
             self.panel,
             label=_(
-                "Choose which engine runs QUILL's agent. Native always works, on the "
-                "provider you already connected. Or bring the AI agent you already pay "
-                "for: GitHub Copilot, OpenAI (ChatGPT), or Claude. Pick one and select "
-                "Set Up to install the connector and sign in with your account -- it "
-                "runs on your existing subscription, with no extra key or per-word "
-                "charge. Whichever engine you pick, QUILL owns every edit: the agent "
-                "proposes, you approve a preview, and one keystroke undoes it."
+                "Choose which engine runs QUILL's agent. Native always works, using "
+                "the provider you have already connected. Or bring the AI agent you "
+                "already pay for: GitHub Copilot, OpenAI (ChatGPT), or Claude. Pick "
+                "one and select Set Up to install the connector and sign in with "
+                "your account — it runs on your existing subscription, with no extra "
+                "key or per-word charge. Whichever engine you pick, QUILL owns every "
+                "edit: the agent proposes, you approve a preview, and one keystroke "
+                "undoes it."
             ),
         )
         intro.Wrap(620)

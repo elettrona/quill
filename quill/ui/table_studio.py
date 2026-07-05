@@ -8,9 +8,10 @@ arrow across a row. F2/Enter edit a cell; Alt+arrows move rows/columns;
 Ctrl+Insert / Delete add or clear. The table can be inserted into the document
 as Markdown or HTML, and CSV files open straight into the grid (CSV Studio).
 
-Ported from ``docs/prototypes/tests/table_studio_proto``. This is an
-experimental opt-in (Preferences > Experimental); the MSAA cell navigation still
-needs real screen-reader validation on a packaged build.
+Ported from the retired Table Studio prototype (its macOS NSAccessibility
+design note survives at ``docs/design/table-studio-macos-nsaccessibility.md``).
+This is an experimental opt-in (Preferences > Experimental); the MSAA cell
+navigation still needs real screen-reader validation on a packaged build.
 """
 
 from __future__ import annotations
@@ -22,8 +23,6 @@ import wx
 from quill.core.table_studio import Change, TableController, TableDocumentModel
 from quill.ui import table_studio_native
 from quill.ui.table_studio_accessible import attach_list_accessibility, fire_focus_child
-
-_PAGE_SIZE = 10
 
 
 class TableListCtrl(wx.ListCtrl):
@@ -134,6 +133,16 @@ class TableListCtrl(wx.ListCtrl):
         shft = bool(mod & wx.MOD_SHIFT)
         plain = not ctrl and not alt and not shft
 
+        if self.GetItemCount() == 0:
+            # Empty table (a headers-only CSV): navigation/edit would clamp to
+            # row 0 and assert inside wx.ListCtrl (#802 review). Only row
+            # insertion makes sense until a first row exists.
+            if ctrl and key == wx.WXK_INSERT:
+                self.insert_row_below()
+            else:
+                evt.Skip()
+            return
+
         if plain and key == wx.WXK_UP:
             self._goto(self._active_display_row() - 1, self._active_col)
         elif plain and key == wx.WXK_DOWN:
@@ -157,9 +166,9 @@ class TableListCtrl(wx.ListCtrl):
         elif ctrl and key == wx.WXK_END:
             self._goto(self.GetItemCount() - 1, self._model.col_count - 1)
         elif plain and key == wx.WXK_PAGEUP:
-            self._goto(self._active_display_row() - _PAGE_SIZE, self._active_col)
+            self._goto(self._active_display_row() - self._page_size(), self._active_col)
         elif plain and key == wx.WXK_PAGEDOWN:
-            self._goto(self._active_display_row() + _PAGE_SIZE, self._active_col)
+            self._goto(self._active_display_row() + self._page_size(), self._active_col)
         elif alt and key == wx.WXK_UP:
             self._move_row(-1)
         elif alt and key == wx.WXK_DOWN:
@@ -180,6 +189,11 @@ class TableListCtrl(wx.ListCtrl):
             evt.Skip()
 
     # -- operations ------------------------------------------------------- #
+
+    def _page_size(self) -> int:
+        """Rows skipped per Page Up/Down — the model's AnnounceConfig owns it."""
+        size = getattr(getattr(self._model, "announce_config", None), "page_size", 10)
+        return max(1, int(size))
 
     def _row_col(self) -> tuple[int, int]:
         return self._active_display_row(), self._active_col
@@ -456,6 +470,9 @@ class TableStudioDialog(wx.Dialog):
         insert_md.Bind(wx.EVT_BUTTON, self._on_markdown)
         insert_html.Bind(wx.EVT_BUTTON, self._on_html)
         cancel.Bind(wx.EVT_BUTTON, lambda _e: self.EndModal(wx.ID_CANCEL))
+        from quill.ui.dialog_contract import apply_modal_ids
+
+        apply_modal_ids(self, affirmative_id=wx.ID_OK, escape_id=wx.ID_CANCEL)
         wx.CallAfter(self.grid.SetFocus)
 
     def _on_markdown(self, _event: object) -> None:

@@ -85,8 +85,9 @@ def _extract_question(spoken: str) -> str | None:
 
 
 def question_text(transcript: str) -> str:
-    """The question to hand to Ask Quill (prefix stripped), or the whole
-    utterance if it was a bare question. Empty when it is not a question."""
+    """The question to hand to Ask Quill (prefix stripped), or the *normalized*
+    utterance (lowercased, punctuation stripped) for a bare question. Empty
+    when it is not a question."""
     result = _extract_question(normalize(transcript))
     if result is None:
         return ""

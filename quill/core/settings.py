@@ -53,10 +53,20 @@ class Settings:
     word_open_mode: str = "prompt"
     editor_surface: str = "plain"
     save_as_surface_sync: str = "prompt"
+    # Conversion engine preferences for Word documents. "auto" keeps QUILL's
+    # default chains: MarkItDown-first when opening a .docx, the native
+    # python-docx writer first when saving one. The explicit choices trade
+    # differently: see the Settings descriptions for what each keeps and drops.
+    docx_read_engine: str = "auto"
+    docx_write_engine: str = "auto"
     plain_text_link_style: str = "text_url"
     indent_with_tabs: bool = False
     indent_size: int = 4
-    auto_check_updates: bool = False
+    # On by default so signed safety advisories (the remote feature kill
+    # switch) actually reach installs; the check fetches QUILL's own signed
+    # feed and sends nothing about the user. An explicit stored False is
+    # honored, and Safe Mode skips the check entirely.
+    auto_check_updates: bool = True
     beta_updates: bool = False
     # Recommended (force-once) updates to important defaults, e.g. restoring
     # Find to Ctrl+F for users who had it on a QUILL-key chord. This is the
@@ -74,8 +84,18 @@ class Settings:
     recent_files_limit: int = 10
     recent_files_auto_clear_missing: bool = False
     # When saving an untitled document, suggest a filename from its first line
-    # (works across formats; strips leading markup). Opt-in.
-    first_line_as_title: bool = False
+    # (works across formats; strips leading markup). On by default: it only
+    # pre-fills the name for an untitled document, never renames anything.
+    first_line_as_title: bool = True
+    # Restore points: snapshot the document text on every save so File >
+    # Restore Previous Version can bring any earlier save back. On by default;
+    # recording is content-addressed (an unchanged save stores nothing) and
+    # best-effort (it can never be the reason a save fails).
+    restore_points_enabled: bool = True
+    # Per-document disk cap for restore-point history, in megabytes. Age
+    # thinning (keep a week fully, then daily, then weekly) runs first; the
+    # newest five versions are never pruned regardless of the cap.
+    restore_points_max_mb: int = 200
     # Background model warm-up after startup so the first use is fast. Loads the
     # model into memory; turn off to save RAM if you don't use the feature.
     warm_dictation_model: bool = True
@@ -402,20 +422,6 @@ class Settings:
     ollama_base_url: str = "http://localhost:11434"
     # AI prompts (Phase 3): separate default model for prompt-library runs.
     ai_prompt_default_model: str = ""
-    # Bug reporter identity: pre-fill the Report a Bug dialog for speed.
-    bug_reporter_name: str = ""
-    bug_reporter_email: str = ""
-    # #618: open the Report a Bug dialog in a separate, non-modal
-    # window by default so users can alt-tab between the form and
-    # the editor to document exact reproduction steps. The 0.5.0
-    # default was a modal dialog that blocked the editor.
-    report_bug_separate_window: bool = True
-    # #618: when the user submits a bug report, copy the report to
-    # the clipboard and stop. The 0.5.0 default also opened a
-    # browser to the GitHub "New Issue" page; that step is now
-    # opt-in via this setting (default False) so the upgrade story
-    # is "Quill copies, you decide whether to open the browser."
-    report_bug_auto_open_browser: bool = False
     # STABILITY: when True, an unhandled exception shows the crash-submit
     # dialog so the user can review a redacted preview and choose whether
     # to send the report to the developers. When False, the local-only
@@ -517,6 +523,7 @@ class Settings:
     batch_speech_intro_section_title: str = "Introduction"
     batch_speech_temp_folder: str = ""  # parent for scratch dirs; blank = system temp
     batch_speech_save_spoken_text: bool = False  # also save the text sent to the engine
+    audio_studio_last_journey: str = "documents"  # remembered journey
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> Settings:
@@ -585,6 +592,12 @@ class Settings:
         save_as_surface_sync = str(data.get("save_as_surface_sync", "prompt")).strip().lower()
         if save_as_surface_sync not in {"prompt", "always", "never"}:
             save_as_surface_sync = "prompt"
+        docx_read_engine = str(data.get("docx_read_engine", "auto")).strip().lower()
+        if docx_read_engine not in {"auto", "markitdown", "pandoc"}:
+            docx_read_engine = "auto"
+        docx_write_engine = str(data.get("docx_write_engine", "auto")).strip().lower()
+        if docx_write_engine not in {"auto", "native", "pandoc"}:
+            docx_write_engine = "auto"
         plain_text_link_style = str(data.get("plain_text_link_style", "text_url")).strip().lower()
         if plain_text_link_style not in {"text", "text_url", "url", "markdown"}:
             plain_text_link_style = "text_url"
@@ -593,7 +606,7 @@ class Settings:
             indent_size = int(data.get("indent_size", 4))
         except (TypeError, ValueError):
             indent_size = 4
-        auto_check_updates = bool(data.get("auto_check_updates", False))
+        auto_check_updates = bool(data.get("auto_check_updates", True))
         beta_updates = bool(data.get("beta_updates", False))
         apply_recommended_keymap_updates = bool(data.get("apply_recommended_keymap_updates", True))
         raw_applied = data.get("applied_recommended_updates", [])
@@ -612,7 +625,9 @@ class Settings:
         except (TypeError, ValueError):
             recent_files_limit = 10
         recent_files_auto_clear_missing = bool(data.get("recent_files_auto_clear_missing", False))
-        first_line_as_title = bool(data.get("first_line_as_title", False))
+        first_line_as_title = bool(data.get("first_line_as_title", True))
+        restore_points_enabled = bool(data.get("restore_points_enabled", True))
+        restore_points_max_mb = _clamp_int(data.get("restore_points_max_mb", 200), 200, 10, 5000)
         warm_dictation_model = bool(data.get("warm_dictation_model", True))
         warm_kokoro_model = bool(data.get("warm_kokoro_model", True))
         tray_enabled = bool(data.get("tray_enabled", False))
@@ -759,7 +774,8 @@ class Settings:
         experimental_editor_surface = (
             str(data.get("experimental_editor_surface", "default")).strip().lower()
         )
-        if experimental_editor_surface not in {"default", "rich2", "rich", "plain", "rtf", "win32"}:
+        allowed_surfaces = {"default", "rich2", "rich", "plain", "rtf", "win32", "stc"}
+        if experimental_editor_surface not in allowed_surfaces:
             experimental_editor_surface = "default"
         editor_hide_border = bool(data.get("editor_hide_border", False))
         experimental_acknowledged = bool(data.get("experimental_acknowledged", False))
@@ -1004,8 +1020,6 @@ class Settings:
             or "http://localhost:11434"
         )
         ai_prompt_default_model = str(data.get("ai_prompt_default_model", ""))
-        bug_reporter_name = str(data.get("bug_reporter_name", "")).strip()
-        bug_reporter_email = str(data.get("bug_reporter_email", "")).strip()
         language = str(data.get("language", "")).strip()
         setup_wizard_completed = bool(data.get("setup_wizard_completed", False))
         setup_wizard_intent = str(data.get("setup_wizard_intent", "")).strip()
@@ -1165,6 +1179,14 @@ class Settings:
         )
         batch_speech_temp_folder = str(data.get("batch_speech_temp_folder", "")).strip()
         batch_speech_save_spoken_text = bool(data.get("batch_speech_save_spoken_text", False))
+        # Remember the last journey so the wizard's first page lands on
+        # the radio the user used last. Falls back to "documents" when
+        # missing or unrecognized so older settings files still work.
+        audio_studio_last_journey = (
+            str(data.get("audio_studio_last_journey", "documents")).strip().lower()
+        )
+        if audio_studio_last_journey not in {"documents", "audio", "edit"}:
+            audio_studio_last_journey = "documents"
         if recent_files_limit < 1:
             recent_files_limit = 1
         if recent_files_limit > 50:
@@ -1190,6 +1212,8 @@ class Settings:
             word_open_mode=word_open_mode,
             editor_surface=editor_surface,
             save_as_surface_sync=save_as_surface_sync,
+            docx_read_engine=docx_read_engine,
+            docx_write_engine=docx_write_engine,
             plain_text_link_style=plain_text_link_style,
             indent_with_tabs=indent_with_tabs,
             indent_size=indent_size,
@@ -1203,6 +1227,8 @@ class Settings:
             recent_files_limit=recent_files_limit,
             recent_files_auto_clear_missing=recent_files_auto_clear_missing,
             first_line_as_title=first_line_as_title,
+            restore_points_enabled=restore_points_enabled,
+            restore_points_max_mb=restore_points_max_mb,
             warm_dictation_model=warm_dictation_model,
             warm_kokoro_model=warm_kokoro_model,
             tray_enabled=tray_enabled,
@@ -1384,8 +1410,6 @@ class Settings:
             ai_chat_default_model=ai_chat_default_model,
             ollama_base_url=ollama_base_url,
             ai_prompt_default_model=ai_prompt_default_model,
-            bug_reporter_name=bug_reporter_name,
-            bug_reporter_email=bug_reporter_email,
             abbreviation_expansion=abbreviation_expansion,
             abbreviation_expansion_sound=abbreviation_expansion_sound,
             abbreviation_expansion_sound_file=abbreviation_expansion_sound_file,
@@ -1446,6 +1470,7 @@ class Settings:
             batch_speech_temp_folder=batch_speech_temp_folder,
             batch_speech_save_spoken_text=batch_speech_save_spoken_text,
             batch_speech_intro_section_title=batch_speech_intro_section_title,
+            audio_studio_last_journey=audio_studio_last_journey,
         )
 
 

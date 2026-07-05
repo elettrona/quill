@@ -44,8 +44,9 @@ def test_render_preview_html_never_emits_a_refresh_tag() -> None:
     # browser preview now reloads only when the user re-runs the command, and
     # the in-app preview is updated by pushing fresh HTML to the WebView.
     page = render_preview_html("Doc", "hello", "markdown")
-    assert "http-equiv" not in page
-    assert "refresh" not in page.lower()
+    # Assert the specific meta-refresh mechanism is absent rather than the bare
+    # word "refresh", which could legitimately appear in future copy or script.
+    assert "http-equiv" not in page.lower()
 
 
 def test_render_preview_html_preserves_scroll_across_live_reloads() -> None:

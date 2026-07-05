@@ -1,8 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://quill.app/schemas/speech_project/1.json",
+  "$id": "https://quill.app/schemas/speech_project/2.json",
   "title": "QUILL Speech Project Profile",
-  "description": "Per-project remembered speech settings, stored at <project>/.quill/speech-project.json. Carries the synthesizer, output format, chapterization, text normalization, and active pronunciation dictionaries so a folder of documents is configured once. See docs/planning/speech-project-format.md and §4.10 of docs/planning/batch-document-to-speech-plan.md.",
+  "description": "Per-project remembered speech settings, stored at <project>/.quill/speech-project.json. Carries the synthesizer, output format, chapterization, text normalization, active pronunciation dictionaries, and the Phase 4-6 wizard flags (book_credits, library_mode) so a folder of documents is configured once. See docs/planning/speech-project-format.md and §4.10 of docs/planning/batch-document-to-speech-plan.md.",
   "type": "object",
   "additionalProperties": false,
   "required": ["version"],
@@ -10,7 +10,7 @@
     "version": {
       "type": "integer",
       "minimum": 1,
-      "description": "Profile schema version. Current is 1."
+      "description": "Profile schema version. Current is 2. v1 documents load with book_credits and library_mode defaulting to false."
     },
     "synthesizer": {
       "type": "object",
@@ -309,6 +309,14 @@
           }
         }
       }
+    },
+    "book_credits": {
+      "type": "boolean",
+      "description": "When true, the synthesized audiobook includes a 'Credits' section as the final chapter. Persisted at the project level so a folder's per-run choices auto-stick across 'Skip to summary'."
+    },
+    "library_mode": {
+      "type": "boolean",
+      "description": "When true, the audio-journey treats every subfolder of the source as its own book and builds unattended. Persisted at the project level so the per-folder auto-remember covers it."
     }
   }
 }

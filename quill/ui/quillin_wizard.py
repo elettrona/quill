@@ -515,12 +515,13 @@ def open_quillin_wizard(
         copied = False
         if clipboard is not None and clipboard.Open():
             try:
-                clipboard.SetData(wx.TextDataObject(text))
-                copied = True
+                # SetData reports success; announcing "copied" on a False
+                # return would be a lie to a screen-reader user (#790 review).
+                copied = bool(clipboard.SetData(wx.TextDataObject(text)))
             finally:
                 clipboard.Close()
         # Only claim success when the clipboard actually took the data.
-        announce("JSON copied to clipboard." if copied else "Could not open the clipboard to copy.")
+        announce("JSON copied to clipboard." if copied else "Could not copy to the clipboard.")
 
     # -- Bind events ----------------------------------------------------------
 

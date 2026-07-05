@@ -178,7 +178,9 @@ class TableController:
         for fn in self._update_cbs:
             try:
                 fn()
-            except Exception:
+            except Exception:  # noqa: BLE001
+                # UI update callbacks are best-effort; a failing one must not
+                # break editing or the other callbacks.
                 pass
 
     # ── Active cell ────────────────────────────────────────────────────────

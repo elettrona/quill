@@ -154,13 +154,14 @@ class TableDocumentModel:
         try:
             self._listeners.remove(fn)
         except ValueError:
-            pass
+            pass  # already removed: removal is idempotent by design
 
     def _emit(self, change: Change, **kw: object) -> None:
         for fn in list(self._listeners):
             try:
                 fn(change, kw)
-            except Exception:
+            except Exception:  # noqa: BLE001
+                # One failing listener must not block notifying the others.
                 pass
 
     # ── Dimensions ────────────────────────────────────────────────────────
@@ -375,7 +376,10 @@ class TableDocumentModel:
     def to_markdown(self) -> str:
         if not self.columns:
             return ""
-        col_w = [max(len(c.label), 3) for c in self.columns]
+        # Width from the rendered header (col_header includes user overrides),
+        # not the source label — an override longer than the label misaligned
+        # the emitted table (#802 review).
+        col_w = [max(len(self.col_header(ci)), 3) for ci in range(len(self.columns))]
         for row in self.rows:
             for ci, col in enumerate(self.columns):
                 cell = row.cells.get(col.col_id)
@@ -406,19 +410,24 @@ class TableDocumentModel:
         return "\n".join(lines)
 
     def to_html(self) -> str:
+        # Every user-controlled field is escaped: a cell containing "<" or "&"
+        # must render as text, not break the markup or inject elements into
+        # the document the table is inserted into (#802 review).
+        from html import escape
+
         lines = ["<table>"]
         if self.caption:
-            lines.append(f"  <caption>{self.caption}</caption>")
+            lines.append(f"  <caption>{escape(self.caption)}</caption>")
         lines.append("  <thead>\n    <tr>")
         for ci in range(len(self.columns)):
-            lines.append(f'      <th scope="col">{self.col_header(ci)}</th>')
+            lines.append(f'      <th scope="col">{escape(self.col_header(ci))}</th>')
         lines.append("    </tr>\n  </thead>")
         lines.append("  <tbody>")
         for row in self.rows:
             lines.append("    <tr>")
             for ci, col in enumerate(self.columns):
                 cell = row.cells.get(col.col_id)
-                v = cell.content if cell else ""
+                v = escape(cell.content if cell else "")
                 if self.header_config.first_col_is_header and ci == 0:
                     lines.append(f'      <th scope="row">{v}</th>')
                 else:

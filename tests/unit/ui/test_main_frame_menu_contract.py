@@ -258,8 +258,10 @@ def test_macos_help_menu_is_marked_as_system_help_menu() -> None:
     source = _menu_source()
     # The platform gate is required so the call only runs on macOS
     # (a Windows build that touches the wx method with the wrong
-    # signature should be a no-op, not a startup crash).
-    assert 'platform.system() == "Darwin"' in source, (
+    # signature should be a no-op, not a startup crash). sys.platform,
+    # not platform.system(): the stdlib platform module is shadowed by
+    # quill/platform when the package dir lands on sys.path.
+    assert 'sys.platform == "darwin"' in source, (
         "#613: SetHelpMenu must be gated on the macOS platform check"
     )
     # Either the modern SetHelpMenu API or the classic

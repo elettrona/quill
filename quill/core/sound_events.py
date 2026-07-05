@@ -51,7 +51,9 @@ class SoundEvent(StrEnum):
     # that make every state of a hands-free exchange audible: on/off, the mic
     # opening (listen), an utterance captured (review), an action done (ready),
     # relaxing back (idle), a "still working" tick, and a calm error fall.
-    # The always-listening wake cue arrives with Phase 3.
+    # The wake cue is used by the always-listening "Hey QUILL" loop (Phase 3,
+    # shipped); it was defined alongside the Phase 2 cues so sound packs could
+    # override the full set from the start.
     CONVERSATION_ON = "conversation_on"
     CONVERSATION_OFF = "conversation_off"
     CONVERSATION_WAKE = "conversation_wake"

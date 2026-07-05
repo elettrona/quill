@@ -221,8 +221,31 @@ SETTING_SPECS: tuple[SettingSpec, ...] = (
         "bool",
         "When you save an untitled document, pre-fill the Save dialog with a name "
         "taken from the document's first line. Works across formats and strips "
-        "leading markup (a Markdown heading, a quote, or a list bullet).",
+        "leading markup (a Markdown heading, a quote, or a list bullet). On by "
+        "default; it never renames an already-saved document.",
         keywords=("title", "filename", "first line", "save", "name", "heading"),
+    ),
+    SettingSpec(
+        "restore_points_enabled",
+        "Keep restore points when saving",
+        "general",
+        "bool",
+        "Each time you save, QUILL keeps a snapshot of the document so File > "
+        "Restore Previous Version can bring any earlier save back. Saving "
+        "unchanged text stores nothing extra, and keeping a snapshot can never "
+        "be the reason a save fails. On by default.",
+        keywords=("restore", "version", "history", "snapshot", "save", "backup"),
+    ),
+    SettingSpec(
+        "restore_points_max_mb",
+        "Restore point disk limit (MB)",
+        "general",
+        "int",
+        "How much disk space one document's restore-point history may use, in "
+        "megabytes. Older versions thin out first (a full week is kept, then "
+        "one per day, then one per week), and the newest five versions are "
+        "always kept regardless of this limit.",
+        keywords=("restore", "version", "disk", "space", "limit", "history"),
     ),
     SettingSpec(
         "language",
@@ -519,6 +542,42 @@ SETTING_SPECS: tuple[SettingSpec, ...] = (
             ("never", "Keep current surface"),
         ),
         keywords=("save as", "convert", "rtf", "reload", "surface", "format"),
+    ),
+    SettingSpec(
+        "docx_read_engine",
+        "Word document reading engine",
+        "editing",
+        "choice",
+        "How QUILL converts a Word document into editable text when you open "
+        "it. Auto tries MarkItDown first and falls back to a plain extract. "
+        "MarkItDown is fast and reliable: headings, lists, and tables come "
+        "through; images, comments, and fonts do not. Pandoc keeps richer "
+        "structure - footnotes and complex tables survive better - and needs "
+        "Pandoc installed; when Pandoc is missing it falls back to Auto.",
+        choices=(
+            ("auto", "Auto (MarkItDown first)"),
+            ("markitdown", "MarkItDown"),
+            ("pandoc", "Pandoc"),
+        ),
+        keywords=("word", "docx", "converter", "engine", "pandoc", "markitdown", "open"),
+    ),
+    SettingSpec(
+        "docx_write_engine",
+        "Word document saving engine",
+        "editing",
+        "choice",
+        "How QUILL converts your text into a Word document when you save as "
+        ".docx. Native keeps QUILL formatting codes - fonts, sizes, colors, "
+        "highlights, and alignment - and each editor line becomes one Word "
+        "paragraph; best for documents written in QUILL. Pandoc maps structure "
+        "to Word styles - headings, lists, tables, links, and footnotes - but "
+        "drops font, size, and color codes, and needs Pandoc installed.",
+        choices=(
+            ("auto", "Auto (native writer first)"),
+            ("native", "Native (python-docx)"),
+            ("pandoc", "Pandoc"),
+        ),
+        keywords=("word", "docx", "converter", "engine", "pandoc", "save"),
     ),
     SettingSpec(
         "plain_text_link_style",
@@ -1346,55 +1405,6 @@ SETTING_SPECS: tuple[SettingSpec, ...] = (
         "User-defined image description prompt styles.",
         keywords=("vision", "image", "description", "custom", "prompt"),
     ),
-    # --- Bug reporting --------------------------------------------------------
-    SettingSpec(
-        "bug_reporter_name",
-        "Bug reporter name",
-        "general",
-        "text",
-        "Your name, pre-filled in the Report a Bug dialog for convenience.",
-        keywords=("name", "bug", "report", "contact"),
-    ),
-    SettingSpec(
-        "bug_reporter_email",
-        "Bug reporter email",
-        "general",
-        "text",
-        "Your contact email, pre-filled in the Report a Bug dialog for convenience.",
-        keywords=("email", "bug", "report", "contact"),
-    ),
-    # #618: open the Report a Bug dialog in a separate, non-modal
-    # window by default so users can alt-tab between the form and
-    # the editor to document exact reproduction steps.
-    SettingSpec(
-        "report_bug_separate_window",
-        "Open Report a Bug in a separate window",
-        "general",
-        "bool",
-        "Open the Report a Bug dialog in its own non-modal window so you "
-        "can alt-tab between the form and the editor to document exact "
-        "reproduction steps. The editor stays interactive while the form "
-        "is open. Turn this off to use the 0.5.0 modal-dialog behaviour.",
-        keywords=("bug", "report", "dialog", "window", "modal", "modeless"),
-    ),
-    # #618: when the user submits a bug report, copy the report to
-    # the clipboard and stop. The 0.5.0 default also opened a
-    # browser to the GitHub "New Issue" page; that step is now
-    # opt-in via this setting.
-    SettingSpec(
-        "report_bug_auto_open_browser",
-        "Auto-open support form in browser after submit",
-        "general",
-        "bool",
-        "After you submit a bug report from inside Quill, automatically "
-        "open the support form in your default browser. The report is "
-        "always copied to the clipboard; enable this if you would like "
-        "Quill to also pop the GitHub 'New Issue' page with the report "
-        "pre-filled. Disabled by default in 0.7.0 because the report is "
-        "already on the clipboard and many users do not want a browser "
-        "window opened on their behalf.",
-        keywords=("bug", "report", "browser", "support", "github", "auto"),
-    ),
     # #622: when an unhandled exception crashes QUILL, offer a dialog
     # that lets the user review a redacted preview and choose whether
     # to send the report to the developers. When disabled the local
@@ -1657,9 +1667,14 @@ SETTING_SPECS: tuple[SettingSpec, ...] = (
         "Check for updates on startup",
         "admin",
         "bool",
-        "Look for a newer release each time QUILL starts.",
+        "Look for a newer release each time QUILL starts. This check also "
+        "delivers signed safety advisories - the rare notice that temporarily "
+        "disables a specific shipped feature if the community reports it is "
+        "misbehaving - so leaving it on keeps that protection current. On by "
+        "default; the check fetches QUILL's own signed feed and sends nothing "
+        "about you or your documents.",
         feature_id="core.updates",
-        keywords=("updates", "startup", "check"),
+        keywords=("updates", "startup", "check", "safety", "advisory"),
     ),
     SettingSpec(
         "beta_updates",
@@ -2135,7 +2150,8 @@ SETTING_SPECS: tuple[SettingSpec, ...] = (
             "Which control backs the editor, for testing different surfaces. "
             "'Default' follows the braille Editor control type (Accessibility). "
             "RichEdit 3.0/2.0 are the native Windows rich controls; 'Notepad' is a "
-            "plain EDIT control; 'Rich text' is an experimental wx.RichTextCtrl. "
+            "plain EDIT control; 'Rich text' is an experimental wx.RichTextCtrl; "
+            "'Notepad++ experiment' is the Scintilla control (wx.stc.StyledTextCtrl). "
             "RESTART QUILL after changing this so every document uses the new surface."
         ),
         choices=(
@@ -2145,6 +2161,7 @@ SETTING_SPECS: tuple[SettingSpec, ...] = (
             ("plain", "Notepad (plain edit control)"),
             ("rtf", "Rich text (wx.RichTextCtrl, experimental)"),
             ("win32", "Native Win32 EDIT (pywin32 spike, Windows only)"),
+            ("stc", "Notepad++ experiment (Scintilla, wx.stc.StyledTextCtrl)"),
         ),
         keywords=(
             "experimental",
@@ -2154,6 +2171,8 @@ SETTING_SPECS: tuple[SettingSpec, ...] = (
             "notepad",
             "rtf",
             "win32",
+            "stc",
+            "scintilla",
             "native",
             "testing",
         ),

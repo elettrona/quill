@@ -412,7 +412,7 @@ def manifest_signature(
       baseline when no key is configured. The salt is public, so this protects
       against accidental corruption, not a determined attacker; authenticity
       rests on HTTPS to the feed host and to GitHub Releases. Asymmetric
-      (Ed25519) signing is the future hardening (see RELEASE.md).
+      (Ed25519) signing is the future hardening (see docs/release/RELEASE.md).
     """
     canonical = _canonical_manifest(
         version=version,

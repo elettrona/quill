@@ -240,3 +240,101 @@ def measure_loudness(path: Path, *, timeout_seconds: float = 600.0) -> LoudnessS
         return None
     # volumedetect prints its histogram to stderr; safe_subprocess captures it.
     return parse_volumedetect(completed.stderr or "")
+
+
+# ---------------------------------------------------------------------- ACX check
+
+# ACX audition targets for the per-file compliance check (loudnorm analysis):
+# integrated loudness near -20 LUFS (±3), true peak at or under -3 dBTP, and a
+# gating threshold (approximating the noise floor) at or under -60 dB.
+ACX_LUFS_TARGET = -20.0
+ACX_LUFS_RANGE = 3.0
+ACX_NOISE_MAX = -60.0
+
+
+@dataclass(slots=True)
+class AcxCheck:
+    """One file's ACX compliance measurement, with speakable recommendations."""
+
+    integrated_lufs: float
+    true_peak_db: float
+    noise_floor_db: float
+    loudness_ok: bool
+    peak_ok: bool
+    noise_ok: bool
+
+    @property
+    def ok(self) -> bool:
+        return self.loudness_ok and self.peak_ok and self.noise_ok
+
+    def recommendations(self) -> list[str]:
+        """Plain sentences telling the user what to fix (empty when compliant)."""
+        recs: list[str] = []
+        if not self.loudness_ok:
+            diff = ACX_LUFS_TARGET - self.integrated_lufs
+            direction = "louder" if diff > 0 else "quieter"
+            recs.append(
+                f"Integrated loudness is {self.integrated_lufs:.1f} LUFS (need "
+                f"{ACX_LUFS_TARGET} plus or minus {ACX_LUFS_RANGE}). Enable loudness "
+                f"normalization and rebuild, or make the recording {abs(diff):.1f} dB "
+                f"{direction}."
+            )
+        if not self.peak_ok:
+            recs.append(
+                f"True peak is {self.true_peak_db:.1f} dBFS (max {ACX_PEAK_MAX}). "
+                "Enable peak limiting or reduce the recording level."
+            )
+        if not self.noise_ok:
+            recs.append(
+                f"Noise floor is {self.noise_floor_db:.1f} dBFS (max {ACX_NOISE_MAX}). "
+                "Record in a quieter environment or apply noise reduction."
+            )
+        return recs
+
+
+def acx_check_from_measurement(measured: dict[str, str]) -> AcxCheck:
+    """Build an :class:`AcxCheck` from parsed loudnorm-analysis JSON (pure)."""
+
+    def _f(key: str, fallback: float = -99.0) -> float:
+        try:
+            return float(measured.get(key, fallback))
+        except (TypeError, ValueError):
+            return fallback
+
+    lufs = _f("input_i")
+    peak = _f("input_tp")
+    # input_thresh is loudnorm's gating threshold; it approximates the noise
+    # floor well enough for a compliance report.
+    noise = _f("input_thresh")
+    return AcxCheck(
+        integrated_lufs=lufs,
+        true_peak_db=peak,
+        noise_floor_db=noise,
+        loudness_ok=abs(lufs - ACX_LUFS_TARGET) <= ACX_LUFS_RANGE,
+        peak_ok=peak <= ACX_PEAK_MAX,
+        noise_ok=noise <= ACX_NOISE_MAX,
+    )
+
+
+def acx_check_file(path: Path, *, timeout_seconds: float = 1800.0) -> AcxCheck | None:
+    """Measure *path* against the ACX submission window (None when unmeasurable).
+
+    Runs loudnorm in analysis mode (decodes the whole file — background pool
+    only) and folds the measurement into pass/fail flags plus recommendations.
+    """
+    from quill.core.speech.ffmpeg import find_ffmpeg
+    from quill.stability.safe_subprocess import run_subprocess_safely
+
+    ffmpeg = find_ffmpeg()
+    if ffmpeg is None or not path.is_file():
+        return None
+    try:
+        completed = run_subprocess_safely(
+            build_loudnorm_measure_command(ffmpeg, path), timeout_seconds=timeout_seconds
+        )
+    except OSError:
+        return None
+    measured = parse_loudnorm_json(completed.stderr or "")
+    if measured is None:
+        return None
+    return acx_check_from_measurement(measured)

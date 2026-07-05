@@ -32,6 +32,24 @@
  * fallback is used transparently.
  */
 
+// Pre-include windows.h ourselves with NOMINMAX set, *before* any
+// pybind11 header. pybind11's headers pull in <windows.h> on the win32
+// path; if we let pybind11 do that, UIAutomationCore.h (included by
+// table_provider.hpp) sees windows.h's default `min`/`max` macros
+// collide with the STL helpers used throughout the C++ code, and the
+// downstream compile fails with 100+ errors in UIAutomationCore.h
+// (the original symptom reported by issue #823). Defining NOMINMAX
+// here is enough; do NOT define WIN32_LEAN_AND_MEAN, because UIA
+// needs the full Windows header set (the COM base types in
+// objbase.h are excluded when WIN32_LEAN_AND_MEAN is set, which
+// breaks UIAutomationCore.h's first 50 lines of forward decls).
+#if defined(_WIN32)
+#  ifndef NOMINMAX
+#    define NOMINMAX
+#  endif
+#  include <windows.h>
+#endif
+
 #include <pybind11/pybind11.h>
 #include <pybind11/functional.h>
 #include <pybind11/stl.h>

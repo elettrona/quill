@@ -71,6 +71,9 @@ DEFAULT_KEYMAP: dict[str, str] = {
     "file.manage_remote_sites": "Ctrl+Shift+Grave, Shift+M",  # QUILL-key chord
     "file.close_document": "Ctrl+W",
     "file.print": "Ctrl+P",
+    # Restore points: no default key (assignable); the File menu item is the
+    # primary path.
+    "file.restore_previous_version": "",
     "window.next_document": "Ctrl+Tab",
     "window.previous_document": "Ctrl+Shift+Tab",
     # Jump straight to the Nth open document. Alt+digit is otherwise unused and,
@@ -132,6 +135,7 @@ DEFAULT_KEYMAP: dict[str, str] = {
     "tools.read_aloud_stop": "Ctrl+Shift+Grave, Shift+R",  # §10.8.2: Shift+P→Shift+R
     "tools.dictation_toggle": "Ctrl+Shift+Grave, D",
     "tools.speech_dictate": "Ctrl+Shift+Grave, Shift+D",
+    "tools.speech_batch_export": "Ctrl+Shift+Grave, Y",  # Audio Studio
     # Locked Dictation (offline Whisper). All remappable; the
     # these are matched in the editor key handlers rather than the accelerator
     # table (no menu accelerators) so Escape can be consumed only while recording.

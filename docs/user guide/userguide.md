@@ -677,7 +677,7 @@ Connection status messages tell you exactly what to do next:
 - "Rate limited by the AI provider. Wait a moment and try again." means you sent requests too quickly.
 - "Your saved API key could not be unlocked on this device. Open AI Connection and enter the key again." appears in the AI status line when a saved key cannot be decrypted, which can happen after moving a portable install to a different Windows account or machine. Open AI Connection and re-enter the key.
 
-For policy details, see the repository's `PRIVACY.md` and `RESPONSIBLE_AI_USE.md`.
+For policy details, see the repository's `docs/legal/PRIVACY.md` and `docs/legal/RESPONSIBLE_AI_USE.md`.
 
 These help you stay inside the editor instead of breaking flow for small writing chores.
 
@@ -757,14 +757,16 @@ available here too.
 For release-safe beta validation, Word and CSV open in the normal plain-text
 editor surface; AI connection and chat flows remain available.
 
-### AI engines — bring the agent you already pay for
+### AI engines — bring the agent you already use
 
 QUILL's agent (the reviewable, multi-step help behind Ask Quill and the AI
 Library agents) can run on more than one **engine**. The built-in **Native**
-engine always works, using whichever provider you connected above. But if you
-**already pay for GitHub Copilot, ChatGPT (OpenAI), or Claude**, you can use that
-subscription as QUILL's agent instead — no second API key, no per-word charge on
-your card, and it runs on your plan's models.
+engine always works, using whichever provider you connected above. If you
+**already pay for GitHub Copilot**, you can use that subscription directly — a
+short spoken device code signs you in, no API key at all, running on your
+plan's models. The **Claude Agent** and **OpenAI Agents** engines connect with
+the Anthropic or OpenAI **API key** you already have (they do not use ChatGPT
+or Claude chat subscriptions — those plans do not include API access).
 
 You choose the engine on the **AI Hub → Engines** tab:
 
@@ -1677,7 +1679,7 @@ The **Help** menu is where Quill becomes a guide.
 - **Why Don't I See a Feature?** explains profile-driven feature visibility.
 - **Feature Profiles** commands let you switch profile, run health checks, undo the last profile change, reset to Essential, and run onboarding.
 - **Personalise QUILL...** (the first-run setup wizard) can be rerun at any time to adjust your keyboard pack, feature profile, remote access, AI, reading and accessibility, writing tools, data location, and startup behaviour.
-- **Report a Bug...** opens an in-app review screen, copies the environment summary to the clipboard, and then opens the Community Access support-hub issue form.
+- **Report a Bug...** opens the accessible issue form, which submits your report directly to the Community Access issue tracker — no browser round-trip.
 - **Check for Updates...** verifies the signed update manifest, offers the download, and can close Quill so setup can run immediately. If you are running the **portable** build, QUILL recognises this and offers the portable `.zip` for the new version instead of pushing the installer at you — it downloads to your updates folder with an **Open folder** button so you can swap it into place. Installed copies keep receiving the installer.
 - **About Quill** shows version, publisher details, and linked third-party dependency attribution with license and version metadata.
 - **Open Third-Party Notices** opens a full notices document with dependency tables and bundled license texts.
@@ -1695,17 +1697,12 @@ Menu stability note: Quill now defers internal menu-state updates while native m
 
 Use this path when Quill is behaving unexpectedly or when you want to send the team a feature request.
 
-1. Open **Help -> Report a Bug...**. Focus lands on the Summary field, ready to type.
-2. Optionally fill in your name and contact email. Quill remembers these and pre-fills them next time, so you only enter them once.
-3. Pick your screen reader from the list (None, JAWS, NVDA, Narrator, VoiceOver, or Other). Quill pre-selects the one it detects. The choice is included in the report so the team can reproduce screen-reader-specific issues.
-4. Read the in-app report summary Quill prepares for you.
-5. Choose whether to include diagnostics, and whether to include plain file paths.
-6. If diagnostics are included, save the diagnostics bundle to a location you can find again easily.
-7. Choose **Open Support Form**.
-8. When the Community Access support page opens, describe the problem, what you expected, and what actually happened.
-9. Attach the diagnostics zip if it is relevant to the issue.
+1. Open **Help -> Report a Bug...**. The issue form opens as a dialog; the fields are plain, labelled controls your screen reader reads by name.
+2. Optionally fill in your name and email so the team can follow up.
+3. Pick a category and describe the problem: what happened, what you expected, and the steps to reproduce it. Your QUILL version is filled in for you.
+4. Choose **Submit Issue**. The report is filed directly on the Community Access issue tracker — no browser, no copy-and-paste — and no account is required. Escape cancels without sending anything.
 
-This unified flow keeps support reporting in one place. If you only need diagnostics, **Help -> Save Diagnostics...** remains available as a standalone export command.
+If the form ever cannot be opened, QUILL copies a link to the online support form to your clipboard and tells you so, so you always have a path. Need to share more detail? **Help -> Save Diagnostics...** remains available as a standalone export you can attach to any issue.
 
 ### When QUILL crashes: the new crash-submit dialog
 
@@ -1824,9 +1821,36 @@ The dialog lists all twelve slots. Each row shows the slot number, an optional l
 - Slots survive restarts. Build a small library of recurring fragments you reach for daily.
 - All bindings are reassignable in the Keymap Editor (`Tools > Customize & Support > Preferences > Keyboard`).
 
+### Saving in Different Formats — what happens to your file
+
+**File > Save As** genuinely converts your document to the format you pick in the "Save as type" list — it never just renames the file. QUILL's editor holds your text in one clean canonical form; choosing a type in Save As re-serializes that text into the chosen format on disk. Here is exactly what each choice does:
+
+- **Markdown (.md)** — your text is written exactly as it is in the editor. This is QUILL's native format; nothing is converted or lost.
+- **Text (.txt)** — also written exactly as-is, including any Markdown markup, so a plain-text file makes a perfect round trip. If you want the markup *stripped* (headings and emphasis flattened to plain words), use **File > Save As Plain Text** instead — that command also offers to keep your formatting in an Illumination sidecar.
+- **HTML (.html)** — converted to a complete standalone web page with your document title, ready for a browser.
+- **Rich Text (.rtf)** — converted with full formatting fidelity: fonts, sizes, colors, highlights, and alignment all carry over.
+- **Word (.docx)** — converted to a real Word document. Headings become Word heading styles (so Word and screen readers can navigate them), each editor line becomes one Word paragraph (your line breaks are preserved exactly), and hidden-codes formatting — font, size, color, highlight, alignment — carries onto real Word runs.
+- **A typed extension QUILL cannot write** (for example typing `notes.pdf` in the name box) — QUILL refuses rather than writing a broken file, and for PDF, ODT, and EPUB it offers to open **File > Export**, which can produce them properly through Pandoc.
+
+**You keep editing QUILL text.** After a converting Save As, the file on disk is Word (or HTML, or RTF) — but your editing surface still holds QUILL's clean text, and every subsequent Ctrl+S converts it again to the saved format. QUILL announces this after the save ("Saved as report.docx, Word format. You are still editing QUILL text; each save converts it to Word.") so the model is never a mystery. The window title and tab title update to the new name immediately, and a plain Ctrl+S from then on saves silently to the same file.
+
+**Your originals are protected.** If you opened a PDF, EPUB, spreadsheet, or presentation, what you are editing is *extracted text* — the binary original cannot hold it back. Pressing Ctrl+S on such a document never overwrites the original: QUILL explains and opens Save As so your edits land in a new file, in a format that can actually hold them.
+
+**Filename suggestions.** When you save an untitled document, QUILL pre-fills the name box from the document's first line (leading `#` marks, quotes, and bullets are stripped, and invalid filename characters removed). This is on by default; turn it off with **Suggest a filename from the first line** in Preferences. It only ever *suggests* — type anything you like over it — and it never renames an already-saved document.
+
+### Choosing a conversion engine
+
+More than one converter can handle a Word document, and they make different trade-offs. QUILL lets you pick, and tells you the outcome of each choice in plain language:
+
+- **Word document reading engine** (Preferences > Editing) — how a `.docx` becomes editable text when you open it. **Auto** (default) tries MarkItDown first and falls back to a plain extract. **MarkItDown** is fast and reliable: headings, lists, and tables come through; images, comments, and fonts do not. **Pandoc** keeps richer structure — footnotes and complex tables survive better — and needs Pandoc installed; if Pandoc is missing, the preference quietly degrades to Auto rather than failing your open.
+- **Word document saving engine** (Preferences > Editing) — how your text becomes a `.docx` when you save. **Auto** (default) prefers the native writer. **Native** keeps QUILL's formatting codes — fonts, sizes, colors, highlights, alignment — and maps each editor line to one Word paragraph; it is the best choice for documents written in QUILL. **Pandoc** maps structure to Word styles — headings, lists, tables, links, and footnotes — but drops font, size, and color codes.
+- **Convert File dialog** — the **Conversion engine** choice (Auto, Pandoc, or MarkItDown) applies to one conversion at a time, and a description under the choice updates as you arrow through it so you hear each engine's outcome before converting. MarkItDown applies only when the source is Word, PowerPoint, Excel, or PDF and the output is Markdown or plain text; choose it for anything else and QUILL says so and offers Pandoc — it never silently substitutes an engine you did not pick.
+
+These preferences exist because "convert" is not one thing: a structure-first engine and a formatting-first engine produce honestly different Word documents from the same text. The defaults are right for almost everyone; the choices are there for when they are not. (The engine comparison evidence lives in `docs/qa/converter-bakeoff.md`.)
+
 ### Import and Export
 
-QUILL can convert between the formats the people around you actually use, without you leaving the editor. **File > Import** brings a non-QUILL document into QUILL as a new tab. **File > Export** saves the current buffer as a different file type. Both routes use Pandoc on a background thread, so the editor never freezes.
+QUILL can convert between the formats the people around you actually use, without you leaving the editor. **File > Import** brings a non-QUILL document into QUILL as a new tab. **File > Export** saves the current buffer as a different file type. Both routes use Pandoc on a background thread, so the editor never freezes. Exports preserve your line breaks exactly: one editor line is one paragraph in the exported document, in every format.
 
 **Import (File > Import):** Markdown, CommonMark, GitHub-Flavored Markdown, HTML, Word documents (`.docx`), OpenDocument Text (`.odt`), Rich Text (`.rtf`), plain text, CSV / TSV tables, EPUB books, LaTeX / TeX.
 
@@ -2495,6 +2519,8 @@ The **Kokoro** voice models (~120 MB), the classic **DECtalk** runtime (~2 MB), 
 
 To audition a voice in **Manage Voices**, select it and use the **Preview** button. If the voice is already downloaded, Quill synthesises the preview phrase with that voice's real model; if it is not downloaded yet (for example a Kokoro voice), Quill plays a short pre-recorded sample so you can still hear it before deciding to download. The rate, volume, pitch, and speed controls apply to real synthesis, so they stay dimmed until the voice is downloaded.
 
+**Read Aloud speaks more than English.** The Windows engine lists **every voice installed on your PC, in any language** — add a voice in Windows Settings under **Time & language > Speech > Manage voices** (for example Italian's Elsa, or a Spanish, French, German, or Japanese voice) and it appears in QUILL's voice list ready to use, no download from QUILL needed. The offline neural voices go beyond English too: the **Kokoro** engine includes **Spanish, French, Hindi, Italian, and Brazilian Portuguese** voices — they are part of the same voice pack you already downloaded, so picking one just works — and the **Piper** catalog includes Italian voices (Paola and Riccardo) you can download like any other. **eSpeak NG** also offers those languages from its built-in data. Pick the voice whose language matches your document and Read Aloud, audiobook export, and batch speech all speak it correctly.
+
 ### Read Document in Browser (experimental)
 
 Your web browser has voices QUILL's built-in engines cannot reach — including Microsoft Edge's "Online (Natural)" voices. This opt-in feature reads the current document with them.
@@ -2505,13 +2531,61 @@ Your web browser has voices QUILL's built-in engines cannot reach — including 
 
 **Privacy.** QUILL itself makes no network call, and no audio file is produced. Voices labelled "on this device" synthesize locally. The browser's "Online (Natural)" voices synthesize in the voice vendor's cloud, which means choosing one sends the text being read to that service — pick an on-device voice to keep everything local. The reader page (which contains your document text) is written to QUILL's app-data folder and deleted when you close QUILL, so no plaintext copy is left behind.
 
-### Batch Export to Speech Audio
+### QUILL Audio Studio
 
-**Tools → Speech → Batch Export to Speech Audio** converts a whole folder of documents to speech audio in one pass. The conversion runs on a background task with per-file progress that you can cancel, and the same shared speech pipeline live Read Aloud uses — so the voice you audition is the voice you get.
+**Tools → Speech → Audio Studio…** is the guided home for audio production: it converts a whole folder of documents to speech audio in one pass, and it builds chaptered audiobooks — from documents, from a folder of recordings, or both. It replaced the old single-page Batch Export to Speech Audio dialog with a wizard that asks one thing at a time; every option below is still there, just spread across clear steps, and your saved project settings still pre-fill everything.
 
-In the dialog you choose:
+The first page asks what you want to make:
+
+- **Narrate documents into an audiobook or speech audio** — the steps are: What should I read? (folder, file types, filters) → Who should read it? (engine, voice with a preview button, pace, round-robin voices, voice casting rules, translated editions) → How should chapters work? (chapter mode, spoken headings, the transition sounder and its volume, pauses) → Output and diagnostics (format, existing-file policy, loudness, incremental-rebuild reuse, dry run, temp folder) → the book page (optional: assemble everything into one audiobook) → a plain-language summary.
+- **Combine audio files into one chaptered audiobook** — a shorter path: pick the folder of recordings, describe the book (title, author, narrator, cover, M4B or MP3, ACX loudness), review the summary, and Start. Each file becomes one chapter and you always review the chapter list before the book is built.
+- **Edit an existing audiobook** — pick a finished MP3 or M4B and it opens in the **Chapter Workbench** (below). A file with no chapter markers opens as a single chapter, ready to split up.
+
+Two automation extras round the Studio out. **Library mode** (a checkbox on the combine-audio journey) builds every subfolder as its own audiobook in one unattended run — point it at a folder of book folders and come back to a shelf of masters, each titled after its folder. And a new **watch action, "Build audiobook from the folder"**, keeps a drop folder alive: whenever new recordings land in a watched folder, its chaptered master is rebuilt automatically (a batch of files triggers one rebuild, not many).
+
+A few reach-shortcuts have grown around the Studio. **The first page remembers which journey you used last** (documents / audio / edit) and pre-selects that radio, so the second run lands on the same first page without a click. The source pages show a **combo of recent source folders**, and the **edit** journey's file picker remembers **recently opened audiobooks** — both lists persist across sessions and are independent from the recent-document list, so they never grow without bound. The **default key binding** for the Studio is `Ctrl+Shift+Grave, Y`; the entry shows up in the command palette under "Audio Studio...". The **Export to Translated Speech Audio** dialog has an **"Open in Audio Studio"** button that closes it and opens the wizard with the document pre-filled, so the one-shot translation flow advertises the richer chaptered path.
+
+The whole flow is covered by a nightly UIA-regression suite (CI-only, never on your desktop) that walks every page of the wizard, asserts each page's "Step N of M" announcement lands in the spoken trace, opens the Workbench on a corpus chaptered MP3 from the edit journey, and drives the silence-proposal parameters dialog from the Workbench. A regression in focus order, modal-id wiring, or screen-reader announcements is caught by the robot overnight instead of by your ears after release.
+
+### The Chapter Workbench
+
+The Workbench is where a finished audiobook gets fixed by ear. The chapter list reads each row in full ("3. The Long Road — starts 1:02:03, runs 12:40"); press Enter on a chapter to hear it. The built-in **player** has Play/Pause, Stop, Previous/Next chapter, Rewind/Forward, a position slider that speaks minutes and seconds, and a volume slider; the current chapter is announced as playback crosses into it.
+
+- **Split at playhead** — listen for the spot where a chapter should begin, pause there, press the button: the chapter is cut in two exactly at the playhead. This is how you fix a book whose chapters landed in the wrong places.
+- **Set start to playhead** — retime an existing boundary: select the chapter, park the playhead where it should start, press. The previous chapter's end moves with it, so the timeline always stays contiguous.
+- **Merge into previous**, **Rename** (type and press Enter), and **Restore original** (one press undoes every edit) round out the surgery.
+- **Propose chapters from silences...** scans the recording with ffmpeg's `silencedetect`, with a small dialog asking for the **noise threshold** (dB, default -30) and **minimum silence** length (seconds, default 0.8), and proposes chapter boundaries at the silence midpoints. The proposal lands in the chapter list for review — never applied blind; press **Restore original** to undo. The one-long-recording story is complete: open a single 80-minute file (it opens as one chapter), press one button, review, save.
+- **Check against ACX** measures the file with fbmpeg's loudnorm and shows a verdict dialog with integrated loudness, true peak, and noise floor, plus a speakable recommendation for each failing criterion ("Integrated loudness is -14.2 LUFS, target -20 plus or minus 3; make the recording 5.8 dB quieter"). The verdict is announced when the measurement finishes, regardless of how the dialog is dismissed.
+- **Import chapters...** replaces the whole list from Audacity labels, a CUE sheet, timestamp lines, Podcasting 2.0 JSON, or CSV; **Export chapters...** writes the list in any of the same five formats.
+- **Split into files...** goes the other way: one audio file per chapter, named `NN - Title`, into a folder you pick — instant podcast episodes, or tracks for players without chapter support.
+- **Propose AI titles...** names a folder of `track07`-style chapters by listening to them: the opening minute of each chapter is transcribed on this machine by the local speech model (the audio never leaves your computer), only that text goes to your configured AI (a local model keeps even the text on-device), and a short proposed title per chapter lands in the list for your review — **Restore original** undoes the lot. Needs a configured AI; unavailable in Safe Mode.
+- The player **remembers where you stopped** in each book and resumes there next time, offers a **playback speed** control (0.75x to 2x, pitch preserved), and answers **"Where am I?"** with the full audible glance: "Chapter 4 of 24: The Long Road. 3:12 into the chapter, 9:28 left in it. 1:02:03 of 7:41:00 in the book, 6:38:57 remaining."
+- Playback normally uses Windows' built-in media engine — nothing to install. For gapless audio, exact seeking, and instant chapter jumps even on 8-hour books, download the **mpv player engine** from **Help > Download Optional Components** (about 44 MB, checksum-verified; its licenses and a source offer ship inside the download) and the player switches to **libmpv** the next time it opens. Power users can instead drop a `libmpv-2.dll` into the data folder's `engine-packs\mpv` directory or point `QUILL_LIBMPV` at one. If the DLL is missing or broken, QUILL quietly stays on the built-in engine.
+- **Book details** (title, author, narrator, genre, year) are edited right in the dialog.
+- **Save** writes an MP3's edits **in place** — only the tags are rewritten; the audio is untouched. An M4B is saved with **Save As** instead: a lossless re-mux (no re-encode, no quality loss) into a new file. Long saves run in the background so QUILL stays responsive.
+- **Publish...** opens three ways to get the finished book out into the world, each an explicit action:
+  - **Podcast feed** — QUILL writes a complete `.rss` file next to the book (RSS 2.0 with iTunes and Podcasting 2.0 tags; chapter navigation rides the `chapters.json` sidecar). Upload the feed and audio anywhere; generation itself never touches the network.
+  - **Folder feed (all episodes)** — run a whole show from one folder. Every MP3, M4B, or M4A master becomes an episode (oldest file = episode 1) with its title from its tags or your override, your per-episode description (edited in an accessible episode list), its real publication date, duration, and chapter link. The show settings persist in the folder, so after each new build, one press of **Write feed.rss now** regenerates the complete feed. **Write show notes page** produces an accessible `show-notes.html` beside it — headings per episode, descriptions, and chapter lists — ready to upload with the feed.
+  - **SFTP upload** — save a destination (host, folder, and the public URL that mirrors it) and QUILL uploads the book plus its companion files through its own SSH machinery, with the same strict host-key policy as editing over SSH. The password is kept in the **Windows Credential Manager**, never in QUILL's settings.
+  - **Auphonic** — send the book to your own Auphonic account for professional post-production; QUILL uploads, waits for the production to finish, and downloads the results into a folder next to the book. Your API token also lives in the credential vault. Press **Check account and load presets** first and QUILL announces whose account the token belongs to, how many processing credits remain, and fills the **preset picker** with your saved Auphonic presets; the send confirmation then names the preset and your balance before anything uploads. The token can also be managed centrally in **AI > AI Hub > Services**, alongside QUILL's other service keys. QUILL asks before anything is uploaded.
+
+  Publishing is unavailable in Safe Mode, and every upload runs in the background with spoken completion. SFTP uploads and Auphonic transfers show a progress dialog that speaks whole-percent steps as bytes move ("Uploading book.m4b: 42%") and has a real **Cancel** button: cancelling an SFTP upload stops mid-file (already-completed files stay on the server), cancelling an Auphonic run before the upload finishes means no production starts, and cancelling after that leaves the production running in your Auphonic account and skips the download — QUILL announces which of these happened.
+
+Each step is announced as you arrive ("Step 2 of 7: What should I read?"), **Back** and **Next** move between steps, and **Skip to summary** jumps ahead when your saved project profile already fills every page — a repeat run is three keystrokes. The conversion runs on a background task with per-file progress that you can cancel, using the same shared speech pipeline live Read Aloud uses — so the voice you audition is the voice you get.
+
+More Studio conveniences:
+
+- **Job files.** On the summary page, **Save a job file** writes a small, hand-editable `.quilljob` that pins this exact run — folder, voices, chapters, mastering, and book details. **Load a job file** on the first page brings everything back, pre-filled; keep one per project, or edit it in Notepad between runs.
+- **Look up book details.** On the book page, type the title (and author if you know it) and press **Look up book details** — QUILL searches **Open Library** and **MusicBrainz**, two free public catalogs, and the match you pick fills in the author, genre, and year. QUILL asks before the first contact, and only the title and author you typed are ever sent. If the chosen match has a cover image on Open Library and you haven't set one, QUILL offers to download it as `cover.jpg` next to your audio and fills the cover field — say no and nothing is fetched.
+- **Audition first.** Tick **Audition** on the output step to convert only the first document — judge the voice, the pace, and the loudness in a couple of minutes before committing to an overnight run.
+- **Incremental rebuilds.** With **Reuse unchanged audio from the last run** ticked (the default), QUILL fingerprints each document's text together with every setting that shapes its audio. On a re-run, documents that haven't changed — and whose audio is still on disk — are reused instead of re-synthesized, announced as "Reused ... (unchanged since last run)". Edit one chapter of a forty-document book and only that chapter is narrated again; change the voice or any audio setting and everything rebuilds automatically. Untick the box to force a full rebuild. The fingerprints live in the source folder's `.quill/speech-cache.json`; deleting that file also forces a fresh run.
+- **Spoken credits.** Tick **Add spoken opening and closing credits** on the book page and QUILL narrates the standard audiobook frame — "My Book. Written by Jane Doe. Narrated by Sam Reader." — in the run's own voice, as the book's first and last chapters.
+
+Across the steps you choose:
 
 - **Source folder** and whether to include subfolders, the **file types** to include (`.docx`, `.md`, `.html`/`.htm`, `.txt`), and optional **include/exclude filters** (semicolon- or comma-separated globs, matched against the file name and its path) plus a **maximum file size** to skip very large files.
+- **Skip files larger than (MB)** — on the *What should I read?* step, the discovery controls now include a **maximum-file-size filter** (in megabytes, `0` = no limit). A folder with one accidental 400 MB export no longer hijacks an overnight run: any file above the cap is excluded from discovery and the live document count on the same step reflects the cap as you change it. Press **Count documents** to hear the settled count announced.
+- **Polish runs during the build.** The audio source page's **Trim silences from each recording** and the book page's **fade-in / fade-out / tempo** controls now actually run during the audiobook build. Each chapter file is staged through `core/speech/audio_edit.prepare_chapter_files` (head/tail silence trim, fades, pitch-preserving tempo via ffmpeg `atempo`) before ffmpeg concatenates them into the master. Staged files live in the build's temp directory, so your source recordings are never overwritten, and a polish failure on one file keeps the build going with that file's previous form. Defaults (no trim, `0` ms fades, `1.0` tempo) keep the build byte-identical to the pre-polish path.
 - **Engine, voice, and pace** — any of the offline engines (SAPI 5, DECtalk, Piper, Kokoro, eSpeak NG), with a **Preview** button to hear the chosen voice first.
 - **Output format** — **WAV** (always available) or, when `ffmpeg` is installed, **MP3, M4A, M4B (audiobook), Opus, FLAC, or OGG**. When `ffmpeg` is missing, compressed formats fall back to WAV with a per-file note rather than failing. MP3 has a selectable quality, and WAV can be conformed to a uniform sample rate / channel count.
 - **Chapters** — turn a long document into a navigable, **chaptered** file. Choose **MP3** (ID3 chapter markers) or **M4B audiobook** (native MP4 chapter atoms — the Apple/audiobook format), both recognized by Apple Podcasts, Overcast, VLC, foobar2000, and others. Options include a **transition sound** between articles — a natural page-turn cue by default, or choose a different earcon from your active sound pack; whichever you use is matched to the audio format automatically so it always splices cleanly — whether each heading is spoken, and configurable pauses between articles and sentences plus an anti-clipping trailing pad. A very long section is split automatically on a safe sentence boundary so no single passage runs past the engine timeout, and the run report lists each document's chapter count.
@@ -2522,6 +2596,7 @@ In the dialog you choose:
 - **Also export in other languages (translated)** — produce a translated audiobook alongside the original. Choose a **language**, pick a **voice** for it, press **Add language**, and repeat for as many languages as you want; **Remove language** drops one. Voices are offered **local-first** (eSpeak speaks nearly every language offline, and any installed Windows voice for that language) followed by the **premium multilingual cloud voices — OpenAI, Gemini, and ElevenLabs** — which need the matching provider API key (the same key the AI Voice feature uses). Choose **Translate with: AI provider** (any AI provider you have configured) or **LibreTranslate** (runs locally). On Start, each document is translated and written as `<doc> (<Language>).<ext>` next to the original, with the same chapters, page-turn cue, and loudness. Pronunciation dictionaries can be scoped to a language so they only affect that language's narration. If a chosen cloud voice has no key configured, that language is skipped with a note rather than stopping the run.
 - **You'll see the cost first for cloud runs.** Cloud translation and cloud narration are metered, so if your selections would use a paid cloud service, QUILL shows a **combined cost estimate** and asks you to confirm before it starts. Runs that use only local engines and LibreTranslate start straight away.
 - **Round-robin voices** — read each article/heading in a *different* voice that cycles through a list you build. Pick a voice from the **Round-robin voices** combo box, press **Add voice**, and repeat; use **Move Up / Move Down / Remove** to set the order. Article 1 uses the first voice, article 2 the second, and so on, wrapping around. The list uses voices of the **engine you selected** (so everything stays one consistent audio quality); changing the engine clears it. Leave the list empty to use the single chosen voice as usual. Your combine and round-robin choices are remembered per project.
+- **Voice casting** — explicit assignment layered on top of the rotation. Add rules on the same page: a pattern plus the voice that should read every matching chapter. Patterns match the heading title as a glob (`Chapter *`, `*interview*`, or an exact title, case-insensitive) or a section number (`#1` for the opener). The first matching rule wins; chapters no rule matches fall through to the rotation or the single voice. Rules use voices of the selected engine (switching engines clears them) and are pinned in saved job files — so a dialogue-heavy production or an interview show casts its voices deliberately instead of by rotation order.
 - **Audiobook metadata** — album, author/narrator, genre, and year stamped onto compressed files (each file's title comes from its heading or name, and its track number from its position).
 - **If a file already exists** — **Skip** (cheap resume), **Overwrite**, or **Rename** so both are kept (`name (2).mp3`).
 - **Output layout** — mirror the source folders or **flatten** into one folder, and optionally rename outputs with a **template** like `{index:03d} - {stem}` (→ `001 - chapter-one`).
@@ -2535,11 +2610,12 @@ If a voice ever **fails to synthesize** — a broken system voice, a missing mod
 
 **Tools → Speech → Export to Translated Speech Audio** is the single-document version of the translated export above: it translates and narrates **just the document you're editing**, without pointing at a folder. Pick the output format, choose **Translate with** (any configured AI provider, or local LibreTranslate), then add one or more **language + voice** targets the same way — local voices first, then the premium cloud voices. Press **Export** and QUILL writes `<doc> (<Language>).<ext>` next to your document. If the document has unsaved changes, QUILL offers to save first so your latest edits are the ones translated. As with the batch tool, a **combined cost estimate** is shown before any metered cloud run.
 
-### Build Audiobook from a Folder
+### Build an audiobook from a folder of recordings
 
-**Tools → Speech → Build Audiobook from Folder…** combines a folder of existing
+The Audio Studio's **Combine audio files** journey (`Tools → Speech → Audio
+Studio…`, second choice on the first page) combines a folder of existing
 audio files into one chaptered audiobook — the kind your audiobook or podcast app
-navigates track by track. It complements Batch Export to Speech Audio: where that
+navigates track by track. It complements the narrate-documents journey: where that
 converts documents to speech, this stitches a folder of audio (your own recordings,
 or speech QUILL exported earlier) into a single master.
 
@@ -2548,8 +2624,23 @@ or speech QUILL exported earlier) into a single master.
   track number like `01 - ` is stripped).
 - **Edit the chapters before building.** The dialog lists the chapters; you can
   **rename** the selected one (type a new title and press Rename or Enter), **move**
-  it **up** or **down**, or **merge** it into the chapter above it (two files then
-  play as a single chapter with one marker). The list is fully keyboard-operable.
+  it **up** or **down**, **merge** it into the chapter above it (two files then
+  play as a single chapter with one marker), or **remove** it from the book
+  entirely. **Restore original** undoes all edits in one press. The list is fully
+  keyboard-operable.
+- **Bring your titles with you.** **Import titles...** reads chapter names, in
+  order, from an Audacity label track, a CUE sheet, plain timestamp lines,
+  Podcasting 2.0 chapters JSON, or a **CSV spreadsheet** — any sheet with a
+  "Title" column works, as does a simple `number,title` list — so a chapter list
+  you keep in Excel names your MP3 files in one step. **Export titles...** writes
+  the current list back out as text.
+- **Honest numbers, before and after.** The run log opens with a **pre-flight
+  check** (files whose sample rate, channels, or format differ are named — the
+  build still works; it re-encodes) and an estimated duration and size. After the
+  build QUILL **re-reads the finished book** and reports what a player will
+  actually see: "verified 24 chapters," or exactly what went wrong. A plain-text
+  **chapter report** and a **Podcasting 2.0 `…chapters.json`** sidecar are written
+  next to the book.
 - Choose **M4B audiobook** (native MP4 chapter atoms — the Apple/audiobook format)
   or **MP3** (ID3 chapter markers). Both are navigable in Apple Podcasts, Overcast,
   VLC, foobar2000, and others.
@@ -2968,6 +3059,22 @@ Use bookmarks for long-lived anchors; use marks when you are actively traversing
 ### Autosave and backups
 
 Quill autosaves at a timed interval and keeps backup snapshots. It avoids unnecessary duplicate autosave writes and keeps state management efficient.
+
+### Restore points — bring back any earlier save
+
+Every time you save, QUILL quietly keeps a snapshot of the document. **File > Restore Previous Version** lists them in plain language — "Today at 4:12 PM - 2,341 words" — newest first. Pick one and choose:
+
+- **Restore** — replace the editor text with that version. Your current text is saved as a restore point first, so restoring is itself reversible, and the document is marked modified so nothing touches the disk until you save.
+- **Open as Copy** — open the earlier version as a new untitled document, leaving your current document exactly as it is. Good for comparing or rescuing a paragraph.
+
+Some honest details worth knowing:
+
+- Saving unchanged text stores nothing extra — snapshots are content-based, so identical saves are free.
+- Keeping a snapshot can never be the reason a save fails. If the disk is full, your save still completes; QUILL just logs that the snapshot was skipped.
+- History thins as it ages: everything from the last week is kept, then one version per day for a month, then one per week, and the newest five versions are never pruned. **Restore point disk limit (MB)** in Preferences caps how much space one document's history can use (200 MB by default), and **Keep restore points when saving** turns the feature off entirely.
+- The command `file.restore_previous_version` has no default shortcut; assign one in the Keymap Editor if you reach for it often.
+
+How this fits with QUILL's other safety nets: **undo** (and persistent undo) covers the current editing session, **backups** keep a copy of what was on disk just before each save, and **restore points** are the long-term history — any earlier save, days or weeks later, across restarts. You never need to choose between them; they all just run.
 
 ### Recovery
 
@@ -3653,6 +3760,24 @@ When you select a Quillin, the details pane shows all declared capabilities (for
 
 If a Quillin fails to load — because it requires a newer QUILL version (`min_quill_version`), a missing dependency (`requires`), or a manifest error — the error is shown in the details pane so you know what is blocking it.
 
+### The Quillin Hub: sharing what you make
+
+Everything you build in QUILL can be shared with the community through the **Quillin Hub** — not just Quillin extensions. The Hub accepts seven kinds of artifact:
+
+- **Quillin extensions** (a zipped folder with `manifest.json`)
+- **AI agents** (a single `.md` or `.json` agent file)
+- **Verbosity packs** (`.qvp.json`)
+- **Sound packs** (`.qsp`)
+- **Keyboard packs** (`.kqp`)
+- **AI skill packs** (`.sqp`)
+- **Pronunciation dictionaries** (`.json`)
+
+**Submit to Quillin Hub.** Choose **Tools → Quillins → Submit to Quillin Hub...** and pick your file. QUILL figures out what kind of artifact it is and runs the exact same checks the Hub runs on submission — locally, on your machine, with nothing uploaded. To check a Quillin extension, pick its `manifest.json` file; QUILL validates the whole folder. The result is read to you in plain language: **Passed** means your work clears every check QUILL applies to its own bundled artifacts; **Needs work** lists each error and warning so you know exactly what to fix. The dialog also reports the **Signature** line — `verified` if you have a sidecar next to your file, `invalid` if the sidecar is present but does not match, or `unsigned` if there is no sidecar. The Hub rejects unsigned submissions, so the "Open the Quillin Hub" button only appears when your artifact is both passing and signed. Sign with `python -m quill.tools.signing sign <artifact>` and re-run the check. The check itself makes no network connection; only the explicit "Open the Quillin Hub" button opens anything.
+
+Publication is handled through GitHub pull requests, so every submission is reviewed in the open. The Hub re-runs the same validation, scans any extension code for security and capability honesty, reads your manifest so you never retype your name, version, or description, and verifies the publisher signature on every sidecar uploaded with the submission.
+
+**Verifying installed Quillins.** The Quillin Manager shows a **Signature** line in the details pane for every Quillin — `verified` for a sidecar next to the manifest that matches the publisher key, `invalid` for a sidecar that does not match, or `unsigned` if no sidecar is shipped. The line is read aloud with the rest of the manifest details, so you can hear whether a Quillin is publisher-attested before enabling it. See `docs/signing.md` for the signing protocol.
+
 ### Authoring Quillins
 
 For developers, Quillins are designed to be "screen-reader-first." They follow a strict capability model: a Quillin must declare the minimum set of permissions it needs, and any sensitive action (like writing to a file or changing a setting) is consent-gated at runtime.
@@ -3673,7 +3798,7 @@ Quillins can contribute:
 - **Network host allowlist (`net_allowed_hosts`)** — when declaring the `net` capability, restrict outbound connections to a named list of hostnames or wildcard patterns. QUILL blocks connections to any unlisted host even if the user has granted blanket `net` consent.
 - **Minimum version (`min_quill_version`)** — declare the oldest QUILL release the Quillin supports. QUILL rejects it at load time if the running version is too old.
 
-See `docs/quillins.md` for the full authoring reference.
+See `docs/quillins/quillins.md` for the full authoring reference, and PRD section 5.83a ("The Quillin Hub — community distribution for every shareable artifact") for the developer guide covering every shareable QUILL file format (Quillins, agents, verbosity packs, sound packs, keyboard packs, skill packs, and pronunciation dictionaries) and how to validate and submit each one. The single validator is `python -m quill.tools.artifact_validate <path>`.
 
 ---
 

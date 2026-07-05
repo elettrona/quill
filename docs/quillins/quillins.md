@@ -1,6 +1,6 @@
 # QUILL Quillins and scripting documentation
 
-_Consolidated on 2026-06-13 into one document. Sections preserve each source in full. The scripting contract section also governs the QUILL Developer Console (QDC); code references to "docs/quillins.md" by section number point inside the scripting-contract section below._
+_Consolidated on 2026-06-13, last refreshed 2026-07-04 to point at the unified Quillin Hub. Sections preserve each source in full. The scripting contract section also governs the QUILL Developer Console (QDC); code references to "docs/quillins.md" by section number point inside the scripting-contract section below._
 
 
 ---
@@ -2681,258 +2681,62 @@ accessibility contract intact, or it does not land.
 
 <!-- Source: docs/quillins.md -->
 
-# QUILL Quillin Hub documentation
+# The Quillin Hub
+
+The Quillin Hub (`hub.quillforall.org`; service code in `quillin-hub/`)
+is the community store and submission service for **every** shareable
+QUILL artifact type, not just Quillin extensions. Seven artifact
+families are accepted for review and publication:
+
+| Type id | Label | Authoritative validator |
+| --- | --- | --- |
+| `quillin` | Quillin extension | `quill.tools.quillin_lint` |
+| `agent` | AI agent (`quill.agent/1`) | `quill.tools.agent_lint` |
+| `verbosity-pack` | Verbosity pack (`.qvp.json`) | `quill.core.verbosity.qvp` |
+| `sound-pack` | QSP earcon pack | `quill.core.sound_pack` |
+| `keyboard-pack` | Keyboard Quill Pack (`.kqp`) | `quill.tools.kqp_validator` |
+| `skill-pack` | Skill Quill Pack (`.sqp`) | `quill.core.skill_pack` |
+| `pronunciation-dictionary` | Pronunciation dictionary | `quill/tools/artifact_validate.py::_validate_pronunciation` |
+
+## One validation authority
+
+`python -m quill.tools.artifact_validate <path> [--type ID] [--strict] [--json]`
+detects the artifact type (by suffix, manifest sniffing, or schema
+markers) and dispatches to the per-type validator listed above. The
+Hub's Submission Forge, the in-app submission check, and CI all run
+this same tool, so an author never sees three different verdicts.
+Exit codes follow the validator convention: `0` pass, `1` issues,
+`2` not found/undetectable. `--json` emits the machine-readable
+report the Forge consumes.
+
+## In-app: check before you ship
+
+**Tools > Quillins > Submit to Quillin Hub...** runs the identical
+`artifact_validate` checks locally and reports pass/fail in an
+accessible hardened dialog. Picking a Quillin's `manifest.json`
+validates the whole folder (the accessible alternative to a
+directory picker). The Hub website opens in the browser only on the
+explicit **Open the Quillin Hub** button -- QUILL itself makes no
+network call anywhere in the flow.
+
+## Publication: GitHub-native, transparent by design
+
+The Hub does not store artifacts. Every submission is reviewed in the
+Hub's Submission Forge, then published via a pull request to
+`Community-Access/quill`. Review stays transparent; authors keep
+attribution; readers can audit every change.
+
+## Where to read more
+
+- The PRD section "The Quillin Hub -- community distribution for every
+  shareable artifact" (PRD section 5.83a) is the canonical product spec.
+- The user guide's "The Quillin Hub: sharing what you make" section
+  walks through the in-app check end to end.
+- Per-type authoring tutorials live alongside the bundled Quillin that
+  ships with each format; the seven types and their authoritative
+  validators are listed in PRD section 5.83a, and the validator is one
+  command, `python -m quill.tools.artifact_validate <path>`.
 
-_Consolidated on 2026-06-13 from hub-community-guide, quillin-hub-deployment, and quillin-store-prd. Each section preserves the original in full._
-
-
----
-
-<!-- Source: docs/hub-community-guide.md -->
-
-# The Quillin Hub: Community Plugin Store
-
-Welcome to the official discovery center for **Quillins**—the powerful, sandboxed extensions that expand the capabilities of the QUILL editor.
-
-## 🌟 What is the Quillin Hub?
-
-The Quillin Hub is more than just a directory; it is a community-driven ecosystem designed to empower writers, researchers, and accessibility advocates. By bridging the gap between professional software standards and open-source collaboration, the Hub provides a safe, verified, and accessible way to enhance your writing experience.
-
-### Core Pillars of the Hub:
-- **Verified Excellence**: Every plugin in the store has passed a rigorous automated security scan and a manual audit for accessibility (WCAG 2.2 AA).
-- ** la lLinter-Powered Trust**: We use a a la la la an automated verification pipeline to ensure that plugins are honest about their capabilities and secure in their execution.
-- **Community-Driven**: Through voting and reviews, the community determines which tools provide the most value.
-
----
-
-## 🛠️ How to Engage with the Community
-
-We believe the best tools are built by those who use them. We invite you to participate in the ecosystem in three ways:
-
-### 1. Discover & Use
-Explore the [Hub Storefront](https://hub.quillforall.org) to find plugins that fit your workflow. Whether you need a *Research Alchemist* to synthesize notes or a *Zen Bridge* to create a focused writing sanctuary, the Hub is your starting point.
-
-### 2. Contribute & Author
-Want to build something magical? We welcome all developers, regardless of experience. 
-- **Browse the Exemplars**: Check out our showcase plugins to see what's possible.
-- **Follow the Covenant**: All authors attest to the *Quillin Author Covenant*, ensuring every plugin respects user privacy and accessibility.
-- **Submit via GitHub**: All submissions are handled via Pull Requests to the main repository, ensuring total transparency and community review.
-
-### 3. Review & Refine
-Your feedback is the engine of the Hub. Rate plugins, report accessibility hurdles, and suggest new features. Your reviews help other users find the right tools and help authors improve their la l laL craft.
-
----
-
-## 🚀 Quick Links
-- **Visit the Hub**: [https://hub.quillforall.org](https://hub.quillforall.org)
-- **Submission Guidelines**: See `docs/quillins.md`
-- **The Author Covenant**: See `docs/quillins.md`
-- **Technical Specs**: See the Quillin Store PRD section below in this document
-
-
----
-
-<!-- Source: docs/quillin-hub-deployment.md -->
-
-# Quillin Hub: Deployment & Integration Guide
-
-This document outlines the deployment strategy and GitHub integration for the Quillin Hub, transitioning it from a local prototype to a production-ready service.
-
-## 🏗️ Architecture Overview
-
-The Quillin Hub utilizes a **Hybrid Architecture** to ensure high performance, accessibility, and security.
-
-- **Main QUILL Repository (Repo A)**: The source of truth for all plugin code and manifests (`examples/quillins/`).
-- **Quillin Hub Repository (Repo B)**: Contains the Flask backend, Docker orchestration, and the static site generator.
-- **GitHub Pages**: Hosts the static "Showcase" layer as a branch of Repo B.
-
----
-
-## 🛠️ Deployment Steps
-
-### 1. Infrastructure Setup
-The Hub is deployed as a Dockerized service.
-
-**Prerequisites**: A Linux VPS with Docker and Docker Compose installed.
-
-1. **Clone the Hub Repository** to the server.
-2. **Configure Environment**: Create a `.env` file in the root:
-   ```env
-   SECRET_KEY=your-secure-random-string
-   DATABASE_URL=postgresql://user:pass@db:5432/quillin_hub
-   GITHUB_TOKEN=your-github-personal-access-token
-   ```
-3. **Launch**:
-   ```bash
-   docker-compose up -d --build
-   ```
-4. **Initialize Database**:
-   ```bash
-   docker-compose exec hub-app python -m flask db upgrade
-   ```
-
-### 2. Wiring in GitHub (Integration)
-The Hub is **GitHub-Native**. It does not store plugins; it projects the state of the main repository.
-
-**Integration Flow**:
-1. **Authentication**: The Hub uses a GitHub Personal Access Token (PAT) with `repo` scope to communicate with the API.
-2. **The Sync Loop**:
-   - The `worker/sync_to_pages.py` script scans the `examples/quillins/` directory in the main QUILL repo.
-   - It extracts `manifest.json` files and updates the Hub's PostgreSQL registry.
-   - It generates the `gallery.json` and static assets for the storefront.
-3. **Static Publishing**: The sync worker commits the generated storefront to the `gh-pages` branch of the Hub Repo.
-
-### 3. GitHub Pages Configuration
-1. Navigate to **Settings $\rightarrow$ Pages** in the Hub repository.
-2. Set the source branch to `gh-pages`.
-3. The static storefront will now be live at the provided GitHub Pages URL.
-
----
-
-## 🛡️ The Approval & Update Pipeline
-
-To maintain a "Gold Standard" ecosystem, the Hub follows a strict GitHub-first governance model.
-
-### The Lifecycle of a Plugin
-$$\text{Pull Request} \rightarrow \text{CI (Lint + Security)} \rightarrow \text{Maintainer Review} \rightarrow \text{Merge to Main} \rightarrow \text{Hub Sync} \rightarrow \text{Live}$$
-
-### Versioning & Protection
-- **Patch/Minor Updates**: If no la lcapabilities change, updates are **Fast-Tracked** (Automatic approval upon passing CI).
-- **Major/Capability Changes**: Any change to `capabilities` or a Major version bump triggers a **Full Audit** by a maintainer.
-- **Ownership Protection**: The system uses **Git Commit Authority**. Only the original author (or an approved maintainer) can commit changes to a plugin's directory, preventing hijacking.
-
----
-
-## 📡 Client Integration (QUILL $\rightarrow$ Hub)
-
-The QUILL desktop app integrates with the Hub via the **Registry API**:
-
-1. **Discovery**: The app calls `GET /api/v1/plugins` to fetch the list of verified Quillins.
-2. **Installation**: The app uses the `download_url` provided by the API to fetch the plugin bundle directly from GitHub.
-3. **Updates**: The app periodically checks the latest version via `/api/v1/plugins/<id>/latest` and prompts the user to update.
-4. **Safety**: If an update is unstable, the app utilizes the **Safety Vault** (Registry history) to roll back to the previous stable version.
-
-
----
-
-<!-- Source: docs/quillin-store-prd.md -->
-
-# PRD: The Quillin Hub (Plugin Store & Registry)
-
-## 1. Overview
-The Quillin Hub is a community-driven discovery, submission, and registry system for QUILL plugins (Quillins). It is designed to bridge the gap between a high-performance static showcase for discovery and a dynamic backend for community interaction and software distribution.
-
-### 1.1 Goals
-- **Discoverability**: Provide a fast, accessible way for users to find verified plugins.
-- **Quality Control**: Automate validation via the `quillin_lint` tool and enforce the Author Covenant.
-- **Trust**: Implement a verification system and community-driven ratings.
-- **Interoperability**: Provide a JSON Registry API that the QUILL desktop app can use for in-app browsing and installation.
-
----
-
-## 2. Architecture: The Hybrid Hub
-
-### 2.1 The Showcase (Static Layer)
-- **Hosting**: GitHub Pages.
-- **Nature**: Static HTML/CSS/JS.
-- **Function**: High-SEO "storefront" featuring top-rated and trending plugins.
-- **Sychronization**: Periodically updated by the Engine via a sync script that commits `gallery.json` to the repository.
-
-### 2.2 The Engine (Dynamic Layer)
-- **Hosting**: Dockerized Flask application on a subdomain.
-- **Database**: PostgreSQL for persistence of plugins, users, votes, and reviews.
-- **Core Components**:
-    - **Submission Forge**: Multi-step upload portal with real-time linting.
-    - **Community Pulse**: Dynamic voting, threaded reviews, and user profiles.
-    - **Registry API**: The authoritative JSON source for the QUILL client.
-    - **Reviewer's Sanctum**: Admin dashboard for manual audits.
-
----
-
-## 3. Functional Specifications
-
-### 3.1 The Submission Forge
-A "Guided Path" for developers:
-1. **Covenant Attestation**: Digital signature of the Author Covenant and Code of Conduct.
-2. **The Upload**: File upload of the Quillin bundle.
-3. **The Instant Audit**: 
-    - Backend triggers `python -m quill.tools.quillin_lint --strict`.
-    - Pass $\rightarrow$ Proceed to metadata.
-    - Fail $\rightarrow$ Display detailed error report and a "How to Fix" guide.
-4. **Metadata Capture**: Fields for categorization, versioning, and "Quick Start" guides.
-5. **Review State**: Submissions enter a `Pending` state until approved by a maintainer.
-
-### 3.2 Community & Trust Features
-- **Verification Badges**: 
-    - `Verified`: Manually audited for A11Y and security.
-    - `Community`: Lint-passed but not manually reviewed.
-- **Interaction**: weighted upvoting and accessibility-specific reviews.
-- **Safety Vault**: Version tracking allowing the QUILL client to perform rollbacks.
-
-### 3.3 Magical Experiences
-- **Snippet Simulator**: Web-based emulator for Layer 1 (declarative) plugins.
-- **Action Replays**: Video/GIF previews for Layer 2 (Python) plugins.
-- **AI Compatibility Assistant**: AI-driven guidance during submission to improve plugin A11Y.
-- **Developer Hall of Fame**: Gamified profiles with `A11Y Champion` badges.
-
----
-
-## 4. Technical Specification
-
-### 4.1 Project Structure
-```text
-quillin-hub/
-├── app/
-│   ├── api/          # Registry API (JSON)
-│   ├── web/          # Jinja2 Templates & Routes
-│   ├── forge/        # Linter Bridge & Submission Logic
-│   └── models/       # SQLAlchemy / Postgres
-├── static/           # CSS/JS (Simulator)
-├── worker/           # GitHub Pages sync script
-├── Dockerfile        # Multi-stage (Flask + Quill Tools)
-└── docker-compose.yml
-```
-
-### 4.2 API Contracts
-- `GET /api/v1/plugins`: Returns a list of all verified plugins.
-- `GET /api/v1/plugins/<id>/latest`: Returns the latest manifest and download URL.
-- `POST /api/v1/votes`: Submits a user vote.
-
-### 4.3 The Linter Bridge
-The Docker container must include the `quill` source tree to execute `quillin_lint` against uploaded bundles in a temporary sandbox.
-
----
-
-## 4. Life Cycle & Updates
-
-### 4.1 Versioning Strategy
-The Hub uses a tiered update model based on Semantic Versioning (SemVer):
-- **Patch/Minor Updates (`0.0.X` or `0.X.0`)**: If no new capabilities are added, updates that pass the automated Security/Lint gate are **Fast-Tracked** (Automatically Approved).
-- **Major Updates (`X.0.0`) or Capability Changes**: Bumping the major version or adding new capabilities (e.g., adding `net` to a snippet plugin) triggers a **Full Audit**, requiring manual maintainer approval.
-
-### 4.2 The Update Loop
-1. **Push**: Developer pushes a new version to the GitHub repository.
-2. **CI Validation**: GitHub Actions runs the `quillin_lint` and `SecurityWatchdog` suite.
-3. **Registry Sync**: The Hub's sync worker detects the change and updates the plugin's version and download URL in the Registry API.
-4. **Client Notification**: The QUILL desktop app detects the version mismatch and prompts the user for an update.
-
-### 4.3 Safety Vault (Rollbacks)
-The Registry API maintains a history of `Verified` versions. If an update causes instability, the QUILL client can perform a "Magic Rollback" to the previous stable version.
-
----
-
-## 5. Security & Governance
-
-### 5.1 Ownership & Protection (The "Anti-Hijack" Guard)
-To prevent unauthorized users from updating others' plugins, the system implements a strict **Proof-of-Ownership** model:
-- **GitHub-Backed Identity**: Since the Hub is now GitHub-native, the **Git Commit Authority** is the primary lock. Only users with `push` access to the specific plugin directory (or those who pass a PR review) can trigger a version change.
-- **Identity Mapping**: The `Plugin` model maps the `manifest_id` to the original author's GitHub ID. 
-- **PR-Gated Updates**: All updates MUST occur via Pull Request. This ensures a maintainer audits the change request, preventing "shadow updates" where a malicious actor attempts to overwrite a popular plugin's logic.
-
-### 5.2 Automated Security Gate
-...existing code...
-
----
 
 # New in 0.6.0: Insert Automation contributions, Quillin Preferences, and per-Quillin settings
 

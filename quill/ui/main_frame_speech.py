@@ -324,6 +324,7 @@ class SpeechCommandsMixin:
             "ffmpeg": self.download_ffmpeg,
             "pandoc": self.download_pandoc,
             "braille": self.download_braille_pack,
+            "libmpv": self.download_libmpv,
         }
         action = actions.get(chosen)
         if action is not None:
@@ -334,9 +335,10 @@ class SpeechCommandsMixin:
 
         liblouis tables + BRF profiles that power the Translation submenu and
         BRF/embossing export. Pinned + SHA-256-verified via
-        quill.core.braille_pack.install_braille_pack, on a worker thread with a
-        cancelable percentage, blocked in Safe Mode. Refreshes the menu on
-        success so Translation appears without a restart."""
+        quill.core.braille_pack.install_braille_pack, on a worker thread with
+        live status progress (no cancel affordance — the fetch is ~9 MB),
+        blocked in Safe Mode. Refreshes the menu on success so Translation
+        appears without a restart."""
         from quill.core.braille_pack import install_braille_pack, is_braille_pack_installed
 
         wx = self._wx
@@ -380,6 +382,68 @@ class SpeechCommandsMixin:
                 on_done(ok)
 
         self._run_background_task("Downloading braille pack", _work, _finished)
+
+    def download_libmpv(self, *, on_done: Callable[[bool], None] | None = None) -> None:
+        """Fetch the mpv playback library for the Audio Studio player.
+
+        Pinned + SHA-256-verified via quill.core.release_assets (the zip carries
+        the GPL texts, mpv's Copyright, and a corresponding-source offer), on a
+        worker thread with live progress, blocked in Safe Mode. The Audio
+        Studio's player prefers libmpv automatically on its next open; nothing
+        else in QUILL changes."""
+        from quill.core.optional_components import _libmpv_installed
+
+        wx = self._wx
+        if bool(getattr(self, "_safe_mode", False)):
+            self._announce("Downloading components is disabled in Safe Mode.")
+            return
+        if _libmpv_installed():
+            again = self._show_message_box(
+                "The mpv player engine is already installed. Download QUILL's "
+                "verified copy again anyway?",
+                "mpv Player Engine",
+                wx.ICON_QUESTION | wx.YES_NO,
+            )
+            if again != wx.YES:
+                if on_done is not None:
+                    on_done(True)
+                return
+        proceed = self._show_message_box(
+            "QUILL will download the mpv playback library (about 44 MB) and verify "
+            "it. It upgrades the Audio Studio's player to gapless audio with exact "
+            "seeking; the built-in Windows engine keeps working without it. "
+            "Continue?",
+            "Download mpv Player Engine",
+            wx.ICON_INFORMATION | wx.YES_NO,
+        )
+        if proceed != wx.YES:
+            return
+
+        def _work(progress):
+            from quill.core.release_assets import fetch_component
+            from quill.core.speech.engine_install import engine_packs_dir
+
+            fetch_component(
+                "libmpv",
+                engine_packs_dir() / "mpv",
+                progress=lambda fraction, message: progress(message, int(fraction * 100), 100),
+                label="Downloading the mpv player engine...",
+            )
+            return True
+
+        def _finished(result: object) -> None:
+            ok = bool(result)
+            if ok:
+                self._announce(
+                    "mpv player engine installed. The Audio Studio's player will "
+                    "use it the next time it opens."
+                )
+            else:
+                self._announce("The mpv player engine could not be installed.")
+            if on_done is not None:
+                on_done(ok)
+
+        self._run_background_task("Downloading mpv player engine", _work, _finished)
 
     def download_pandoc(self, *, on_done: Callable[[bool], None] | None = None) -> None:
         """Fetch the official, pinned Pandoc build on demand (footprint unbundle).
@@ -1502,8 +1566,14 @@ class SpeechCommandsMixin:
         recorder = getattr(self, "_voice_recorder", None)
         if recorder is not None and recorder.is_recording:
             self._stop_and_dispatch_voice_command(recorder)
-        else:
-            self._start_voice_command()
+            return
+        # The "Voice conversation mode" setting promises that one Voice Command
+        # becomes a hands-free conversation; honor it here instead of leaving
+        # the setting with no effect (#793 review).
+        if bool(getattr(self.settings, "voice_conversation_enabled", False)):
+            self.voice_conversation_toggle()
+            return
+        self._start_voice_command()
 
     def _start_voice_command(self) -> None:
         from quill.core.speech.capture import MicRecorder, capture_available
@@ -1638,8 +1708,14 @@ class SpeechCommandsMixin:
 
             if detect_screen_reader().detected:
                 return False
-        except Exception:  # noqa: BLE001 - detection unavailable => assume none
-            pass
+        except Exception:  # noqa: BLE001
+            # On Windows a failed detection could mean a reader IS running, so
+            # stay quiet rather than talk over it (#795 review). Off Windows
+            # there is no detector at all; honor the user's explicit opt-in.
+            import sys as _sys
+
+            if _sys.platform == "win32":
+                return False
         return True
 
     def _voice_speak_cue(self, text: str) -> None:
@@ -1731,12 +1807,18 @@ class SpeechCommandsMixin:
             return
         self._conv_recorder = recorder
         silence_ms = int(getattr(self.settings, "voice_conversation_silence_ms", 2000))
+        if silence_ms <= 0:
+            # The setting documents 0 as "the engine default"; for this
+            # timed-turn loop that is the standard 2 s pause window (#793).
+            silence_ms = 2000
         self._conv_vad = SilenceDetector(sample_rate=SAMPLE_RATE * CHANNELS, silence_ms=silence_ms)
         self._conv_vad_seen = 0
         # Poll microphone energy; a turn ends when speech is followed by the
-        # pause window. A hard cap stops a stuck-open mic even if VAD is off.
+        # pause window. A hard cap stops a stuck-open mic even if VAD misses;
+        # it must exceed the configured pause window (plus margin) or a long
+        # window could never elapse before the cut-off (#795 review).
         self._conv_vad_timer = self._wx.CallLater(200, self._conv_poll_vad)
-        cap_ms = 15000 if silence_ms > 0 else max(1500, silence_ms) + 1500
+        cap_ms = max(15000, silence_ms + 5000)
         self._conv_capture_timer = self._wx.CallLater(cap_ms, self._conv_finish_capture)
 
     def _conv_poll_vad(self) -> None:
@@ -1744,9 +1826,7 @@ class SpeechCommandsMixin:
         vad = getattr(self, "_conv_vad", None)
         if recorder is None or vad is None:
             return
-        frames = recorder.captured_frames()
-        new = frames[self._conv_vad_seen :]
-        self._conv_vad_seen = len(frames)
+        new, self._conv_vad_seen = recorder.frames_since(self._conv_vad_seen)
         if new and vad.feed(new):
             self._conv_finish_capture()
             return
@@ -1759,6 +1839,8 @@ class SpeechCommandsMixin:
                 try:
                     timer.Stop()
                 except Exception:  # noqa: BLE001
+                    # A timer that is already dead (window destroyed mid-stop)
+                    # is exactly what we want; cleanup must never raise.
                     pass
                 setattr(self, attr, None)
         recorder = getattr(self, "_conv_recorder", None)
@@ -1809,7 +1891,7 @@ class SpeechCommandsMixin:
 
     def _conv_on_transcript(self, result: object) -> None:
         from quill.core.ai.agent import SAFE_TOOL_IDS
-        from quill.core.speech.voice_commands import resolve_transcript
+        from quill.core.speech.voice_commands import normalize, resolve_transcript
 
         controller = getattr(self, "_conversation", None)
         if controller is None:
@@ -1817,6 +1899,11 @@ class SpeechCommandsMixin:
         transcript = (getattr(result, "full_text", "") or "").strip()
         outcome = resolve_transcript(transcript, self.commands)
         if outcome.kind == "cancel":
+            # The docs promise a spoken "stop" turns conversation mode OFF;
+            # the other cancel phrases only abort this turn and re-arm (#793).
+            if normalize(transcript) == "stop":
+                self._conv_run(controller.stop())
+                return
             self._conv_run(controller.on_cancel())
         elif outcome.kind == "run" and outcome.command_id in SAFE_TOOL_IDS:
             self._conv_run(controller.on_transcript(outcome.command_id, outcome.message))
@@ -1991,6 +2078,12 @@ class SpeechCommandsMixin:
         provider = self._voice_provider()
         installed = provider.list_installed_models()  # type: ignore[attr-defined]
         if not installed:
+            # No model: nothing will consume the recording, so delete it now
+            # instead of leaking a temp WAV per toggle (#794 review).
+            try:
+                wav_path.unlink(missing_ok=True)
+            except OSError:
+                pass
             self._wake_run(self._wake.stop())
             return
         model_id = self._default_model_id(installed)
@@ -2031,7 +2124,7 @@ class SpeechCommandsMixin:
         then resume listening for the wake phrase."""
         from quill.core.ai.agent import SAFE_TOOL_IDS
         from quill.core.speech.conversation import CUE_ERROR, CUE_READY
-        from quill.core.speech.voice_commands import resolve_transcript
+        from quill.core.speech.voice_commands import normalize, resolve_transcript
 
         wake = getattr(self, "_wake", None)
         outcome = resolve_transcript(body, self.commands)
@@ -2043,6 +2136,11 @@ class SpeechCommandsMixin:
             except KeyError:
                 self._set_status("That command is not available right now.")
         elif outcome.kind == "cancel":
+            # The docs promise "Hey QUILL, stop" turns always-listening OFF;
+            # other cancel phrases just drop this utterance (#794 review).
+            if normalize(body) == "stop" and wake is not None:
+                self._wake_run(wake.stop())
+                return
             self._set_status_quiet("Cancelled.")
         elif self._voice_route_to_ask_quill(body):
             # A question: handed to Ask Quill. Stop always-listening so the mic

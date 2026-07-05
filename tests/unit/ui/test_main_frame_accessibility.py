@@ -29,9 +29,19 @@ class _DummyWx:
         return 7
 
 
+class _TransitionSettings:
+    """Settings stub with the entry/exit cues explicitly opted in.
+
+    The setting is off by default (#778), so these announcement tests turn it
+    on; the companion tests below assert the silent default."""
+
+    announce_dialog_transitions = True
+
+
 def test_show_modal_dialog_announces_entry_and_exit() -> None:
     frame = MainFrame.__new__(MainFrame)
     frame._region_tracker = RegionTracker()
+    frame.settings = _TransitionSettings()
     dialog = _DummyDialog(result=42)
     set_transcript_path(None)
     clear_transcript()
@@ -48,6 +58,7 @@ def test_show_modal_dialog_announces_entry_and_exit() -> None:
 def test_show_message_box_announces_entry_and_exit() -> None:
     frame = MainFrame.__new__(MainFrame)
     frame._region_tracker = RegionTracker()
+    frame.settings = _TransitionSettings()
     frame._wx = _DummyWx()
     set_transcript_path(None)
     clear_transcript()
@@ -57,6 +68,24 @@ def test_show_message_box_announces_entry_and_exit() -> None:
         assert result == 7
         assert frame._wx.calls == [("Body", "Caption", 123)]
         assert transcript_entries() == ["Entered Caption dialog", "Exited Caption dialog"]
+    finally:
+        enable_transcript_capture(False)
+        clear_transcript()
+
+
+def test_show_message_box_is_silent_without_opt_in() -> None:
+    # Default (announce_dialog_transitions absent/False): no spoken cues, so
+    # QUILL never doubles a screen reader's own dialog announcements (#778).
+    frame = MainFrame.__new__(MainFrame)
+    frame._region_tracker = RegionTracker()
+    frame._wx = _DummyWx()
+    set_transcript_path(None)
+    clear_transcript()
+    enable_transcript_capture(True)
+    try:
+        result = frame._show_message_box("Body", "Caption", 123)
+        assert result == 7
+        assert transcript_entries() == []
     finally:
         enable_transcript_capture(False)
         clear_transcript()

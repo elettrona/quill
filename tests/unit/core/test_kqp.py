@@ -172,13 +172,13 @@ def test_round_trip(tmp_path: pytest.TempPathFactory) -> None:
     # not subject to a legacy rebinding or the beta Find force (which rewrites
     # any "Ctrl+Shift+Grave, *" edit.find binding to Ctrl+F).
     keymap["edit.find_next"] = "Ctrl+Shift+Grave, Z"
-    keymap["tools.thesaurus"] = "Ctrl+Shift+Grave, Y"
+    keymap["tools.thesaurus"] = "Ctrl+Shift+Grave, Shift+Y"
     target = tmp_path / "trip.kqp"
     export_keyboard_pack(target, keymap, name="Trip Pack", description="Round trip test")
     name, description, merged = import_keyboard_pack(target)
     assert name == "Trip Pack"
     assert description == "Round trip test"
     assert merged["edit.find_next"] == "Ctrl+Shift+Grave, Z"
-    assert merged["tools.thesaurus"] == "Ctrl+Shift+Grave, Y"
+    assert merged["tools.thesaurus"] == "Ctrl+Shift+Grave, Shift+Y"
     # Untouched defaults survive.
     assert merged["file.save"] == DEFAULT_KEYMAP["file.save"]

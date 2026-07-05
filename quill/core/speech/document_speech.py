@@ -262,6 +262,41 @@ def _build_voice_rotation(
     return rotation
 
 
+def _build_casting(
+    spec: SynthesisSpec,
+    rules: list[tuple[str, str]] | None,
+    pronunciation_dictionaries: list[Any] | None,
+    blacklist: Any | None = None,
+) -> Any | None:
+    """A ``synthesizer_for(index, title)`` from explicit casting rules, or None.
+
+    Each cast voice reuses *spec*'s engine and pace (one PCM format across the
+    book) and gets the same pronunciation + failure-recording wrappers as the
+    rotation. Blacklisted voices lose their rules (those sections fall through
+    to the rotation / single voice rather than failing the run).
+    """
+    from quill.core.speech.casting import cast_voices, normalize_rules, voice_for_section
+
+    usable = [
+        (pattern, voice)
+        for pattern, voice in normalize_rules(rules)
+        if blacklist is None or not blacklist.is_blacklisted(spec.engine, voice)
+    ]
+    if not usable:
+        return None
+    synth_by_voice: dict[str, Synthesizer] = {}
+    for voice in cast_voices(usable):
+        synth = make_synthesizer(replace(spec, voice=voice))
+        synth = _wrap_with_pronunciations(synth, spec.engine, pronunciation_dictionaries)
+        synth_by_voice[voice] = _wrap_with_failure_recording(synth, spec.engine, voice, blacklist)
+
+    def synthesizer_for(index: int, title: str) -> Synthesizer | None:
+        voice = voice_for_section(usable, index + 1, title)
+        return synth_by_voice.get(voice) if voice else None
+
+    return synthesizer_for
+
+
 def synthesize_document_to_chaptered_file(
     source: Path,
     output_path: Path,
@@ -271,7 +306,9 @@ def synthesize_document_to_chaptered_file(
     work_dir: Path | None = None,
     pronunciation_dictionaries: list[Any] | None = None,
     combine_headings: bool = False,
+    max_heading_level: int = 0,
     voice_rotation: list[str] | None = None,
+    casting_rules: list[tuple[str, str]] | None = None,
     translate: Translator | None = None,
     voice_blacklist: Any | None = None,
     on_progress: Any | None = None,
@@ -290,7 +327,9 @@ def synthesize_document_to_chaptered_file(
     :class:`ChapterAssembleResult` (the clean file plus, when the sounder is
     enabled, the with-tones variant carrying identical chapter timing).
     """
-    sections = extract_sections(source, combine_headings=combine_headings)
+    sections = extract_sections(
+        source, combine_headings=combine_headings, max_heading_level=max_heading_level
+    )
     if not sections:
         raise DocumentSpeechError(f"No readable text found in {source.name}.")
     if translate is not None:
@@ -303,6 +342,9 @@ def synthesize_document_to_chaptered_file(
     rotation = _build_voice_rotation(
         spec, voice_rotation, pronunciation_dictionaries, voice_blacklist
     )
+    synthesizer_for = _build_casting(
+        spec, casting_rules, pronunciation_dictionaries, voice_blacklist
+    )
 
     owns_work_dir = work_dir is None
     work_dir = work_dir or Path(tempfile.mkdtemp(prefix="quill_docspeech_"))
@@ -314,6 +356,7 @@ def synthesize_document_to_chaptered_file(
             options,
             work_dir=work_dir,
             synthesizers=rotation,
+            synthesizer_for=synthesizer_for,
             on_progress=on_progress,
         )
     finally:
@@ -342,6 +385,7 @@ def synthesize_document_to_separate_files(
     work_dir: Path | None = None,
     pronunciation_dictionaries: list[Any] | None = None,
     combine_headings: bool = False,
+    max_heading_level: int = 0,
     voice_rotation: list[str] | None = None,
     translate: Translator | None = None,
     voice_blacklist: Any | None = None,
@@ -357,7 +401,9 @@ def synthesize_document_to_separate_files(
     *voice_rotation*, each file is voiced by the next voice in the list. Returns
     the written paths in order.
     """
-    sections = extract_sections(source, combine_headings=combine_headings)
+    sections = extract_sections(
+        source, combine_headings=combine_headings, max_heading_level=max_heading_level
+    )
     if not sections:
         raise DocumentSpeechError(f"No readable text found in {source.name}.")
     if translate is not None:
