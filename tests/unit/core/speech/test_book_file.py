@@ -91,3 +91,13 @@ def test_save_m4b_refuses_same_path(tmp_path: Path, monkeypatch) -> None:
     monkeypatch.setattr("quill.core.speech.book_file.find_ffmpeg", lambda: "ffmpeg")
     with pytest.raises(TranscodeError):
         save_m4b_book_as(book, src)
+
+
+def test_real_corpus_sample_round_trips() -> None:
+    """The committed real-audio fixture opens with its known chapters and tags."""
+    sample = Path(__file__).parents[3] / "corpus" / "audio" / "chaptered-sample.mp3"
+    assert sample.is_file(), "tests/corpus/audio/chaptered-sample.mp3 is missing"
+    book = read_book(sample)
+    assert [c.title for c in book.chapters] == ["Opening", "Address", "Closing"]
+    assert book.tags.album == "Challenger Address (chaptered sample)"
+    assert book.tags.genre == "Speech"
