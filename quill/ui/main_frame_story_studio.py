@@ -54,9 +54,11 @@ class StoryStudioMixin:
         project = load_project(folder)
 
         def read_text(rel_path: str) -> str:
+            # UnicodeDecodeError too: a stray non-UTF-8 file must not crash the
+            # binder build; it just contributes no headings (#783 review).
             try:
                 return (folder / rel_path).read_text(encoding="utf-8")
-            except OSError:
+            except (OSError, UnicodeDecodeError):
                 return ""
 
         studio = StoryStudioDialog(
@@ -94,7 +96,7 @@ class StoryStudioMixin:
         if offset is not None:
             try:
                 text = path.read_text(encoding="utf-8")
-            except OSError:
+            except (OSError, UnicodeDecodeError):
                 text = ""
             line = offset_to_line(text, offset)
         self.open_file(path, line=line)
@@ -110,8 +112,11 @@ class StoryStudioMixin:
         path = folder / rel_path
         try:
             text = path.read_text(encoding="utf-8")
-        except OSError:
-            text = ""
+        except (OSError, UnicodeDecodeError) as error:
+            # Proceeding with an empty body would let Save overwrite the real
+            # file with nothing (#784 review) — bail out instead.
+            self._set_status(f"Could not read {path.name}: {error}")
+            return
         fields, body = split_front_matter(text)
         form = StoryElementFormDialog(
             wx,

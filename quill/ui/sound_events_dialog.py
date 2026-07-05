@@ -227,6 +227,9 @@ class SoundEventsDialog(wx.Dialog):
 
         self.SetSizerAndFit(top)
 
+        from quill.ui.dialog_contract import apply_modal_ids
+
+        apply_modal_ids(self, affirmative_id=wx.ID_OK, escape_id=wx.ID_CANCEL)
         btn_enable.Bind(wx.EVT_BUTTON, self._on_enable_all)
         btn_disable.Bind(wx.EVT_BUTTON, self._on_disable_all)
 

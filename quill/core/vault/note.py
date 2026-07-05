@@ -43,19 +43,24 @@ class NoteInfo:
 
 def parse_note(text: str, stem: str) -> NoteInfo:
     """Parse ``text`` (a note's full contents) with ``stem`` as the filename base."""
-    fields, _body = split_front_matter(text)
-    headings = tuple(iter_headings(text))
+    fields, body = split_front_matter(text)
+    # Scan a copy with the front-matter block blanked out: YAML content (keys,
+    # '#' comments, quoted values) must not be mis-indexed as headings, tags,
+    # block ids, or links (#787 review). Blanking instead of slicing keeps
+    # every offset relative to the whole file, as the UI requires.
+    scan_text = text if len(body) == len(text) else " " * (len(text) - len(body)) + body
+    headings = tuple(iter_headings(scan_text))
     title = _resolve_title(fields, headings, stem)
     aliases = _string_tuple(fields.get("aliases"))
-    tags = _collect_tags(fields.get("tags"), text)
-    block_ids = {m.group(1): m.start() for m in _BLOCK_ID_RE.finditer(text)}
+    tags = _collect_tags(fields.get("tags"), scan_text)
+    block_ids = {m.group(1): m.start() for m in _BLOCK_ID_RE.finditer(scan_text)}
     return NoteInfo(
         title=title,
         aliases=aliases,
         tags=tags,
         headings=headings,
         block_ids=block_ids,
-        links=tuple(parse_links(text)),
+        links=tuple(parse_links(scan_text)),
     )
 
 

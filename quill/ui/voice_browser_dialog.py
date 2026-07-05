@@ -223,7 +223,7 @@ class VoiceBrowserDialog:
         settings_box.Add(kok_row, 0, wx.EXPAND | wx.ALL, 4)
 
         # eSpeak voice character variant (appended as accent+variant).
-        from quill.core.read_aloud import ESPEAK_VARIANTS as _ev
+        from quill.core.voice_catalog import ESPEAK_VARIANTS as _ev
 
         self._espeak_variant_codes = [code for code, _ in _ev]
         self._espeak_variant_labels = [label for _, label in _ev]
@@ -300,7 +300,7 @@ class VoiceBrowserDialog:
         from quill.core.read_aloud import (
             list_dectalk_voices,
             list_elevenlabs_voices,
-            list_espeak_english_voices,
+            list_espeak_voices,
             list_kokoro_voices,
             list_piper_catalog_voices,
             list_voices,
@@ -313,12 +313,12 @@ class VoiceBrowserDialog:
         if eng == "kokoro":
             return list_kokoro_voices()
         if eng == "espeak":
-            return list_espeak_english_voices()
+            return list_espeak_voices()
         if eng == "elevenlabs":
             return list_elevenlabs_voices(self._elevenlabs_api_key)
-        # sapi5 — English-only system voices
-        all_v = list_voices()
-        return [v for v in all_v if "english" in v.name.lower() or not v.name] or all_v
+        # sapi5 — every installed system voice, whatever its language, so a
+        # user with (say) an Italian Windows voice can pick it (#813 follow-on).
+        return list_voices()
 
     def _current_voice_id_for(self, eng: str) -> str:
         from pathlib import Path as _Path

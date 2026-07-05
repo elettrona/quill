@@ -79,8 +79,7 @@ class SilenceDetector:
     _silence_ms_run: float = field(default=0.0, repr=False)
     _heard_speech: bool = field(default=False, repr=False)
     _calibrated_ms: float = field(default=0.0, repr=False)
-    _floor_sum: float = field(default=0.0, repr=False)
-    _floor_chunks: int = field(default=0, repr=False)
+    _ambient: float = field(default=-1.0, repr=False)
     _threshold: float = field(default=0.0, repr=False)
 
     def __post_init__(self) -> None:
@@ -91,8 +90,7 @@ class SilenceDetector:
         self._silence_ms_run = 0.0
         self._heard_speech = False
         self._calibrated_ms = 0.0
-        self._floor_sum = 0.0
-        self._floor_chunks = 0
+        self._ambient = -1.0
         self._threshold = self.speech_rms
 
     @property
@@ -121,16 +119,25 @@ class SilenceDetector:
         level = rms(pcm16)
 
         # Calibrate the ambient floor from the leading audio, then set the
-        # speech threshold above it (but never below the absolute floor).
+        # speech threshold above it (but never below the absolute floor). The
+        # floor is the QUIETEST leading chunk, not the average: someone who
+        # starts talking the instant the mic opens (or an earcon leaking in)
+        # would otherwise inflate the floor so far that speech could never be
+        # detected for the whole turn (#796 review).
         if self._calibrated_ms < self.calibrate_ms:
-            self._floor_sum += level
-            self._floor_chunks += 1
+            self._ambient = level if self._ambient < 0 else min(self._ambient, level)
             self._calibrated_ms += duration
-            if self._calibrated_ms >= self.calibrate_ms and self._floor_chunks:
-                ambient = self._floor_sum / self._floor_chunks
-                self._threshold = max(self.speech_rms, ambient * self.speech_over_floor)
+            if self._calibrated_ms >= self.calibrate_ms:
+                self._threshold = max(self.speech_rms, self._ambient * self.speech_over_floor)
             # Leading audio is assumed ambient; do not count it as speech.
             return False
+
+        # Keep re-flooring downward: if calibration was still contaminated by
+        # speech, the first genuinely quiet chunk lowers the floor and the
+        # detector recovers within the same turn.
+        if 0 <= level < self._ambient:
+            self._ambient = level
+            self._threshold = max(self.speech_rms, self._ambient * self.speech_over_floor)
 
         if level >= self._threshold:
             self._speech_ms += duration

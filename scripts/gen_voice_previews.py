@@ -350,10 +350,10 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "text_file",
         nargs="?",
-        default=str(_REPO_ROOT / "phrase.txt"),
+        default=str(_REPO_ROOT / "scripts" / "phrase.txt"),
         help=(
             "Path to a plain-text file containing the preview text (1-3 sentences). "
-            "Defaults to phrase.txt in the repo root, the single phrase shared by all demos."
+            "Defaults to scripts/phrase.txt, the single phrase shared by all demos."
         ),
     )
     parser.add_argument(

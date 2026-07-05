@@ -276,6 +276,15 @@ def _signature_for(payload: dict[str, object]) -> str:
     """
     from quill.core.updates import FeatureAdvisory
 
+    # Narrow to a list of dicts instead of a blanket type-ignore: signing an
+    # unexpected advisories shape should drop the bad entries, not crash or
+    # silently sign garbage (#809 review).
+    raw_advisories = payload.get("advisories", [])
+    advisory_dicts = (
+        [entry for entry in raw_advisories if isinstance(entry, dict)]
+        if isinstance(raw_advisories, list)
+        else []
+    )
     advisories = tuple(
         FeatureAdvisory(
             feature_id=str(a.get("feature_id", "")),
@@ -284,7 +293,7 @@ def _signature_for(payload: dict[str, object]) -> str:
             max_version=str(a.get("max_version", "")),
             advisory_id=str(a.get("advisory_id", "")),
         )
-        for a in payload.get("advisories", [])  # type: ignore[union-attr]
+        for a in advisory_dicts
     )
     return manifest_signature(
         version=str(payload["version"]),

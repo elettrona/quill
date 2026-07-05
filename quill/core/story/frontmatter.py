@@ -31,7 +31,9 @@ def split_front_matter(text: str) -> tuple[dict[str, Any], str]:
     A block with no closing fence is treated as "no front matter" so a stray
     ``---`` never swallows the prose.
     """
-    if not text.startswith(_FENCE + "\n"):
+    first_line, newline, _rest = text.partition("\n")
+    # Accept a CRLF first line too: Windows files often open with "---\r\n".
+    if not newline or first_line.rstrip("\r") != _FENCE:
         return {}, text
     lines = text.split("\n")
     for index in range(1, len(lines)):
@@ -89,13 +91,20 @@ def _parse_block(block_lines: list[str]) -> dict[str, Any]:
 
 def _read_scalar(value: str) -> str:
     if len(value) >= 2 and value[0] == value[-1] and value[0] in ("'", '"'):
-        return value[1:-1]
+        inner = value[1:-1]
+        if value[0] == '"':
+            # Mirror _emit_scalar: backslash escapes are decoded so quoted
+            # values round-trip (backslashes first would double-decode).
+            inner = inner.replace('\\"', '"').replace("\\\\", "\\")
+        return inner
     return value
 
 
 def _emit_scalar(value: str) -> str:
     # Quote only when a bare value would not round-trip: empty, surrounding
-    # whitespace, or a leading character a reader could mistake for structure.
-    if value == "" or value != value.strip() or value[:1] in ("-", "'", '"', "#"):
-        return '"' + value.replace('"', '\\"') + '"'
+    # whitespace, an embedded quote, or a leading character a reader could
+    # mistake for structure. Backslashes are escaped before quotes so
+    # _read_scalar can decode unambiguously.
+    if value == "" or value != value.strip() or '"' in value or value[:1] in ("-", "'", '"', "#"):
+        return '"' + value.replace("\\", "\\\\").replace('"', '\\"') + '"'
     return value

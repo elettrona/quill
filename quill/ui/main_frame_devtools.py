@@ -23,6 +23,7 @@ from quill.devtools import history as _history
 from quill.devtools.console_window import ConsoleWindow
 from quill.devtools.python_console import PythonConsole
 from quill.devtools.ts_console import TypeScriptConsole, TypeScriptConsoleError
+from quill.ui.editor_surface import surface_kind
 
 _CONSENT_TEXT = (
     "Developer Console\n\n"
@@ -315,6 +316,9 @@ class DevToolsMixin:
         """Tools > Advanced > Developer Console > Copy Diagnostic Summary"""
         api = QuillScriptAPI(self)
         summary = api.support.diagnostic_summary()
+        editor_summary = self._editor_surface_diagnostic_summary()
+        if editor_summary:
+            summary = f"{summary}\n\n{editor_summary}"
         wx = self._wx
         if wx.TheClipboard.Open():
             try:
@@ -324,6 +328,23 @@ class DevToolsMixin:
             self._announce("Diagnostic summary copied to clipboard.")
         else:
             self._announce("Could not open clipboard.")
+
+    def _editor_surface_diagnostic_summary(self) -> str:
+        try:
+            diagnostic_summary = getattr(self.editor, "accessibility_diagnostic_summary", None)
+            if callable(diagnostic_summary):
+                return str(diagnostic_summary())
+            return "\n".join([
+                "Editor surface diagnostics",
+                f"Surface: {surface_kind(self.editor)}",
+                "Document content included: no",
+            ])
+        except Exception as error:
+            return "\n".join([
+                "Editor surface diagnostics",
+                f"Surface diagnostics failed: {error.__class__.__name__}",
+                "Document content included: no",
+            ])
 
     def restart_typescript_worker(self) -> None:
         if not hasattr(self, "_dev_console_window"):

@@ -6,7 +6,9 @@ extension-less relative path (all normalized case- and whitespace-insensitively)
 :class:`LinkTarget` — the destination note's path plus the character offset of
 its heading or block anchor. An unresolved target returns ``None`` (the UI can
 offer to create the note); a name matching several notes is reported as
-``ambiguous`` with the full candidate list so the UI can ask, never guess.
+``ambiguous`` with an **empty path** and the full candidate list, so a caller
+can only proceed by actually disambiguating — never by silently taking the
+first candidate.
 """
 
 from __future__ import annotations
@@ -62,9 +64,14 @@ def resolve_link(
         matches = resolver.by_name.get(_norm(link.target))
         if not matches:
             return None
-        path, ambiguous, candidates = matches[0], len(matches) > 1, tuple(matches)
+        ambiguous = len(matches) > 1
+        # Ambiguity carries no path/offset: the UI must pick a candidate, so a
+        # caller can never "resolve" by silently taking the first match.
+        path, candidates = ("" if ambiguous else matches[0]), tuple(matches)
+    if ambiguous:
+        return LinkTarget(path="", offset=0, ambiguous=True, candidates=candidates)
     offset = _anchor_offset(vault, path, link)
-    return LinkTarget(path=path, offset=offset, ambiguous=ambiguous, candidates=candidates)
+    return LinkTarget(path=path, offset=offset, ambiguous=False, candidates=candidates)
 
 
 def _anchor_offset(vault: Vault, path: str, link: WikiLink) -> int:

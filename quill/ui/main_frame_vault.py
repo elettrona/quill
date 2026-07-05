@@ -71,9 +71,19 @@ class VaultMixin:
         from quill.core.vault import build_index, build_resolver, scan_vault
 
         self._set_status("Scanning vault...")
-        self._vault = scan_vault(Path(root))
-        self._vault_resolver = build_resolver(self._vault)
-        self._vault_index = build_index(self._vault, self._vault_resolver)
+        try:
+            self._vault = scan_vault(Path(root))
+            self._vault_resolver = build_resolver(self._vault)
+            self._vault_index = build_index(self._vault, self._vault_resolver)
+        except OSError as error:
+            # Walking/reading the tree can fail (permissions, disappearing
+            # network folder); a broken scan must not crash the UI or leave a
+            # half-built cache behind (#788 review).
+            self._vault = None
+            self._vault_resolver = None
+            self._vault_index = None
+            self._set_status(f"Could not scan the vault: {error}")
+            return None
         return self._vault
 
     def _vault_root_path(self) -> Path | None:
@@ -381,25 +391,9 @@ class VaultMixin:
         return candidates[index] if 0 <= index < len(candidates) else None
 
     def _show_vault_list(self, heading: str, items, on_activate=None) -> None:
-        from quill.ui.dialog_contract import apply_modal_ids
-        from quill.ui.vault_dialogs import VaultListDialog
+        from quill.ui.vault_dialogs import show_vault_list_modal
 
-        wx = self._wx
-        activate = on_activate or (lambda payload: self._open_vault_note(payload[0], payload[1]))
-        view = VaultListDialog(wx, heading=heading, items=items, on_activate=activate)
-        dialog = wx.Dialog(
-            self.frame, title=heading, style=wx.DEFAULT_DIALOG_STYLE | wx.RESIZE_BORDER
-        )
-        outer = view.populate(dialog)
-        buttons = dialog.CreateStdDialogButtonSizer(wx.OK | wx.CANCEL)
-        outer.Add(buttons, 0, wx.EXPAND | wx.ALL, 10)
-        apply_modal_ids(
-            dialog, affirmative_id=wx.ID_OK, affirmative_label="&Open", cancel_id=wx.ID_CANCEL
-        )
-        try:
-            self._show_modal_dialog(dialog, heading)
-        finally:
-            dialog.Destroy()
+        show_vault_list_modal(self, heading, items, on_activate)
 
     def quick_switch_note(self) -> None:
         """Jump to a note by name — a filter-as-you-type switcher (Go to Note)."""
@@ -459,33 +453,17 @@ class VaultMixin:
     def _show_vault_filter(
         self, heading, *, prompt, provider, on_activate, count_verb, option_labels=()
     ) -> None:
-        from quill.ui.dialog_contract import apply_modal_ids
-        from quill.ui.vault_dialogs import VaultFilterDialog
+        from quill.ui.vault_dialogs import show_vault_filter_modal
 
-        wx = self._wx
-        view = VaultFilterDialog(
-            wx,
-            heading=heading,
+        show_vault_filter_modal(
+            self,
+            heading,
             prompt=prompt,
             provider=provider,
             on_activate=on_activate,
-            announce=self._announce,
             count_verb=count_verb,
             option_labels=option_labels,
         )
-        dialog = wx.Dialog(
-            self.frame, title=heading, style=wx.DEFAULT_DIALOG_STYLE | wx.RESIZE_BORDER
-        )
-        outer = view.populate(dialog)
-        buttons = dialog.CreateStdDialogButtonSizer(wx.OK | wx.CANCEL)
-        outer.Add(buttons, 0, wx.EXPAND | wx.ALL, 10)
-        apply_modal_ids(
-            dialog, affirmative_id=wx.ID_OK, affirmative_label="&Open", cancel_id=wx.ID_CANCEL
-        )
-        try:
-            self._show_modal_dialog(dialog, heading)
-        finally:
-            dialog.Destroy()
 
     # --- Phase 4: tags ----------------------------------------------------
 
@@ -541,11 +519,16 @@ class VaultMixin:
         if target is None:
             self._set_status(f'No note named "{link.target}"')
             return None
-        content = resolve_embed_content(self._vault, target.path, link.heading, link.block)
+        # An ambiguous name resolves to no path; ask, exactly like Follow Link.
+        note_path = target.path
+        if target.ambiguous:
+            chosen = self._choose_ambiguous(link.target, target.candidates)
+            if chosen is None:
+                return None
+            note_path = chosen
+        content = resolve_embed_content(self._vault, note_path, link.heading, link.block)
         title = (
-            self._vault.notes[target.path].title
-            if target.path in self._vault.notes
-            else link.target
+            self._vault.notes[note_path].title if note_path in self._vault.notes else link.target
         )
         return link, title, content
 

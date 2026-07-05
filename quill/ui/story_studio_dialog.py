@@ -83,8 +83,11 @@ class StoryStudioDialog:
         element = self._element_by_id.get(node.element_id)
         if element is None:
             return False
-        if self._on_edit_details is not None:
-            self._on_edit_details(element.path, element.kind.value)
+        # No handler configured means nothing applied; the caller bells instead
+        # of silently reporting success (#784 review).
+        if self._on_edit_details is None:
+            return False
+        self._on_edit_details(element.path, element.kind.value)
         return True
 
     def compiled_text(self) -> str:
@@ -140,11 +143,21 @@ class StoryStudioDialog:
             self._wx.Bell()
 
     def _on_compile_button(self, _event: Any) -> None:
-        self.run_compile()
-        # Close the binder so the compiled document (opened by on_compile) is in
-        # front; the open runs after the modal returns.
+        # Close the binder first, then compile+open once the modal has actually
+        # unwound — running on_compile under the active modal caused focus
+        # churn, and this Close-only dialog must end with ID_CLOSE to honor its
+        # apply_modal_ids contract (#785 review).
         if self._dialog is not None:
-            self._dialog.EndModal(self._wx.ID_OK)
+            self._dialog.EndModal(self._wx.ID_CLOSE)
+        self._call_after(self.run_compile)
+
+    def _call_after(self, func: Callable[..., Any], *args: Any) -> None:
+        """Run ``func`` after the event loop unwinds (directly off-wx)."""
+        call_after = getattr(self._wx, "CallAfter", None)
+        if callable(call_after):
+            call_after(func, *args)
+        else:  # unit tests pass a stub wx without CallAfter
+            func(*args)
 
     def _add_node(self, tree: Any, parent_item: Any, node: BinderNode) -> Any:
         if parent_item is None:
@@ -162,8 +175,12 @@ class StoryStudioDialog:
         if node is None:
             event.Skip()
             return
-        if not self.activate(node):
+        if self.open_target(node) is None:
             event.Skip()  # let the tree expand/collapse a group on activation
             return
+        # End the modal before opening the file: open_file may itself prompt
+        # (save confirmations), and nesting that under the live binder modal
+        # caused focus churn (#783 review). ID_CLOSE matches apply_modal_ids.
         if self._dialog is not None:
-            self._dialog.EndModal(self._wx.ID_OK)
+            self._dialog.EndModal(self._wx.ID_CLOSE)
+        self._call_after(self.activate, node)

@@ -164,8 +164,10 @@ def gather_optional_components() -> list[OptionalComponent]:
             "pandoc",
             "Pandoc (document conversion)",
             "Imports and exports Word, ODT, EPUB, RTF, and many other formats. "
-            "Plain-text and Markdown editing work without it; QUILL fetches the "
-            "official build the first time a conversion needs it.",
+            "Plain-text and Markdown editing work without it. On Windows QUILL "
+            "fetches the official build the first time a conversion needs it; "
+            "on macOS install Pandoc yourself (for example via Homebrew) and "
+            "QUILL finds it on the PATH.",
             TOOL,
             _safe(_pandoc_installed),
             "~45 MB",

@@ -229,8 +229,11 @@ class DocConvertMixin:
         from quill.io.docconvert import TIER_CLOUD_OCR, TIER_LOCAL_OCR
 
         self._docconvert_last_outcome = outcome
+        # modified=True: the conversion/OCR result exists nowhere else, so the
+        # close/exit save prompts must protect it (#790 review) — closing a
+        # pathless, "unmodified" tab would silently discard the whole result.
         index = self._create_document_tab(
-            Document(text=outcome.text, path=None, modified=False),
+            Document(text=outcome.text, path=None, modified=True),
             select=True,
         )
         self._set_tab_page_text(index, f"{source.stem} (converted)")
@@ -478,7 +481,7 @@ class DocConvertMixin:
             try:
                 launch_tesseract_installer(installer)
             except Exception as error:  # noqa: BLE001 - surfaced to the user
-                self._docconvert_failed(installer, error)
+                self._ocr_install_failed(error)
                 return
             self._announce(
                 "The verified Tesseract installer is open. Complete it, then use "
@@ -490,10 +493,23 @@ class DocConvertMixin:
             name="tesseract-install-download",
             func=_run,
             on_success=_on_success,
-            on_failure=lambda _op, error: self._docconvert_failed(
-                Path("tesseract-installer"), error
-            ),
+            on_failure=lambda _op, error: self._ocr_install_failed(error),
             on_progress=lambda _op, message: self._set_status(str(message)),
+        )
+
+    def _ocr_install_failed(self, error: BaseException) -> None:
+        """Report an OCR-engine install/launch failure as what it is.
+
+        Routing this through _docconvert_failed produced a misleading "could
+        not convert tesseract-installer" message (#790 review) — this is an
+        install problem, not a conversion problem.
+        """
+        wx = self._wx
+        self._set_status("Local OCR install failed")
+        self._show_message_box(
+            f"QUILL could not download or launch the Tesseract OCR installer.\n\n{error}",
+            "Install Local OCR Engine",
+            wx.ICON_ERROR | wx.OK,
         )
 
     # ------------------------------------------------------------------ info

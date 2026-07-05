@@ -28,6 +28,27 @@ def _have(tool: str) -> bool:
     return shutil.which(tool) is not None
 
 
+def _pybind11_cmake_args() -> list[str]:
+    """Point CMake at the running interpreter's pybind11, when installed.
+
+    find_package(pybind11) cannot see a pip-installed pybind11 on its own, so
+    without this hint the configure step fails even with the package present.
+    """
+    try:
+        result = subprocess.run(
+            [sys.executable, "-m", "pybind11", "--cmakedir"],
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+    except (subprocess.CalledProcessError, OSError):
+        return []
+    cmakedir = result.stdout.strip()
+    if not cmakedir:
+        return []
+    return [f"-Dpybind11_DIR={cmakedir}", f"-DPython_EXECUTABLE={sys.executable}"]
+
+
 def main() -> int:
     if sys.platform != "win32":
         print("The Table Studio UIA provider is Windows-only; nothing to build here.")
@@ -38,7 +59,8 @@ def main() -> int:
     build_dir = _NATIVE_DIR / "build"
     try:
         subprocess.run(
-            ["cmake", "-B", str(build_dir), "-G", "Visual Studio 17 2022", "-A", "x64"],
+            ["cmake", "-B", str(build_dir), "-G", "Visual Studio 17 2022", "-A", "x64"]
+            + _pybind11_cmake_args(),
             cwd=_NATIVE_DIR,
             check=True,
         )
@@ -58,6 +80,12 @@ def main() -> int:
             "MSAA fallback. Install pybind11 and the Windows 10 SDK to enable it."
         )
         return 0
+    finally:
+        # The CMake scratch lives inside the quill package tree, so anything
+        # left here is swept into the wheel and ships in the installer
+        # (compiler probes like CompilerIdCXX.exe included). Only the staged
+        # .pyd may remain, whatever the build outcome.
+        shutil.rmtree(build_dir, ignore_errors=True)
     pyd = next(_NATIVE_DIR.glob("_quill_table_uia*.pyd"), None)
     if pyd is None:
         print("Build reported success but no .pyd was produced; using the MSAA fallback.")

@@ -321,6 +321,11 @@ def test_agent_path_wires_to_the_engines_tab() -> None:
     assert "open_engines_cb" in src
     assert 'initial_page="Engines"' in src
     assert 'self._path in ("skip", "agent")' in src  # agent skips the provider config step
+    # The hand-off is deferred (CallAfter) so the modal AI Hub never opens
+    # inside the wizard's still-unwinding modal handler (#801 review).
+    finish_src = src.split("def _finish", 1)[1].split(chr(10) + "def ", 1)[0]
+    assert "CallAfter" in finish_src
+    assert "_hand_off" in finish_src
     # The onboarding model offers the agent path.
     from quill.core.ai import onboarding as ob
 
