@@ -248,6 +248,7 @@ def build_contributed_library(
                     abbreviation=trigger,
                     expansion=expansion,
                     description=str(raw.get("description", "")),
+                    case_sensitive=bool(raw.get("case_sensitive", False)),
                 )
             )
     return AbbreviationLibrary(version=1, abbreviations=abbreviations)
