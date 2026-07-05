@@ -757,14 +757,16 @@ available here too.
 For release-safe beta validation, Word and CSV open in the normal plain-text
 editor surface; AI connection and chat flows remain available.
 
-### AI engines — bring the agent you already pay for
+### AI engines — bring the agent you already use
 
 QUILL's agent (the reviewable, multi-step help behind Ask Quill and the AI
 Library agents) can run on more than one **engine**. The built-in **Native**
-engine always works, using whichever provider you connected above. But if you
-**already pay for GitHub Copilot, ChatGPT (OpenAI), or Claude**, you can use that
-subscription as QUILL's agent instead — no second API key, no per-word charge on
-your card, and it runs on your plan's models.
+engine always works, using whichever provider you connected above. If you
+**already pay for GitHub Copilot**, you can use that subscription directly — a
+short spoken device code signs you in, no API key at all, running on your
+plan's models. The **Claude Agent** and **OpenAI Agents** engines connect with
+the Anthropic or OpenAI **API key** you already have (they do not use ChatGPT
+or Claude chat subscriptions — those plans do not include API access).
 
 You choose the engine on the **AI Hub → Engines** tab:
 
