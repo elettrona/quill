@@ -4,7 +4,7 @@
 #  pyproject [macos] / [dev] extras, not here, so a runtime install stays clean.)
 
 # Core (always required)
-regex>=2024.0.0
+regex>=2026.6.28
 
 # Hardened XML parsing for untrusted document inputs (DOCX/XLSX/ODT/PPTX/EPUB)
 # — disables entity expansion to block billion-laughs denial-of-service files.
@@ -28,7 +28,7 @@ prismatoid>=0.16.6; sys_platform == "win32"
 # macOS platform integration (VoiceOver announcements, Keychain) and the
 # Apple Foundation Models backend used by Ask Quill on macOS.
 pyobjc>=12.2.1; sys_platform == "darwin"
-apple-fm-sdk>=0.2.0; sys_platform == "darwin"
+apple-fm-sdk>=0.2.1; sys_platform == "darwin"
 
 # Spell check (optional)
 pyenchant>=3.3.0
