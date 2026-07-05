@@ -12,8 +12,11 @@ ground by ear).
    rebinding keys, and the Spoken Echo.
 3. [Rescue a scanned PDF](03-rescue-a-scanned-pdf.md) — the free-first
    Import / Convert Document tool and on-device OCR, end to end.
-4. [Turn a document into an audiobook](04-document-to-audiobook.md) — voices,
-   speech audio export, chaptered audiobooks, and DAISY.
+4. [From document to published audiobook](04-document-to-audiobook.md) —
+   voices, Read Aloud, and the Audio Studio's three journeys: narrate
+   documents, combine recordings, fix chapters by ear in the Workbench, and
+   publish the feed — with incremental rebuilds, voice casting, AI chapter
+   titles, and DAISY.
 5. [Start an Accessible Vault](05-start-a-vault.md) — linked notes,
    backlinks, tags, daily notes, and Git sync, from an empty folder.
 6. [Make a document accessible with GLOW](06-make-it-accessible-with-glow.md)

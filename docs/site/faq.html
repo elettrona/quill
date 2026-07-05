@@ -547,10 +547,37 @@
       <details>
         <summary><h3>Can QUILL make audiobooks?</h3></summary>
         <p>
-          Yes - export any document as speech audio (MP3, M4A, M4B, OGG, Opus, or FLAC) with
-          chapters, page-turn cues, and loudness mastering; batch whole folders; and export
-          translated audio in any of ~37 languages with language-matched voices and
-          language-aware pronunciation dictionaries.
+          Yes - the <strong>Audio Studio</strong> (Tools &gt; Speech &gt; Audio Studio) is a
+          guided wizard with three journeys: narrate a folder of documents into a chaptered
+          audiobook (M4B or MP3, with page-turn cues, spoken credits, and ACX loudness
+          mastering), combine a folder of recordings into one chaptered book (each file a
+          chapter, reviewed before the merge), or open any existing audiobook in the Chapter
+          Workbench. Translated editions export in any of ~37 languages with language-matched
+          voices, and incremental rebuilds mean editing one chapter re-synthesizes only that
+          chapter, not the whole book.
+        </p>
+      </details>
+      <details>
+        <summary><h3>Can I fix a finished audiobook's chapters?</h3></summary>
+        <p>
+          The Chapter Workbench opens any chaptered MP3 or M4B (or a chapterless recording)
+          with a chapter-aware player: play to where a boundary belongs and press
+          <strong>Split at playhead</strong>; retime, merge, rename, or restore the original.
+          Chapters import and export in five formats, silences can propose boundaries, and
+          <strong>Propose AI titles</strong> names track-file chapters by transcribing each
+          opening minute locally and asking your configured AI for a short title - always
+          proposed for review, never applied blind.
+        </p>
+      </details>
+      <details>
+        <summary><h3>Can QUILL publish a podcast?</h3></summary>
+        <p>
+          End to end. The Workbench's Publish paths write a complete RSS feed (iTunes +
+          Podcasting 2.0 tags, offline), run a whole show from one folder - every master an
+          episode with its own description, plus an accessible show-notes page - upload over
+          SFTP through QUILL's own SSH machinery with spoken, cancelable progress, or send
+          the book to your own Auphonic account for mastering. Every network path asks
+          first, and secrets live in the Windows Credential Manager.
         </p>
       </details>
       <details>
