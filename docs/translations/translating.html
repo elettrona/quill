@@ -176,6 +176,9 @@
   </style>
 </head>
 <body>
+<header id="title-block-header">
+<h1 class="title">translating</h1>
+</header>
 <h1 id="translating-quill">Translating QUILL</h1>
 <p>QUILL uses GNU gettext catalogs and a GitHub pull-request workflow
 for translations. You do not need a Crowdin account, special access, or
@@ -449,13 +452,40 @@ switch the UI language to any installed translation at runtime. -
 <code>.pot</code> and <code>.mo</code> files ship. - Translation PR
 template in
 <code>.github/PULL_REQUEST_TEMPLATE/translation.md</code>.</p>
-<p><strong>What is not done yet:</strong> - No language-specific
-<code>.po</code> / <code>.mo</code> files ship with 0.7.0. The product
-ships English-only with the full translation infrastructure in place. -
-A few low-priority internal modules (diagnostic output, developer
-console strings) still have unwrapped strings. These are not user-facing
-in normal operation.</p>
-<p><strong>For the first translator:</strong> Start from
+<p><strong>Shipped translations:</strong></p>
+<table>
+<colgroup>
+<col style="width: 25%" />
+<col style="width: 25%" />
+<col style="width: 25%" />
+<col style="width: 25%" />
+</colgroup>
+<thead>
+<tr>
+<th>Language</th>
+<th>Translator</th>
+<th>Since</th>
+<th>Coverage</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Italian (<code>it</code>)</td>
+<td>Elena Brescacin (<a
+href="https://github.com/elettrona">elettrona</a>)</td>
+<td>0.9.0 beta</td>
+<td>100% (669/672 strings)</td>
+</tr>
+</tbody>
+</table>
+<p>Italian was QUILL’s <strong>first community translation</strong> —
+contributed exactly through the pipeline this document describes: a
+<code>.po</code> from the template, the CI placeholder/coverage gates,
+and a pull request. Grazie, Elena!</p>
+<p><strong>What is not done yet:</strong> - A few low-priority internal
+modules (diagnostic output, developer console strings) still have
+unwrapped strings. These are not user-facing in normal operation.</p>
+<p><strong>For the next translator:</strong> Start from
 <code>quill/locale/quill.pot</code>. Create
 <code>quill/locale/{lang}/LC_MESSAGES/quill.po</code> following the
 Quick start above. Open a pull request with the translation PR

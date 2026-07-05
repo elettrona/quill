@@ -4,6 +4,10 @@
 
 The 0.9.0 beta. Rolls up everything through 0.8.0 (below) plus the features, fixes, and enhancements in this release — headlined by the new AI suite, the **Accessible Vault** (linked notes you can traverse by ear), the **GLOW accessibility suite** (guided document audit and repair, shipping as an experimental opt-in), the **ElevenLabs Read Aloud voice**, and a lighter, smaller install. **This is the final feature release before QUILL 1.0**: from this beta forward, no new features are added — only bug fixes and polish, driven by your reports, until 1.0 ships. This section doubles as the in-app release notes: the same text appears when you **Check for Updates** and any time from **Help > What's New**.
 
+### QUILL parla italiano - the first community translation
+
+- **Italian interface translation**, contributed by **Elena Brescacin** ([elettrona](https://github.com/elettrona)) — QUILL's first shipped display language beyond English: menus, dialogs, and spoken messages at 100% string coverage (669/672), validated by the CI placeholder and coverage gates and compiled into every build. Switch under **Tools > Writing and Language > Change Display Language**; spoken messages change immediately, menus after a restart. Grazie mille, Elena!
+
 ### The Audio Studio - the family homecoming, completed during the beta
 
 0.9.0 promised the whole product family home in QUILL; the last homecoming —

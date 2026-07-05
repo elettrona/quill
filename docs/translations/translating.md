@@ -310,14 +310,22 @@ The CI gate checks placeholder preservation.
 - `quill/locale` is packaged into the wheel, so `.pot` and `.mo` files ship.
 - Translation PR template in `.github/PULL_REQUEST_TEMPLATE/translation.md`.
 
+**Shipped translations:**
+
+| Language | Translator | Since | Coverage |
+| --- | --- | --- | --- |
+| Italian (`it`) | Elena Brescacin ([elettrona](https://github.com/elettrona)) | 0.9.0 beta | 100% (669/672 strings) |
+
+Italian was QUILL's **first community translation** — contributed exactly
+through the pipeline this document describes: a `.po` from the template, the
+CI placeholder/coverage gates, and a pull request. Grazie, Elena!
+
 **What is not done yet:**
-- No language-specific `.po` / `.mo` files ship with 0.7.0. The product ships
-  English-only with the full translation infrastructure in place.
 - A few low-priority internal modules (diagnostic output, developer console
   strings) still have unwrapped strings. These are not user-facing in normal
   operation.
 
-**For the first translator:**
+**For the next translator:**
 Start from `quill/locale/quill.pot`. Create
 `quill/locale/{lang}/LC_MESSAGES/quill.po` following the Quick start above.
 Open a pull request with the translation PR template.

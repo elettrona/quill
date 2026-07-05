@@ -5682,7 +5682,7 @@ All JSON files validate against schemas in `quill/core/schemas/`. All writes are
 - Pluralisation uses `ngettext`.
 - Date/number formatting uses `babel`.
 - Bidirectional text in user documents is rendered by the OS edit control; full RTL UI is v1.2.
-- A translation portal (Weblate or Crowdin) is set up at v1.0 beta; community translators are credited in About and release notes.
+- A translation portal (Weblate or Crowdin) is set up at v1.0 beta; community translators are credited in About and release notes. **Status:** the pipeline is proven end to end — the first community translation, **Italian** (Elena Brescacin, 100% coverage, 0.9.0 beta), shipped through the documented PO workflow and CI gates; credited in About (contributors list), the release notes, CHANGELOG, and `docs/translations/translating.md`.
 - Translation operations follow a documented contributor plan with:
   - gettext `POT -> PO -> MO` workflow,
   - translator comments and placeholder-preservation rules,

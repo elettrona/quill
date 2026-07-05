@@ -615,6 +615,18 @@ For the complete picture - every mode, the full list of spoken commands, the
 audio cues, and the privacy rules - see the new **Voice Interaction** page in
 the user guide.
 
+## QUILL parla italiano - the first community translation
+
+QUILL's whole interface now speaks **Italian**: menus, dialogs, and spoken
+messages, at 100% string coverage, contributed by **Elena Brescacin**
+(`elettrona`) - the project's first shipped display language beyond
+English, arriving during the beta window exactly the way we hoped the
+translation pipeline would work: a community member, a `.po` file, and the
+CI quality gates. Switch under **Tools > Writing and Language > Change
+Display Language**; QUILL applies it to spoken messages immediately and to
+every menu after a restart. Grazie mille, Elena. (Your language next? The
+user guide's translation chapter has the whole recipe.)
+
 ## Read Aloud in your language - not just English
 
 The voice lists are no longer English-only, and the change reaches every
