@@ -232,6 +232,16 @@ main.prose { padding: 2.5rem 0 3.5rem; }
 .band details.deep > div { padding: 0 1.1rem 0.9rem; }
 .band details.deep ul { margin: 0.4rem 0 0.6rem; padding-left: 1.3rem; }
 .band details.deep li { margin: 0.35rem 0; max-width: var(--measure); }
+/* The summary carries a real h3 so heading navigation reaches each
+   "Go deeper" section, and every deep item is an h4 + paragraph. */
+.band details.deep > summary h3 {
+  display: inline;
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 600;
+}
+.band details.deep h4 { margin: 0.9rem 0 0.15rem; font-size: 1rem; }
+.band details.deep p { margin: 0.15rem 0 0.5rem; max-width: var(--measure); }
 
 /* Footer */
 footer.site {
