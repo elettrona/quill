@@ -1,0 +1,1749 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+  <meta charset="utf-8" />
+  <meta name="generator" content="pandoc 3.10" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+  <title>openai</title>
+  <style>
+    /* Default styles provided by pandoc.
+    ** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
+    */
+    html {
+      color: #1a1a1a;
+      background-color: #fdfdfd;
+    }
+    body {
+      margin: 0 auto;
+      max-width: 36em;
+      padding-left: 50px;
+      padding-right: 50px;
+      padding-top: 50px;
+      padding-bottom: 50px;
+      hyphens: auto;
+      overflow-wrap: break-word;
+      text-rendering: optimizeLegibility;
+      font-kerning: normal;
+    }
+    @media (max-width: 600px) {
+      body {
+        font-size: 0.9em;
+        padding: 12px;
+      }
+      h1 {
+        font-size: 1.8em;
+      }
+    }
+    @media print {
+      html {
+        background-color: white;
+      }
+      body {
+        background-color: transparent;
+        color: black;
+        font-size: 12pt;
+      }
+      p, h2, h3 {
+        orphans: 3;
+        widows: 3;
+      }
+      h2, h3, h4 {
+        page-break-after: avoid;
+      }
+    }
+    p {
+      margin: 1em 0;
+    }
+    a {
+      color: #1a1a1a;
+    }
+    a:visited {
+      color: #1a1a1a;
+    }
+    img {
+      max-width: 100%;
+    }
+    svg {
+      height: auto;
+      max-width: 100%;
+    }
+    h1, h2, h3, h4, h5, h6 {
+      margin-top: 1.4em;
+    }
+    h5, h6 {
+      font-size: 1em;
+      font-style: italic;
+    }
+    h6 {
+      font-weight: normal;
+    }
+    ol, ul {
+      padding-left: 1.7em;
+      margin-top: 1em;
+    }
+    li > ol, li > ul {
+      margin-top: 0;
+    }
+    blockquote {
+      margin: 1em 0 1em 1.7em;
+      padding-left: 1em;
+      border-left: 2px solid #e6e6e6;
+      color: #606060;
+    }
+    code {
+      white-space: pre-wrap;
+      font-family: Menlo, Monaco, Consolas, 'Lucida Console', monospace;
+      font-size: 85%;
+      margin: 0;
+      hyphens: manual;
+    }
+    pre {
+      margin: 1em 0;
+      overflow: auto;
+    }
+    pre code {
+      padding: 0;
+      overflow: visible;
+      overflow-wrap: normal;
+    }
+    .sourceCode {
+     background-color: transparent;
+     overflow: visible;
+    }
+    hr {
+      border: none;
+      border-top: 1px solid #1a1a1a;
+      height: 1px;
+      margin: 1em 0;
+    }
+    table {
+      margin: 1em 0;
+      border-collapse: collapse;
+      width: 100%;
+      overflow-x: auto;
+      display: block;
+      font-variant-numeric: lining-nums tabular-nums;
+    }
+    table caption {
+      margin-bottom: 0.75em;
+    }
+    tbody {
+      margin-top: 0.5em;
+      border-top: 1px solid #1a1a1a;
+      border-bottom: 1px solid #1a1a1a;
+    }
+    th {
+      border-top: 1px solid #1a1a1a;
+      padding: 0.25em 0.5em 0.25em 0.5em;
+    }
+    td {
+      padding: 0.125em 0.5em 0.25em 0.5em;
+    }
+    header {
+      margin-bottom: 4em;
+      text-align: center;
+    }
+    #TOC li {
+      list-style: none;
+    }
+    #TOC ul {
+      padding-left: 1.3em;
+    }
+    #TOC > ul {
+      padding-left: 0;
+    }
+    #TOC a:not(:hover) {
+      text-decoration: none;
+    }
+    span.smallcaps{font-variant: small-caps;}
+    div.columns{display: flex; gap: 1.5em;}
+    div.column{flex: auto;}
+    @media screen {
+    div.columns{gap: min(4vw, 1.5em);}
+    div.column{overflow-x: auto;}
+    }
+    div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+    /* The extra [class] is a hack that increases specificity enough to
+       override a similar rule in reveal.js */
+    ul.task-list[class]{list-style: none;}
+    ul.task-list li input[type="checkbox"] {
+      font-size: inherit;
+      width: 0.8em;
+      margin: 0 0.8em 0.2em -1.6em;
+      vertical-align: middle;
+    }
+    .display.math{display: block; text-align: center; margin: 0.5rem auto;}
+    /* CSS for syntax highlighting */
+    html { -webkit-text-size-adjust: 100%; }
+    pre > code.sourceCode { white-space: pre; position: relative; }
+    pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+    pre > code.sourceCode > span:empty { height: 1.2em; }
+    .sourceCode { overflow: visible; }
+    code.sourceCode > span { color: inherit; text-decoration: inherit; }
+    div.sourceCode { margin: 1em 0; }
+    pre.sourceCode { margin: 0; }
+    @media screen {
+    div.sourceCode { overflow: auto; }
+    }
+    @media print {
+    pre > code.sourceCode { white-space: pre-wrap; }
+    pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+    }
+    pre.numberSource code
+      { counter-reset: source-line 0; }
+    pre.numberSource code > span
+      { position: relative; left: -4em; counter-increment: source-line; }
+    pre.numberSource code > span > a:first-child::before
+      { content: counter(source-line);
+        position: relative; left: -1em; text-align: right; vertical-align: baseline;
+        border: none; display: inline-block;
+        -webkit-touch-callout: none; -webkit-user-select: none;
+        -khtml-user-select: none; -moz-user-select: none;
+        -ms-user-select: none; user-select: none;
+        padding: 0 4px; width: 4em;
+        color: #aaaaaa;
+      }
+    pre.numberSource { margin-left: 3em; border-left: 1px solid #aaaaaa;  padding-left: 4px; }
+    div.sourceCode
+      {   }
+    @media screen {
+    pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+    }
+    code span.al { color: #ff0000; font-weight: bold; } /* Alert */
+    code span.an { color: #60a0b0; font-weight: bold; font-style: italic; } /* Annotation */
+    code span.at { color: #7d9029; } /* Attribute */
+    code span.bn { color: #40a070; } /* BaseN */
+    code span.bu { color: #008000; } /* BuiltIn */
+    code span.cf { color: #007020; font-weight: bold; } /* ControlFlow */
+    code span.ch { color: #4070a0; } /* Char */
+    code span.cn { color: #880000; } /* Constant */
+    code span.co { color: #60a0b0; font-style: italic; } /* Comment */
+    code span.cv { color: #60a0b0; font-weight: bold; font-style: italic; } /* CommentVar */
+    code span.do { color: #ba2121; font-style: italic; } /* Documentation */
+    code span.dt { color: #902000; } /* DataType */
+    code span.dv { color: #40a070; } /* DecVal */
+    code span.er { color: #ff0000; font-weight: bold; } /* Error */
+    code span.ex { } /* Extension */
+    code span.fl { color: #40a070; } /* Float */
+    code span.fu { color: #06287e; } /* Function */
+    code span.im { color: #008000; font-weight: bold; } /* Import */
+    code span.in { color: #60a0b0; font-weight: bold; font-style: italic; } /* Information */
+    code span.kw { color: #007020; font-weight: bold; } /* Keyword */
+    code span.op { color: #666666; } /* Operator */
+    code span.ot { color: #007020; } /* Other */
+    code span.pp { color: #bc7a00; } /* Preprocessor */
+    code span.sc { color: #4070a0; } /* SpecialChar */
+    code span.ss { color: #bb6688; } /* SpecialString */
+    code span.st { color: #4070a0; } /* String */
+    code span.va { color: #19177c; } /* Variable */
+    code span.vs { color: #4070a0; } /* VerbatimString */
+    code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warning */
+  </style>
+</head>
+<body>
+<header id="title-block-header">
+<h1 class="title">openai</h1>
+</header>
+<h1 id="the-quill-ai-gateway-implementation-plan">The QUILL AI Gateway —
+Implementation Plan</h1>
+<p>Status: planning document, no code written against it yet. Author:
+Claude Fable 5, 2026-07-05. Grounded in QUILL’s actual current AI code
+(cited throughout as <code>file.py:function</code>), not a generic
+proposal.</p>
+<p><strong>One-line thesis:</strong> QUILL’s desktop client never holds
+a shared provider key. It holds a QUILL-issued token. The QUILL AI
+Gateway is the only thing that ever talks to OpenAI, and it enforces
+every quota, budget, and kill switch server-side because the client —
+being open source — cannot be trusted to enforce anything about
+itself.</p>
+<hr />
+<h2 id="where-this-plugs-into-quill-today-read-this-first">0. Where this
+plugs into QUILL today (read this first)</h2>
+<p>QUILL already has the exact seam a hosted backend needs, and reusing
+it is most of the client-side work:</p>
+<ul>
+<li><strong><code>AIBackend</code> ABC</strong>
+(<code>quill/core/ai/backend.py</code>) —
+<code>is_available() -&gt; (bool, str|None)</code>,
+<code>respond(prompt) -&gt; str</code>,
+<code>respond_stream(prompt, on_delta)</code>. Every feature
+(<code>assistant.py</code>, <code>document_qa.py</code>,
+<code>vision.py</code>, <code>conversation.py</code>,
+<code>chat_session.py</code>, <code>agent_tools.py</code>) already calls
+through this interface or through
+<code>assistant_ai.generate_assistant_response</code>, which
+<code>ProviderChatBackend</code> wraps. <strong>A
+<code>GatewayBackend(AIBackend)</code> is a drop-in fourth
+option</strong> in <code>Assistant.make_default_backend()</code>’s
+cascade (<code>assistant.py:104</code>), sitting next to
+<code>ProviderChatBackend</code>, <code>SimpleChatBackend</code>,
+<code>FoundationModelsBackend</code>, <code>LlamaCppBackend</code>.</li>
+<li><strong>Provider catalog</strong>
+(<code>quill/core/ai/providers.py</code>) — <code>ALL_PROVIDERS</code>,
+<code>default_host_for_provider</code>,
+<code>provider_requires_api_key</code>. Add <code>"quill_gateway"</code>
+as a new provider id here rather than inventing a parallel settings
+surface. It’s the provider that needs <em>no</em> user-supplied API key
+(<code>provider_requires_api_key("quill_gateway") == False</code>) but
+<em>does</em> need a Gateway session token.</li>
+<li><strong>Credential storage</strong>
+(<code>quill/core/assistant_ai.py</code>) — Windows Credential Manager
+first, DPAPI-encrypted JSON fallback
+(<code>save_provider_api_key</code>/<code>load_provider_api_key</code>,
+target <code>f"QUILL:assistant:{provider}:api-key"</code>). The Gateway
+session token stores under the identical pattern — target
+<code>"QUILL:assistant:quill_gateway:api-key""</code>— so no new
+secure-storage code is needed, only a new target string.</li>
+<li><strong>Device auth</strong>
+(<code>quill/core/ai/device_login.py</code> +
+<code>quill/core/ai/copilot_auth.py</code>) — a working, wx-free OAuth
+2.0 Device Authorization Grant (RFC 8628) state machine, already bound
+once to GitHub’s real endpoints. This is reused almost verbatim for
+Gateway sign-in (§7) — new <code>DeviceFlowConfig</code> pointed at the
+Gateway’s own <code>/device/code</code>/<code>/device/token</code>
+endpoints, same polling/backoff/expiry logic, same
+screen-reader-friendly <code>announce_device_code()</code> pattern.</li>
+<li><strong>Egress audit (GATE-9)</strong>
+(<code>quill/tools/network_egress_audit.py</code>) — every new
+<code>urlopen</code>/<code>urlretrieve</code>/SDK-client call site needs
+a <code>_REVIEWED_EGRESS</code> entry stating what user action triggers
+it and why it isn’t silent. The Gateway’s HTTP call site gets exactly
+one entry here.</li>
+<li><strong>Admin allow/block list precedent</strong>
+(<code>quill/core/ai/admin_policy.py</code>) —
+<code>AdminPolicy.is_allowed(provider_id)</code> /
+<code>filter_providers()</code> already let an organization-managed
+install restrict which providers appear. The Gateway admin console (§10)
+is the server-side, per-user analog of this same idea.</li>
+<li><strong>Cost/quality tiering precedent</strong>
+(<code>quill/core/ai/free_models.py</code>) —
+<code>cost_tier_for()</code>, <code>is_free_model()</code>,
+<code>best_free_writing_model()</code> already classify models by cost
+and steer users toward free options. This is <em>advisory</em> today
+(client-side hinting), not enforcement — the Gateway plan below is what
+turns “advisory” into “actually can’t exceed.”</li>
+<li><strong>Deployment precedent</strong> (<code>quillin-hub/</code>) —
+a real, already-deployed Flask service (Gunicorn behind a reverse proxy,
+env-var config, a minisign-style signing-key rotation story, a
+post-deploy smoke test). Its <em>operational</em> conventions are
+reusable even though its stack (Flask, Postgres, no Redis, no
+per-request auth) doesn’t match what an inference gateway needs.</li>
+</ul>
+<p><strong>What is 100% new</strong> (confirmed by code search, not
+assumed): any per-user usage/token/spend metering, any rate limiter, any
+request-proxying backend service, any device-fingerprint/registration
+concept beyond OAuth user accounts, and any billing/budget-cap logic.
+None of this exists in QUILL today. This document designs all of it.</p>
+<hr />
+<h2 id="executive-summary">1. Executive summary</h2>
+<p>QUILL is free, open source, and accessibility-first. Its AI features
+today are entirely bring-your-own-key (BYOK): the user pastes an
+OpenAI/Claude/ Gemini/OpenRouter key, or runs a fully local model
+(Ollama, llama.cpp, Apple Foundation Models). That’s the right default
+and it stays the default. But it means a screen-reader user who has
+never touched an API key before, and doesn’t know what one is, hits a
+wall on day one of AI features.</p>
+<p>The QUILL AI Gateway adds a second option — “Use QUILL’s free hosted
+AI” — without ever putting a shared provider key inside the open-source
+client. The client authenticates to the Gateway with a QUILL-issued
+token (device- code flow, reusing <code>copilot_auth.py</code>’s
+pattern); the Gateway is a small, boring, private FastAPI service that
+owns the real OpenAI key, checks the requesting user’s quota in
+Postgres/Redis <em>before</em> calling OpenAI, and logs only enough
+metadata (never document content, never prompts, by default) to answer
+“who’s driving cost” and “is this abusive.” Every limit is enforced
+server-side; the client only <em>displays</em> remaining allowance.</p>
+<p>The magic — free AI that just works for someone who has never heard
+of an API key — is entirely a server-side engineering and operations
+problem. The client-side change is small and mostly wiring into seams
+that already exist.</p>
+<h2 id="recommended-architecture">2. Recommended architecture</h2>
+<pre><code>┌─────────────────────┐        HTTPS, Bearer &lt;gateway-token&gt;       ┌──────────────────────────┐
+│   QUILL desktop      │ ─────────────────────────────────────────▶ │   QUILL AI Gateway        │
+│  (open source, MIT)  │                                            │  (private, closed infra)  │
+│                      │ ◀───────────────────────────────────────── │                            │
+│  GatewayBackend(     │   JSON: {text, tokens_in, tokens_out,       │  FastAPI + Postgres +      │
+│    AIBackend)        │          remaining_quota, status}          │  Redis + secret manager    │
+└─────────────────────┘                                            └───────────┬────────────────┘
+                                                                                 │ HTTPS
+                                                                     server-side only, never
+                                                                     reachable from the client
+                                                                                 ▼
+                                                                     ┌──────────────────────────┐
+                                                                     │  OpenAI (nano-class model)│
+                                                                     └──────────────────────────┘</code></pre>
+<p>Nothing about this replaces BYOK. <code>ALL_PROVIDERS</code> grows by
+one entry; existing users who configure their own key never touch the
+Gateway at all. <code>AdminPolicy.is_allowed()</code> (already-existing
+code) lets an organization disable the Gateway provider entirely if they
+want every user on BYOK or local-only.</p>
+<h3 id="request-flow-one-document-qa-call-concretely">Request flow (one
+document-Q&amp;A call, concretely)</h3>
+<ol type="1">
+<li>User selects a paragraph, presses the Ask-Quill shortcut.</li>
+<li><code>Assistant.answer()</code> (or
+<code>document_qa.ask_document()</code>) builds its prompt exactly as it
+does today — no change to prompt construction.</li>
+<li><code>make_default_backend()</code> resolves to
+<code>GatewayBackend</code> because the active provider is
+<code>"quill_gateway"</code>.</li>
+<li><code>GatewayBackend.respond(prompt)</code> POSTs to
+<code>POST https://gateway.quillforall.org/v1/chat</code> with:
+<code>Authorization: Bearer &lt;token&gt;</code>, body
+<code>{feature: "document_qna", prompt, max_tokens, device_id}</code>.</li>
+<li>Gateway: authenticates the token → looks up the user row → checks
+monthly/daily/hourly quota in Redis (fast path) → if within budget,
+calls OpenAI’s nano model with a <strong>server-side prompt
+wrapper</strong> (the gateway owns the system prompt for each feature,
+not the client, so a modified client can’t smuggle an unapproved use
+through an approved feature id) → records usage (tokens, cost estimate,
+feature, timestamp) → returns the text plus updated quota numbers.</li>
+<li><code>GatewayBackend</code> returns the text to
+<code>Assistant</code> exactly like any other backend would;
+<code>Assistant</code>/<code>document_qa.py</code>/<code>vision.py</code>
+are unmodified.</li>
+<li>QUILL’s status bar shows “14 of 50 free requests left this month”
+from the <code>remaining_quota</code> field in the response — display
+only, never enforcement.</li>
+</ol>
+<h2 id="threat-model">3. Threat model</h2>
+<table>
+<colgroup>
+<col style="width: 50%" />
+<col style="width: 50%" />
+</colgroup>
+<thead>
+<tr>
+<th>Threat</th>
+<th>Mitigation</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Someone decompiles the open-source client looking for a shared
+key</td>
+<td>There is none to find. The client never contains a provider key —
+only, at most, a per-user Gateway token the user themself obtained,
+stored in the OS credential store.</td>
+</tr>
+<tr>
+<td>A user patches their local client to skip quota display or claim a
+fake feature id</td>
+<td>Irrelevant — the client’s opinion of its own quota is never trusted.
+Every check happens server-side against the authenticated token’s row in
+Postgres/Redis. A patched client can lie to itself, not to the
+Gateway.</td>
+</tr>
+<tr>
+<td>A leaked Gateway token is used from a script, not QUILL</td>
+<td>Token is scoped to a device registration (§7); rate limits are
+per-device and per-user; anomaly detection (§9) flags a token suddenly
+making requests with unfamiliar client fingerprints/timing patterns.
+Revoke-one-device without affecting the user’s other devices.</td>
+</tr>
+<tr>
+<td>Provider key leaks from the Gateway itself</td>
+<td>Key lives only in a secret manager (§6), injected as an env var at
+process start, never written to disk, logs, or version control; rotated
+on a schedule and on any suspicion; the process has no code path that
+could return the key value to a client response.</td>
+</tr>
+<tr>
+<td>Cost runaway (single user, or aggregate) from a bug or
+bulk-abuse</td>
+<td>Hard per-user monthly/daily/hourly caps (§8) enforced
+<em>before</em> the OpenAI call, plus a global monthly budget cap that
+pages an admin and can auto-pause hosted AI entirely (§10) if
+breached.</td>
+</tr>
+<tr>
+<td>Prompt injection via document content asking the model to reveal its
+system prompt or perform an unapproved action</td>
+<td>Each feature has its own fixed server-side prompt template (the
+client cannot supply an arbitrary system prompt to the Gateway) and the
+Gateway only ever returns model text to the client — it never executes
+tools or Gateway-side actions on the model’s say-so. (QUILL’s own agent
+tool loop, <code>SafeEditorToolGateway</code>, already only runs
+client-side, locally, with per-action confirmation — the Gateway has no
+equivalent and shouldn’t get one in v1.)</td>
+</tr>
+<tr>
+<td>A user’s private document content ends up in a breach of the usage
+database</td>
+<td>Usage records store metadata only — token counts, feature id,
+timestamps, cost — never prompt/document text, by default (§4, §5). A
+breach of the usage DB reveals “user X asked 12 document-Q&amp;A
+questions in June,” not what was in any of them.</td>
+</tr>
+<tr>
+<td>Screen-reader users get a worse experience than sighted users under
+abuse controls (e.g. CAPTCHAs, lockouts on retry)</td>
+<td>Explicit design constraint throughout (§9): no CAPTCHA anywhere in
+this flow; retry-tolerant rate limiting distinguishes “many similar
+requests in a burst” (normal for someone re-issuing a command while
+learning) from “sustained high-volume automation.”</td>
+</tr>
+<tr>
+<td>Supply-chain: a compromised dependency in the Gateway process
+exfiltrates the OpenAI key from memory</td>
+<td>Minimal dependency surface (FastAPI, one HTTP client, one DB driver,
+one Redis client); dependency-audit-and-sbom-style pinning (QUILL’s CI
+already does this for the client — mirror it for the Gateway repo); the
+Gateway never installs unreviewed third-party packages at request
+time.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="privacy-model">4. Privacy model</h2>
+<p><strong>Design rule: store the least data that lets you answer the
+questions in §4.1. Never store document content or full prompts unless
+the user explicitly opts in per-incident for
+troubleshooting.</strong></p>
+<h3
+id="questions-the-system-must-be-able-to-answer-without-reading-private-content">4.1
+Questions the system must be able to answer without reading private
+content</h3>
+<ul>
+<li>How many requests did this user make this month? →
+<code>usage_counter</code> rows, summed by
+<code>(user_id, month)</code>.</li>
+<li>Which feature is driving cost? → <code>usage_counter.feature</code>
+grouped, summed by <code>estimated_cost_usd</code>.</li>
+<li>Has this user exceeded their limit? → compare the same sum against
+<code>user.monthly_request_cap</code>/<code>user.monthly_cost_cap_usd</code>.</li>
+<li>Is this device behaving suspiciously? →
+<code>device.request_timestamps</code> (a bounded ring buffer in Redis)
+feeding the anomaly heuristics in §9.</li>
+<li>What is total hosted AI spend this month? →
+<code>SUM(estimated_cost_usd)</code> across all users for the current
+month, cached in Redis, refreshed on write.</li>
+<li>Can we cut this user off without affecting everyone else? →
+<code>user.status</code> is a per-row enum
+(<code>active</code>/<code>reduced</code>/<code>review</code>/<code>blocked</code>);
+every quota check reads this row first.</li>
+<li>Can we shut off image analysis while leaving document Q&amp;A
+enabled? → <code>feature_flag</code> table, keyed by feature id, checked
+before the per-user quota check.</li>
+<li>Can we prove QUILL isn’t publishing/exposing private prompts? →
+because by default the schema (§5) has no column capable of holding one.
+This is a structural guarantee, not a policy promise: the “prove a
+negative” case is much stronger when the data literally isn’t
+there.</li>
+</ul>
+<h3 id="identity-model">4.2 Identity model</h3>
+<ul>
+<li><strong>Pseudonymous by default.</strong> A user is a UUID
+(<code>user.id</code>) created at device registration (§7). No email, no
+name, no account required for the free hosted tier.</li>
+<li><strong>Optional account upgrade</strong> (future): if QUILL ever
+wants “move my quota to a new computer” without re-registering from
+scratch, an email magic-link can be attached to the pseudonymous UUID
+later. This is additive, never required.</li>
+<li><strong>Device identity is separate from user identity.</strong> One
+user, multiple devices; the Gateway can disable one device (a stolen
+laptop) without touching the user’s other devices or their quota
+history.</li>
+<li><strong>Hashed correlation fields where a raw value would be too
+identifying.</strong> IP address is never stored raw in the long-lived
+usage table — only a salted hash
+(<code>sha256(ip + rotating_salt)</code>) with a short TTL in Redis for
+rate-limiting purposes, discarded from long-term storage.</li>
+</ul>
+<h3 id="whats-redacted-and-where">4.3 What’s redacted, and where</h3>
+<ul>
+<li>Server access logs: no request body logged at all (structured
+logging emits
+<code>{user_id, feature, tokens_in, tokens_out, status}</code>, never
+the prompt).</li>
+<li>Error logs / crash reports: any exception message from the OpenAI
+SDK is scrubbed for the pattern <code>sk-[A-Za-z0-9]{20,}</code> before
+it’s written anywhere, as defense in depth against the key ever
+appearing in a traceback (it shouldn’t, since the SDK client is
+constructed once at startup from the env var and never re-serializes the
+key, but scrub anyway — mirrors QUILL’s own
+<code>quill/stability/redaction.py</code> pattern client-side).</li>
+<li>Diagnostic opt-in mode: a user can explicitly turn on “Include
+redacted request details in diagnostic logs” (mirroring the existing
+client-side crash-report consent pattern) for a support case; even then,
+the prompt text is truncated and PII-scrubbed before it’s written, and
+the record auto-expires (§4.4).</li>
+</ul>
+<h3 id="retention">4.4 Retention</h3>
+<table>
+<colgroup>
+<col style="width: 33%" />
+<col style="width: 33%" />
+<col style="width: 33%" />
+</colgroup>
+<thead>
+<tr>
+<th>Data</th>
+<th>Retention</th>
+<th>Reason</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>usage_counter</code> rows (metadata only)</td>
+<td>13 months</td>
+<td>one full year of trend data + a buffer month for billing
+reconciliation</td>
+</tr>
+<tr>
+<td>Redis rate-limit counters</td>
+<td>rolling window sizes only (1h/1d/30d)</td>
+<td>no need to keep past the window they enforce</td>
+</tr>
+<tr>
+<td>IP hash (rate-limiting)</td>
+<td>24 hours</td>
+<td>abuse detection only needs recent behavior</td>
+</tr>
+<tr>
+<td>Opt-in diagnostic records (redacted prompt)</td>
+<td>30 days, or until the support case closes, whichever is sooner</td>
+<td>explicit troubleshooting use only</td>
+</tr>
+<tr>
+<td>Device registration record</td>
+<td>until revoked or 12 months inactive</td>
+<td>lets a returning user’s device still work without
+re-registering</td>
+</tr>
+<tr>
+<td>Provider key in secret manager</td>
+<td>until rotated (see §11 rotation schedule)</td>
+<td>not user data, but noted here for completeness</td>
+</tr>
+</tbody>
+</table>
+<h3
+id="user-visible-privacy-explanation-what-ships-in-the-client-ui">4.5
+User-visible privacy explanation (what ships in the client UI)</h3>
+<p>A single, plain-language paragraph shown the first time a user turns
+on hosted AI, and reachable anytime from the AI Hub’s Services tab:</p>
+<blockquote>
+<p>“QUILL’s free hosted AI sends only what’s needed to answer your
+request — the selected text or question, not your whole document unless
+you choose that — to QUILL’s own server, which asks OpenAI’s smallest
+model and sends the answer back. QUILL does not save your questions or
+documents. We do keep a small record of how many requests you’ve made
+and which feature you used, so we can be fair about the free allowance
+and stop abuse — never what you asked or what came back. You can always
+use your own API key instead, or a fully local model, and QUILL never
+sends anything anywhere without your say-so.”</p>
+</blockquote>
+<h2 id="data-model">5. Data model</h2>
+<div class="sourceCode" id="cb2"><pre
+class="sourceCode sql"><code class="sourceCode sql"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="co">-- Identity ---------------------------------------------------------------</span></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a><span class="kw">CREATE</span> <span class="kw">TABLE</span> users (</span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>    <span class="kw">id</span>                    UUID <span class="kw">PRIMARY</span> <span class="kw">KEY</span> <span class="kw">DEFAULT</span> gen_random_uuid(),</span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>    created_at            TIMESTAMPTZ <span class="kw">NOT</span> <span class="kw">NULL</span> <span class="kw">DEFAULT</span> now(),</span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>    status                TEXT <span class="kw">NOT</span> <span class="kw">NULL</span> <span class="kw">DEFAULT</span> <span class="st">&#39;active&#39;</span>,   <span class="co">-- active | reduced | review | blocked</span></span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a>    monthly_request_cap   <span class="dt">INT</span>  <span class="kw">NOT</span> <span class="kw">NULL</span> <span class="kw">DEFAULT</span> <span class="dv">500</span>,</span>
+<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a>    monthly_cost_cap_usd  <span class="dt">NUMERIC</span>(<span class="dv">8</span>,<span class="dv">4</span>) <span class="kw">NOT</span> <span class="kw">NULL</span> <span class="kw">DEFAULT</span> <span class="fl">1.00</span>,</span>
+<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a>    <span class="co">-- optional, nullable, additive identity upgrade (never required):</span></span>
+<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a>    email                 TEXT <span class="kw">UNIQUE</span>,</span>
+<span id="cb2-10"><a href="#cb2-10" aria-hidden="true" tabindex="-1"></a>    email_verified_at     TIMESTAMPTZ</span>
+<span id="cb2-11"><a href="#cb2-11" aria-hidden="true" tabindex="-1"></a>);</span>
+<span id="cb2-12"><a href="#cb2-12" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-13"><a href="#cb2-13" aria-hidden="true" tabindex="-1"></a><span class="kw">CREATE</span> <span class="kw">TABLE</span> devices (</span>
+<span id="cb2-14"><a href="#cb2-14" aria-hidden="true" tabindex="-1"></a>    <span class="kw">id</span>                    UUID <span class="kw">PRIMARY</span> <span class="kw">KEY</span> <span class="kw">DEFAULT</span> gen_random_uuid(),</span>
+<span id="cb2-15"><a href="#cb2-15" aria-hidden="true" tabindex="-1"></a>    user_id               UUID <span class="kw">NOT</span> <span class="kw">NULL</span> <span class="kw">REFERENCES</span> users(<span class="kw">id</span>),</span>
+<span id="cb2-16"><a href="#cb2-16" aria-hidden="true" tabindex="-1"></a>    created_at            TIMESTAMPTZ <span class="kw">NOT</span> <span class="kw">NULL</span> <span class="kw">DEFAULT</span> now(),</span>
+<span id="cb2-17"><a href="#cb2-17" aria-hidden="true" tabindex="-1"></a>    last_seen_at          TIMESTAMPTZ,</span>
+<span id="cb2-18"><a href="#cb2-18" aria-hidden="true" tabindex="-1"></a>    status                TEXT <span class="kw">NOT</span> <span class="kw">NULL</span> <span class="kw">DEFAULT</span> <span class="st">&#39;active&#39;</span>,   <span class="co">-- active | revoked</span></span>
+<span id="cb2-19"><a href="#cb2-19" aria-hidden="true" tabindex="-1"></a>    <span class="kw">label</span>                 TEXT,                             <span class="co">-- &quot;this computer&quot; style, user-editable</span></span>
+<span id="cb2-20"><a href="#cb2-20" aria-hidden="true" tabindex="-1"></a>    token_hash            TEXT <span class="kw">NOT</span> <span class="kw">NULL</span> <span class="kw">UNIQUE</span>              <span class="co">-- sha256 of the bearer token; never store raw</span></span>
+<span id="cb2-21"><a href="#cb2-21" aria-hidden="true" tabindex="-1"></a>);</span>
+<span id="cb2-22"><a href="#cb2-22" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-23"><a href="#cb2-23" aria-hidden="true" tabindex="-1"></a><span class="co">-- Usage (metadata only; NO prompt/document/response columns exist) -------</span></span>
+<span id="cb2-24"><a href="#cb2-24" aria-hidden="true" tabindex="-1"></a><span class="kw">CREATE</span> <span class="kw">TABLE</span> usage_events (</span>
+<span id="cb2-25"><a href="#cb2-25" aria-hidden="true" tabindex="-1"></a>    <span class="kw">id</span>                    BIGSERIAL <span class="kw">PRIMARY</span> <span class="kw">KEY</span>,</span>
+<span id="cb2-26"><a href="#cb2-26" aria-hidden="true" tabindex="-1"></a>    user_id               UUID <span class="kw">NOT</span> <span class="kw">NULL</span> <span class="kw">REFERENCES</span> users(<span class="kw">id</span>),</span>
+<span id="cb2-27"><a href="#cb2-27" aria-hidden="true" tabindex="-1"></a>    device_id             UUID <span class="kw">NOT</span> <span class="kw">NULL</span> <span class="kw">REFERENCES</span> devices(<span class="kw">id</span>),</span>
+<span id="cb2-28"><a href="#cb2-28" aria-hidden="true" tabindex="-1"></a>    feature               TEXT <span class="kw">NOT</span> <span class="kw">NULL</span>,        <span class="co">-- document_qna | summarize | rewrite | alt_text | chat | agent</span></span>
+<span id="cb2-29"><a href="#cb2-29" aria-hidden="true" tabindex="-1"></a>    model                 TEXT <span class="kw">NOT</span> <span class="kw">NULL</span>,        <span class="co">-- e.g. &quot;gpt-5-nano&quot;</span></span>
+<span id="cb2-30"><a href="#cb2-30" aria-hidden="true" tabindex="-1"></a>    tokens_in             <span class="dt">INT</span> <span class="kw">NOT</span> <span class="kw">NULL</span>,</span>
+<span id="cb2-31"><a href="#cb2-31" aria-hidden="true" tabindex="-1"></a>    tokens_out            <span class="dt">INT</span> <span class="kw">NOT</span> <span class="kw">NULL</span>,</span>
+<span id="cb2-32"><a href="#cb2-32" aria-hidden="true" tabindex="-1"></a>    estimated_cost_usd    <span class="dt">NUMERIC</span>(<span class="dv">10</span>,<span class="dv">6</span>) <span class="kw">NOT</span> <span class="kw">NULL</span>,</span>
+<span id="cb2-33"><a href="#cb2-33" aria-hidden="true" tabindex="-1"></a>    status                TEXT <span class="kw">NOT</span> <span class="kw">NULL</span>,        <span class="co">-- allowed | throttled | blocked</span></span>
+<span id="cb2-34"><a href="#cb2-34" aria-hidden="true" tabindex="-1"></a>    abuse_flag            TEXT,                 <span class="co">-- null | high_volume | repeated_large_prompt | anomalous_device</span></span>
+<span id="cb2-35"><a href="#cb2-35" aria-hidden="true" tabindex="-1"></a>    created_at            TIMESTAMPTZ <span class="kw">NOT</span> <span class="kw">NULL</span> <span class="kw">DEFAULT</span> now()</span>
+<span id="cb2-36"><a href="#cb2-36" aria-hidden="true" tabindex="-1"></a>) <span class="kw">PARTITION</span> <span class="kw">BY</span> <span class="kw">RANGE</span> (created_at);   <span class="co">-- monthly partitions; drop partitions past retention (§4.4)</span></span>
+<span id="cb2-37"><a href="#cb2-37" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-38"><a href="#cb2-38" aria-hidden="true" tabindex="-1"></a><span class="kw">CREATE</span> <span class="kw">INDEX</span> <span class="kw">ON</span> usage_events (user_id, created_at);</span>
+<span id="cb2-39"><a href="#cb2-39" aria-hidden="true" tabindex="-1"></a><span class="kw">CREATE</span> <span class="kw">INDEX</span> <span class="kw">ON</span> usage_events (feature, created_at);</span>
+<span id="cb2-40"><a href="#cb2-40" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-41"><a href="#cb2-41" aria-hidden="true" tabindex="-1"></a><span class="co">-- Aggregates refreshed on write, read by admin console and client status --</span></span>
+<span id="cb2-42"><a href="#cb2-42" aria-hidden="true" tabindex="-1"></a><span class="kw">CREATE</span> <span class="kw">TABLE</span> monthly_usage_summary (</span>
+<span id="cb2-43"><a href="#cb2-43" aria-hidden="true" tabindex="-1"></a>    user_id               UUID <span class="kw">NOT</span> <span class="kw">NULL</span> <span class="kw">REFERENCES</span> users(<span class="kw">id</span>),</span>
+<span id="cb2-44"><a href="#cb2-44" aria-hidden="true" tabindex="-1"></a>    year_month            TEXT <span class="kw">NOT</span> <span class="kw">NULL</span>,         <span class="co">-- &#39;2026-07&#39;</span></span>
+<span id="cb2-45"><a href="#cb2-45" aria-hidden="true" tabindex="-1"></a>    request_count         <span class="dt">INT</span> <span class="kw">NOT</span> <span class="kw">NULL</span> <span class="kw">DEFAULT</span> <span class="dv">0</span>,</span>
+<span id="cb2-46"><a href="#cb2-46" aria-hidden="true" tabindex="-1"></a>    total_cost_usd        <span class="dt">NUMERIC</span>(<span class="dv">10</span>,<span class="dv">4</span>) <span class="kw">NOT</span> <span class="kw">NULL</span> <span class="kw">DEFAULT</span> <span class="dv">0</span>,</span>
+<span id="cb2-47"><a href="#cb2-47" aria-hidden="true" tabindex="-1"></a>    <span class="kw">PRIMARY</span> <span class="kw">KEY</span> (user_id, year_month)</span>
+<span id="cb2-48"><a href="#cb2-48" aria-hidden="true" tabindex="-1"></a>);</span>
+<span id="cb2-49"><a href="#cb2-49" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-50"><a href="#cb2-50" aria-hidden="true" tabindex="-1"></a><span class="co">-- Feature flags / kill switches ------------------------------------------</span></span>
+<span id="cb2-51"><a href="#cb2-51" aria-hidden="true" tabindex="-1"></a><span class="kw">CREATE</span> <span class="kw">TABLE</span> feature_flags (</span>
+<span id="cb2-52"><a href="#cb2-52" aria-hidden="true" tabindex="-1"></a>    feature               TEXT <span class="kw">PRIMARY</span> <span class="kw">KEY</span>,      <span class="co">-- document_qna | summarize | ... | hosted_ai (global)</span></span>
+<span id="cb2-53"><a href="#cb2-53" aria-hidden="true" tabindex="-1"></a>    enabled               <span class="dt">BOOLEAN</span> <span class="kw">NOT</span> <span class="kw">NULL</span> <span class="kw">DEFAULT</span> <span class="kw">true</span>,</span>
+<span id="cb2-54"><a href="#cb2-54" aria-hidden="true" tabindex="-1"></a>    disabled_reason        TEXT,</span>
+<span id="cb2-55"><a href="#cb2-55" aria-hidden="true" tabindex="-1"></a>    updated_at            TIMESTAMPTZ <span class="kw">NOT</span> <span class="kw">NULL</span> <span class="kw">DEFAULT</span> now()</span>
+<span id="cb2-56"><a href="#cb2-56" aria-hidden="true" tabindex="-1"></a>);</span>
+<span id="cb2-57"><a href="#cb2-57" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-58"><a href="#cb2-58" aria-hidden="true" tabindex="-1"></a><span class="co">-- Opt-in diagnostic records (separate table; never joined into usage_events) --</span></span>
+<span id="cb2-59"><a href="#cb2-59" aria-hidden="true" tabindex="-1"></a><span class="kw">CREATE</span> <span class="kw">TABLE</span> diagnostic_records (</span>
+<span id="cb2-60"><a href="#cb2-60" aria-hidden="true" tabindex="-1"></a>    <span class="kw">id</span>                    BIGSERIAL <span class="kw">PRIMARY</span> <span class="kw">KEY</span>,</span>
+<span id="cb2-61"><a href="#cb2-61" aria-hidden="true" tabindex="-1"></a>    usage_event_id        BIGINT <span class="kw">REFERENCES</span> usage_events(<span class="kw">id</span>),</span>
+<span id="cb2-62"><a href="#cb2-62" aria-hidden="true" tabindex="-1"></a>    redacted_prompt       TEXT <span class="kw">NOT</span> <span class="kw">NULL</span>,          <span class="co">-- PII-scrubbed, truncated</span></span>
+<span id="cb2-63"><a href="#cb2-63" aria-hidden="true" tabindex="-1"></a>    redacted_response     TEXT,</span>
+<span id="cb2-64"><a href="#cb2-64" aria-hidden="true" tabindex="-1"></a>    created_at            TIMESTAMPTZ <span class="kw">NOT</span> <span class="kw">NULL</span> <span class="kw">DEFAULT</span> now(),</span>
+<span id="cb2-65"><a href="#cb2-65" aria-hidden="true" tabindex="-1"></a>    expires_at            TIMESTAMPTZ <span class="kw">NOT</span> <span class="kw">NULL</span>    <span class="co">-- enforced by a daily cleanup job, §4.4</span></span>
+<span id="cb2-66"><a href="#cb2-66" aria-hidden="true" tabindex="-1"></a>);</span>
+<span id="cb2-67"><a href="#cb2-67" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-68"><a href="#cb2-68" aria-hidden="true" tabindex="-1"></a><span class="co">-- Admin actions audit trail ------------------------------------------------</span></span>
+<span id="cb2-69"><a href="#cb2-69" aria-hidden="true" tabindex="-1"></a><span class="kw">CREATE</span> <span class="kw">TABLE</span> admin_actions (</span>
+<span id="cb2-70"><a href="#cb2-70" aria-hidden="true" tabindex="-1"></a>    <span class="kw">id</span>                    BIGSERIAL <span class="kw">PRIMARY</span> <span class="kw">KEY</span>,</span>
+<span id="cb2-71"><a href="#cb2-71" aria-hidden="true" tabindex="-1"></a>    admin_id              TEXT <span class="kw">NOT</span> <span class="kw">NULL</span>,</span>
+<span id="cb2-72"><a href="#cb2-72" aria-hidden="true" tabindex="-1"></a>    action                TEXT <span class="kw">NOT</span> <span class="kw">NULL</span>,          <span class="co">-- disable_user | disable_device | set_quota | rotate_key | ...</span></span>
+<span id="cb2-73"><a href="#cb2-73" aria-hidden="true" tabindex="-1"></a>    target                TEXT <span class="kw">NOT</span> <span class="kw">NULL</span>,          <span class="co">-- user_id / device_id / feature id / &quot;global&quot;</span></span>
+<span id="cb2-74"><a href="#cb2-74" aria-hidden="true" tabindex="-1"></a>    reason                TEXT,</span>
+<span id="cb2-75"><a href="#cb2-75" aria-hidden="true" tabindex="-1"></a>    created_at            TIMESTAMPTZ <span class="kw">NOT</span> <span class="kw">NULL</span> <span class="kw">DEFAULT</span> now()</span>
+<span id="cb2-76"><a href="#cb2-76" aria-hidden="true" tabindex="-1"></a>);</span></code></pre></div>
+<p>Redis holds only ephemeral, reconstructable state: sliding-window
+rate counters (<code>ratelimit:{user_id}:{window}</code>), the
+current-month running total per user (write-through cache of
+<code>monthly_usage_summary</code>, source of truth is Postgres), and
+the salted-IP-hash sets for abuse heuristics (§9).</p>
+<h2 id="secret-management-plan">6. Secret management plan</h2>
+<ul>
+<li><strong>Where the OpenAI key lives:</strong> a managed secret store
+— Fly.io Secrets (matches the existing <code>quillin-hub</code>
+deployment target and its <code>fly.toml</code>-style conventions) or,
+if self-hosting elsewhere, Doppler or the platform’s native secret
+manager (AWS Secrets Manager / Azure Key Vault / GCP Secret Manager).
+Never a <code>.env</code> file committed to git, never a Kubernetes
+ConfigMap (must be a Secret if k8s is ever used), never baked into a
+container image layer.</li>
+<li><strong>How the process gets it:</strong> injected as an environment
+variable at container/process start by the platform’s secret-injection
+mechanism. The Gateway code reads
+<code>os.environ["OPENAI_API_KEY"]</code> exactly once, at startup, into
+a module-level client object; the raw string is never logged, never
+included in any response, never written to disk.</li>
+<li><strong>What never touches the repo:</strong> the key itself,
+obviously, but also no <em>real</em> value in any
+<code>.env.example</code>; use <code>OPENAI_API_KEY=sk-REPLACE-ME</code>
+placeholders only, exactly like <code>quillin-hub</code>’s existing
+env-var documentation pattern.</li>
+<li><strong>CI/CD:</strong> the Gateway’s own CI pipeline (separate
+repo, or a private path in a monorepo — recommendation: separate private
+repo, since this service’s deployment secrets must never be reachable by
+QUILL’s public, contributor-open-source CI) injects the secret only at
+deploy time via the hosting platform’s secret store, never as a GitHub
+Actions secret exposed to a workflow triggered by a public PR (the exact
+category of leak GATE-9-style audits exist to prevent client-side; the
+Gateway needs its own equivalent CI hygiene, just server-side).</li>
+<li><strong>Rotation:</strong> scheduled quarterly, plus immediately on
+any suspicion. Rotation procedure: mint the new key at OpenAI → set it
+as the <em>secondary</em> env var → deploy a version of the Gateway that
+tries primary-then- secondary → confirm success rate unaffected for 24h
+→ revoke the old key at OpenAI → remove it from the secret store →
+deploy again with only the new key as primary. This avoids any
+request-serving downtime during rotation.</li>
+<li><strong>Encryption at rest:</strong> every recommended secret store
+above encrypts at rest by default; verify this is on (it is, for all
+four options named) rather than re-implement encryption.</li>
+<li><strong>Access control:</strong> exactly two people (the maintainer
++ one backup) can read the secret value from the platform’s UI/CLI;
+every other team member gets deploy access without secret-read access
+where the platform supports that separation (Fly.io and the major clouds
+all do).</li>
+</ul>
+<h2 id="authentication-and-onboarding">7. Authentication and
+onboarding</h2>
+<p><strong>Recommendation: OAuth 2.0 Device Authorization Grant, reusing
+<code>device_login.py</code> + <code>copilot_auth.py</code>’s pattern
+almost verbatim</strong>, because:</p>
+<ul>
+<li>It’s already implemented, tested, and screen-reader-friendly
+(<code>announce_device_code()</code>,
+<code>describe_login_result()</code>) — zero new UI-flow design
+risk.</li>
+<li>It needs no password, no CAPTCHA, no browser SDK embedded in the
+desktop client — the user reads a short code, opens any browser (their
+phone is fine), confirms, and QUILL’s background poll picks up the
+authorization. This is explicitly good for accessibility: no in-app
+OAuth popup/webview to navigate with a screen reader.</li>
+<li>Email/GitHub/Google login are all viable as the <em>identity
+provider</em> behind the device-code flow’s confirmation page, decided
+later without changing the client-side flow at all — the confirmation
+page is a Gateway-hosted web page, not part of the open-source
+client.</li>
+</ul>
+<p><strong>Recommended first-beta identity provider: none
+required.</strong> The simplest accessible flow for a free-tier beta is
+<strong>anonymous device registration</strong>: the confirmation page
+just asks “Is this you? [Confirm]” with no login at all, and a device is
+registered with a fresh pseudonymous <code>user_id</code>. This
+maximizes ease of first use at the cost of “a blocked user can just
+re-register” — acceptable for a beta with modest hosted allowances and
+the abuse controls in §9; revisit adding a lightweight identity (email
+magic link) if abuse-by-reregistration becomes a real problem in
+practice.</p>
+<h3 id="flow-concretely">Flow, concretely</h3>
+<ol type="1">
+<li>Client calls <code>POST /v1/device/code</code> → Gateway returns
+<code>{device_code, user_code, verification_uri, verification_uri_complete, interval, expires_in}</code>
+(identical shape to <code>DeviceCodeGrant</code> in
+<code>device_login.py</code>).</li>
+<li>QUILL announces: “To connect QUILL’s free AI, go to
+gateway.quillforall.org/connect and enter code ABCD-1234. This window
+updates automatically — no need to come back here.” (mirrors
+<code>announce_device_code()</code>).</li>
+<li>Client polls <code>POST /v1/device/token</code> every
+<code>interval</code> seconds (<code>run_device_login()</code>’s
+existing backoff/expiry logic, unchanged).</li>
+<li>On confirm, Gateway creates a <code>users</code> row (or reuses one
+if the browser session already has a Gateway cookie —
+same-user-multiple-devices path) and a <code>devices</code> row, returns
+a bearer token.</li>
+<li>Client stores the token via
+<code>save_provider_api_key("quill_gateway", token)</code> — the
+existing per-provider Credential-Manager-first pattern, target
+<code>"QUILL:assistant:quill_gateway:api-key"</code>. No new
+secure-storage code.</li>
+<li>Every subsequent Gateway request sends
+<code>Authorization: Bearer &lt;token&gt;</code>; the Gateway looks up
+<code>devices.token_hash = sha256(token)</code> (never stores the raw
+token) to resolve <code>user_id</code>/<code>device_id</code>.</li>
+</ol>
+<h3 id="new-computer-compromised-device">New computer / compromised
+device</h3>
+<ul>
+<li><strong>New computer:</strong> run device registration again; it’s a
+<em>new</em> device row under a <em>new</em> pseudonymous user by
+default (anonymous mode has no way to say “same person, second computer”
+without an identity provider — this is the honest tradeoff of the
+zero-friction anonymous path, and worth stating to the user plainly:
+“Free hosted AI allowance is per device during the beta.”).</li>
+<li><strong>If/when email-linked accounts ship:</strong> device
+registration on a second computer offers “Already have a QUILL AI
+account? Enter your email to get a link” — confirming via the magic link
+attaches the new device to the existing <code>user_id</code>, so quota
+is shared correctly across the user’s computers.</li>
+<li><strong>Compromised device:</strong> admin console (§10) or a
+client-side “This isn’t my computer anymore” button both call
+<code>DELETE /v1/devices/{id}</code>, which flips
+<code>devices.status = 'revoked'</code>; the next request with that
+token’s hash is rejected immediately, no propagation delay (checked
+against Postgres directly for this specific, low-frequency path — not
+cached).</li>
+</ul>
+<h2 id="server-side-quota-model">8. Server-side quota model</h2>
+<p><strong>Every check below happens in the Gateway before the OpenAI
+call is made, using the cheapest available signal first</strong> (Redis
+counter check, ~1ms) before falling through to anything requiring a
+database round-trip.</p>
+<table>
+<colgroup>
+<col style="width: 33%" />
+<col style="width: 33%" />
+<col style="width: 33%" />
+</colgroup>
+<thead>
+<tr>
+<th>Limit</th>
+<th>Default (first beta)</th>
+<th>Enforcement point</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Monthly request quota per user</td>
+<td>500 requests</td>
+<td>Redis counter <code>ratelimit:{user_id}:month</code>, TTL to month
+boundary; source of truth reconciled nightly against
+<code>monthly_usage_summary</code></td>
+</tr>
+<tr>
+<td>Daily request quota per user</td>
+<td>60 requests</td>
+<td>Redis counter, 24h TTL</td>
+</tr>
+<tr>
+<td>Hourly rate limit per user</td>
+<td>20 requests</td>
+<td>Redis sliding window</td>
+</tr>
+<tr>
+<td>Hourly rate limit per device</td>
+<td>20 requests</td>
+<td>same, keyed by device_id — catches one compromised token spamming
+without punishing the user’s other devices</td>
+</tr>
+<tr>
+<td>Per-feature monthly cap</td>
+<td>document_qna 200, summarize 200, rewrite 200, alt_text 50, chat 300
+(features can overlap a shared pool up to the monthly total)</td>
+<td>Redis counter per <code>(user_id, feature, month)</code></td>
+</tr>
+<tr>
+<td>Max input tokens per request</td>
+<td>4,000 tokens (~16,000 chars)</td>
+<td>checked after tokenizing the prompt server-side, before the OpenAI
+call</td>
+</tr>
+<tr>
+<td>Max output tokens per request</td>
+<td>800 tokens</td>
+<td>passed as <code>max_tokens</code> to the OpenAI call, hard cap</td>
+</tr>
+<tr>
+<td>Max document chunk count per document-Q&amp;A request</td>
+<td>6 chunks (see §14 — the client only ever sends relevant chunks,
+never a whole document)</td>
+<td>validated server-side against the request body</td>
+</tr>
+<tr>
+<td>Max image size</td>
+<td>4 MB, longest edge 2048px (client resizes before sending — see
+§15)</td>
+<td>rejected with a clear message if exceeded</td>
+</tr>
+<tr>
+<td>Max images per day per user</td>
+<td>20</td>
+<td>Redis counter</td>
+</tr>
+<tr>
+<td>Max estimated monthly cost per user</td>
+<td>$0.50 (nano-class pricing makes 500 requests land well under this;
+the cap is a backstop, not the binding constraint)</td>
+<td>computed running total in <code>monthly_usage_summary</code>,
+checked before each request once the user is within 90% of it (cheap
+early-exit skip below that)</td>
+</tr>
+<tr>
+<td>Global monthly budget cap</td>
+<td>$250/month for the first beta (500 users × ~$0.50 headroom, see
+§13)</td>
+<td>checked against a Redis-cached sum, refreshed every write; crossing
+100% flips <code>feature_flags.hosted_ai.enabled = false</code>
+automatically pending admin review</td>
+</tr>
+<tr>
+<td>Emergency kill switch</td>
+<td>n/a</td>
+<td><code>feature_flags</code> row <code>hosted_ai</code>, checked
+first, before any per-user logic — one admin action pauses
+everything</td>
+</tr>
+<tr>
+<td>Model allowlist</td>
+<td><code>{"gpt-5-nano"}</code> only for hosted tier, hardcoded
+server-side, never client-selectable</td>
+<td>request body’s model field, if present at all, is ignored — the
+Gateway decides the model per feature</td>
+</tr>
+<tr>
+<td>Prompt/system-template allowlist</td>
+<td>one fixed template per <code>feature</code> id, server-side
+only</td>
+<td>client sends <code>{feature, prompt}</code>; Gateway looks up the
+fixed template for <code>feature</code> and wraps the client’s prompt in
+it — the client cannot supply its own system prompt</td>
+</tr>
+</tbody>
+</table>
+<h3
+id="degradation-messages-client-facing-exactly-these-or-close-to-them">Degradation
+messages (client-facing, exactly these or close to them)</h3>
+<ul>
+<li>“You’ve used your free QUILL AI allowance for this month. It resets
+on the 1st, or you can add your own API key to continue right
+away.”</li>
+<li>“This selection is too large for the free tier — try a shorter
+passage, or switch to your own API key for full documents.”</li>
+<li>“Image analysis is temporarily paused while we review unusual
+activity on hosted AI — document Q&amp;A and rewriting are still
+available.”</li>
+<li>“Hosted AI is paused for everyone right now while we look into
+something — check quillforall.org/status, or use your own API key in the
+meantime.”</li>
+<li>“You’ve reached today’s free limit. It resets at midnight, or add
+your own API key to keep going now.”</li>
+</ul>
+<p>Every one of these is generated from the Gateway’s structured error
+response
+(<code>{status: "quota_exceeded", scope: "monthly"|"daily"|"hourly"| "feature"|"global", reset_at, message}</code>),
+and <code>GatewayBackend</code> translates <code>scope</code> +
+<code>reset_at</code> into the exact wording — the wording lives in one
+place (the client’s i18n catalog, <code>_()</code>-wrapped like every
+other QUILL string) so it’s translatable, not hardcoded Gateway-side
+strings shown verbatim.</p>
+<h2 id="abuse-detection-and-cutoff-model">9. Abuse detection and cutoff
+model</h2>
+<p>Explicit constraint carried through every control here: <strong>no
+CAPTCHA, ever, anywhere in this flow.</strong> QUILL is an
+accessibility-first product; a CAPTCHA is close to a hard blocker for
+many blind users and is the wrong tool for this problem regardless.</p>
+<table>
+<colgroup>
+<col style="width: 33%" />
+<col style="width: 33%" />
+<col style="width: 33%" />
+</colgroup>
+<thead>
+<tr>
+<th>Signal</th>
+<th>What it catches</th>
+<th>Response</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Hourly rate limit (§8)</td>
+<td>Simple volume abuse</td>
+<td>Soft 429 with <code>reset_at</code>; never a ban on first hit</td>
+</tr>
+<tr>
+<td>Repeated near-identical large prompts in a short window</td>
+<td>Someone hammering the same big request (scripted abuse, or a runaway
+retry loop in a bug)</td>
+<td>After 5 near-duplicate large prompts in 10 minutes, flag
+<code>abuse_flag = 'repeated_large_prompt'</code> on those events and
+silently drop the per-request cost cap to force the smallest
+model/shortest response for that user for the next hour — a soft,
+invisible throttle before any hard block</td>
+</tr>
+<tr>
+<td>Repeated failed-auth attempts (bad/expired token)</td>
+<td>Credential stuffing, a broken client build</td>
+<td>5 failures in 5 minutes from one IP → temporary IP-level soft rate
+limit (not a block) for 15 minutes; does not affect other users sharing
+that IP (e.g. NAT/VPN/campus network) beyond a slightly lower
+ceiling</td>
+</tr>
+<tr>
+<td>Token-budget anomaly (this device’s average tokens-per-request is a
+big outlier vs. its own 7-day baseline)</td>
+<td>A device suddenly being used very differently (compromised token, or
+automated scripting against a stolen token)</td>
+<td>Flag for the admin review queue (below); do not auto-block —
+legitimate use also produces occasional big outliers (a user finally
+tries document Q&amp;A on a long chapter after a week of short
+rewrites)</td>
+</tr>
+<tr>
+<td>IP soft limits</td>
+<td>Loose signal only, one input among several, never a sole
+trigger</td>
+<td>Contributes to the review-queue score, never blocks alone (shared
+IPs are common and innocent — libraries, schools, screen-reader user
+groups on shared connections)</td>
+</tr>
+<tr>
+<td>Admin review queue</td>
+<td>Aggregates the above into a ranked list an admin can glance at</td>
+<td>A device/user entering <code>status = 'review'</code> gets a
+<strong>reduced</strong>, not zero, quota (e.g. 5 requests/day) while an
+admin looks — legitimate users barely notice; determined abuse gets
+throttled to uneconomical levels without a hard, sudden cutoff that
+could catch an innocent user badly</td>
+</tr>
+<tr>
+<td>Blocklist / allowlist</td>
+<td>Manual, admin-set</td>
+<td><code>users.status = 'blocked'</code> short-circuits every check
+with a clear, honest message — never a silent failure that looks like a
+bug</td>
+</tr>
+</tbody>
+</table>
+<h3
+id="explicitly-protecting-legitimate-screen-reader-usage-patterns">Explicitly
+protecting legitimate screen-reader usage patterns</h3>
+<ul>
+<li><strong>Retry tolerance:</strong> the near-duplicate-prompt
+heuristic requires <em>large</em> prompts repeated <em>many</em> times
+in a <em>short</em> window — a user re-issuing “summarize this” three
+times because they didn’t hear the result clearly the first time, or is
+learning the keyboard shortcut, never approaches this threshold (5 large
+duplicates in 10 minutes is a lot of repetition for a human retry
+pattern, easily distinguishable from a script).</li>
+<li><strong>Burst-then-idle is normal, not suspicious:</strong> the
+hourly limit (20/hour) is generous enough that a focused editing session
+doesn’t trip it, and the daily/monthly caps are the actual binding
+constraint for normal use — hourly exists only to stop a true runaway
+loop, not to throttle legitimate rapid work.</li>
+<li><strong>No behavioral biometrics, no keystroke-timing
+analysis:</strong> anything that profiles <em>how</em> someone types or
+interacts risks flagging atypical-but- legitimate assistive-technology
+usage patterns as “bot-like.” This system deliberately limits itself to
+request volume/size/timing at the API layer, never client-side
+interaction telemetry.</li>
+</ul>
+<h2 id="admin-console-requirements">10. Admin console requirements</h2>
+<p>A small internal web UI (or, for the first beta, a CLI + a handful of
+authenticated API endpoints — a full UI is a nice-to-have, not a beta
+blocker) that can, for any user/device/feature:</p>
+<ul>
+<li>View a usage summary (<code>monthly_usage_summary</code>, request
+counts, cost) — <strong>never</strong> a document/prompt viewer, because
+that data doesn’t exist to view (§4, §5).</li>
+<li>Set <code>users.status</code> to
+<code>active</code>/<code>reduced</code>/<code>review</code>/<code>blocked</code>.</li>
+<li>Set <code>devices.status</code> to
+<code>active</code>/<code>revoked</code>.</li>
+<li>Toggle any row in <code>feature_flags</code> (per-feature or the
+global <code>hosted_ai</code> switch).</li>
+<li>Adjust
+<code>monthly_request_cap</code>/<code>monthly_cost_cap_usd</code> for
+one user immediately (e.g. lower a suspicious account’s cap to near-zero
+without fully blocking them).</li>
+<li>Trigger a key-rotation runbook (documented procedure, §6/§11 — not
+necessarily a one-click UI action, but the console should show “key age”
+so it’s visible when rotation is due).</li>
+<li>Block by IP range or device fingerprint (device fingerprint here
+means <code>device_id</code>, not a browser-canvas-style fingerprint —
+QUILL has no such mechanism and shouldn’t build one).</li>
+<li>View the total current-month spend against the global budget cap,
+with the same 50/75/90/100% alerting thresholds as §13.</li>
+<li>Every admin action writes an <code>admin_actions</code> row (§5) —
+the admin console itself is audited, so “who disabled this user and why”
+is always answerable.</li>
+</ul>
+<h2 id="secret-management-see-6-kept-together-intentionally-this">11.
+Secret management — see §6 (kept together intentionally; this</h2>
+<p>section number preserved for the deliverable checklist below)</p>
+<h2 id="byok-plan">12. BYOK plan</h2>
+<p>BYOK is not new to QUILL — it’s the <em>existing, default</em> mode
+for every provider today (<code>providers.py</code>,
+<code>assistant_ai.py</code>). The Gateway plan changes nothing about
+it; it only adds a fifth (well, first-among-equals) provider option that
+needs no key at all. Recorded here for completeness against the
+requested deliverable list:</p>
+<ul>
+<li>Key entry: unchanged, existing
+<code>assistant_ai.save_provider_api_key()</code> flow.</li>
+<li>Storage: unchanged, existing Windows Credential Manager /
+DPAPI-encrypted-fallback pattern (<code>assistant_ai.py:653/623</code>,
+per-provider variant at <code>:738/711</code>). On Windows this is
+already Credential-Manager- first with DPAPI fallback exactly as
+requested; macOS already falls back to Keychain (<code>dpapi.py</code>
+cross-platform shim, per the research above).</li>
+<li>Transport: BYOK calls go <strong>directly to the provider</strong>,
+never through the Gateway — this is the existing behavior
+(<code>ProviderChatBackend</code> → raw <code>urllib</code> calls in
+<code>assistant_ai.py</code>) and should stay that way. Routing BYOK
+traffic through the Gateway would mean QUILL’s server sees BYOK users’
+prompts, which is a privacy regression with no benefit (the whole point
+of BYOK is the user’s own trust relationship with their own
+provider).</li>
+<li>Responsibility notice: already exists in QUILL’s provider setup copy
+(per <code>provider_api_key_storage_hint()</code> in
+<code>providers.py:141</code>); extend it with one line noting that BYOK
+usage is billed by the provider directly and is entirely separate from
+the free hosted allowance.</li>
+<li>Separate tracking: BYOK usage is not tracked by the Gateway at all
+(it never sees BYOK traffic). If QUILL wants local BYOK usage stats for
+the user’s own awareness, that’s a client-side-only feature
+(e.g. counting local API calls in <code>settings.json</code>-adjacent
+local state) — out of scope for this plan, which is specifically about
+the <em>hosted</em> allowance.</li>
+</ul>
+<h2 id="cost-control-model-for-500-monthly-active-users">13.
+Cost-control model for 500 monthly active users</h2>
+<p><strong>Assumptions grounded in the plan above:</strong> nano-class
+model only (<code>gpt-5-nano</code>-equivalent pricing class), max 800
+output tokens, max 4,000 input tokens, chunked document Q&amp;A (not
+whole-document sends — see §14), capped-and-cached summaries.</p>
+<h3
+id="per-request-cost-ceiling-worst-case-at-the-hard-caps">Per-request
+cost ceiling (worst case, at the hard caps)</h3>
+<p>At nano-class pricing (illustrative — use the actual current
+published rate at implementation time, these numbers are a planning
+estimate, not a quote): roughly $0.05–$0.15 per <strong>million</strong>
+input tokens and $0.40–$0.60 per million output tokens is typical for
+the smallest current-generation models. At the hard per-request caps
+(4,000 in / 800 out), one worst-case request costs on the order of
+<strong>$0.001–$0.002</strong>. Real average requests (shorter
+selections, not maxed-out documents) will be meaningfully cheaper — call
+it <strong>$0.0005</strong> average, a deliberately conservative
+planning number.</p>
+<h3 id="mau-projection">500 MAU projection</h3>
+<table>
+<colgroup>
+<col style="width: 50%" />
+<col style="width: 50%" />
+</colgroup>
+<thead>
+<tr>
+<th>Assumption</th>
+<th>Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Monthly active users</td>
+<td>500</td>
+</tr>
+<tr>
+<td>Average requests/user/month (most users well under the 500 cap; a
+full-catalog free tier isn’t the expectation)</td>
+<td>60 (12% of the hard cap — realistic for an “occasional AI helper”
+usage pattern, not a power-user assumption)</td>
+</tr>
+<tr>
+<td>Average cost/request</td>
+<td>$0.0005</td>
+</tr>
+<tr>
+<td><strong>Projected monthly spend at average usage</strong></td>
+<td><strong>500 × 60 × $0.0005 = $15/month</strong></td>
+</tr>
+<tr>
+<td>Worst case: every user maxes every cap every month</td>
+<td>500 × 500 × $0.002 = <strong>$500/month</strong></td>
+</tr>
+</tbody>
+</table>
+<p><strong>Recommended beta budget cap: $250/month.</strong> This sits
+comfortably above the realistic-average projection ($15) with more than
+15x headroom for adoption growth or heavier-than-expected usage, while
+still being far below the theoretical worst case ($500) — meaning the
+hard per-user caps in §8, not the global budget cap, are the primary
+defense against runaway cost; the global cap is the backstop that
+catches “our per-user math was wrong” rather than the everyday
+control.</p>
+<h3 id="alerting-thresholds">Alerting thresholds</h3>
+<table>
+<colgroup>
+<col style="width: 50%" />
+<col style="width: 50%" />
+</colgroup>
+<thead>
+<tr>
+<th>Threshold</th>
+<th>Action</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>50% of monthly budget ($125)</td>
+<td>Informational Slack/email/webhook to the maintainer — no action
+needed, just visibility</td>
+</tr>
+<tr>
+<td>75% ($187.50)</td>
+<td>Same alert, escalated tone; review the usage-by-feature breakdown
+for anything unexpected</td>
+</tr>
+<tr>
+<td>90% ($225)</td>
+<td>Alert + recommend tightening per-user caps for the remainder of the
+month via the admin console (§10) rather than waiting for the hard
+stop</td>
+</tr>
+<tr>
+<td>100% ($250)</td>
+<td><code>feature_flags.hosted_ai.enabled</code> auto-flips to
+<code>false</code>; every client sees “Hosted AI is paused while we
+review unusual activity” (§8); BYOK and local models are entirely
+unaffected, since they never touch this budget</td>
+</tr>
+</tbody>
+</table>
+<h3 id="recommended-defaults-recap-also-see-8s-full-table">Recommended
+defaults recap (also see §8’s full table)</h3>
+<ul>
+<li>Free monthly allowance: <strong>500 requests/user</strong>, expected
+real average usage far below that.</li>
+<li>Beta global budget cap: <strong>$250/month</strong>.</li>
+<li>Fallback when the cap is reached: <strong>pause hosted AI, not the
+app</strong> — BYOK and local-model paths keep working; the client’s
+messaging always mentions “add your own key to continue now” as the
+immediate workaround.</li>
+</ul>
+<h3 id="cost-levers-if-adoption-outpaces-the-plan">Cost levers, if
+adoption outpaces the plan</h3>
+<ol type="1">
+<li>Lower the per-user monthly cap (500 → 250) — a config change, no
+deploy.</li>
+<li>Add response caching for genuinely repeat-safe operations (e.g. two
+users summarizing the exact same publicly-shared document text) —
+marginal savings, not the primary lever, and only safe where no user-
+specific context is in the prompt.</li>
+<li>Raise the global budget cap once real usage data justifies it — the
+whole point of measuring first is not guessing this number twice.</li>
+</ol>
+<h2 id="document-qa-strategy">14. Document Q&amp;A strategy</h2>
+<p><strong>Never “send the whole document every time.”</strong> The plan
+distinguishes four scopes, matching how <code>document_qa.py</code> and
+<code>assistant.py</code> already let a user scope a question, and adds
+a consent step before anything server-side is involved:</p>
+<table>
+<colgroup>
+<col style="width: 33%" />
+<col style="width: 33%" />
+<col style="width: 33%" />
+</colgroup>
+<thead>
+<tr>
+<th>Scope</th>
+<th>What’s sent to the Gateway</th>
+<th>Local work first</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Selected text</td>
+<td>Exactly the selection, verbatim</td>
+<td>none needed — it’s already small</td>
+</tr>
+<tr>
+<td>Current paragraph/section</td>
+<td>The paragraph/section text only (QUILL already has section-boundary
+logic from <code>extract_sections</code> used by the Audio Studio’s
+chaptering — reuse it to find “the current section” rather than
+inventing new boundary detection)</td>
+<td>none</td>
+</tr>
+<tr>
+<td>Whole document</td>
+<td><strong>Chunked locally first.</strong> QUILL already parses
+documents into sections; a lightweight local retrieval step (even simple
+keyword/heading-overlap scoring, no embedding model required for v1)
+picks the top N sections most relevant to the question, capped at the
+Gateway’s 6-chunk/4,000-token limit (§8), and <em>those</em> chunks are
+sent — never the raw whole document</td>
+<td>chunk + rank locally</td>
+</tr>
+<tr>
+<td>Document collection (e.g. a Vault)</td>
+<td>Same chunking principle, but scored across multiple documents;
+explicitly flagged as a v2/later feature, not part of the first beta —
+the complexity of cross-document ranking isn’t justified until
+whole-document Q&amp;A is proven out</td>
+<td>out of scope for beta</td>
+</tr>
+</tbody>
+</table>
+<h3 id="consent-explicitly">Consent, explicitly</h3>
+<p>Before the <em>first</em> time in a session that any text leaves the
+local machine for hosted AI, QUILL shows (once, dismissible,
+screen-reader clear): “This will send the selected text (about N words)
+to QUILL’s hosted AI. Continue?” — mirroring the exact pattern QUILL
+already uses for other consented network actions (e.g. the Audio
+Studio’s book-lookup consent dialog, “QUILL will contact Open Library
+and MusicBrainz…”). Whole-document mode’s consent message states plainly
+that several excerpts (not the whole document) will be sent, and names
+roughly how much (“about 3 short excerpts, roughly 800 words
+total”).</p>
+<h3 id="caching">Caching</h3>
+<p>Short summaries can be cached <strong>locally, client-side, keyed by
+a hash of the exact input text</strong> — if a user asks for the same
+paragraph’s summary twice, the second call never leaves the machine.
+This is a pure client- side optimization (a small local cache in QUILL’s
+existing app-data directory, same pattern as other local caches like
+<code>translate_sections.py</code>’s translation cache) and needs no
+Gateway-side change.</p>
+<h2 id="image-and-alt-text-strategy">15. Image and alt-text
+strategy</h2>
+<p>Builds directly on the existing
+<code>vision.py describe_image()</code> — same function signature, same
+per-provider multimodal body builders, only the transport target changes
+to the Gateway when <code>quill_gateway</code> is the active
+provider.</p>
+<ul>
+<li><strong>User confirmation before every image send</strong> — already
+exists in spirit (image description is always an explicit user action,
+never automatic); make the consent copy explicit that the image itself,
+not just a description of it, leaves the machine: “Send this image to
+QUILL’s hosted AI for a description? The image file itself will be
+uploaded.”</li>
+<li><strong>Max image size: 4 MB, longest edge resized to 2048px
+client-side before sending</strong> (not server-side rejection after
+upload — resizing locally saves the user’s bandwidth and avoids
+uploading data that will just be rejected). <code>vision.py</code>
+already handles HEIC→JPEG conversion; add a resize step alongside
+it.</li>
+<li><strong>Daily image limit: 20/user</strong> (§8) — generous for
+normal alt-text- authoring workflows, restrictive enough to bound
+vision-model cost, which is meaningfully higher per-call than text.</li>
+<li><strong>Alt text vs. long description:</strong> both are existing
+prompt variants in <code>vision.py</code>
+(<code>DEFAULT_IMAGE_DESCRIPTION_PROMPT</code> and presumably a longer
+variant) — the Gateway’s fixed per-feature template (§8) has one entry
+for each, both nano-class, both capped output tokens (shorter for alt
+text, longer for full description).</li>
+<li><strong>Editing workflow:</strong> unchanged from today — QUILL
+always inserts generated alt text into an editable field for the user to
+review/adjust before it’s committed, never silently.</li>
+<li><strong>Privacy notice, specific to images:</strong> stated plainly
+and separately from the general hosted-AI notice, since images are
+qualitatively more sensitive than short text excerpts — “unless you use
+your own API key or a local vision model, this image is sent to OpenAI’s
+servers to generate a description.”</li>
+</ul>
+<h2 id="recommended-stack">16. Recommended stack</h2>
+<table>
+<colgroup>
+<col style="width: 33%" />
+<col style="width: 33%" />
+<col style="width: 33%" />
+</colgroup>
+<thead>
+<tr>
+<th>Component</th>
+<th>Choice</th>
+<th>Why</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Web framework</td>
+<td><strong>FastAPI</strong></td>
+<td>async-native (matters for a proxying service awaiting upstream
+OpenAI calls), automatic OpenAPI schema (useful for the admin console
+and for the client’s <code>GatewayBackend</code> to be generated/kept in
+sync), small dependency footprint vs. Django</td>
+</tr>
+<tr>
+<td>Database</td>
+<td><strong>PostgreSQL</strong></td>
+<td>matches <code>quillin-hub</code>’s existing choice (one less thing
+for the same small team to operate differently); partitioned
+<code>usage_events</code> table (§5) scales fine for this volume</td>
+</tr>
+<tr>
+<td>Rate limiting</td>
+<td><strong>Redis</strong></td>
+<td>sub-millisecond counter checks are the right tool for “check before
+every OpenAI call”; <code>quillin-hub</code> doesn’t use Redis today,
+but this service’s access pattern (many small counter checks) genuinely
+needs it where the storefront didn’t</td>
+</tr>
+<tr>
+<td>Secrets</td>
+<td>Fly.io Secrets (if deploying there, matching
+<code>quillin-hub</code>’s target) or Doppler/cloud-native secret
+manager otherwise</td>
+<td>see §6</td>
+</tr>
+<tr>
+<td>Structured logging</td>
+<td>Python <code>structlog</code> or stdlib <code>logging</code> with a
+JSON formatter + a redaction filter (mirrors
+<code>quill/stability/redaction.py</code>’s existing scrub-pattern
+approach, ported server-side)</td>
+<td>never emits prompt/document text by construction, not just by
+discipline</td>
+</tr>
+<tr>
+<td>Admin console</td>
+<td>Start as a small FastAPI-templated internal page (Jinja2,
+server-rendered, basic-auth or the same device-code login flow §7 gated
+to an admin allowlist) — a full SPA is not justified at this scale</td>
+<td>keeps the same small stack, no separate frontend build pipeline</td>
+</tr>
+<tr>
+<td>Deployment</td>
+<td><strong>Fly.io</strong> (matches <code>quillin-hub</code>’s existing
+runbook and conventions — one platform, one set of ops knowledge for the
+team)</td>
+<td>small VPS-class pricing, built-in secrets, easy Postgres/Redis
+add-ons, already-proven for this project</td>
+</tr>
+<tr>
+<td>CI/CD</td>
+<td>Separate private repository from the open-source QUILL client;
+GitHub Actions with deploy secrets scoped to that private repo only,
+never triggered by a public-repo PR</td>
+<td>prevents exactly the class of leak GATE-9 exists to catch
+client-side</td>
+</tr>
+<tr>
+<td>Monitoring/alerting</td>
+<td>Fly.io’s built-in metrics + a lightweight external uptime check (the
+<code>quillin-hub</code> runbook already calls out a
+<code>/healthz</code> gap as a to-do — build this service’s
+<code>/healthz</code> from day one) + the budget-threshold alerts (§13)
+via a simple webhook to Slack/email/Discord</td>
+<td>boring, cheap, sufficient at this scale</td>
+</tr>
+<tr>
+<td>Backups</td>
+<td>Managed Postgres automatic backups (Fly Postgres or equivalent) with
+the retention policy (§4.4) enforced via a scheduled cleanup job, not by
+disabling backups of expired-but-not-yet-cleaned rows</td>
+<td>standard practice, no custom backup tooling needed</td>
+</tr>
+<tr>
+<td>Key rotation</td>
+<td>Documented runbook (§6), executed manually on a quarterly calendar
+reminder — full automation isn’t justified until rotation frequency
+increases</td>
+<td>matches the realistic operational capacity of a small open-source
+project</td>
+</tr>
+<tr>
+<td>Incident response</td>
+<td>A one-page runbook: “how to flip the global kill switch,” “how to
+rotate the key under suspicion,” “who to notify,” kept in the private
+Gateway repo’s <code>docs/</code> — mirrors the spirit of QUILL’s own
+<code>crash_report.py</code>/incident patterns without needing new
+tooling</td>
+<td>keeps the plan realistic in scope for the team size</td>
+</tr>
+</tbody>
+</table>
+<h2 id="user-experience-flows">17. User experience flows</h2>
+<ol type="1">
+<li><strong>First AI use, no BYOK key configured yet:</strong> AI Hub
+shows two paths side by side — “Use QUILL’s free hosted AI (recommended
+for most people)” and “Use your own API key or a local model.” Choosing
+hosted triggers the device-code flow (§7) inline, with the code and URL
+announced clearly.</li>
+<li><strong>Ongoing use:</strong> status bar / AI Hub shows “38 of 500
+free requests left this month” whenever hosted AI is active — always
+visible, never requiring a separate check.</li>
+<li><strong>Approaching a limit:</strong> at 90% of the monthly cap, one
+gentle one-time notice: “You’re close to this month’s free AI limit (450
+of 500 used). Add your own API key anytime to keep going without
+limits.”</li>
+<li><strong>Hitting a limit:</strong> the exact degradation messages in
+§8, always paired with the two live workarounds (wait for reset, or
+switch to BYOK) — never a dead end.</li>
+<li><strong>Switching to BYOK later:</strong> existing flow, unchanged;
+the AI Hub lets a user add a personal key at any time without losing
+their hosted-tier history (both are just providers in the same
+<code>ALL_PROVIDERS</code> list).</li>
+<li><strong>Admin pauses a feature:</strong> any user attempting that
+feature sees a specific, honest message (§8) naming what’s paused and
+why, never a generic error.</li>
+</ol>
+<h2 id="accessibility-requirements">18. Accessibility requirements</h2>
+<ul>
+<li>Device-code screen-reader announcement: exact code and URL read
+once, clearly, with the option to repeat it (reuses
+<code>announce_device_code()</code> verbatim — no new design
+needed).</li>
+<li>No CAPTCHA anywhere in onboarding or abuse handling (§9, restated
+here because it’s a hard requirement, not a nice-to-have).</li>
+<li>Quota status is always available as text a screen reader can read
+on-demand (a labeled control, not a purely visual progress bar) —
+matches QUILL’s existing UI convention of pairing every visual status
+with an announced/readable equivalent.</li>
+<li>Degradation messages (§8) are full sentences, never bare error codes
+or HTTP status numbers surfaced to the user.</li>
+<li>Consent dialogs (§14, §15) follow QUILL’s existing modal dialog
+contract (<code>_show_modal_dialog</code>, <code>apply_modal_ids</code>)
+— no new dialog pattern introduced.</li>
+<li>The image-send consent and the whole-document-Q&amp;A consent are
+distinguishable from each other in wording (a screen reader user quickly
+moving through dialogs must be able to tell “this one’s about an image”
+from “this one’s about text” without extra navigation).</li>
+</ul>
+<h2 id="implementation-phases">19. Implementation phases</h2>
+<p><strong>Phase 0 — Gateway skeleton (no client changes yet)</strong>
+Stand up the private repo: FastAPI app, Postgres schema (§5), Redis
+counters, device-code endpoints (§7), one hardcoded test feature
+(<code>echo</code>) that doesn’t call OpenAI at all — prove the auth +
+quota plumbing works end to end before any real model cost is
+involved.</p>
+<p><strong>Phase 1 — One real feature, document Q&amp;A</strong> Wire
+the real OpenAI nano-model call behind the <code>document_qna</code>
+feature id, with the full quota/budget/kill-switch stack from §8 live.
+Add <code>GatewayBackend(AIBackend)</code> client-side, add
+<code>"quill_gateway"</code> to <code>ALL_PROVIDERS</code>, wire the
+device-code onboarding flow into the AI Hub. Ship behind a QUILL feature
+flag (<code>future.ai_gateway</code>, following the existing
+<code>locked_off</code> pattern other in-progress features use),
+internal testing only.</p>
+<p><strong>Phase 2 — Remaining features + admin console</strong> Add
+<code>summarize</code>/<code>rewrite</code>/<code>chat</code> features
+(they reuse the same infrastructure, just new template rows). Build the
+admin console (§10) past bare API endpoints into an actual internal
+page. Add the alerting webhooks (§13).</p>
+<p><strong>Phase 3 — Image/alt-text</strong> Add the
+<code>alt_text</code> feature, the client-side image resize step, and
+the per-image consent flow (§15) — deliberately last, since vision calls
+cost more and need their own careful cap tuning informed by real Phase
+1/2 usage data.</p>
+<p><strong>Phase 4 — Public beta</strong> Remove the internal-only flag,
+publish the privacy explanation (§4.5) prominently, open the checklist
+in §21, monitor the §13 alert thresholds closely for the first
+month.</p>
+<p><strong>Phase 5 (later, not beta-blocking) — Optional identity
+upgrade</strong> Email magic-link account linking for multi-device quota
+continuity (§7), only if the anonymous-per-device model proves limiting
+in practice.</p>
+<h2 id="open-questions">20. Open questions</h2>
+<ol type="1">
+<li><strong>Hosting target confirmation:</strong> Fly.io is recommended
+(§16) to match <code>quillin-hub</code>’s existing operational pattern,
+but this should be confirmed against current pricing/availability before
+committing.</li>
+<li><strong>Legal/ToS:</strong> does QUILL need a short
+hosted-AI-specific terms addendum (separate from the general project
+license), given this is the first QUILL service that handles even
+pseudonymous usage data at scale? Recommend a one-page addendum, not a
+rewrite of anything existing.</li>
+<li><strong>Rate-limit tuning:</strong> the numbers in §8 are informed
+planning estimates, not measured data — expect to tune them after Phase
+1’s real usage, not treat them as final.</li>
+<li><strong>Does <code>future.publishing</code>’s existing
+<code>locked_off</code> review-gate pattern</strong> (used elsewhere in
+QUILL for staged feature rollout) generalize cleanly to
+<code>future.ai_gateway</code>, or does the Gateway’s server-side kill
+switch make the client-side flag partially redundant? (Recommendation:
+keep both — client flag controls whether the <em>UI</em> offers hosted
+AI at all; server flag controls whether <em>requests</em> succeed. They
+answer different questions and both are cheap to keep.)</li>
+<li><strong>Whole-document local chunking quality:</strong> is simple
+heading/keyword overlap scoring (§14) good enough for the first beta, or
+does it need a proper local embedding model sooner than planned?
+Recommend shipping the simple version first and measuring whether users
+complain about answer relevance before adding embedding-model
+complexity.</li>
+<li><strong>Does the Gateway ever need to support streaming
+responses</strong> (<code>respond_stream</code>) for a good UX on longer
+document Q&amp;A answers, or is blocking <code>respond()</code>
+acceptable for a nano-class, capped-output-token first beta? Recommend
+blocking-only for Phase 1, revisit if latency feedback says
+otherwise.</li>
+</ol>
+<h2 id="risks-and-mitigations">21. Risks and mitigations</h2>
+<table>
+<colgroup>
+<col style="width: 50%" />
+<col style="width: 50%" />
+</colgroup>
+<thead>
+<tr>
+<th>Risk</th>
+<th>Mitigation</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Adoption is far higher than the 500-MAU planning assumption, budget
+cap trips constantly</td>
+<td>The 100%-cap auto-pause (§8/§13) is a safety net, not meant to be
+hit routinely; if it’s tripping in week one, that’s a strong, cheap
+signal to raise the cap deliberately rather than a failure</td>
+</tr>
+<tr>
+<td>A single compromised device token is used for sustained abuse before
+detection</td>
+<td>Hourly per-device limit (§8) + token-budget anomaly flagging (§9)
+bound the damage to a small window even in the worst case, and device
+revocation (§7) is immediate</td>
+</tr>
+<tr>
+<td>The anonymous-registration model gets abused via mass
+re-registration to reset quotas</td>
+<td>Track registration rate per IP-hash (soft, non-blocking per §9) as
+an early warning; the real backstop is that even unlimited
+<em>free-tier</em> re-registration is bounded by the global budget cap
+(§13) — worst case it costs money, not that it exposes data or breaks
+the service</td>
+</tr>
+<tr>
+<td>Team bandwidth to operate a new always-on service is limited (small
+open-source project)</td>
+<td>Deliberately boring stack (§16), deliberately manual-but-documented
+key rotation (§6), a genuinely small feature surface for the first beta
+(§19 Phase 1 is one feature) — this plan is sized to what a small team
+can actually run, not to an enterprise SRE org</td>
+</tr>
+<tr>
+<td>Users don’t understand the difference between hosted and BYOK modes,
+causing support burden</td>
+<td>The single-paragraph privacy explanation (§4.5) plus the two-path
+onboarding UI (§17.1) are both designed to make the distinction explicit
+at the moment of choice, not buried in settings</td>
+</tr>
+</tbody>
+</table>
+<h2 id="beta-launch-checklist">22. Beta launch checklist</h2>
+<ul class="task-list">
+<li><label><input type="checkbox" />Gateway repo exists, private,
+separate from the open-source QUILL client repo.</label></li>
+<li><label><input type="checkbox" />OpenAI key lives only in the
+platform secret manager; verified not present in any repo,
+<code>.env.example</code>, container image layer, or CI log by manual
+review before first deploy.</label></li>
+<li><label><input type="checkbox" /><code>/healthz</code> endpoint
+exists and is monitored.</label></li>
+<li><label><input type="checkbox" />Device-code auth flow works end to
+end against the real
+<code>device_login.py</code>/<code>copilot_auth.py</code>-pattern client
+code.</label></li>
+<li><label><input type="checkbox" />All §8 quota limits are live and
+tested (including the “reject before calling OpenAI” ordering — never
+call the provider first and check quota after).</label></li>
+<li><label><input type="checkbox" />Global budget cap + 50/75/90/100%
+alerts are wired to a real notification channel, tested with a manual
+trigger.</label></li>
+<li><label><input type="checkbox" />Admin console (or the bare
+API-endpoint equivalent for beta) can disable a user, disable a device,
+disable a feature, and flip the global kill switch — all four manually
+exercised once before launch.</label></li>
+<li><label><input type="checkbox" />Privacy explanation (§4.5) copy is
+finalized, translatable (<code>_()</code>-wrapped client-side), and
+reviewed for plain language.</label></li>
+<li><label><input type="checkbox" />Every consent dialog (§14, §15) is
+screen-reader tested (this piece genuinely should get a JAWS/NVDA pass
+before shipping, same standard as the rest of QUILL).</label></li>
+<li><label><input
+type="checkbox" /><code>network_egress_audit.py</code>’s
+<code>_REVIEWED_EGRESS</code> has an entry for the Gateway HTTP call
+site.</label></li>
+<li><label><input type="checkbox" /><code>GatewayBackend</code>
+unit-tested with a stubbed Gateway response (mirrors how other backends
+are tested today) and, separately, smoke-tested against a real staging
+Gateway instance.</label></li>
+<li><label><input type="checkbox" />Retention cleanup job (§4.4) is
+scheduled and verified to actually delete expired rows, not just
+documented as a policy.</label></li>
+<li><label><input type="checkbox" />Incident-response one-pager (§16)
+exists in the Gateway repo.</label></li>
+<li><label><input type="checkbox" />Key rotation runbook (§6) has been
+dry-run at least once before launch, not left untested until the first
+real rotation is needed.</label></li>
+</ul>
+<h2 id="recommended-defaults-for-the-first-public-beta-summary">23.
+Recommended defaults for the first public beta (summary)</h2>
+<ul>
+<li><strong>Auth:</strong> OAuth device-code flow, anonymous
+registration (no email/ account required), reusing
+<code>device_login.py</code>/<code>copilot_auth.py</code>.</li>
+<li><strong>Model:</strong> one nano-class model, hardcoded server-side
+allowlist of one.</li>
+<li><strong>Monthly allowance:</strong> 500 requests/user, ~$0.0005
+average cost/request.</li>
+<li><strong>Hard caps:</strong> 4,000 input tokens, 800 output tokens,
+60/day, 20/hour, 20 images/day, $0.50/user/month cost ceiling.</li>
+<li><strong>Global budget cap:</strong> $250/month with 50/75/90/100%
+alerting.</li>
+<li><strong>First feature shipped:</strong> document Q&amp;A only (Phase
+1); everything else follows once that’s proven stable.</li>
+<li><strong>Data retention:</strong> usage metadata 13 months,
+rate-limit counters 1h–30d rolling, no prompt/document content stored
+unless explicitly opted in per-incident, 30-day expiry even then.</li>
+<li><strong>Fallback when limits are hit:</strong> always BYOK or local
+model, never a dead end — the free hosted tier is a convenience on top
+of the existing BYOK product, never the only path.</li>
+</ul>
+<hr />
+<p><em>This plan intentionally leaves generic backend engineering (exact
+FastAPI route signatures, exact SQLAlchemy models, deployment YAML) for
+the implementation phase — the goal here was to make every architectural
+and policy decision concrete and grounded in QUILL’s actual code, not to
+pre-write the Gateway’s source.</em></p>
+</body>
+</html>
