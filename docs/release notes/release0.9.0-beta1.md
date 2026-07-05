@@ -442,7 +442,11 @@ QUILL's documentation now teaches in three registers. The user guide remains
 the full reference. A new **tutorials** collection (docs/tutorials) walks six
 complete workflows hands-on - your first hour, keyboard mastery, rescuing a
 scanned PDF, building an audiobook, starting a Vault, and shipping an
-accessible document with GLOW.
+accessible document with GLOW. When the Audio Studio landed during the
+beta, tutorial 4 was rebuilt around it - voices and Read Aloud, then all
+three Studio journeys through to a published podcast feed - and QUILL Cast
+**episode 24 was re-recorded as "The Audio Studio"** so the audio course
+teaches the same workshop your menus have.
 
 And then there is **The QUILL Cast**: a full **36-episode, two-host audio
 course** - about two and a quarter hours across seven parts - that leads a
@@ -636,6 +640,175 @@ language, end to end.
 neither is their reading. Whether it is a note from a relative, coursework, or
 a novel, QUILL now reads it in a voice that belongs to the language - on
 device, for free.
+
+## The Audio Studio - your books, by ear, start to finish
+
+0.9.0 promised that the whole product family would come home to QUILL, and
+this is the homecoming's final chapter: **ChapterForge**, the last of the
+three sibling apps, now lives on inside QUILL as the **Audio Studio** -
+rebuilt from the ground up, screen-reader-first. It arrives during the beta
+window as the completion of that promise, and it turns the speech tools you
+already had into a complete audiobook and podcast production line.
+
+### One door, three journeys
+
+**Tools > Speech > Audio Studio** replaces the old Batch Export to Speech
+Audio dialog - a single screen with some forty controls - with a guided
+wizard that asks one thing at a time and speaks every step ("Step 2 of 7:
+What should I read?"). Nothing was lost in the move: every option from the
+classic dialog survives, from the chapter transition sounder and its volume
+to round-robin voices, translated editions, dry runs, and per-folder
+remembered settings. Your keyboard binding still works, and a repeat run on
+a remembered folder is three keystrokes with **Skip to summary**.
+
+The first page asks what you want to make, and the wizard reshapes itself:
+
+- **Narrate documents into an audiobook or speech audio.** Word, Markdown,
+  HTML, or text files, read by any QUILL voice - offline or cloud - one
+  chapter per document or heading, optionally assembled into a single
+  chaptered book with tags and a cover.
+- **Combine audio files into one chaptered audiobook.** A folder of
+  recordings becomes one master - MP3 with ID3 chapters or a true M4B -
+  one chapter per file, natural order, titles from the filenames, and you
+  always review the chapter list before the merge.
+- **Edit an existing audiobook.** A finished MP3 or M4B opens in the
+  Chapter Workbench, described next. A file with no chapters at all opens
+  as one chapter, ready to carve.
+
+### The Chapter Workbench - fix a book by ear
+
+The Workbench is the heart of the feature: a chapter list that reads each
+row in full ("3. The Long Road - starts 1:02:03, runs 12:40"), a built-in
+**chapter-aware player** (Play/Pause, previous/next chapter, rewind/forward,
+a position slider that speaks minutes and seconds, playback speed from 0.75x
+to 2x with pitch preserved), and the surgery that was never possible by ear
+before:
+
+- **Split at playhead.** Listen for where the chapter should begin, pause
+  there, press the button. The boundary lands exactly under your ear.
+- **Set start to playhead** retimes an existing boundary the same way;
+  **Merge into previous**, **Rename**, and **Restore original** round out
+  the set.
+- **Where am I?** answers with the full audible glance: chapter number and
+  name, time into the chapter and left in it, position and time remaining
+  in the whole book.
+- The player **remembers where you stopped** in every book and resumes
+  there next time.
+- Chapter lists **import and export** in five formats - Audacity labels,
+  plain timestamps, CUE sheets, Podcasting 2.0 JSON, and CSV (any
+  spreadsheet with a Title column can name your chapters).
+- **Split into files** goes the other way: one audio file per chapter,
+  named and numbered - instant podcast episodes.
+
+Saving is honest about physics: an MP3 saves its edits **in place** (only
+the tags are rewritten; the audio bytes are untouched) and an M4B saves as
+a new file through a **lossless re-mux** - no re-encode, no quality loss.
+
+### Builds you can trust
+
+Before a long build, the Studio runs a **pre-flight check** - files whose
+sample rate, channels, or format differ are named in the log, file by file -
+and states the estimated duration and size. After the build it **re-reads
+the finished book and verifies** what a player will actually see: the
+completion message says "verified 24 chapters," not just "done." Every book
+gets two companions written next to it: a plain-text **chapter report** and
+a **Podcasting 2.0 chapters.json** sidecar. An **audition** option converts
+just the first document so you can judge the voice, pace, and loudness in
+minutes before an overnight run, and **spoken opening and closing credits**
+("My Book. Written by Jane Doe. Narrated by Sam Reader.") can be synthesized
+in the run's own voice as the first and last chapters.
+
+### Publish what you made
+
+The Workbench's **Publish** button offers three explicit, consent-first
+paths. **Podcast feed:** a complete RSS 2.0 file with iTunes and Podcasting
+2.0 tags, written next to the book, generated entirely offline. And beyond
+the single book, **Folder feed (all episodes)** runs a whole show from one
+folder: every master becomes an episode with its own title, description
+(edited in an accessible episode list), true publication date, duration,
+and chapter link; the show settings persist in the folder so one button
+regenerates the complete feed after every build, and a companion
+**show-notes.html** page - headings per episode, descriptions, chapter
+lists - is written on demand, ready to upload beside the feed. **SFTP
+upload:** saved destinations send the book and its companions through
+QUILL's own SSH machinery - the strict host-key policy applies, and
+passwords live in the Windows Credential Manager, never in a settings file.
+**Auphonic:** send the book to your own Auphonic account for professional
+post-production; QUILL uploads, waits, and downloads the results beside the
+book, with your API token in the credential vault. Check the account first
+and QUILL speaks your remaining credits and loads your saved presets into a
+picker, so the confirmation names the exact preset and balance before a
+byte moves; the token is also manageable centrally in **AI Hub > Services**. Every network path is
+inventoried in the egress audit, QUILL asks before the first contact with
+any service, and the whole dialog is absent in Safe Mode.
+
+Both transfer paths are monitored, abortable operations: a progress dialog
+speaks whole-percent steps as bytes actually move ("Uploading book.m4b:
+42%"), mirrors them to the status bar, and carries a real **Cancel** button.
+Cancelling an SFTP upload stops mid-file (files already completed stay on
+the server, and QUILL says so); cancelling an Auphonic run before the
+upload finishes means no production starts, while cancelling later leaves
+the production running in your account and skips the download - each
+outcome announced in those words.
+
+### Small kindnesses that add up
+
+- **Maximum-file-size filter.** A **Skip files larger than (MB)** spinner now lives on the *What should I read?* step of the wizard. Discovery honors the cap (a folder with one accidental 400 MB export no longer hijacks an overnight run), and the live document count on the same step reflects the cap as you change it — press **Count documents** to hear the settled count announced.
+- **Polish controls run during the build.** The audio source page's **Trim silences from each recording** and the book page's **fade-in / fade-out / tempo** controls now actually run during the audiobook build. `core/speech/audiobook.build_audiobook` runs every chapter file through `audio_edit.prepare_chapter_files` (head/tail silence trim, fades, pitch-preserving tempo) before ffmpeg concatenates them into the master. Staged files live in the build's temp directory, your source audio is never overwritten, and a polish failure on one file keeps the build going with that file's previous form. Defaults (no trim, `0` ms fades, `1.0` tempo) keep existing builds byte-identical.
+- **Silence auto-chapter and ACX check in the Workbench.** The Chapter Workbench grows two long-running analysis buttons. **Propose chapters from silences...** scans the recording with ffmpeg `silencedetect` (noise threshold and minimum silence length tunable) and proposes chapter boundaries at the silence midpoints; the proposal lands in the chapter list for review and is never applied blind, with **Restore original** to undo. **Check against ACX** runs a loudnorm measurement and shows a verdict dialog with integrated loudness, true peak, and noise floor, plus a speakable recommendation for each failing criterion. The verdict is announced when the measurement finishes, regardless of how the dialog is dismissed.
+- **UIA regression coverage for the new dialogs.** The nightly `tests/uia` suite (CI-only, never on a developer's desktop) walks the Audio Studio wizard page by page, asserts each page's "Step N of M" announcement lands in the spoken trace, opens the Chapter Workbench on a seeded corpus chaptered MP3 from the edit journey, and drives the silence-proposal parameters dialog from the Workbench. Regressions in focus order, modal-id wiring, or screen-reader announcements are caught by the robot overnight instead of by a user's ears after release.
+- **Audio Studio keymap and cross-link.** `Tools > Speech > Audio Studio` is in the command palette under its display name and ships with a default key binding (`Ctrl+Shift+Grave, Y`). The **Export to Translated Speech Audio** dialog grows an "Open in Audio Studio" button that closes the dialog and opens the wizard with the document pre-filled, so the one-shot translation flow advertises the richer chaptered path.
+- **Recent folders, recent books, and a remembered journey.** The Audio Studio's source pages (documents and audio journeys) show a combo of the most-recently-used folders; the **edit** journey's file picker remembers the most recently opened audiobooks. The wizard's first page also remembers which journey you used last (documents / audio / edit) and pre-selects that radio, so "Skip to summary" stays a 3-keystroke promise across sessions.
+- **Persisted book_credits and library_mode in the project profile.** The Phase 4-6 wizard flags are now part of `speech-project.json` (profile schema v2; v1 files load with both fields defaulting to `False`). A folder that always wants spoken credits and library-mode builds lands on those toggles on the second run without a single click.
+- **Job files.** Save a `.quilljob` from the summary page and the entire
+  run - folder, voices, chapters, mastering, book details - is pinned in a
+  small, hand-editable file. Load it on the Studio's first page and
+  everything comes back.
+- **Look up book details.** Type a title, press one button, and Open
+  Library and MusicBrainz - free, keyless public catalogs - fill in the
+  author, genre, and year from the match you choose. Only the title and
+  author you typed are ever sent. And when the match has a jacket image,
+  QUILL offers to download it as `cover.jpg` next to your audio and use
+  it for the book - the book page completes itself from a title you
+  half-remember, cover included.
+- **An optional mpv playback engine, one download away.** Fetch the **mpv
+  player engine** from Help > Download Optional Components (about 44 MB,
+  pinned and checksum-verified, with its licenses and a source offer inside
+  the download) and the Studio's player switches to libmpv - gapless audio,
+  exact seeking, instant chapter jumps on 8-hour books - falling back to
+  the built-in Windows engine automatically whenever mpv is absent or
+  unusable. Power users can also drop their own `libmpv-2.dll` into
+  `engine-packs\mpv` or point `QUILL_LIBMPV` at one.
+- **AI chapter titles.** The Workbench's **Propose AI titles** listens to
+  the opening minute of each chapter - transcribed on your machine by the
+  local speech model, with only the text going to your configured AI - and
+  proposes a short title per chapter, in the list, for review. A folder of
+  track files becomes a navigable book without typing thirteen titles.
+- **Voice casting.** Casting rules on the voice page assign a voice to
+  matching chapters - by title glob (`Chapter *`, `*interview*`) or number
+  (`#1`) - with the first match winning and everything else falling through
+  to the rotation. Multi-voice productions get deliberate casting instead
+  of a blind rotation.
+- **Incremental rebuilds.** The Studio fingerprints every document it
+  narrates - the text plus every setting that shapes its audio - and on
+  the next run reuses the audio of anything unchanged instead of
+  re-synthesizing it. Editing one chapter of a forty-document book now
+  costs minutes, not the overnight run; changing the voice or any audio
+  setting rebuilds everything automatically. On by default, with a
+  checkbox on the output step to force a full rebuild.
+- **Library mode.** Point the combine-audio journey at a folder of book
+  folders and every subfolder builds as its own audiobook, unattended,
+  each titled after its folder.
+- **A watch action.** "Build audiobook from the folder" keeps a drop
+  folder alive: new recordings trigger a rebuild of that folder's master -
+  a batch of files causes one rebuild, not many.
+
+**Why it matters:** audiobook and podcast production has always assumed a
+sighted engineer with a waveform on a screen. The Audio Studio assumes the
+opposite - that the person at the keyboard works by ear - and gives them
+the entire pipeline: narrate, bind, listen, fix the chapters where their
+ear says so, verify honestly, and publish. This one, more than most, was
+built to be judged by listening - so listen hard, and tell us what you hear.
 
 ## Table Studio - accessible tables, at last (experimental)
 

@@ -152,23 +152,24 @@ def _docx_table_rows(tbl: ET.Element) -> list[str]:
     return rows
 
 
-def _docx_block_lines(body: ET.Element) -> list[tuple[bool, str]]:
-    """Walk a body's blocks in order, yielding ``(is_heading, text)`` lines.
+def _docx_block_lines(body: ET.Element) -> list[tuple[int, str]]:
+    """Walk a body's blocks in order, yielding ``(heading_level, text)`` lines.
 
-    Paragraphs yield their text (flagged when they are a heading); a table yields
-    one line per row (cells joined by ``", "``) so a data table reads sensibly
-    instead of a jumble of cell fragments. Direct children only, so a paragraph
-    inside a table cell is read as part of its row, not twice.
+    ``heading_level`` is 0 for body text and 1-9 for headings (truthy exactly
+    when the line is a heading, so boolean callers keep working). A table
+    yields one line per row (cells joined by ``", "``) so a data table reads
+    sensibly instead of a jumble of cell fragments. Direct children only, so a
+    paragraph inside a table cell is read as part of its row, not twice.
     """
-    out: list[tuple[bool, str]] = []
+    out: list[tuple[int, str]] = []
     for child in body:
         tag = _localname(child.tag)
         if tag == "p":
             text = _docx_paragraph_text(child)
             if text:
-                out.append((_docx_paragraph_is_heading(child), text))
+                out.append((_docx_paragraph_heading_level(child), text))
         elif tag == "tbl":
-            out.extend((False, row) for row in _docx_table_rows(child))
+            out.extend((0, row) for row in _docx_table_rows(child))
     return out
 
 
@@ -247,10 +248,14 @@ class DocumentSection:
     ``title`` is the heading text, or ``""`` for the lead-in before the first
     heading (the caller substitutes the configured intro title) and for formats
     or documents that have no headings (a single whole-document section).
+    ``level`` is the heading's outline level (1-6 for Markdown/HTML, 1-9 for
+    Word), or 0 for the lead-in/whole-document case — it powers the batch
+    export's "chapters start at heading level" choice.
     """
 
     title: str
     text: str
+    level: int = 0
 
 
 # ATX (``## Heading``) and the heading line as a whole, captured separately.
@@ -279,7 +284,7 @@ def _sections_from_markdown(raw: str) -> list[DocumentSection]:
         body_start = m.end()
         body_end = matches[i + 1].start() if i + 1 < len(matches) else len(normalised)
         body = _clean_markdown(normalised[body_start:body_end])
-        sections.append(DocumentSection(title, body))
+        sections.append(DocumentSection(title, body, level=len(m.group(1))))
     return sections
 
 
@@ -294,6 +299,7 @@ class _HtmlSectionizer(HTMLParser):
         super().__init__()
         self._sections: list[DocumentSection] = []
         self._cur_title = ""
+        self._cur_level = 0
         self._cur_parts: list[str] = []
         self._skip_depth = 0
         self._in_heading = False
@@ -302,7 +308,7 @@ class _HtmlSectionizer(HTMLParser):
     def _flush(self) -> None:
         text = "".join(self._cur_parts).strip()
         if self._cur_title or text:
-            self._sections.append(DocumentSection(self._cur_title, text))
+            self._sections.append(DocumentSection(self._cur_title, text, level=self._cur_level))
         self._cur_parts = []
 
     def handle_starttag(self, tag: str, attrs: list) -> None:
@@ -312,6 +318,7 @@ class _HtmlSectionizer(HTMLParser):
         elif t in self._HEADINGS:
             self._flush()  # close the previous section
             self._cur_title = ""
+            self._cur_level = int(t[1])  # "h3" -> 3
             self._in_heading = True
             self._heading_parts = []
 
@@ -357,21 +364,23 @@ def _sections_from_html(raw: str) -> list[DocumentSection]:
 _WORD_HEADING_STYLE_RE = re.compile(r"^(heading[1-9]|title)$", re.IGNORECASE)
 
 
-def _docx_paragraph_is_heading(para: ET.Element) -> bool:
+def _docx_paragraph_heading_level(para: ET.Element) -> int:
+    """The paragraph's heading level (1-9; "Title" counts as 1), or 0 for body."""
     ppr = para.find(f"{{{_WORD_NS}}}pPr")
     if ppr is None:
-        return False
+        return 0
     style = ppr.find(f"{{{_WORD_NS}}}pStyle")
     if style is not None:
-        val = style.get(f"{{{_WORD_NS}}}val", "")
-        if _WORD_HEADING_STYLE_RE.match(val.replace(" ", "")):
-            return True
+        val = style.get(f"{{{_WORD_NS}}}val", "").replace(" ", "")
+        if _WORD_HEADING_STYLE_RE.match(val):
+            digits = "".join(ch for ch in val if ch.isdigit())
+            return int(digits) if digits else 1
     outline = ppr.find(f"{{{_WORD_NS}}}outlineLvl")
     if outline is not None:
         level = outline.get(f"{{{_WORD_NS}}}val")
         if level is not None and level.isdigit():
-            return True
-    return False
+            return int(level) + 1  # outlineLvl is 0-based
+    return 0
 
 
 def _docx_paragraph_text(para: ET.Element) -> str:
@@ -390,19 +399,21 @@ def _sections_from_docx(path: Path) -> list[DocumentSection]:
 
     sections: list[DocumentSection] = []
     cur_title = ""
+    cur_level = 0
     cur_lines: list[str] = []
     started = False
 
     def flush() -> None:
         text = "\n".join(cur_lines).strip()
         if cur_title or text:
-            sections.append(DocumentSection(cur_title, text))
+            sections.append(DocumentSection(cur_title, text, level=cur_level))
 
     # Structured walk: headings start sections; tables read row by row.
-    for is_heading, line in _docx_block_lines(_docx_body(tree.getroot())):
-        if is_heading:
+    for heading_level, line in _docx_block_lines(_docx_body(tree.getroot())):
+        if heading_level:
             flush()
             cur_title = line
+            cur_level = heading_level
             cur_lines = []
             started = True
         else:
@@ -454,7 +465,35 @@ def combine_heading_only_sections(sections: list[DocumentSection]) -> list[Docum
     return out
 
 
-def extract_sections(path: Path, *, combine_headings: bool = False) -> list[DocumentSection]:
+def fold_sections_below_level(
+    sections: list[DocumentSection], max_level: int
+) -> list[DocumentSection]:
+    """Fold sections deeper than *max_level* into the chapter above them.
+
+    Powers "chapters start at heading level N": a section whose heading level
+    is known (non-zero) and deeper than *max_level* stops being its own
+    chapter — its heading line and body are appended to the preceding
+    section's text, so nothing is lost, only the boundary. ``max_level <= 0``
+    means "every heading is a chapter" (the historical behavior). A deep
+    section with nothing before it (document starts at h3) keeps its own
+    chapter rather than vanishing.
+    """
+    if max_level <= 0:
+        return sections
+    folded: list[DocumentSection] = []
+    for section in sections:
+        if folded and section.level > max_level:
+            prev = folded[-1]
+            addition = f"{section.title}\n{section.text}".strip()
+            prev.text = f"{prev.text}\n\n{addition}".strip()
+        else:
+            folded.append(DocumentSection(section.title, section.text, level=section.level))
+    return folded
+
+
+def extract_sections(
+    path: Path, *, combine_headings: bool = False, max_heading_level: int = 0
+) -> list[DocumentSection]:
     """Split a document into heading-delimited sections (§4.8.2).
 
     Markdown, HTML, and Word headings become section boundaries; the heading text
@@ -465,6 +504,8 @@ def extract_sections(path: Path, *, combine_headings: bool = False) -> list[Docu
     When *combine_headings* is set, heading-only sections are folded into the next
     section with body via :func:`combine_heading_only_sections` (an opt-in batch
     setting), so an article is only emitted where there is something to speak.
+    When *max_heading_level* is positive, deeper headings stop starting chapters
+    (:func:`fold_sections_below_level`); the two folds compose, level first.
     """
     suffix = path.suffix.lower()
     if suffix == ".txt":
@@ -477,7 +518,37 @@ def extract_sections(path: Path, *, combine_headings: bool = False) -> list[Docu
         sections = _sections_from_docx(path)
     else:
         raise UnsupportedFormatError(f"No extractor for {suffix!r}")
+    sections = fold_sections_below_level(sections, max_heading_level)
     return combine_heading_only_sections(sections) if combine_headings else sections
+
+
+def preview_chapter_titles(
+    paths: list[Path],
+    *,
+    combine_headings: bool = False,
+    max_heading_level: int = 0,
+    limit: int = 20,
+    intro_title: str = "Introduction",
+) -> list[str]:
+    """The first *limit* chapter titles a batch run over *paths* would produce.
+
+    Powers the wizard's "Preview chapter titles" audit: the user hears how the
+    heading-level choice will carve their real documents before committing to
+    a long run. Unreadable documents are skipped (the run itself reports them).
+    """
+    titles: list[str] = []
+    for path in paths:
+        try:
+            sections = extract_sections(
+                path, combine_headings=combine_headings, max_heading_level=max_heading_level
+            )
+        except (OSError, UnsupportedFormatError):
+            continue
+        for section in sections:
+            titles.append(section.title or intro_title)
+            if len(titles) >= limit:
+                return titles
+    return titles
 
 
 def extract_text(path: Path) -> str:

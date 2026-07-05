@@ -161,6 +161,32 @@ the plan is complete:
 - TEST-002: watchdog re-dump test made deterministic (unit test).
 - CALL-1 gate: undefined-private-method audit (CI gate).
 
+## SAVE-001 — Save As conversion, window title, and export fidelity (0.9.0)
+
+Run with JAWS or NVDA on a real build. This is the manual verification (Task 9) carried
+over from the retired `save-as-conversion-fix` plan; converter bake-off verdicts are in
+`docs/qa/converter-bakeoff.md`.
+
+- [ ] **Original repro:** new document, 8 lines, Ctrl-S, switch type to Word, name it,
+  Enter. Verify: title bar reads "name.docx - QUILL for All ..." (no [modified]); second
+  Ctrl-S saves silently with no dialog; the save announcement speaks; the file opens in
+  Word with 8 paragraphs.
+- [ ] **Save As each type:** .txt, .md, .html, .rtf, .docx — title updates, status speaks
+  the format label, file opens in Notepad/browser/WordPad/Word respectively.
+- [ ] **Typed rogue extension:** Save As, type `notes.pdf` — the Export routing prompt
+  appears; accepting lands in Export as PDF; declining returns safely.
+- [ ] **Binary protection:** open any .pdf and any .xlsx, edit, Ctrl-S — the explanation
+  speaks, Save As opens, the original file on disk is byte-identical.
+- [ ] **Export each Tier-1 format** (with Pandoc installed) from an 8-line doc — line
+  breaks survive in docx/odt/html/rtf outputs; PDF either produces a file or speaks the
+  missing-PDF-engine error clearly.
+- [ ] **DAISY export** of the same doc — 8 phrases in the book (line breaks and headings
+  map to phrases; it was built line-oriented).
+- [ ] **First-line title:** untitled doc starting `# Trip Report`, Ctrl-S — name box
+  pre-filled "Trip Report".
+- [ ] **Engine preference:** flip `docx_write_engine` to pandoc, Save As .docx, open in
+  Word — structure present, fonts absent, matching the documented outcome.
+
 ## Sign-off
 
 - Tester:

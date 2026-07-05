@@ -53,8 +53,13 @@ def _read_signer_key_id(repo, sidecar_path: str) -> str | None:
 
 
 def _upsert(
-    manifest_id, artifact_type, name, version, description,
-    download_url, signer_key_id=None,
+    manifest_id,
+    artifact_type,
+    name,
+    version,
+    description,
+    download_url,
+    signer_key_id=None,
 ):
     artifact = Artifact.query.filter_by(manifest_id=manifest_id).first()
     if not artifact:

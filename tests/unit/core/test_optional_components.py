@@ -6,7 +6,7 @@ from quill.core.optional_components import gather_optional_components
 
 def test_gather_includes_the_core_optional_components() -> None:
     ids = {c.component_id for c in gather_optional_components()}
-    assert {"whispercpp", "vosk", "kokoro", "espeak", "dectalk", "ffmpeg"}.issubset(ids)
+    assert {"whispercpp", "vosk", "kokoro", "espeak", "dectalk", "ffmpeg", "libmpv"}.issubset(ids)
 
 
 def test_status_reflects_detectors(monkeypatch) -> None:
@@ -49,3 +49,13 @@ def test_size_hints_present_for_large_components() -> None:
     by_id = {c.component_id: c for c in gather_optional_components()}
     assert by_id["kokoro"].size_hint  # non-empty
     assert by_id["whispercpp"].size_hint
+
+
+def test_libmpv_detector_checks_the_engine_pack(tmp_path, monkeypatch) -> None:
+    import quill.core.speech.engine_install as ei
+
+    monkeypatch.setattr(ei, "engine_packs_dir", lambda: tmp_path)
+    assert oc._libmpv_installed() is False
+    (tmp_path / "mpv").mkdir()
+    (tmp_path / "mpv" / "libmpv-2.dll").write_bytes(b"MZ")
+    assert oc._libmpv_installed() is True

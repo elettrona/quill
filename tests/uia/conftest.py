@@ -89,6 +89,19 @@ class QuillApp:
         )
 
 
+def _corpus_sample_path() -> Path:
+    """Path to the chaptered MP3 the UIA suite opens in the Workbench.
+
+    Resolved from the repo root, not from ``cwd``, so the suite works under
+    any working directory the CI runner uses. The fixture is the same
+    ``tests/corpus/audio/chaptered-sample.mp3`` the unit tests use for
+    ``quill/core/speech/book_file.py``.
+    """
+    return (
+        Path(__file__).resolve().parents[2] / "tests" / "corpus" / "audio" / "chaptered-sample.mp3"
+    )
+
+
 def _seed_profile(data_dir: Path) -> None:
     data_dir.mkdir(parents=True, exist_ok=True)
     from quill.core.onboarding import current_trust_consent_version
@@ -107,6 +120,15 @@ def _seed_profile(data_dir: Path) -> None:
         json.dumps({"accepted": True, "version": current_trust_consent_version()}),
         encoding="utf-8",
     )
+    # Pre-seed the Audio Studio audiobooks MRU so the edit journey's
+    # EditSourcePage ComboBox already has the corpus sample at the top.
+    # The Workbench-on-corpus UIA test does not need to drive a FileDialog.
+    corpus = _corpus_sample_path()
+    if corpus.is_file():
+        (data_dir / "audio-studio-recent-audiobooks.json").write_text(
+            json.dumps([str(corpus)]),
+            encoding="utf-8",
+        )
 
 
 @pytest.fixture
