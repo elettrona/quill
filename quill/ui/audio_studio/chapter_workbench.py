@@ -68,6 +68,7 @@ class ChapterWorkbenchDialog(wx.Dialog):
         *,
         announce: Callable[[str], None] | None = None,
         run_background: Callable[..., None] | None = None,
+        on_publish: Callable[[BookFile], None] | None = None,
     ) -> None:
         super().__init__(
             parent,
@@ -82,6 +83,7 @@ class ChapterWorkbenchDialog(wx.Dialog):
         ]
         self._announce_fn = announce
         self._run_background = run_background
+        self._on_publish_cb = on_publish
         self._dirty = False
 
         root = wx.BoxSizer(wx.VERTICAL)
@@ -158,10 +160,13 @@ class ChapterWorkbenchDialog(wx.Dialog):
         self._save_btn.Bind(wx.EVT_BUTTON, lambda _e: self._on_save())
         save_as_btn = wx.Button(self, label=_("Save &As..."))
         save_as_btn.Bind(wx.EVT_BUTTON, lambda _e: self._on_save_as())
+        self._publish_btn = wx.Button(self, label=_("&Publish..."))
+        self._publish_btn.Bind(wx.EVT_BUTTON, lambda _e: self._on_publish())
         close_btn = wx.Button(self, wx.ID_CANCEL, label=_("Close"))
         btn_row.AddStretchSpacer()
         btn_row.Add(self._save_btn, 0, wx.RIGHT, 6)
         btn_row.Add(save_as_btn, 0, wx.RIGHT, 6)
+        btn_row.Add(self._publish_btn, 0, wx.RIGHT, 6)
         btn_row.Add(close_btn, 0)
         root.Add(btn_row, 0, wx.EXPAND | wx.ALL, 10)
         if book.kind != "mp3":
@@ -446,6 +451,16 @@ class ChapterWorkbenchDialog(wx.Dialog):
             str(_("Saved {name}").format(name=out.name)),
         )
 
+    def _on_publish(self) -> None:
+        if self._on_publish_cb is None:
+            self._error(str(_("Publishing is not available here.")))
+            return
+        if self._dirty:
+            self._error(str(_("Save your chapter edits first, then publish.")))
+            return
+        self._collect_tags()
+        self._on_publish_cb(self._book)
+
     # -- lifecycle --------------------------------------------------------------------
 
     def _on_close(self, evt: wx.CloseEvent) -> None:
@@ -466,11 +481,18 @@ def open_book_in_workbench(frame: object, path: Path) -> None:
             str(_("Chapter Workbench")),
         )
         return
+
+    def on_publish(current: BookFile) -> None:
+        from quill.ui.audio_studio.publish_dialog import open_publish_dialog
+
+        open_publish_dialog(frame, current)
+
     dlg = ChapterWorkbenchDialog(
         frame.frame,  # type: ignore[attr-defined]
         book,
         announce=getattr(frame, "_announce", None),
         run_background=getattr(frame, "_run_background_task", None),
+        on_publish=on_publish,
     )
     try:
         frame._show_modal_dialog(dlg, str(_("Chapter Workbench")))  # type: ignore[attr-defined]

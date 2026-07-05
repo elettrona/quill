@@ -2551,6 +2551,12 @@ The Workbench is where a finished audiobook gets fixed by ear. The chapter list 
 - **Import chapters...** replaces the whole list from Audacity labels, a CUE sheet, timestamp lines, Podcasting 2.0 JSON, or CSV; **Export chapters...** writes the list in any of the same five formats.
 - **Book details** (title, author, narrator, genre, year) are edited right in the dialog.
 - **Save** writes an MP3's edits **in place** — only the tags are rewritten; the audio is untouched. An M4B is saved with **Save As** instead: a lossless re-mux (no re-encode, no quality loss) into a new file. Long saves run in the background so QUILL stays responsive.
+- **Publish...** opens three ways to get the finished book out into the world, each an explicit action:
+  - **Podcast feed** — QUILL writes a complete `.rss` file next to the book (RSS 2.0 with iTunes and Podcasting 2.0 tags; chapter navigation rides the `chapters.json` sidecar). Upload the feed and audio anywhere; generation itself never touches the network.
+  - **SFTP upload** — save a destination (host, folder, and the public URL that mirrors it) and QUILL uploads the book plus its companion files through its own SSH machinery, with the same strict host-key policy as editing over SSH. The password is kept in the **Windows Credential Manager**, never in QUILL's settings.
+  - **Auphonic** — send the book to your own Auphonic account for professional post-production; QUILL uploads, waits for the production to finish, and downloads the results into a folder next to the book. Your API token also lives in the credential vault. QUILL asks before anything is uploaded.
+
+  Publishing is unavailable in Safe Mode, and every upload runs in the background with spoken completion.
 
 Each step is announced as you arrive ("Step 2 of 7: What should I read?"), **Back** and **Next** move between steps, and **Skip to summary** jumps ahead when your saved project profile already fills every page — a repeat run is three keystrokes. The conversion runs on a background task with per-file progress that you can cancel, using the same shared speech pipeline live Read Aloud uses — so the voice you audition is the voice you get.
 

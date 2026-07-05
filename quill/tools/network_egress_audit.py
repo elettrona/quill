@@ -37,6 +37,14 @@ _EGRESS_CALLEES = frozenset({
 # Reviewed, allowed egress sites: "<relative path>::<enclosing function>" mapped
 # to the reason the call is not silent. Update this when adding a network call.
 _REVIEWED_EGRESS: dict[str, str] = {
+    "core/publish/auphonic.py::_request": (
+        "Single egress site for Auphonic post-production (publish dialog only): "
+        "preset list, production upload/start, status poll, result download. "
+        "Requires the user's own API token from the Windows Credential Manager "
+        "(never settings); every use is an explicit publish action in a dialog "
+        "that names the service; absent in Safe Mode. HTTPS-only, verified TLS, "
+        "bounded timeout."
+    ),
     "core/metadata_lookup.py::_http_json": (
         "Single egress site for the Audio Studio's 'Look up book details' button "
         "(Open Library + MusicBrainz, both free and keyless). Reached only by that "
