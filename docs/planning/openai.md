@@ -1,8 +1,19 @@
-# The QUILL AI Gateway — Implementation Plan
+# The QUILL AI Gateway — Product Requirements Document
 
-Status: planning document, no code written against it yet. Author: Claude
-Fable 5, 2026-07-05. Grounded in QUILL's actual current AI code (cited
-throughout as `file.py:function`), not a generic proposal.
+**Status:** Draft PRD, v1.0. **Author:** Claude Fable 5. **Date:** 2026-07-05.
+**Scope:** Initial rollout (100 requests/user/month, document Q&A only,
+single Flask service on Jeff's existing server) plus the scaling path
+toward a broader public beta. Grounded in QUILL's actual current AI code
+(cited throughout as `file.py:function`), not a generic proposal. A
+reference implementation of the API contract in §24 lives in
+`quill-ai-gateway/` at the repository root.
+
+**Document map:** §0 grounds every decision in existing QUILL code. §1–3
+are the product case and architecture. §4–5 are privacy and data. §6–12
+are security, auth, and BYOK. §13–15 are cost, document handling, and
+images. §16 is the stack decision. §17–21 are UX, phases, risks. §22–23
+are the launch checklist and defaults recap. §24 is the API contract the
+Flask implementation follows exactly.
 
 **One-line thesis:** QUILL's desktop client never holds a shared provider
 key. It holds a QUILL-issued token. The QUILL AI Gateway is the only thing
@@ -87,7 +98,8 @@ The QUILL AI Gateway adds a second option — "Use QUILL's free hosted AI" —
 without ever putting a shared provider key inside the open-source client.
 The client authenticates to the Gateway with a QUILL-issued token (device-
 code flow, reusing `copilot_auth.py`'s pattern); the Gateway is a small,
-boring, private FastAPI service that owns the real OpenAI key, checks the
+boring, private Flask service (on the same server that already runs GLOW and
+`quillin-hub`) that owns the real OpenAI key, checks the
 requesting user's quota in Postgres/Redis *before* calling OpenAI, and logs
 only enough metadata (never document content, never prompts, by default)
 to answer "who's driving cost" and "is this abusive." Every limit is
@@ -105,7 +117,7 @@ exist.
 │   QUILL desktop      │ ─────────────────────────────────────────▶ │   QUILL AI Gateway        │
 │  (open source, MIT)  │                                            │  (private, closed infra)  │
 │                      │ ◀───────────────────────────────────────── │                            │
-│  GatewayBackend(     │   JSON: {text, tokens_in, tokens_out,       │  FastAPI + Postgres +      │
+│  GatewayBackend(     │   JSON: {text, tokens_in, tokens_out,       │  Flask + Postgres +        │
 │    AIBackend)        │          remaining_quota, status}          │  Redis + secret manager    │
 └─────────────────────┘                                            └───────────┬────────────────┘
                                                                                  │ HTTPS
@@ -159,7 +171,7 @@ local-only.
 | Prompt injection via document content asking the model to reveal its system prompt or perform an unapproved action | Each feature has its own fixed server-side prompt template (the client cannot supply an arbitrary system prompt to the Gateway) and the Gateway only ever returns model text to the client — it never executes tools or Gateway-side actions on the model's say-so. (QUILL's own agent tool loop, `SafeEditorToolGateway`, already only runs client-side, locally, with per-action confirmation — the Gateway has no equivalent and shouldn't get one in v1.) |
 | A user's private document content ends up in a breach of the usage database | Usage records store metadata only — token counts, feature id, timestamps, cost — never prompt/document text, by default (§4, §5). A breach of the usage DB reveals "user X asked 12 document-Q&A questions in June," not what was in any of them. |
 | Screen-reader users get a worse experience than sighted users under abuse controls (e.g. CAPTCHAs, lockouts on retry) | Explicit design constraint throughout (§9): no CAPTCHA anywhere in this flow; retry-tolerant rate limiting distinguishes "many similar requests in a burst" (normal for someone re-issuing a command while learning) from "sustained high-volume automation." |
-| Supply-chain: a compromised dependency in the Gateway process exfiltrates the OpenAI key from memory | Minimal dependency surface (FastAPI, one HTTP client, one DB driver, one Redis client); dependency-audit-and-sbom-style pinning (QUILL's CI already does this for the client — mirror it for the Gateway repo); the Gateway never installs unreviewed third-party packages at request time. |
+| Supply-chain: a compromised dependency in the Gateway process exfiltrates the OpenAI key from memory | Minimal dependency surface (Flask, one HTTP client, one DB driver, one Redis client); dependency-audit-and-sbom-style pinning (QUILL's CI already does this for the client — mirror it for the Gateway repo); the Gateway never installs unreviewed third-party packages at request time. |
 
 ## 4. Privacy model
 
@@ -260,11 +272,40 @@ CREATE TABLE users (
     id                    UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     created_at            TIMESTAMPTZ NOT NULL DEFAULT now(),
     status                TEXT NOT NULL DEFAULT 'active',   -- active | reduced | review | blocked
-    monthly_request_cap   INT  NOT NULL DEFAULT 500,
-    monthly_cost_cap_usd  NUMERIC(8,4) NOT NULL DEFAULT 1.00,
+    -- NULL means "use the live global default from gateway_config" (below) --
+    -- a per-user override is only set when an admin deliberately changes one
+    -- user's allowance; nobody's cap silently drifts when the global default
+    -- changes, and nobody needs a per-row migration when it does.
+    monthly_request_cap   INT,
+    monthly_cost_cap_usd  NUMERIC(8,4),
     -- optional, nullable, additive identity upgrade (never required):
     email                 TEXT UNIQUE,
     email_verified_at     TIMESTAMPTZ
+);
+
+-- Every tunable number in §8 lives here, not in code, so an admin can
+-- change any limit instantly (no redeploy, no restart) from the admin
+-- console (§10). `resolve_limit(user_id, key)` = the user's override in
+-- `users`/`user_feature_caps` if set, else this table's `value`, else the
+-- hardcoded fail-safe in code (belt-and-suspenders if this table is ever
+-- empty on a fresh install). Seeded at first deploy with the "start small"
+-- values in §8/§23; every row is editable from day one.
+CREATE TABLE gateway_config (
+    key                   TEXT PRIMARY KEY,      -- e.g. 'monthly_request_cap'
+    value                 NUMERIC NOT NULL,
+    description           TEXT NOT NULL,         -- shown in the admin console next to the field
+    updated_by            TEXT,
+    updated_at            TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+-- Per-feature caps, same "global default + optional per-user override"
+-- shape as monthly_request_cap above, but keyed by feature since features
+-- have independent monthly allowances (§8).
+CREATE TABLE user_feature_caps (
+    user_id               UUID NOT NULL REFERENCES users(id),
+    feature               TEXT NOT NULL,
+    monthly_cap           INT NOT NULL,           -- explicit per-user override only; no NULL rows
+    PRIMARY KEY (user_id, feature)
 );
 
 CREATE TABLE devices (
@@ -340,13 +381,15 @@ is Postgres), and the salted-IP-hash sets for abuse heuristics (§9).
 
 ## 6. Secret management plan
 
-- **Where the OpenAI key lives:** a managed secret store — Fly.io Secrets
-  (matches the existing `quillin-hub` deployment target and its
-  `fly.toml`-style conventions) or, if self-hosting elsewhere, Doppler or
-  the platform's native secret manager (AWS Secrets Manager / Azure Key
-  Vault / GCP Secret Manager). Never a `.env` file committed to git, never
-  a Kubernetes ConfigMap (must be a Secret if k8s is ever used), never
-  baked into a container image layer.
+- **Where the OpenAI key lives:** on Jeff's existing server (per §16), the
+  same place GLOW's and `quillin-hub`'s own credentials already live —
+  whatever mechanism that already is (an environment variable set outside
+  any git-tracked directory, or that host's secret store if it's a managed
+  platform). If a managed cloud is used instead, use its native secret
+  manager (AWS Secrets Manager / Azure Key Vault / GCP Secret Manager /
+  Fly.io Secrets / Doppler). Never a `.env` file committed to git, never a
+  Kubernetes ConfigMap (must be a Secret if k8s is ever used), never baked
+  into a container image layer.
 - **How the process gets it:** injected as an environment variable at
   container/process start by the platform's secret-injection mechanism.
   The Gateway code reads `os.environ["OPENAI_API_KEY"]` exactly once, at
@@ -377,7 +420,10 @@ is Postgres), and the salted-IP-hash sets for abuse heuristics (§9).
 - **Access control:** exactly two people (the maintainer + one backup) can
   read the secret value from the platform's UI/CLI; every other team
   member gets deploy access without secret-read access where the platform
-  supports that separation (Fly.io and the major clouds all do).
+  supports that separation where the host is a managed platform; on a
+  self-administered server, this is simply "only Jeff (and one backup
+  person) can read the value," enforced by file permissions/shell access
+  rather than a platform IAM feature.
 
 ## 7. Authentication and onboarding
 
@@ -454,23 +500,58 @@ magic link) if abuse-by-reregistration becomes a real problem in practice.
 using the cheapest available signal first** (Redis counter check, ~1ms)
 before falling through to anything requiring a database round-trip.
 
-| Limit | Default (first beta) | Enforcement point |
-|---|---|---|
-| Monthly request quota per user | 500 requests | Redis counter `ratelimit:{user_id}:month`, TTL to month boundary; source of truth reconciled nightly against `monthly_usage_summary` |
-| Daily request quota per user | 60 requests | Redis counter, 24h TTL |
-| Hourly rate limit per user | 20 requests | Redis sliding window |
-| Hourly rate limit per device | 20 requests | same, keyed by device_id — catches one compromised token spamming without punishing the user's other devices |
-| Per-feature monthly cap | document_qna 200, summarize 200, rewrite 200, alt_text 50, chat 300 (features can overlap a shared pool up to the monthly total) | Redis counter per `(user_id, feature, month)` |
-| Max input tokens per request | 4,000 tokens (~16,000 chars) | checked after tokenizing the prompt server-side, before the OpenAI call |
-| Max output tokens per request | 800 tokens | passed as `max_tokens` to the OpenAI call, hard cap |
-| Max document chunk count per document-Q&A request | 6 chunks (see §14 — the client only ever sends relevant chunks, never a whole document) | validated server-side against the request body |
-| Max image size | 4 MB, longest edge 2048px (client resizes before sending — see §15) | rejected with a clear message if exceeded |
-| Max images per day per user | 20 | Redis counter |
-| Max estimated monthly cost per user | $0.50 (nano-class pricing makes 500 requests land well under this; the cap is a backstop, not the binding constraint) | computed running total in `monthly_usage_summary`, checked before each request once the user is within 90% of it (cheap early-exit skip below that) |
-| Global monthly budget cap | $250/month for the first beta (500 users × ~$0.50 headroom, see §13) | checked against a Redis-cached sum, refreshed every write; crossing 100% flips `feature_flags.hosted_ai.enabled = false` automatically pending admin review |
-| Emergency kill switch | n/a | `feature_flags` row `hosted_ai`, checked first, before any per-user logic — one admin action pauses everything |
-| Model allowlist | `{"gpt-5-nano"}` only for hosted tier, hardcoded server-side, never client-selectable | request body's model field, if present at all, is ignored — the Gateway decides the model per feature |
-| Prompt/system-template allowlist | one fixed template per `feature` id, server-side only | client sends `{feature, prompt}`; Gateway looks up the fixed template for `feature` and wraps the client's prompt in it — the client cannot supply its own system prompt |
+**Every number in this table is a row in `gateway_config` (§5), not a
+constant in code.** An admin changes any of them from the admin console
+(§10) and it takes effect on the *next request* — no redeploy, no
+restart, no code change. The values below are the seeded starting point
+for the initial rollout, deliberately conservative per "start small and
+learn": prove the system holds up at a small scale before opening the
+tap, rather than guessing a generous number on day one and having to walk
+it back.
+
+| Limit | Config key | Seeded default (initial rollout) | Enforcement point |
+|---|---|---|---|
+| Monthly request quota per user | `monthly_request_cap` | **100 requests** | Redis counter `ratelimit:{user_id}:month`, TTL to month boundary; source of truth reconciled nightly against `monthly_usage_summary` |
+| Daily request quota per user | `daily_request_cap` | 20 requests | Redis counter, 24h TTL |
+| Hourly rate limit per user | `hourly_request_cap` | 8 requests | Redis sliding window |
+| Hourly rate limit per device | `device_hourly_request_cap` | 8 requests | same, keyed by device_id — catches one compromised token spamming without punishing the user's other devices |
+| Per-feature monthly cap | `feature_cap.<feature>` (one row per feature) | document_qna 60, summarize 60, rewrite 60, alt_text 15, chat 60 (these are ceilings *within* the 100 monthly total, not additive — the monthly total is still the binding cap for a user who mixes features) | Redis counter per `(user_id, feature, month)`, checked alongside the monthly total |
+| Max input tokens per request | `max_input_tokens` | **1,500 tokens (~6,000 characters, roughly 1,000 words)** | checked after tokenizing the prompt server-side, before the OpenAI call — see §14.1 for why this is deliberately tight for the free tier |
+| Max output tokens per request | `max_output_tokens` | 500 tokens | passed as `max_tokens` to the OpenAI call, hard cap |
+| Max document chunk count per document-Q&A request | `max_chunks_per_request` | 3 chunks (see §14 — the client only ever sends relevant chunks, never a whole document) | validated server-side against the request body; a request claiming more chunks than this is rejected outright, not silently truncated |
+| Max image size | `max_image_bytes` / `max_image_edge_px` | 3 MB, longest edge 1600px (client resizes before sending — see §15) | rejected with a clear message if exceeded, checked before the file is even fully read into memory (streaming size check, not "read then reject") |
+| Max images per day per user | `daily_image_cap` | 5 | Redis counter |
+| Max estimated monthly cost per user | `monthly_cost_cap_usd` | $0.15 (nano-class pricing makes 100 requests at these token caps land well under this — see §13; the cap is a backstop, not the binding constraint) | computed running total in `monthly_usage_summary`, checked before each request once the user is within 90% of it (cheap early-exit skip below that) |
+| Global monthly budget cap | `global_monthly_budget_usd` | **$25/month for the initial rollout** (see §13's recalculated projection) | checked against a Redis-cached sum, refreshed every write; crossing 100% flips `feature_flags.hosted_ai.enabled = false` automatically pending admin review |
+| Emergency kill switch | n/a (boolean, not numeric) | on/off | `feature_flags` row `hosted_ai`, checked first, before any per-user logic — one admin action pauses everything |
+| Model allowlist | `allowed_models` (comma-separated, but the initial rollout ships with exactly one) | `{"gpt-5-nano"}` only for hosted tier, never client-selectable | request body's model field, if present at all, is ignored — the Gateway decides the model per feature |
+| Prompt/system-template allowlist | n/a (code, not config — see rationale below) | one fixed template per `feature` id, server-side only | client sends `{feature, prompt}`; Gateway looks up the fixed template for `feature` and wraps the client's prompt in it — the client cannot supply its own system prompt |
+
+Two rows are deliberately **not** admin-tunable at runtime: the model
+allowlist's *contents* (an admin can only shrink/grow which models are
+*permitted*, never point the Gateway at an arbitrary model string typed
+into a form — that string becomes part of a billed API call, so it stays
+a reviewed code change) and the prompt templates (same reasoning — a
+template is effectively the system prompt every user's request runs
+through; changing it is a product decision with real behavior
+consequences, not a quota dial, so it stays in code review like any other
+prompt-engineering change).
+
+### 8.1 Why 100/month to start
+
+500 users × 100 requests × the tightened per-request cost ceiling (§13)
+projects to roughly **$3–5/month in the realistic-average case**, with a
+**worst-case ceiling around $75/month** if every single user maxed every
+cap every month (500 × 100 × ~$0.0015 worst-case-per-request cost at
+these tighter token limits) — both comfortably inside a $25 budget cap
+that still leaves headroom to notice a real problem before it becomes an
+expensive one. This is intentionally small: the first rollout's job is to
+prove the auth flow, the quota enforcement, and the abuse controls work
+correctly against real traffic, not to maximize how much free usage
+QUILL can offer on day one. Raising the cap later is a one-line
+`gateway_config` update once real usage data says it's safe — there is no
+reason to guess big and walk it back instead of starting small and
+raising it deliberately.
 
 ### Degradation messages (client-facing, exactly these or close to them)
 
@@ -519,11 +600,15 @@ this problem regardless.
   the first time, or is learning the keyboard shortcut, never approaches
   this threshold (5 large duplicates in 10 minutes is a lot of repetition
   for a human retry pattern, easily distinguishable from a script).
-- **Burst-then-idle is normal, not suspicious:** the hourly limit (20/hour)
-  is generous enough that a focused editing session doesn't trip it, and
-  the daily/monthly caps are the actual binding constraint for normal use
-  — hourly exists only to stop a true runaway loop, not to throttle
-  legitimate rapid work.
+- **Burst-then-idle is normal, not suspicious:** the hourly limit (8/hour
+  at the initial rollout's tighter default) is still generous enough that
+  a focused editing session doesn't trip it in ordinary use, and the
+  daily/monthly caps are the actual binding constraint for normal use —
+  hourly exists only to stop a true runaway loop, not to throttle
+  legitimate rapid work. If real usage during the initial rollout shows
+  the tighter hourly number *does* clip legitimate bursts, that's exactly
+  the kind of signal this beta is designed to surface — raise
+  `hourly_request_cap` in `gateway_config` (§8), no code change needed.
 - **No behavioral biometrics, no keystroke-timing analysis:** anything that
   profiles *how* someone types or interacts risks flagging atypical-but-
   legitimate assistive-technology usage patterns as "bot-like." This
@@ -546,6 +631,37 @@ blocker) that can, for any user/device/feature:
 - Adjust `monthly_request_cap`/`monthly_cost_cap_usd` for one user
   immediately (e.g. lower a suspicious account's cap to near-zero without
   fully blocking them).
+- **Permanently remove a user** — a distinct, harder action from setting
+  `status = 'blocked'` (which is reversible and the everyday way to "turn
+  off a user's hosted AI usage"). Removal deletes the user's row and
+  their devices outright; it's for a user who asks to be forgotten, or
+  for cleaning up a clearly-abusive account rather than leaving it
+  dormant. `usage_events` rows keep their `user_id` for aggregate
+  reporting integrity (they're metadata-only per §4, so retaining them
+  after removal carries no meaningful privacy cost); a literal
+  right-to-be-forgotten request that requires erasing even that linkage
+  is a separate anonymization step, not this endpoint's default behavior.
+- **Turn a model on or off, and choose which enabled model is the active
+  default.** `gateway_models` (§5) is the admin-tunable model registry:
+  each row is one model the Gateway is permitted to call, with an
+  `enabled` flag and an `is_default` flag (exactly one enabled row is
+  ever the default, enforced in application code in a single transaction
+  — see §5's `gateway_models` note). Disabling a misbehaving model is one
+  toggle; switching which model requests actually use is one more. Adding
+  a *new* model (a different model id/cost entirely) is a deliberate,
+  reviewed action — inserting a `gateway_models` row with its real
+  per-token cost rates — since a wrong cost rate would silently corrupt
+  every subsequent cost calculation for that model; this is intentionally
+  not a one-field admin-console edit the way a numeric limit is.
+- **Edit any `gateway_config` row (§5/§8) — every global limit in the
+  system, live, no redeploy.** This is the console's most-used screen day
+  to day: a form listing every tunable (monthly/daily/hourly caps,
+  per-feature caps, token limits, image limits, cost caps, budget cap),
+  each with its current value, its `description`, and a save button that
+  writes the new value plus `updated_by`/`updated_at`. This is precisely
+  the mechanism that makes "start small and learn, then raise the limits
+  once they're proven safe" a one-field edit instead of a code change and
+  a deploy.
 - Trigger a key-rotation runbook (documented procedure, §6/§11 — not
   necessarily a one-click UI action, but the console should show "key age"
   so it's visible when rotation is due).
@@ -593,56 +709,91 @@ against the requested deliverable list:
   local API calls in `settings.json`-adjacent local state) — out of scope
   for this plan, which is specifically about the *hosted* allowance.
 
-## 13. Cost-control model for 500 monthly active users
+## 13. Cost-control model — initial rollout, then scaling to 500 MAU
 
-**Assumptions grounded in the plan above:** nano-class model only
-(`gpt-5-nano`-equivalent pricing class), max 800 output tokens, max 4,000
-input tokens, chunked document Q&A (not whole-document sends — see §14),
-capped-and-cached summaries.
+**Assumptions grounded in the plan above, at the initial-rollout defaults
+from §8:** nano-class model only (`gpt-5-nano`-equivalent pricing class),
+max 500 output tokens, max 1,500 input tokens, chunked document Q&A (not
+whole-document sends — see §14), capped-and-cached summaries, 100
+requests/user/month.
 
-### Per-request cost ceiling (worst case, at the hard caps)
+### Per-request cost ceiling (worst case, at the tightened hard caps)
 
 At nano-class pricing (illustrative — use the actual current published
 rate at implementation time, these numbers are a planning estimate, not a
 quote): roughly $0.05–$0.15 per **million** input tokens and $0.40–$0.60
 per million output tokens is typical for the smallest current-generation
-models. At the hard per-request caps (4,000 in / 800 out), one worst-case
-request costs on the order of **$0.001–$0.002**. Real average requests
-(shorter selections, not maxed-out documents) will be meaningfully cheaper
-— call it **$0.0005** average, a deliberately conservative planning number.
+models. At the initial-rollout per-request caps (1,500 in / 500 out), one
+worst-case request costs on the order of **$0.0004–$0.0007** — noticeably
+cheaper than the original 4,000/800 caps this plan started with, because
+the free tier's per-request ceiling is deliberately tight (§14.1). Real
+average requests (shorter selections, not maxed-out documents) will be
+meaningfully cheaper still — call it **$0.0002** average, a deliberately
+conservative planning number.
 
-### 500 MAU projection
+### Initial rollout projection (start here)
+
+| Assumption | Value |
+|---|---|
+| Monthly active users, initial rollout | 50 (a soft-launch scale — invite a small group, watch it work, then open up) |
+| Monthly request cap per user | 100 |
+| Average requests/user/month (most users well under the cap) | 20 (20% of the cap — a cautious first-rollout assumption) |
+| Average cost/request | $0.0002 |
+| **Projected monthly spend at average usage** | **50 × 20 × $0.0002 = $0.20/month** |
+| Worst case: every one of the 50 users maxes every cap every month | 50 × 100 × $0.0007 = **$3.50/month** |
+
+**Recommended initial-rollout budget cap: $25/month.** Even the worst
+case above ($3.50) sits well inside it — the $25 figure is chosen not
+because the math demands it, but because it's a round, comfortable number
+that an admin can watch trip *only* if something is genuinely wrong
+(a bug causing runaway retries, or real abuse), never as a routine
+ceiling that legitimate small-scale usage bumps into.
+
+### Scaling projection — 500 MAU, once the initial rollout has proven out
+
+Once `gateway_config`'s `monthly_request_cap` is deliberately raised
+(§8.1) and the user base has grown, the same math scales linearly:
 
 | Assumption | Value |
 |---|---|
 | Monthly active users | 500 |
-| Average requests/user/month (most users well under the 500 cap; a full-catalog free tier isn't the expectation) | 60 (12% of the hard cap — realistic for an "occasional AI helper" usage pattern, not a power-user assumption) |
-| Average cost/request | $0.0005 |
+| Average requests/user/month | 60 (an "occasional AI helper" usage pattern, not a power-user assumption) |
+| Average cost/request (assuming caps are raised back toward the original 4,000/800 token ceiling once trust is established) | $0.0005 |
 | **Projected monthly spend at average usage** | **500 × 60 × $0.0005 = $15/month** |
-| Worst case: every user maxes every cap every month | 500 × 500 × $0.002 = **$500/month** |
+| Worst case: every user maxes every cap every month (at the original, more generous 500/month cap) | 500 × 500 × $0.002 = **$500/month** |
 
-**Recommended beta budget cap: $250/month.** This sits comfortably above
-the realistic-average projection ($15) with more than 15x headroom for
-adoption growth or heavier-than-expected usage, while still being far
-below the theoretical worst case ($500) — meaning the hard per-user caps
-in §8, not the global budget cap, are the primary defense against runaway
-cost; the global cap is the backstop that catches "our per-user math was
-wrong" rather than the everyday control.
+At this scale, a $250/month budget cap (15x headroom over the realistic
+projection, well under the theoretical worst case) is the appropriate
+setting — but this is a *later* config change made deliberately, informed
+by what the initial rollout actually measured, never the starting point.
 
-### Alerting thresholds
+### The governing principle
 
-| Threshold | Action |
-|---|---|
-| 50% of monthly budget ($125) | Informational Slack/email/webhook to the maintainer — no action needed, just visibility |
-| 75% ($187.50) | Same alert, escalated tone; review the usage-by-feature breakdown for anything unexpected |
-| 90% ($225) | Alert + recommend tightening per-user caps for the remainder of the month via the admin console (§10) rather than waiting for the hard stop |
-| 100% ($250) | `feature_flags.hosted_ai.enabled` auto-flips to `false`; every client sees "Hosted AI is paused while we review unusual activity" (§8); BYOK and local models are entirely unaffected, since they never touch this budget |
+The hard per-user caps in §8 (all live-tunable via `gateway_config`, §8.1,
+§10), not the global budget cap, are the primary defense against runaway
+cost at every scale; the global cap is always the backstop that catches
+"our per-user math was wrong," never the everyday control. Scale the
+global cap up in step with the per-user caps, never ahead of them.
+
+### Alerting thresholds (percentages are the same at either scale; dollar
+### amounts shown for both the initial-rollout $25 cap and the later $250
+### scaling-stage cap from the projection above)
+
+| Threshold | Initial rollout ($25 cap) | Scaling stage ($250 cap) | Action |
+|---|---|---|---|
+| 50% | $12.50 | $125 | Informational Slack/email/webhook to the maintainer — no action needed, just visibility |
+| 75% | $18.75 | $187.50 | Same alert, escalated tone; review the usage-by-feature breakdown for anything unexpected |
+| 90% | $22.50 | $225 | Alert + recommend tightening per-user caps for the remainder of the month via the admin console (§10) rather than waiting for the hard stop |
+| 100% | $25 | $250 | `feature_flags.hosted_ai.enabled` auto-flips to `false`; every client sees "Hosted AI is paused while we review unusual activity" (§8); BYOK and local models are entirely unaffected, since they never touch this budget |
 
 ### Recommended defaults recap (also see §8's full table)
 
-- Free monthly allowance: **500 requests/user**, expected real average
-  usage far below that.
-- Beta global budget cap: **$250/month**.
+- Free monthly allowance: **100 requests/user for the initial rollout**
+  (§8.1) — expected real average usage far below that; raise deliberately
+  via `gateway_config` once proven safe, scaling toward 500/user as
+  adoption grows (§13's scaling projection).
+- Initial-rollout global budget cap: **$25/month**. Scaling-stage cap
+  (once raised): $250/month.
 - Fallback when the cap is reached: **pause hosted AI, not the app** — BYOK
   and local-model paths keep working; the client's messaging always
   mentions "add your own key to continue now" as the immediate workaround.
@@ -667,10 +818,55 @@ is involved:
 
 | Scope | What's sent to the Gateway | Local work first |
 |---|---|---|
-| Selected text | Exactly the selection, verbatim | none needed — it's already small |
+| Selected text | Exactly the selection, verbatim, **truncated client-side to the current `max_input_tokens` config value before it's even sent** (§14.1) | none needed — it's already small |
 | Current paragraph/section | The paragraph/section text only (QUILL already has section-boundary logic from `extract_sections` used by the Audio Studio's chaptering — reuse it to find "the current section" rather than inventing new boundary detection) | none |
-| Whole document | **Chunked locally first.** QUILL already parses documents into sections; a lightweight local retrieval step (even simple keyword/heading-overlap scoring, no embedding model required for v1) picks the top N sections most relevant to the question, capped at the Gateway's 6-chunk/4,000-token limit (§8), and *those* chunks are sent — never the raw whole document | chunk + rank locally |
+| Whole document | **Chunked locally first.** QUILL already parses documents into sections; a lightweight local retrieval step (even simple keyword/heading-overlap scoring, no embedding model required for v1) picks the top N sections most relevant to the question, capped at the Gateway's `max_chunks_per_request`/`max_input_tokens` limits (§8), and *those* chunks are sent — never the raw whole document | chunk + rank locally |
 | Document collection (e.g. a Vault) | Same chunking principle, but scored across multiple documents; explicitly flagged as a v2/later feature, not part of the first beta — the complexity of cross-document ranking isn't justified until whole-document Q&A is proven out | out of scope for beta |
+
+### 14.1 Large-document safeguards (defense in depth — three independent layers)
+
+The free hosted tier is the one place QUILL must be strict about input
+size, because every extra input token is metered cost on someone else's
+card. Three layers, each independently sufficient, deliberately
+redundant:
+
+1. **Client-side pre-check, before the consent dialog even appears.**
+   `GatewayBackend` (or whichever feature is about to call it) measures
+   the candidate text's length *before* offering to send it. If a
+   selection/section/chunk-set exceeds the current `max_input_tokens`
+   value (the client fetches this once per session from the Gateway's
+   `/v1/config` endpoint, so it always reflects the live admin-set value,
+   never a stale hardcoded guess), QUILL never shows the consent dialog
+   at all — it shows the degradation message from §8 immediately
+   ("This selection is too large for the free tier — try a shorter
+   passage, or switch to your own API key for full documents.") This is
+   the layer that saves the round-trip and the user's time, but it is
+   **not** the security boundary — a modified or malicious client can
+   skip it entirely, which is exactly why layers 2 and 3 exist.
+2. **Server-side hard reject, before tokenizing counts as "trusted."**
+   Every `/v1/chat` request has its request body size checked against a
+   generous absolute byte ceiling (e.g. 64KB) *before* any parsing or
+   tokenization happens — this stops a trivial "send a 500MB body" attack
+   from even reaching the tokenizer. Then the actual prompt is tokenized
+   server-side (never trusting a client-reported token count) and
+   compared against `max_input_tokens`; over the limit is an immediate
+   `400` with the same degradation message, before any OpenAI call is
+   attempted. This is the real boundary — it holds even against a client
+   that skips layer 1 entirely.
+3. **Chunk-count ceiling, independent of per-chunk size.** A
+   document-Q&A request can't route around the token limit by sending
+   many small chunks instead of one big one — `max_chunks_per_request`
+   (§8) caps the chunk *count* independently of the combined token check,
+   so "3 chunks of 1,500 tokens each" is still rejected as a whole even
+   though no single chunk looks large.
+
+All three checks run **before** the Gateway calls OpenAI — never as a
+post-hoc cleanup after an expensive call has already happened. A request
+that fails any of them is billed nothing (rejecting is free; only the
+actual OpenAI call has a cost), which is also why layer 2 matters even
+though layer 1 exists: a well-behaved client's UX benefit (skip the round
+trip) doesn't help contain cost if a bad actor skips it, so the server
+never relaxes its own check based on trusting the client did one already.
 
 ### Consent, explicitly
 
@@ -730,20 +926,41 @@ provider.
 
 ## 16. Recommended stack
 
+**Updated recommendation: host it on Jeff's existing server, on Flask.**
+Jeff already operates a server running Flask for GLOW and for
+`quillin-hub` (a real, in-repo precedent — see §0 and the table below).
+Reusing known-good, already-operated infrastructure beats standing up a
+new platform (Fly.io) and a new framework (FastAPI) for a service this
+size: one less thing to learn, one less thing to pay for, one less set of
+ops runbooks to write from scratch. The async/auto-OpenAPI advantages
+FastAPI would bring don't matter much here — the Gateway's request volume
+(tens of requests/second at most, per §13's projections) doesn't need
+async concurrency to stay responsive, and a hand-written OpenAPI schema
+for the one or two client-facing routes is a small, one-time cost.
+Everything else in this plan (the Postgres schema in §5, the Redis
+rate-limiting model in §8/§9, the quota/abuse logic) is framework-agnostic
+and ports to Flask with no design changes — only the route-handler syntax
+differs.
+
 | Component | Choice | Why |
 |---|---|---|
-| Web framework | **FastAPI** | async-native (matters for a proxying service awaiting upstream OpenAI calls), automatic OpenAPI schema (useful for the admin console and for the client's `GatewayBackend` to be generated/kept in sync), small dependency footprint vs. Django |
-| Database | **PostgreSQL** | matches `quillin-hub`'s existing choice (one less thing for the same small team to operate differently); partitioned `usage_events` table (§5) scales fine for this volume |
-| Rate limiting | **Redis** | sub-millisecond counter checks are the right tool for "check before every OpenAI call"; `quillin-hub` doesn't use Redis today, but this service's access pattern (many small counter checks) genuinely needs it where the storefront didn't |
-| Secrets | Fly.io Secrets (if deploying there, matching `quillin-hub`'s target) or Doppler/cloud-native secret manager otherwise | see §6 |
+| Web framework | **Flask** | matches the framework already running GLOW and `quillin-hub` on Jeff's server — one runtime, one set of ops knowledge, no new platform to learn; use `Flask-Limiter` (Redis-backed) for the rate-limit checks and plain SQLAlchemy for Postgres, the same combination `quillin-hub` already proves out |
+| Database | **PostgreSQL** | matches `quillin-hub`'s existing choice; partitioned `usage_events` table (§5) scales fine for this volume |
+| Rate limiting | **Redis** | sub-millisecond counter checks are the right tool for "check before every OpenAI call"; `quillin-hub` doesn't use Redis today, but this service's access pattern (many small counter checks) genuinely needs it where the storefront didn't — add it as a new dependency on the existing server, it's a lightweight service to run alongside Postgres |
+| Secrets | Whatever secret-injection mechanism the existing server already uses for GLOW/`quillin-hub`'s own credentials (environment variables set outside the deployed code, a local `.env` **outside** any git-tracked directory, or the platform's secret store if the host is a managed one) | see §6 — the mechanism matters less than the invariant: never in a repo, never in a file that gets git-added by habit |
 | Structured logging | Python `structlog` or stdlib `logging` with a JSON formatter + a redaction filter (mirrors `quill/stability/redaction.py`'s existing scrub-pattern approach, ported server-side) | never emits prompt/document text by construction, not just by discipline |
-| Admin console | Start as a small FastAPI-templated internal page (Jinja2, server-rendered, basic-auth or the same device-code login flow §7 gated to an admin allowlist) — a full SPA is not justified at this scale | keeps the same small stack, no separate frontend build pipeline |
-| Deployment | **Fly.io** (matches `quillin-hub`'s existing runbook and conventions — one platform, one set of ops knowledge for the team) | small VPS-class pricing, built-in secrets, easy Postgres/Redis add-ons, already-proven for this project |
-| CI/CD | Separate private repository from the open-source QUILL client; GitHub Actions with deploy secrets scoped to that private repo only, never triggered by a public-repo PR | prevents exactly the class of leak GATE-9 exists to catch client-side |
-| Monitoring/alerting | Fly.io's built-in metrics + a lightweight external uptime check (the `quillin-hub` runbook already calls out a `/healthz` gap as a to-do — build this service's `/healthz` from day one) + the budget-threshold alerts (§13) via a simple webhook to Slack/email/Discord | boring, cheap, sufficient at this scale |
-| Backups | Managed Postgres automatic backups (Fly Postgres or equivalent) with the retention policy (§4.4) enforced via a scheduled cleanup job, not by disabling backups of expired-but-not-yet-cleaned rows | standard practice, no custom backup tooling needed |
+| Admin console | A small Flask-templated internal page (Jinja2, server-rendered, basic-auth or the same device-code login flow §7 gated to an admin allowlist) — a full SPA is not justified at this scale | keeps the same small stack, no separate frontend build pipeline |
+| Deployment | **Jeff's existing server** (same host as GLOW and `quillin-hub`), behind whatever reverse proxy/TLS termination those already use (nginx/Caddy, per `quillin-hub`'s deployment runbook) | zero new infrastructure to provision; the Gateway becomes a third small service on infra that's already monitored and maintained |
+| CI/CD | Separate private repository from the open-source QUILL client; deploy secrets scoped to that private repo only, never triggered by a public-repo PR — a simple `git pull` + process-restart deploy (matching a small self-hosted setup) is entirely adequate at this scale, no need for a container-orchestration pipeline | prevents exactly the class of leak GATE-9 exists to catch client-side, while staying as simple as the existing GLOW/`quillin-hub` deploys |
+| Monitoring/alerting | Whatever uptime/monitoring already watches GLOW and `quillin-hub` on that server, extended to this service's `/healthz` endpoint (the `quillin-hub` runbook calls out a `/healthz` gap as a to-do — build this service's `/healthz` from day one) + the budget-threshold alerts (§13) via a simple webhook to Slack/email/Discord | reuses existing monitoring instead of standing up new tooling |
+| Backups | Whatever Postgres backup routine already covers GLOW/`quillin-hub`'s databases, extended to this one, with the retention policy (§4.4) additionally enforced via a scheduled cleanup job | standard practice, no custom backup tooling needed |
 | Key rotation | Documented runbook (§6), executed manually on a quarterly calendar reminder — full automation isn't justified until rotation frequency increases | matches the realistic operational capacity of a small open-source project |
 | Incident response | A one-page runbook: "how to flip the global kill switch," "how to rotate the key under suspicion," "who to notify," kept in the private Gateway repo's `docs/` — mirrors the spirit of QUILL's own `crash_report.py`/incident patterns without needing new tooling | keeps the plan realistic in scope for the team size |
+
+**If Jeff's existing server ever needs to be swapped for managed hosting**
+(e.g. outgrowing a single box), everything above ports cleanly to Fly.io or
+similar — the Postgres/Redis/Flask combination is supported everywhere;
+nothing in this plan is tied to one host.
 
 ## 17. User experience flows
 
@@ -752,11 +969,13 @@ provider.
    people)" and "Use your own API key or a local model." Choosing hosted
    triggers the device-code flow (§7) inline, with the code and URL
    announced clearly.
-2. **Ongoing use:** status bar / AI Hub shows "38 of 500 free requests
+2. **Ongoing use — the "magical" usage display, in three places (§17.2).**
+   status bar, AI Hub, and About Quill all show "38 of 100 free requests
    left this month" whenever hosted AI is active — always visible, never
-   requiring a separate check.
+   requiring a separate check, similar in spirit to how GitHub Copilot
+   surfaces its own usage in an editor status bar.
 3. **Approaching a limit:** at 90% of the monthly cap, one gentle one-time
-   notice: "You're close to this month's free AI limit (450 of 500 used).
+   notice: "You're close to this month's free AI limit (90 of 100 used).
    Add your own API key anytime to keep going without limits."
 4. **Hitting a limit:** the exact degradation messages in §8, always
    paired with the two live workarounds (wait for reset, or switch to
@@ -767,6 +986,48 @@ provider.
 6. **Admin pauses a feature:** any user attempting that feature sees a
    specific, honest message (§8) naming what's paused and why, never a
    generic error.
+
+### 17.2 The usage display, concretely (client-side implementation, not yet built)
+
+This is specified precisely here as the contract a future client change
+implements against `GET /v1/quota` (§24); it is **not** part of the Flask
+service in `quill-ai-gateway/` (which is server-only) — it's a follow-on
+QUILL desktop client (`quill/ui/`) change, tracked separately.
+
+- **Status bar** (mirroring how GitHub Copilot shows its own usage in an
+  editor status bar): a small, always-visible status-bar segment reading
+  e.g. "AI: 38/100" when hosted AI is the active provider, hidden
+  entirely when BYOK/local is active (BYOK usage isn't tracked by the
+  Gateway at all — §12 — so there's nothing to show). Screen-reader
+  accessible on demand: focusing or activating the segment announces the
+  fuller sentence ("38 of 100 free AI requests left this month, resets
+  August 1st"), matching QUILL's existing convention of pairing every
+  visual status with an announced/readable equivalent (§18). Polled from
+  `GET /v1/quota` once per session and refreshed after every `/v1/chat`
+  response (which already returns a `remaining_quota` snapshot, §24 — no
+  extra round trip needed for the common case).
+- **AI Hub:** a dedicated "Hosted AI usage" line on the Services/Provider
+  tab wherever `quill_gateway` is configured — the same numbers as the
+  status bar, plus the reset date and current `status`
+  (active/reduced/review/blocked) in plain language, plus a direct link
+  to "Add your own API key" for when the free tier isn't enough.
+- **Help > About Quill:** one line in the existing About dialog's
+  Overview tab (§0's `info_pages.py`/`about_info.py` — the existing
+  `AboutInfo` dataclass gains one new, optional field, e.g.
+  `hosted_ai_usage_summary: str`, populated only when hosted AI is
+  configured) — "Hosted AI: 38 of 100 free requests used this month."
+  Chosen for About specifically because it's the place a user already
+  looks to understand "what is this copy of QUILL, and what's it doing" —
+  a natural, low-effort second surface for the same information, not a
+  new concept.
+- **Never enforcement, only display:** every one of these three surfaces
+  reads `GET /v1/quota`, which is explicitly informational (§24) — the
+  client never uses these numbers to block a request itself; the
+  authoritative check always happens server-side on the next real
+  `/v1/chat` call (§8's core invariant, repeated here because it applies
+  to display code too: a client that shows "5 requests left" and is wrong
+  by one is a cosmetic bug; a client that *enforces* "5 requests left" and
+  is wrong is a security bug).
 
 ## 18. Accessibility requirements
 
@@ -792,7 +1053,7 @@ provider.
 ## 19. Implementation phases
 
 **Phase 0 — Gateway skeleton (no client changes yet)**
-Stand up the private repo: FastAPI app, Postgres schema (§5), Redis
+Stand up the private repo: Flask app, Postgres schema (§5), Redis
 counters, device-code endpoints (§7), one hardcoded test feature
 (`echo`) that doesn't call OpenAI at all — prove the auth + quota
 plumbing works end to end before any real model cost is involved.
@@ -830,9 +1091,10 @@ practice.
 
 ## 20. Open questions
 
-1. **Hosting target confirmation:** Fly.io is recommended (§16) to match
-   `quillin-hub`'s existing operational pattern, but this should be
-   confirmed against current pricing/availability before committing.
+1. **Hosting target confirmation:** Jeff's existing server (already
+   running GLOW and `quillin-hub`) is the recommendation (§16) — confirm
+   it has the headroom for a third small service (a few hundred MB of
+   RAM, negligible CPU at this request volume) before committing.
 2. **Legal/ToS:** does QUILL need a short hosted-AI-specific terms
    addendum (separate from the general project license), given this is
    the first QUILL service that handles even pseudonymous usage data at
@@ -904,15 +1166,19 @@ practice.
 - [ ] Key rotation runbook (§6) has been dry-run at least once before
       launch, not left untested until the first real rotation is needed.
 
-## 23. Recommended defaults for the first public beta (summary)
+## 23. Recommended defaults for the initial rollout (summary)
 
 - **Auth:** OAuth device-code flow, anonymous registration (no email/
   account required), reusing `device_login.py`/`copilot_auth.py`.
 - **Model:** one nano-class model, hardcoded server-side allowlist of one.
-- **Monthly allowance:** 500 requests/user, ~$0.0005 average cost/request.
-- **Hard caps:** 4,000 input tokens, 800 output tokens, 60/day, 20/hour,
-  20 images/day, $0.50/user/month cost ceiling.
-- **Global budget cap:** $250/month with 50/75/90/100% alerting.
+- **Monthly allowance:** **100 requests/user** (start small — §8.1),
+  ~$0.0002 average cost/request.
+- **Hard caps (all live-tunable via `gateway_config`, §5/§8/§10):** 1,500
+  input tokens, 500 output tokens, 20/day, 8/hour, 5 images/day,
+  $0.15/user/month cost ceiling, max 3 chunks per document-Q&A request.
+- **Global budget cap:** **$25/month** with 50/75/90/100% alerting,
+  scaling to $250/month only once usage at the 100/month tier has been
+  observed and the cap is deliberately raised (§13).
 - **First feature shipped:** document Q&A only (Phase 1); everything else
   follows once that's proven stable.
 - **Data retention:** usage metadata 13 months, rate-limit counters
@@ -921,11 +1187,195 @@ practice.
 - **Fallback when limits are hit:** always BYOK or local model, never a
   dead end — the free hosted tier is a convenience on top of the existing
   BYOK product, never the only path.
+- **Large-document safeguards:** three independent layers (§14.1) —
+  client-side pre-check (skips the round trip), server-side hard reject
+  on real tokenized size (the actual boundary), and an independent
+  chunk-count ceiling that can't be routed around with many small chunks.
+
+## 24. API reference (contract between the client and the Gateway)
+
+This is the concrete interface `GatewayBackend` (client) and the Flask
+app (server, §16) implement against. Every endpoint requires
+`Authorization: Bearer <token>` except device registration itself.
+Content type is `application/json` throughout.
+
+### `POST /v1/device/code`
+
+Start device-code registration (§7). No auth required (this *is* the
+auth bootstrap).
+
+Request body: `{}` (empty — nothing to send yet).
+
+Response `200`:
+```json
+{
+  "device_code": "opaque-string",
+  "user_code": "ABCD-1234",
+  "verification_uri": "https://gateway.quillforall.org/connect",
+  "verification_uri_complete": "https://gateway.quillforall.org/connect?code=ABCD-1234",
+  "interval": 5,
+  "expires_in": 600
+}
+```
+
+### `POST /v1/device/token`
+
+Poll for authorization (§7). No auth required.
+
+Request body: `{"device_code": "opaque-string"}`.
+
+Response `200` (authorized):
+```json
+{"status": "authorized", "token": "opaque-bearer-token", "device_id": "uuid"}
+```
+
+Response `428` (still pending — the client keeps polling at `interval`):
+```json
+{"status": "pending"}
+```
+
+Response `429` (`slow_down` — client must increase its polling interval):
+```json
+{"status": "slow_down"}
+```
+
+Response `410` (expired or denied):
+```json
+{"status": "denied"}
+```
+or
+```json
+{"status": "expired"}
+```
+
+### `GET /v1/config`
+
+Returns the currently-active tunable limits relevant to the client (a
+public subset of `gateway_config` — never internal-only rows like the
+model allowlist's exact string). The client calls this once per session
+and uses it for the layer-1 pre-check in §14.1, so it always reflects
+whatever an admin has most recently set.
+
+Response `200`:
+```json
+{
+  "max_input_tokens": 1500,
+  "max_output_tokens": 500,
+  "max_chunks_per_request": 3,
+  "max_image_bytes": 3145728,
+  "max_image_edge_px": 1600,
+  "hosted_ai_enabled": true,
+  "feature_flags": {"document_qna": true, "summarize": true, "rewrite": true, "alt_text": true, "chat": true}
+}
+```
+
+### `GET /v1/quota`
+
+Returns the authenticated user's current usage against their limits —
+this is what powers the client's "38 of 100 free requests left this
+month" status display (§17.2). Never enforced client-side; purely
+informational.
+
+Response `200`:
+```json
+{
+  "monthly_request_cap": 100,
+  "monthly_requests_used": 38,
+  "daily_request_cap": 20,
+  "daily_requests_used": 3,
+  "reset_at": "2026-08-01T00:00:00Z",
+  "status": "active"
+}
+```
+
+### `POST /v1/chat`
+
+The one real inference endpoint. Every feature (document Q&A, summarize,
+rewrite, chat) uses this same route with a different `feature` value;
+the Gateway looks up the fixed server-side prompt template for that
+`feature` (§8) rather than accepting an arbitrary system prompt from the
+client.
+
+Request body:
+```json
+{
+  "feature": "document_qna",
+  "prompt": "the user's question or selected text",
+  "chunks": ["optional additional context chunks, if the feature uses them"],
+  "device_id": "uuid"
+}
+```
+
+Response `200` (allowed):
+```json
+{
+  "status": "allowed",
+  "text": "the model's answer",
+  "tokens_in": 340,
+  "tokens_out": 120,
+  "remaining_quota": {"monthly": 61, "daily": 16, "hourly": 6}
+}
+```
+
+Response `422` (input too large — layer 2 of §14.1 rejected it):
+```json
+{
+  "status": "rejected",
+  "reason": "input_too_large",
+  "message": "This selection is too large for the free tier — try a shorter passage, or switch to your own API key for full documents.",
+  "max_input_tokens": 1500,
+  "tokens_counted": 2400
+}
+```
+
+Response `429` (quota exceeded):
+```json
+{
+  "status": "quota_exceeded",
+  "scope": "monthly",
+  "reset_at": "2026-08-01T00:00:00Z",
+  "message": "You've used your free QUILL AI allowance for this month. It resets on the 1st, or you can add your own API key to continue right away."
+}
+```
+
+Response `503` (feature or global kill switch off):
+```json
+{
+  "status": "unavailable",
+  "scope": "global",
+  "message": "Hosted AI is paused for everyone right now while we look into something — check quillforall.org/status, or use your own API key in the meantime."
+}
+```
+
+### `DELETE /v1/devices/{device_id}`
+
+Revoke a device (§7's "compromised device" flow). Authenticated as the
+owning user (or an admin — see the admin-only routes below).
+
+Response `204`: no body.
+
+### Admin-only routes (§10), gated to an admin allowlist via the same
+### device-code login, separate from any user-facing token's permissions
+
+- `GET /admin/config` / `PUT /admin/config/{key}` — read/write any
+  `gateway_config` row.
+- `GET /admin/users/{id}/usage` — the usage summary for one user (never
+  prompt content — see §4).
+- `PUT /admin/users/{id}/status` — set `active`/`reduced`/`review`/
+  `blocked`.
+- `PUT /admin/devices/{id}/status` — set `active`/`revoked`.
+- `PUT /admin/feature-flags/{feature}` — enable/disable one feature or
+  the global `hosted_ai` switch.
+- `GET /admin/spend` — current-month total spend vs. the global budget
+  cap.
 
 ---
 
-*This plan intentionally leaves generic backend engineering (exact FastAPI
-route signatures, exact SQLAlchemy models, deployment YAML) for the
-implementation phase — the goal here was to make every architectural and
-policy decision concrete and grounded in QUILL's actual code, not to
-pre-write the Gateway's source.*
+*This plan intentionally leaves generic backend engineering (exact Flask
+route signatures beyond the contract in §24, exact SQLAlchemy models
+beyond the schema in §5, deployment scripts) for the implementation phase
+— the goal here was to make every architectural and policy decision
+concrete and grounded in QUILL's actual code, not to pre-write the
+Gateway's entire source. The actual Flask implementation lives in
+`quill-ai-gateway/` at the repository root (a sibling to `quillin-hub/`,
+matching that precedent) and implements this contract.*

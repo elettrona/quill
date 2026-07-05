@@ -244,12 +244,23 @@
 <header id="title-block-header">
 <h1 class="title">openai</h1>
 </header>
-<h1 id="the-quill-ai-gateway-implementation-plan">The QUILL AI Gateway —
-Implementation Plan</h1>
-<p>Status: planning document, no code written against it yet. Author:
-Claude Fable 5, 2026-07-05. Grounded in QUILL’s actual current AI code
-(cited throughout as <code>file.py:function</code>), not a generic
-proposal.</p>
+<h1 id="the-quill-ai-gateway-product-requirements-document">The QUILL AI
+Gateway — Product Requirements Document</h1>
+<p><strong>Status:</strong> Draft PRD, v1.0. <strong>Author:</strong>
+Claude Fable 5. <strong>Date:</strong> 2026-07-05.
+<strong>Scope:</strong> Initial rollout (100 requests/user/month,
+document Q&amp;A only, single Flask service on Jeff’s existing server)
+plus the scaling path toward a broader public beta. Grounded in QUILL’s
+actual current AI code (cited throughout as
+<code>file.py:function</code>), not a generic proposal. A reference
+implementation of the API contract in §24 lives in
+<code>quill-ai-gateway/</code> at the repository root.</p>
+<p><strong>Document map:</strong> §0 grounds every decision in existing
+QUILL code. §1–3 are the product case and architecture. §4–5 are privacy
+and data. §6–12 are security, auth, and BYOK. §13–15 are cost, document
+handling, and images. §16 is the stack decision. §17–21 are UX, phases,
+risks. §22–23 are the launch checklist and defaults recap. §24 is the
+API contract the Flask implementation follows exactly.</p>
 <p><strong>One-line thesis:</strong> QUILL’s desktop client never holds
 a shared provider key. It holds a QUILL-issued token. The QUILL AI
 Gateway is the only thing that ever talks to OpenAI, and it enforces
@@ -347,7 +358,8 @@ wall on day one of AI features.</p>
 AI” — without ever putting a shared provider key inside the open-source
 client. The client authenticates to the Gateway with a QUILL-issued
 token (device- code flow, reusing <code>copilot_auth.py</code>’s
-pattern); the Gateway is a small, boring, private FastAPI service that
+pattern); the Gateway is a small, boring, private Flask service (on the
+same server that already runs GLOW and <code>quillin-hub</code>) that
 owns the real OpenAI key, checks the requesting user’s quota in
 Postgres/Redis <em>before</em> calling OpenAI, and logs only enough
 metadata (never document content, never prompts, by default) to answer
@@ -362,7 +374,7 @@ that already exist.</p>
 │   QUILL desktop      │ ─────────────────────────────────────────▶ │   QUILL AI Gateway        │
 │  (open source, MIT)  │                                            │  (private, closed infra)  │
 │                      │ ◀───────────────────────────────────────── │                            │
-│  GatewayBackend(     │   JSON: {text, tokens_in, tokens_out,       │  FastAPI + Postgres +      │
+│  GatewayBackend(     │   JSON: {text, tokens_in, tokens_out,       │  Flask + Postgres +        │
 │    AIBackend)        │          remaining_quota, status}          │  Redis + secret manager    │
 └─────────────────────┘                                            └───────────┬────────────────┘
                                                                                  │ HTTPS
@@ -486,7 +498,7 @@ learning) from “sustained high-volume automation.”</td>
 <tr>
 <td>Supply-chain: a compromised dependency in the Gateway process
 exfiltrates the OpenAI key from memory</td>
-<td>Minimal dependency surface (FastAPI, one HTTP client, one DB driver,
+<td>Minimal dependency surface (Flask, one HTTP client, one DB driver,
 one Redis client); dependency-audit-and-sbom-style pinning (QUILL’s CI
 already does this for the client — mirror it for the Gateway repo); the
 Gateway never installs unreviewed third-party packages at request
@@ -640,77 +652,106 @@ class="sourceCode sql"><code class="sourceCode sql"><span id="cb2-1"><a href="#c
 <span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>    <span class="kw">id</span>                    UUID <span class="kw">PRIMARY</span> <span class="kw">KEY</span> <span class="kw">DEFAULT</span> gen_random_uuid(),</span>
 <span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>    created_at            TIMESTAMPTZ <span class="kw">NOT</span> <span class="kw">NULL</span> <span class="kw">DEFAULT</span> now(),</span>
 <span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>    status                TEXT <span class="kw">NOT</span> <span class="kw">NULL</span> <span class="kw">DEFAULT</span> <span class="st">&#39;active&#39;</span>,   <span class="co">-- active | reduced | review | blocked</span></span>
-<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a>    monthly_request_cap   <span class="dt">INT</span>  <span class="kw">NOT</span> <span class="kw">NULL</span> <span class="kw">DEFAULT</span> <span class="dv">500</span>,</span>
-<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a>    monthly_cost_cap_usd  <span class="dt">NUMERIC</span>(<span class="dv">8</span>,<span class="dv">4</span>) <span class="kw">NOT</span> <span class="kw">NULL</span> <span class="kw">DEFAULT</span> <span class="fl">1.00</span>,</span>
-<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a>    <span class="co">-- optional, nullable, additive identity upgrade (never required):</span></span>
-<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a>    email                 TEXT <span class="kw">UNIQUE</span>,</span>
-<span id="cb2-10"><a href="#cb2-10" aria-hidden="true" tabindex="-1"></a>    email_verified_at     TIMESTAMPTZ</span>
-<span id="cb2-11"><a href="#cb2-11" aria-hidden="true" tabindex="-1"></a>);</span>
-<span id="cb2-12"><a href="#cb2-12" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb2-13"><a href="#cb2-13" aria-hidden="true" tabindex="-1"></a><span class="kw">CREATE</span> <span class="kw">TABLE</span> devices (</span>
-<span id="cb2-14"><a href="#cb2-14" aria-hidden="true" tabindex="-1"></a>    <span class="kw">id</span>                    UUID <span class="kw">PRIMARY</span> <span class="kw">KEY</span> <span class="kw">DEFAULT</span> gen_random_uuid(),</span>
-<span id="cb2-15"><a href="#cb2-15" aria-hidden="true" tabindex="-1"></a>    user_id               UUID <span class="kw">NOT</span> <span class="kw">NULL</span> <span class="kw">REFERENCES</span> users(<span class="kw">id</span>),</span>
-<span id="cb2-16"><a href="#cb2-16" aria-hidden="true" tabindex="-1"></a>    created_at            TIMESTAMPTZ <span class="kw">NOT</span> <span class="kw">NULL</span> <span class="kw">DEFAULT</span> now(),</span>
-<span id="cb2-17"><a href="#cb2-17" aria-hidden="true" tabindex="-1"></a>    last_seen_at          TIMESTAMPTZ,</span>
-<span id="cb2-18"><a href="#cb2-18" aria-hidden="true" tabindex="-1"></a>    status                TEXT <span class="kw">NOT</span> <span class="kw">NULL</span> <span class="kw">DEFAULT</span> <span class="st">&#39;active&#39;</span>,   <span class="co">-- active | revoked</span></span>
-<span id="cb2-19"><a href="#cb2-19" aria-hidden="true" tabindex="-1"></a>    <span class="kw">label</span>                 TEXT,                             <span class="co">-- &quot;this computer&quot; style, user-editable</span></span>
-<span id="cb2-20"><a href="#cb2-20" aria-hidden="true" tabindex="-1"></a>    token_hash            TEXT <span class="kw">NOT</span> <span class="kw">NULL</span> <span class="kw">UNIQUE</span>              <span class="co">-- sha256 of the bearer token; never store raw</span></span>
-<span id="cb2-21"><a href="#cb2-21" aria-hidden="true" tabindex="-1"></a>);</span>
-<span id="cb2-22"><a href="#cb2-22" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb2-23"><a href="#cb2-23" aria-hidden="true" tabindex="-1"></a><span class="co">-- Usage (metadata only; NO prompt/document/response columns exist) -------</span></span>
-<span id="cb2-24"><a href="#cb2-24" aria-hidden="true" tabindex="-1"></a><span class="kw">CREATE</span> <span class="kw">TABLE</span> usage_events (</span>
-<span id="cb2-25"><a href="#cb2-25" aria-hidden="true" tabindex="-1"></a>    <span class="kw">id</span>                    BIGSERIAL <span class="kw">PRIMARY</span> <span class="kw">KEY</span>,</span>
-<span id="cb2-26"><a href="#cb2-26" aria-hidden="true" tabindex="-1"></a>    user_id               UUID <span class="kw">NOT</span> <span class="kw">NULL</span> <span class="kw">REFERENCES</span> users(<span class="kw">id</span>),</span>
-<span id="cb2-27"><a href="#cb2-27" aria-hidden="true" tabindex="-1"></a>    device_id             UUID <span class="kw">NOT</span> <span class="kw">NULL</span> <span class="kw">REFERENCES</span> devices(<span class="kw">id</span>),</span>
-<span id="cb2-28"><a href="#cb2-28" aria-hidden="true" tabindex="-1"></a>    feature               TEXT <span class="kw">NOT</span> <span class="kw">NULL</span>,        <span class="co">-- document_qna | summarize | rewrite | alt_text | chat | agent</span></span>
-<span id="cb2-29"><a href="#cb2-29" aria-hidden="true" tabindex="-1"></a>    model                 TEXT <span class="kw">NOT</span> <span class="kw">NULL</span>,        <span class="co">-- e.g. &quot;gpt-5-nano&quot;</span></span>
-<span id="cb2-30"><a href="#cb2-30" aria-hidden="true" tabindex="-1"></a>    tokens_in             <span class="dt">INT</span> <span class="kw">NOT</span> <span class="kw">NULL</span>,</span>
-<span id="cb2-31"><a href="#cb2-31" aria-hidden="true" tabindex="-1"></a>    tokens_out            <span class="dt">INT</span> <span class="kw">NOT</span> <span class="kw">NULL</span>,</span>
-<span id="cb2-32"><a href="#cb2-32" aria-hidden="true" tabindex="-1"></a>    estimated_cost_usd    <span class="dt">NUMERIC</span>(<span class="dv">10</span>,<span class="dv">6</span>) <span class="kw">NOT</span> <span class="kw">NULL</span>,</span>
-<span id="cb2-33"><a href="#cb2-33" aria-hidden="true" tabindex="-1"></a>    status                TEXT <span class="kw">NOT</span> <span class="kw">NULL</span>,        <span class="co">-- allowed | throttled | blocked</span></span>
-<span id="cb2-34"><a href="#cb2-34" aria-hidden="true" tabindex="-1"></a>    abuse_flag            TEXT,                 <span class="co">-- null | high_volume | repeated_large_prompt | anomalous_device</span></span>
-<span id="cb2-35"><a href="#cb2-35" aria-hidden="true" tabindex="-1"></a>    created_at            TIMESTAMPTZ <span class="kw">NOT</span> <span class="kw">NULL</span> <span class="kw">DEFAULT</span> now()</span>
-<span id="cb2-36"><a href="#cb2-36" aria-hidden="true" tabindex="-1"></a>) <span class="kw">PARTITION</span> <span class="kw">BY</span> <span class="kw">RANGE</span> (created_at);   <span class="co">-- monthly partitions; drop partitions past retention (§4.4)</span></span>
-<span id="cb2-37"><a href="#cb2-37" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb2-38"><a href="#cb2-38" aria-hidden="true" tabindex="-1"></a><span class="kw">CREATE</span> <span class="kw">INDEX</span> <span class="kw">ON</span> usage_events (user_id, created_at);</span>
-<span id="cb2-39"><a href="#cb2-39" aria-hidden="true" tabindex="-1"></a><span class="kw">CREATE</span> <span class="kw">INDEX</span> <span class="kw">ON</span> usage_events (feature, created_at);</span>
-<span id="cb2-40"><a href="#cb2-40" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb2-41"><a href="#cb2-41" aria-hidden="true" tabindex="-1"></a><span class="co">-- Aggregates refreshed on write, read by admin console and client status --</span></span>
-<span id="cb2-42"><a href="#cb2-42" aria-hidden="true" tabindex="-1"></a><span class="kw">CREATE</span> <span class="kw">TABLE</span> monthly_usage_summary (</span>
-<span id="cb2-43"><a href="#cb2-43" aria-hidden="true" tabindex="-1"></a>    user_id               UUID <span class="kw">NOT</span> <span class="kw">NULL</span> <span class="kw">REFERENCES</span> users(<span class="kw">id</span>),</span>
-<span id="cb2-44"><a href="#cb2-44" aria-hidden="true" tabindex="-1"></a>    year_month            TEXT <span class="kw">NOT</span> <span class="kw">NULL</span>,         <span class="co">-- &#39;2026-07&#39;</span></span>
-<span id="cb2-45"><a href="#cb2-45" aria-hidden="true" tabindex="-1"></a>    request_count         <span class="dt">INT</span> <span class="kw">NOT</span> <span class="kw">NULL</span> <span class="kw">DEFAULT</span> <span class="dv">0</span>,</span>
-<span id="cb2-46"><a href="#cb2-46" aria-hidden="true" tabindex="-1"></a>    total_cost_usd        <span class="dt">NUMERIC</span>(<span class="dv">10</span>,<span class="dv">4</span>) <span class="kw">NOT</span> <span class="kw">NULL</span> <span class="kw">DEFAULT</span> <span class="dv">0</span>,</span>
-<span id="cb2-47"><a href="#cb2-47" aria-hidden="true" tabindex="-1"></a>    <span class="kw">PRIMARY</span> <span class="kw">KEY</span> (user_id, year_month)</span>
-<span id="cb2-48"><a href="#cb2-48" aria-hidden="true" tabindex="-1"></a>);</span>
-<span id="cb2-49"><a href="#cb2-49" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb2-50"><a href="#cb2-50" aria-hidden="true" tabindex="-1"></a><span class="co">-- Feature flags / kill switches ------------------------------------------</span></span>
-<span id="cb2-51"><a href="#cb2-51" aria-hidden="true" tabindex="-1"></a><span class="kw">CREATE</span> <span class="kw">TABLE</span> feature_flags (</span>
-<span id="cb2-52"><a href="#cb2-52" aria-hidden="true" tabindex="-1"></a>    feature               TEXT <span class="kw">PRIMARY</span> <span class="kw">KEY</span>,      <span class="co">-- document_qna | summarize | ... | hosted_ai (global)</span></span>
-<span id="cb2-53"><a href="#cb2-53" aria-hidden="true" tabindex="-1"></a>    enabled               <span class="dt">BOOLEAN</span> <span class="kw">NOT</span> <span class="kw">NULL</span> <span class="kw">DEFAULT</span> <span class="kw">true</span>,</span>
-<span id="cb2-54"><a href="#cb2-54" aria-hidden="true" tabindex="-1"></a>    disabled_reason        TEXT,</span>
-<span id="cb2-55"><a href="#cb2-55" aria-hidden="true" tabindex="-1"></a>    updated_at            TIMESTAMPTZ <span class="kw">NOT</span> <span class="kw">NULL</span> <span class="kw">DEFAULT</span> now()</span>
-<span id="cb2-56"><a href="#cb2-56" aria-hidden="true" tabindex="-1"></a>);</span>
-<span id="cb2-57"><a href="#cb2-57" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb2-58"><a href="#cb2-58" aria-hidden="true" tabindex="-1"></a><span class="co">-- Opt-in diagnostic records (separate table; never joined into usage_events) --</span></span>
-<span id="cb2-59"><a href="#cb2-59" aria-hidden="true" tabindex="-1"></a><span class="kw">CREATE</span> <span class="kw">TABLE</span> diagnostic_records (</span>
-<span id="cb2-60"><a href="#cb2-60" aria-hidden="true" tabindex="-1"></a>    <span class="kw">id</span>                    BIGSERIAL <span class="kw">PRIMARY</span> <span class="kw">KEY</span>,</span>
-<span id="cb2-61"><a href="#cb2-61" aria-hidden="true" tabindex="-1"></a>    usage_event_id        BIGINT <span class="kw">REFERENCES</span> usage_events(<span class="kw">id</span>),</span>
-<span id="cb2-62"><a href="#cb2-62" aria-hidden="true" tabindex="-1"></a>    redacted_prompt       TEXT <span class="kw">NOT</span> <span class="kw">NULL</span>,          <span class="co">-- PII-scrubbed, truncated</span></span>
-<span id="cb2-63"><a href="#cb2-63" aria-hidden="true" tabindex="-1"></a>    redacted_response     TEXT,</span>
-<span id="cb2-64"><a href="#cb2-64" aria-hidden="true" tabindex="-1"></a>    created_at            TIMESTAMPTZ <span class="kw">NOT</span> <span class="kw">NULL</span> <span class="kw">DEFAULT</span> now(),</span>
-<span id="cb2-65"><a href="#cb2-65" aria-hidden="true" tabindex="-1"></a>    expires_at            TIMESTAMPTZ <span class="kw">NOT</span> <span class="kw">NULL</span>    <span class="co">-- enforced by a daily cleanup job, §4.4</span></span>
-<span id="cb2-66"><a href="#cb2-66" aria-hidden="true" tabindex="-1"></a>);</span>
-<span id="cb2-67"><a href="#cb2-67" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb2-68"><a href="#cb2-68" aria-hidden="true" tabindex="-1"></a><span class="co">-- Admin actions audit trail ------------------------------------------------</span></span>
-<span id="cb2-69"><a href="#cb2-69" aria-hidden="true" tabindex="-1"></a><span class="kw">CREATE</span> <span class="kw">TABLE</span> admin_actions (</span>
-<span id="cb2-70"><a href="#cb2-70" aria-hidden="true" tabindex="-1"></a>    <span class="kw">id</span>                    BIGSERIAL <span class="kw">PRIMARY</span> <span class="kw">KEY</span>,</span>
-<span id="cb2-71"><a href="#cb2-71" aria-hidden="true" tabindex="-1"></a>    admin_id              TEXT <span class="kw">NOT</span> <span class="kw">NULL</span>,</span>
-<span id="cb2-72"><a href="#cb2-72" aria-hidden="true" tabindex="-1"></a>    action                TEXT <span class="kw">NOT</span> <span class="kw">NULL</span>,          <span class="co">-- disable_user | disable_device | set_quota | rotate_key | ...</span></span>
-<span id="cb2-73"><a href="#cb2-73" aria-hidden="true" tabindex="-1"></a>    target                TEXT <span class="kw">NOT</span> <span class="kw">NULL</span>,          <span class="co">-- user_id / device_id / feature id / &quot;global&quot;</span></span>
-<span id="cb2-74"><a href="#cb2-74" aria-hidden="true" tabindex="-1"></a>    reason                TEXT,</span>
-<span id="cb2-75"><a href="#cb2-75" aria-hidden="true" tabindex="-1"></a>    created_at            TIMESTAMPTZ <span class="kw">NOT</span> <span class="kw">NULL</span> <span class="kw">DEFAULT</span> now()</span>
-<span id="cb2-76"><a href="#cb2-76" aria-hidden="true" tabindex="-1"></a>);</span></code></pre></div>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a>    <span class="co">-- NULL means &quot;use the live global default from gateway_config&quot; (below) --</span></span>
+<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a>    <span class="co">-- a per-user override is only set when an admin deliberately changes one</span></span>
+<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a>    <span class="co">-- user&#39;s allowance; nobody&#39;s cap silently drifts when the global default</span></span>
+<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a>    <span class="co">-- changes, and nobody needs a per-row migration when it does.</span></span>
+<span id="cb2-10"><a href="#cb2-10" aria-hidden="true" tabindex="-1"></a>    monthly_request_cap   <span class="dt">INT</span>,</span>
+<span id="cb2-11"><a href="#cb2-11" aria-hidden="true" tabindex="-1"></a>    monthly_cost_cap_usd  <span class="dt">NUMERIC</span>(<span class="dv">8</span>,<span class="dv">4</span>),</span>
+<span id="cb2-12"><a href="#cb2-12" aria-hidden="true" tabindex="-1"></a>    <span class="co">-- optional, nullable, additive identity upgrade (never required):</span></span>
+<span id="cb2-13"><a href="#cb2-13" aria-hidden="true" tabindex="-1"></a>    email                 TEXT <span class="kw">UNIQUE</span>,</span>
+<span id="cb2-14"><a href="#cb2-14" aria-hidden="true" tabindex="-1"></a>    email_verified_at     TIMESTAMPTZ</span>
+<span id="cb2-15"><a href="#cb2-15" aria-hidden="true" tabindex="-1"></a>);</span>
+<span id="cb2-16"><a href="#cb2-16" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-17"><a href="#cb2-17" aria-hidden="true" tabindex="-1"></a><span class="co">-- Every tunable number in §8 lives here, not in code, so an admin can</span></span>
+<span id="cb2-18"><a href="#cb2-18" aria-hidden="true" tabindex="-1"></a><span class="co">-- change any limit instantly (no redeploy, no restart) from the admin</span></span>
+<span id="cb2-19"><a href="#cb2-19" aria-hidden="true" tabindex="-1"></a><span class="co">-- console (§10). `resolve_limit(user_id, key)` = the user&#39;s override in</span></span>
+<span id="cb2-20"><a href="#cb2-20" aria-hidden="true" tabindex="-1"></a><span class="co">-- `users`/`user_feature_caps` if set, else this table&#39;s `value`, else the</span></span>
+<span id="cb2-21"><a href="#cb2-21" aria-hidden="true" tabindex="-1"></a><span class="co">-- hardcoded fail-safe in code (belt-and-suspenders if this table is ever</span></span>
+<span id="cb2-22"><a href="#cb2-22" aria-hidden="true" tabindex="-1"></a><span class="co">-- empty on a fresh install). Seeded at first deploy with the &quot;start small&quot;</span></span>
+<span id="cb2-23"><a href="#cb2-23" aria-hidden="true" tabindex="-1"></a><span class="co">-- values in §8/§23; every row is editable from day one.</span></span>
+<span id="cb2-24"><a href="#cb2-24" aria-hidden="true" tabindex="-1"></a><span class="kw">CREATE</span> <span class="kw">TABLE</span> gateway_config (</span>
+<span id="cb2-25"><a href="#cb2-25" aria-hidden="true" tabindex="-1"></a>    <span class="kw">key</span>                   TEXT <span class="kw">PRIMARY</span> <span class="kw">KEY</span>,      <span class="co">-- e.g. &#39;monthly_request_cap&#39;</span></span>
+<span id="cb2-26"><a href="#cb2-26" aria-hidden="true" tabindex="-1"></a>    <span class="fu">value</span>                 <span class="dt">NUMERIC</span> <span class="kw">NOT</span> <span class="kw">NULL</span>,</span>
+<span id="cb2-27"><a href="#cb2-27" aria-hidden="true" tabindex="-1"></a>    description           TEXT <span class="kw">NOT</span> <span class="kw">NULL</span>,         <span class="co">-- shown in the admin console next to the field</span></span>
+<span id="cb2-28"><a href="#cb2-28" aria-hidden="true" tabindex="-1"></a>    updated_by            TEXT,</span>
+<span id="cb2-29"><a href="#cb2-29" aria-hidden="true" tabindex="-1"></a>    updated_at            TIMESTAMPTZ <span class="kw">NOT</span> <span class="kw">NULL</span> <span class="kw">DEFAULT</span> now()</span>
+<span id="cb2-30"><a href="#cb2-30" aria-hidden="true" tabindex="-1"></a>);</span>
+<span id="cb2-31"><a href="#cb2-31" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-32"><a href="#cb2-32" aria-hidden="true" tabindex="-1"></a><span class="co">-- Per-feature caps, same &quot;global default + optional per-user override&quot;</span></span>
+<span id="cb2-33"><a href="#cb2-33" aria-hidden="true" tabindex="-1"></a><span class="co">-- shape as monthly_request_cap above, but keyed by feature since features</span></span>
+<span id="cb2-34"><a href="#cb2-34" aria-hidden="true" tabindex="-1"></a><span class="co">-- have independent monthly allowances (§8).</span></span>
+<span id="cb2-35"><a href="#cb2-35" aria-hidden="true" tabindex="-1"></a><span class="kw">CREATE</span> <span class="kw">TABLE</span> user_feature_caps (</span>
+<span id="cb2-36"><a href="#cb2-36" aria-hidden="true" tabindex="-1"></a>    user_id               UUID <span class="kw">NOT</span> <span class="kw">NULL</span> <span class="kw">REFERENCES</span> users(<span class="kw">id</span>),</span>
+<span id="cb2-37"><a href="#cb2-37" aria-hidden="true" tabindex="-1"></a>    feature               TEXT <span class="kw">NOT</span> <span class="kw">NULL</span>,</span>
+<span id="cb2-38"><a href="#cb2-38" aria-hidden="true" tabindex="-1"></a>    monthly_cap           <span class="dt">INT</span> <span class="kw">NOT</span> <span class="kw">NULL</span>,           <span class="co">-- explicit per-user override only; no NULL rows</span></span>
+<span id="cb2-39"><a href="#cb2-39" aria-hidden="true" tabindex="-1"></a>    <span class="kw">PRIMARY</span> <span class="kw">KEY</span> (user_id, feature)</span>
+<span id="cb2-40"><a href="#cb2-40" aria-hidden="true" tabindex="-1"></a>);</span>
+<span id="cb2-41"><a href="#cb2-41" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-42"><a href="#cb2-42" aria-hidden="true" tabindex="-1"></a><span class="kw">CREATE</span> <span class="kw">TABLE</span> devices (</span>
+<span id="cb2-43"><a href="#cb2-43" aria-hidden="true" tabindex="-1"></a>    <span class="kw">id</span>                    UUID <span class="kw">PRIMARY</span> <span class="kw">KEY</span> <span class="kw">DEFAULT</span> gen_random_uuid(),</span>
+<span id="cb2-44"><a href="#cb2-44" aria-hidden="true" tabindex="-1"></a>    user_id               UUID <span class="kw">NOT</span> <span class="kw">NULL</span> <span class="kw">REFERENCES</span> users(<span class="kw">id</span>),</span>
+<span id="cb2-45"><a href="#cb2-45" aria-hidden="true" tabindex="-1"></a>    created_at            TIMESTAMPTZ <span class="kw">NOT</span> <span class="kw">NULL</span> <span class="kw">DEFAULT</span> now(),</span>
+<span id="cb2-46"><a href="#cb2-46" aria-hidden="true" tabindex="-1"></a>    last_seen_at          TIMESTAMPTZ,</span>
+<span id="cb2-47"><a href="#cb2-47" aria-hidden="true" tabindex="-1"></a>    status                TEXT <span class="kw">NOT</span> <span class="kw">NULL</span> <span class="kw">DEFAULT</span> <span class="st">&#39;active&#39;</span>,   <span class="co">-- active | revoked</span></span>
+<span id="cb2-48"><a href="#cb2-48" aria-hidden="true" tabindex="-1"></a>    <span class="kw">label</span>                 TEXT,                             <span class="co">-- &quot;this computer&quot; style, user-editable</span></span>
+<span id="cb2-49"><a href="#cb2-49" aria-hidden="true" tabindex="-1"></a>    token_hash            TEXT <span class="kw">NOT</span> <span class="kw">NULL</span> <span class="kw">UNIQUE</span>              <span class="co">-- sha256 of the bearer token; never store raw</span></span>
+<span id="cb2-50"><a href="#cb2-50" aria-hidden="true" tabindex="-1"></a>);</span>
+<span id="cb2-51"><a href="#cb2-51" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-52"><a href="#cb2-52" aria-hidden="true" tabindex="-1"></a><span class="co">-- Usage (metadata only; NO prompt/document/response columns exist) -------</span></span>
+<span id="cb2-53"><a href="#cb2-53" aria-hidden="true" tabindex="-1"></a><span class="kw">CREATE</span> <span class="kw">TABLE</span> usage_events (</span>
+<span id="cb2-54"><a href="#cb2-54" aria-hidden="true" tabindex="-1"></a>    <span class="kw">id</span>                    BIGSERIAL <span class="kw">PRIMARY</span> <span class="kw">KEY</span>,</span>
+<span id="cb2-55"><a href="#cb2-55" aria-hidden="true" tabindex="-1"></a>    user_id               UUID <span class="kw">NOT</span> <span class="kw">NULL</span> <span class="kw">REFERENCES</span> users(<span class="kw">id</span>),</span>
+<span id="cb2-56"><a href="#cb2-56" aria-hidden="true" tabindex="-1"></a>    device_id             UUID <span class="kw">NOT</span> <span class="kw">NULL</span> <span class="kw">REFERENCES</span> devices(<span class="kw">id</span>),</span>
+<span id="cb2-57"><a href="#cb2-57" aria-hidden="true" tabindex="-1"></a>    feature               TEXT <span class="kw">NOT</span> <span class="kw">NULL</span>,        <span class="co">-- document_qna | summarize | rewrite | alt_text | chat | agent</span></span>
+<span id="cb2-58"><a href="#cb2-58" aria-hidden="true" tabindex="-1"></a>    model                 TEXT <span class="kw">NOT</span> <span class="kw">NULL</span>,        <span class="co">-- e.g. &quot;gpt-5-nano&quot;</span></span>
+<span id="cb2-59"><a href="#cb2-59" aria-hidden="true" tabindex="-1"></a>    tokens_in             <span class="dt">INT</span> <span class="kw">NOT</span> <span class="kw">NULL</span>,</span>
+<span id="cb2-60"><a href="#cb2-60" aria-hidden="true" tabindex="-1"></a>    tokens_out            <span class="dt">INT</span> <span class="kw">NOT</span> <span class="kw">NULL</span>,</span>
+<span id="cb2-61"><a href="#cb2-61" aria-hidden="true" tabindex="-1"></a>    estimated_cost_usd    <span class="dt">NUMERIC</span>(<span class="dv">10</span>,<span class="dv">6</span>) <span class="kw">NOT</span> <span class="kw">NULL</span>,</span>
+<span id="cb2-62"><a href="#cb2-62" aria-hidden="true" tabindex="-1"></a>    status                TEXT <span class="kw">NOT</span> <span class="kw">NULL</span>,        <span class="co">-- allowed | throttled | blocked</span></span>
+<span id="cb2-63"><a href="#cb2-63" aria-hidden="true" tabindex="-1"></a>    abuse_flag            TEXT,                 <span class="co">-- null | high_volume | repeated_large_prompt | anomalous_device</span></span>
+<span id="cb2-64"><a href="#cb2-64" aria-hidden="true" tabindex="-1"></a>    created_at            TIMESTAMPTZ <span class="kw">NOT</span> <span class="kw">NULL</span> <span class="kw">DEFAULT</span> now()</span>
+<span id="cb2-65"><a href="#cb2-65" aria-hidden="true" tabindex="-1"></a>) <span class="kw">PARTITION</span> <span class="kw">BY</span> <span class="kw">RANGE</span> (created_at);   <span class="co">-- monthly partitions; drop partitions past retention (§4.4)</span></span>
+<span id="cb2-66"><a href="#cb2-66" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-67"><a href="#cb2-67" aria-hidden="true" tabindex="-1"></a><span class="kw">CREATE</span> <span class="kw">INDEX</span> <span class="kw">ON</span> usage_events (user_id, created_at);</span>
+<span id="cb2-68"><a href="#cb2-68" aria-hidden="true" tabindex="-1"></a><span class="kw">CREATE</span> <span class="kw">INDEX</span> <span class="kw">ON</span> usage_events (feature, created_at);</span>
+<span id="cb2-69"><a href="#cb2-69" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-70"><a href="#cb2-70" aria-hidden="true" tabindex="-1"></a><span class="co">-- Aggregates refreshed on write, read by admin console and client status --</span></span>
+<span id="cb2-71"><a href="#cb2-71" aria-hidden="true" tabindex="-1"></a><span class="kw">CREATE</span> <span class="kw">TABLE</span> monthly_usage_summary (</span>
+<span id="cb2-72"><a href="#cb2-72" aria-hidden="true" tabindex="-1"></a>    user_id               UUID <span class="kw">NOT</span> <span class="kw">NULL</span> <span class="kw">REFERENCES</span> users(<span class="kw">id</span>),</span>
+<span id="cb2-73"><a href="#cb2-73" aria-hidden="true" tabindex="-1"></a>    year_month            TEXT <span class="kw">NOT</span> <span class="kw">NULL</span>,         <span class="co">-- &#39;2026-07&#39;</span></span>
+<span id="cb2-74"><a href="#cb2-74" aria-hidden="true" tabindex="-1"></a>    request_count         <span class="dt">INT</span> <span class="kw">NOT</span> <span class="kw">NULL</span> <span class="kw">DEFAULT</span> <span class="dv">0</span>,</span>
+<span id="cb2-75"><a href="#cb2-75" aria-hidden="true" tabindex="-1"></a>    total_cost_usd        <span class="dt">NUMERIC</span>(<span class="dv">10</span>,<span class="dv">4</span>) <span class="kw">NOT</span> <span class="kw">NULL</span> <span class="kw">DEFAULT</span> <span class="dv">0</span>,</span>
+<span id="cb2-76"><a href="#cb2-76" aria-hidden="true" tabindex="-1"></a>    <span class="kw">PRIMARY</span> <span class="kw">KEY</span> (user_id, year_month)</span>
+<span id="cb2-77"><a href="#cb2-77" aria-hidden="true" tabindex="-1"></a>);</span>
+<span id="cb2-78"><a href="#cb2-78" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-79"><a href="#cb2-79" aria-hidden="true" tabindex="-1"></a><span class="co">-- Feature flags / kill switches ------------------------------------------</span></span>
+<span id="cb2-80"><a href="#cb2-80" aria-hidden="true" tabindex="-1"></a><span class="kw">CREATE</span> <span class="kw">TABLE</span> feature_flags (</span>
+<span id="cb2-81"><a href="#cb2-81" aria-hidden="true" tabindex="-1"></a>    feature               TEXT <span class="kw">PRIMARY</span> <span class="kw">KEY</span>,      <span class="co">-- document_qna | summarize | ... | hosted_ai (global)</span></span>
+<span id="cb2-82"><a href="#cb2-82" aria-hidden="true" tabindex="-1"></a>    enabled               <span class="dt">BOOLEAN</span> <span class="kw">NOT</span> <span class="kw">NULL</span> <span class="kw">DEFAULT</span> <span class="kw">true</span>,</span>
+<span id="cb2-83"><a href="#cb2-83" aria-hidden="true" tabindex="-1"></a>    disabled_reason        TEXT,</span>
+<span id="cb2-84"><a href="#cb2-84" aria-hidden="true" tabindex="-1"></a>    updated_at            TIMESTAMPTZ <span class="kw">NOT</span> <span class="kw">NULL</span> <span class="kw">DEFAULT</span> now()</span>
+<span id="cb2-85"><a href="#cb2-85" aria-hidden="true" tabindex="-1"></a>);</span>
+<span id="cb2-86"><a href="#cb2-86" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-87"><a href="#cb2-87" aria-hidden="true" tabindex="-1"></a><span class="co">-- Opt-in diagnostic records (separate table; never joined into usage_events) --</span></span>
+<span id="cb2-88"><a href="#cb2-88" aria-hidden="true" tabindex="-1"></a><span class="kw">CREATE</span> <span class="kw">TABLE</span> diagnostic_records (</span>
+<span id="cb2-89"><a href="#cb2-89" aria-hidden="true" tabindex="-1"></a>    <span class="kw">id</span>                    BIGSERIAL <span class="kw">PRIMARY</span> <span class="kw">KEY</span>,</span>
+<span id="cb2-90"><a href="#cb2-90" aria-hidden="true" tabindex="-1"></a>    usage_event_id        BIGINT <span class="kw">REFERENCES</span> usage_events(<span class="kw">id</span>),</span>
+<span id="cb2-91"><a href="#cb2-91" aria-hidden="true" tabindex="-1"></a>    redacted_prompt       TEXT <span class="kw">NOT</span> <span class="kw">NULL</span>,          <span class="co">-- PII-scrubbed, truncated</span></span>
+<span id="cb2-92"><a href="#cb2-92" aria-hidden="true" tabindex="-1"></a>    redacted_response     TEXT,</span>
+<span id="cb2-93"><a href="#cb2-93" aria-hidden="true" tabindex="-1"></a>    created_at            TIMESTAMPTZ <span class="kw">NOT</span> <span class="kw">NULL</span> <span class="kw">DEFAULT</span> now(),</span>
+<span id="cb2-94"><a href="#cb2-94" aria-hidden="true" tabindex="-1"></a>    expires_at            TIMESTAMPTZ <span class="kw">NOT</span> <span class="kw">NULL</span>    <span class="co">-- enforced by a daily cleanup job, §4.4</span></span>
+<span id="cb2-95"><a href="#cb2-95" aria-hidden="true" tabindex="-1"></a>);</span>
+<span id="cb2-96"><a href="#cb2-96" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-97"><a href="#cb2-97" aria-hidden="true" tabindex="-1"></a><span class="co">-- Admin actions audit trail ------------------------------------------------</span></span>
+<span id="cb2-98"><a href="#cb2-98" aria-hidden="true" tabindex="-1"></a><span class="kw">CREATE</span> <span class="kw">TABLE</span> admin_actions (</span>
+<span id="cb2-99"><a href="#cb2-99" aria-hidden="true" tabindex="-1"></a>    <span class="kw">id</span>                    BIGSERIAL <span class="kw">PRIMARY</span> <span class="kw">KEY</span>,</span>
+<span id="cb2-100"><a href="#cb2-100" aria-hidden="true" tabindex="-1"></a>    admin_id              TEXT <span class="kw">NOT</span> <span class="kw">NULL</span>,</span>
+<span id="cb2-101"><a href="#cb2-101" aria-hidden="true" tabindex="-1"></a>    action                TEXT <span class="kw">NOT</span> <span class="kw">NULL</span>,          <span class="co">-- disable_user | disable_device | set_quota | rotate_key | ...</span></span>
+<span id="cb2-102"><a href="#cb2-102" aria-hidden="true" tabindex="-1"></a>    target                TEXT <span class="kw">NOT</span> <span class="kw">NULL</span>,          <span class="co">-- user_id / device_id / feature id / &quot;global&quot;</span></span>
+<span id="cb2-103"><a href="#cb2-103" aria-hidden="true" tabindex="-1"></a>    reason                TEXT,</span>
+<span id="cb2-104"><a href="#cb2-104" aria-hidden="true" tabindex="-1"></a>    created_at            TIMESTAMPTZ <span class="kw">NOT</span> <span class="kw">NULL</span> <span class="kw">DEFAULT</span> now()</span>
+<span id="cb2-105"><a href="#cb2-105" aria-hidden="true" tabindex="-1"></a>);</span></code></pre></div>
 <p>Redis holds only ephemeral, reconstructable state: sliding-window
 rate counters (<code>ratelimit:{user_id}:{window}</code>), the
 current-month running total per user (write-through cache of
@@ -718,14 +759,16 @@ current-month running total per user (write-through cache of
 the salted-IP-hash sets for abuse heuristics (§9).</p>
 <h2 id="secret-management-plan">6. Secret management plan</h2>
 <ul>
-<li><strong>Where the OpenAI key lives:</strong> a managed secret store
-— Fly.io Secrets (matches the existing <code>quillin-hub</code>
-deployment target and its <code>fly.toml</code>-style conventions) or,
-if self-hosting elsewhere, Doppler or the platform’s native secret
-manager (AWS Secrets Manager / Azure Key Vault / GCP Secret Manager).
-Never a <code>.env</code> file committed to git, never a Kubernetes
-ConfigMap (must be a Secret if k8s is ever used), never baked into a
-container image layer.</li>
+<li><strong>Where the OpenAI key lives:</strong> on Jeff’s existing
+server (per §16), the same place GLOW’s and <code>quillin-hub</code>’s
+own credentials already live — whatever mechanism that already is (an
+environment variable set outside any git-tracked directory, or that
+host’s secret store if it’s a managed platform). If a managed cloud is
+used instead, use its native secret manager (AWS Secrets Manager / Azure
+Key Vault / GCP Secret Manager / Fly.io Secrets / Doppler). Never a
+<code>.env</code> file committed to git, never a Kubernetes ConfigMap
+(must be a Secret if k8s is ever used), never baked into a container
+image layer.</li>
 <li><strong>How the process gets it:</strong> injected as an environment
 variable at container/process start by the platform’s secret-injection
 mechanism. The Gateway code reads
@@ -758,8 +801,10 @@ four options named) rather than re-implement encryption.</li>
 <li><strong>Access control:</strong> exactly two people (the maintainer
 + one backup) can read the secret value from the platform’s UI/CLI;
 every other team member gets deploy access without secret-read access
-where the platform supports that separation (Fly.io and the major clouds
-all do).</li>
+where the platform supports that separation where the host is a managed
+platform; on a self-administered server, this is simply “only Jeff (and
+one backup person) can read the value,” enforced by file
+permissions/shell access rather than a platform IAM feature.</li>
 </ul>
 <h2 id="authentication-and-onboarding">7. Authentication and
 onboarding</h2>
@@ -846,109 +891,144 @@ cached).</li>
 call is made, using the cheapest available signal first</strong> (Redis
 counter check, ~1ms) before falling through to anything requiring a
 database round-trip.</p>
+<p><strong>Every number in this table is a row in
+<code>gateway_config</code> (§5), not a constant in code.</strong> An
+admin changes any of them from the admin console (§10) and it takes
+effect on the <em>next request</em> — no redeploy, no restart, no code
+change. The values below are the seeded starting point for the initial
+rollout, deliberately conservative per “start small and learn”: prove
+the system holds up at a small scale before opening the tap, rather than
+guessing a generous number on day one and having to walk it back.</p>
 <table>
 <colgroup>
-<col style="width: 33%" />
-<col style="width: 33%" />
-<col style="width: 33%" />
+<col style="width: 25%" />
+<col style="width: 25%" />
+<col style="width: 25%" />
+<col style="width: 25%" />
 </colgroup>
 <thead>
 <tr>
 <th>Limit</th>
-<th>Default (first beta)</th>
+<th>Config key</th>
+<th>Seeded default (initial rollout)</th>
 <th>Enforcement point</th>
 </tr>
 </thead>
 <tbody>
 <tr>
 <td>Monthly request quota per user</td>
-<td>500 requests</td>
+<td><code>monthly_request_cap</code></td>
+<td><strong>100 requests</strong></td>
 <td>Redis counter <code>ratelimit:{user_id}:month</code>, TTL to month
 boundary; source of truth reconciled nightly against
 <code>monthly_usage_summary</code></td>
 </tr>
 <tr>
 <td>Daily request quota per user</td>
-<td>60 requests</td>
+<td><code>daily_request_cap</code></td>
+<td>20 requests</td>
 <td>Redis counter, 24h TTL</td>
 </tr>
 <tr>
 <td>Hourly rate limit per user</td>
-<td>20 requests</td>
+<td><code>hourly_request_cap</code></td>
+<td>8 requests</td>
 <td>Redis sliding window</td>
 </tr>
 <tr>
 <td>Hourly rate limit per device</td>
-<td>20 requests</td>
+<td><code>device_hourly_request_cap</code></td>
+<td>8 requests</td>
 <td>same, keyed by device_id — catches one compromised token spamming
 without punishing the user’s other devices</td>
 </tr>
 <tr>
 <td>Per-feature monthly cap</td>
-<td>document_qna 200, summarize 200, rewrite 200, alt_text 50, chat 300
-(features can overlap a shared pool up to the monthly total)</td>
-<td>Redis counter per <code>(user_id, feature, month)</code></td>
+<td><code>feature_cap.&lt;feature&gt;</code> (one row per feature)</td>
+<td>document_qna 60, summarize 60, rewrite 60, alt_text 15, chat 60
+(these are ceilings <em>within</em> the 100 monthly total, not additive
+— the monthly total is still the binding cap for a user who mixes
+features)</td>
+<td>Redis counter per <code>(user_id, feature, month)</code>, checked
+alongside the monthly total</td>
 </tr>
 <tr>
 <td>Max input tokens per request</td>
-<td>4,000 tokens (~16,000 chars)</td>
+<td><code>max_input_tokens</code></td>
+<td><strong>1,500 tokens (~6,000 characters, roughly 1,000
+words)</strong></td>
 <td>checked after tokenizing the prompt server-side, before the OpenAI
-call</td>
+call — see §14.1 for why this is deliberately tight for the free
+tier</td>
 </tr>
 <tr>
 <td>Max output tokens per request</td>
-<td>800 tokens</td>
+<td><code>max_output_tokens</code></td>
+<td>500 tokens</td>
 <td>passed as <code>max_tokens</code> to the OpenAI call, hard cap</td>
 </tr>
 <tr>
 <td>Max document chunk count per document-Q&amp;A request</td>
-<td>6 chunks (see §14 — the client only ever sends relevant chunks,
+<td><code>max_chunks_per_request</code></td>
+<td>3 chunks (see §14 — the client only ever sends relevant chunks,
 never a whole document)</td>
-<td>validated server-side against the request body</td>
+<td>validated server-side against the request body; a request claiming
+more chunks than this is rejected outright, not silently truncated</td>
 </tr>
 <tr>
 <td>Max image size</td>
-<td>4 MB, longest edge 2048px (client resizes before sending — see
+<td><code>max_image_bytes</code> / <code>max_image_edge_px</code></td>
+<td>3 MB, longest edge 1600px (client resizes before sending — see
 §15)</td>
-<td>rejected with a clear message if exceeded</td>
+<td>rejected with a clear message if exceeded, checked before the file
+is even fully read into memory (streaming size check, not “read then
+reject”)</td>
 </tr>
 <tr>
 <td>Max images per day per user</td>
-<td>20</td>
+<td><code>daily_image_cap</code></td>
+<td>5</td>
 <td>Redis counter</td>
 </tr>
 <tr>
 <td>Max estimated monthly cost per user</td>
-<td>$0.50 (nano-class pricing makes 500 requests land well under this;
-the cap is a backstop, not the binding constraint)</td>
+<td><code>monthly_cost_cap_usd</code></td>
+<td>$0.15 (nano-class pricing makes 100 requests at these token caps
+land well under this — see §13; the cap is a backstop, not the binding
+constraint)</td>
 <td>computed running total in <code>monthly_usage_summary</code>,
 checked before each request once the user is within 90% of it (cheap
 early-exit skip below that)</td>
 </tr>
 <tr>
 <td>Global monthly budget cap</td>
-<td>$250/month for the first beta (500 users × ~$0.50 headroom, see
-§13)</td>
+<td><code>global_monthly_budget_usd</code></td>
+<td><strong>$25/month for the initial rollout</strong> (see §13’s
+recalculated projection)</td>
 <td>checked against a Redis-cached sum, refreshed every write; crossing
 100% flips <code>feature_flags.hosted_ai.enabled = false</code>
 automatically pending admin review</td>
 </tr>
 <tr>
 <td>Emergency kill switch</td>
-<td>n/a</td>
+<td>n/a (boolean, not numeric)</td>
+<td>on/off</td>
 <td><code>feature_flags</code> row <code>hosted_ai</code>, checked
 first, before any per-user logic — one admin action pauses
 everything</td>
 </tr>
 <tr>
 <td>Model allowlist</td>
-<td><code>{"gpt-5-nano"}</code> only for hosted tier, hardcoded
-server-side, never client-selectable</td>
+<td><code>allowed_models</code> (comma-separated, but the initial
+rollout ships with exactly one)</td>
+<td><code>{"gpt-5-nano"}</code> only for hosted tier, never
+client-selectable</td>
 <td>request body’s model field, if present at all, is ignored — the
 Gateway decides the model per feature</td>
 </tr>
 <tr>
 <td>Prompt/system-template allowlist</td>
+<td>n/a (code, not config — see rationale below)</td>
 <td>one fixed template per <code>feature</code> id, server-side
 only</td>
 <td>client sends <code>{feature, prompt}</code>; Gateway looks up the
@@ -957,6 +1037,30 @@ it — the client cannot supply its own system prompt</td>
 </tr>
 </tbody>
 </table>
+<p>Two rows are deliberately <strong>not</strong> admin-tunable at
+runtime: the model allowlist’s <em>contents</em> (an admin can only
+shrink/grow which models are <em>permitted</em>, never point the Gateway
+at an arbitrary model string typed into a form — that string becomes
+part of a billed API call, so it stays a reviewed code change) and the
+prompt templates (same reasoning — a template is effectively the system
+prompt every user’s request runs through; changing it is a product
+decision with real behavior consequences, not a quota dial, so it stays
+in code review like any other prompt-engineering change).</p>
+<h3 id="why-100month-to-start">8.1 Why 100/month to start</h3>
+<p>500 users × 100 requests × the tightened per-request cost ceiling
+(§13) projects to roughly <strong>$3–5/month in the realistic-average
+case</strong>, with a <strong>worst-case ceiling around
+$75/month</strong> if every single user maxed every cap every month (500
+× 100 × ~$0.0015 worst-case-per-request cost at these tighter token
+limits) — both comfortably inside a $25 budget cap that still leaves
+headroom to notice a real problem before it becomes an expensive one.
+This is intentionally small: the first rollout’s job is to prove the
+auth flow, the quota enforcement, and the abuse controls work correctly
+against real traffic, not to maximize how much free usage QUILL can
+offer on day one. Raising the cap later is a one-line
+<code>gateway_config</code> update once real usage data says it’s safe —
+there is no reason to guess big and walk it back instead of starting
+small and raising it deliberately.</p>
 <h3
 id="degradation-messages-client-facing-exactly-these-or-close-to-them">Degradation
 messages (client-facing, exactly these or close to them)</h3>
@@ -1074,10 +1178,15 @@ learning the keyboard shortcut, never approaches this threshold (5 large
 duplicates in 10 minutes is a lot of repetition for a human retry
 pattern, easily distinguishable from a script).</li>
 <li><strong>Burst-then-idle is normal, not suspicious:</strong> the
-hourly limit (20/hour) is generous enough that a focused editing session
-doesn’t trip it, and the daily/monthly caps are the actual binding
+hourly limit (8/hour at the initial rollout’s tighter default) is still
+generous enough that a focused editing session doesn’t trip it in
+ordinary use, and the daily/monthly caps are the actual binding
 constraint for normal use — hourly exists only to stop a true runaway
-loop, not to throttle legitimate rapid work.</li>
+loop, not to throttle legitimate rapid work. If real usage during the
+initial rollout shows the tighter hourly number <em>does</em> clip
+legitimate bursts, that’s exactly the kind of signal this beta is
+designed to surface — raise <code>hourly_request_cap</code> in
+<code>gateway_config</code> (§8), no code change needed.</li>
 <li><strong>No behavioral biometrics, no keystroke-timing
 analysis:</strong> anything that profiles <em>how</em> someone types or
 interacts risks flagging atypical-but- legitimate assistive-technology
@@ -1103,6 +1212,41 @@ global <code>hosted_ai</code> switch).</li>
 <code>monthly_request_cap</code>/<code>monthly_cost_cap_usd</code> for
 one user immediately (e.g. lower a suspicious account’s cap to near-zero
 without fully blocking them).</li>
+<li><strong>Permanently remove a user</strong> — a distinct, harder
+action from setting <code>status = 'blocked'</code> (which is reversible
+and the everyday way to “turn off a user’s hosted AI usage”). Removal
+deletes the user’s row and their devices outright; it’s for a user who
+asks to be forgotten, or for cleaning up a clearly-abusive account
+rather than leaving it dormant. <code>usage_events</code> rows keep
+their <code>user_id</code> for aggregate reporting integrity (they’re
+metadata-only per §4, so retaining them after removal carries no
+meaningful privacy cost); a literal right-to-be-forgotten request that
+requires erasing even that linkage is a separate anonymization step, not
+this endpoint’s default behavior.</li>
+<li><strong>Turn a model on or off, and choose which enabled model is
+the active default.</strong> <code>gateway_models</code> (§5) is the
+admin-tunable model registry: each row is one model the Gateway is
+permitted to call, with an <code>enabled</code> flag and an
+<code>is_default</code> flag (exactly one enabled row is ever the
+default, enforced in application code in a single transaction — see §5’s
+<code>gateway_models</code> note). Disabling a misbehaving model is one
+toggle; switching which model requests actually use is one more. Adding
+a <em>new</em> model (a different model id/cost entirely) is a
+deliberate, reviewed action — inserting a <code>gateway_models</code>
+row with its real per-token cost rates — since a wrong cost rate would
+silently corrupt every subsequent cost calculation for that model; this
+is intentionally not a one-field admin-console edit the way a numeric
+limit is.</li>
+<li><strong>Edit any <code>gateway_config</code> row (§5/§8) — every
+global limit in the system, live, no redeploy.</strong> This is the
+console’s most-used screen day to day: a form listing every tunable
+(monthly/daily/hourly caps, per-feature caps, token limits, image
+limits, cost caps, budget cap), each with its current value, its
+<code>description</code>, and a save button that writes the new value
+plus <code>updated_by</code>/<code>updated_at</code>. This is precisely
+the mechanism that makes “start small and learn, then raise the limits
+once they’re proven safe” a one-field edit instead of a code change and
+a deploy.</li>
 <li>Trigger a key-rotation runbook (documented procedure, §6/§11 — not
 necessarily a one-click UI action, but the console should show “key age”
 so it’s visible when rotation is due).</li>
@@ -1154,26 +1298,84 @@ the user’s own awareness, that’s a client-side-only feature
 local state) — out of scope for this plan, which is specifically about
 the <em>hosted</em> allowance.</li>
 </ul>
-<h2 id="cost-control-model-for-500-monthly-active-users">13.
-Cost-control model for 500 monthly active users</h2>
-<p><strong>Assumptions grounded in the plan above:</strong> nano-class
-model only (<code>gpt-5-nano</code>-equivalent pricing class), max 800
-output tokens, max 4,000 input tokens, chunked document Q&amp;A (not
-whole-document sends — see §14), capped-and-cached summaries.</p>
+<h2 id="cost-control-model-initial-rollout-then-scaling-to-500-mau">13.
+Cost-control model — initial rollout, then scaling to 500 MAU</h2>
+<p><strong>Assumptions grounded in the plan above, at the
+initial-rollout defaults from §8:</strong> nano-class model only
+(<code>gpt-5-nano</code>-equivalent pricing class), max 500 output
+tokens, max 1,500 input tokens, chunked document Q&amp;A (not
+whole-document sends — see §14), capped-and-cached summaries, 100
+requests/user/month.</p>
 <h3
-id="per-request-cost-ceiling-worst-case-at-the-hard-caps">Per-request
-cost ceiling (worst case, at the hard caps)</h3>
+id="per-request-cost-ceiling-worst-case-at-the-tightened-hard-caps">Per-request
+cost ceiling (worst case, at the tightened hard caps)</h3>
 <p>At nano-class pricing (illustrative — use the actual current
 published rate at implementation time, these numbers are a planning
 estimate, not a quote): roughly $0.05–$0.15 per <strong>million</strong>
 input tokens and $0.40–$0.60 per million output tokens is typical for
-the smallest current-generation models. At the hard per-request caps
-(4,000 in / 800 out), one worst-case request costs on the order of
-<strong>$0.001–$0.002</strong>. Real average requests (shorter
-selections, not maxed-out documents) will be meaningfully cheaper — call
-it <strong>$0.0005</strong> average, a deliberately conservative
-planning number.</p>
-<h3 id="mau-projection">500 MAU projection</h3>
+the smallest current-generation models. At the initial-rollout
+per-request caps (1,500 in / 500 out), one worst-case request costs on
+the order of <strong>$0.0004–$0.0007</strong> — noticeably cheaper than
+the original 4,000/800 caps this plan started with, because the free
+tier’s per-request ceiling is deliberately tight (§14.1). Real average
+requests (shorter selections, not maxed-out documents) will be
+meaningfully cheaper still — call it <strong>$0.0002</strong> average, a
+deliberately conservative planning number.</p>
+<h3 id="initial-rollout-projection-start-here">Initial rollout
+projection (start here)</h3>
+<table>
+<colgroup>
+<col style="width: 50%" />
+<col style="width: 50%" />
+</colgroup>
+<thead>
+<tr>
+<th>Assumption</th>
+<th>Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Monthly active users, initial rollout</td>
+<td>50 (a soft-launch scale — invite a small group, watch it work, then
+open up)</td>
+</tr>
+<tr>
+<td>Monthly request cap per user</td>
+<td>100</td>
+</tr>
+<tr>
+<td>Average requests/user/month (most users well under the cap)</td>
+<td>20 (20% of the cap — a cautious first-rollout assumption)</td>
+</tr>
+<tr>
+<td>Average cost/request</td>
+<td>$0.0002</td>
+</tr>
+<tr>
+<td><strong>Projected monthly spend at average usage</strong></td>
+<td><strong>50 × 20 × $0.0002 = $0.20/month</strong></td>
+</tr>
+<tr>
+<td>Worst case: every one of the 50 users maxes every cap every
+month</td>
+<td>50 × 100 × $0.0007 = <strong>$3.50/month</strong></td>
+</tr>
+</tbody>
+</table>
+<p><strong>Recommended initial-rollout budget cap: $25/month.</strong>
+Even the worst case above ($3.50) sits well inside it — the $25 figure
+is chosen not because the math demands it, but because it’s a round,
+comfortable number that an admin can watch trip <em>only</em> if
+something is genuinely wrong (a bug causing runaway retries, or real
+abuse), never as a routine ceiling that legitimate small-scale usage
+bumps into.</p>
+<h3
+id="scaling-projection-500-mau-once-the-initial-rollout-has-proven-out">Scaling
+projection — 500 MAU, once the initial rollout has proven out</h3>
+<p>Once <code>gateway_config</code>’s <code>monthly_request_cap</code>
+is deliberately raised (§8.1) and the user base has grown, the same math
+scales linearly:</p>
 <table>
 <colgroup>
 <col style="width: 50%" />
@@ -1191,13 +1393,13 @@ planning number.</p>
 <td>500</td>
 </tr>
 <tr>
-<td>Average requests/user/month (most users well under the 500 cap; a
-full-catalog free tier isn’t the expectation)</td>
-<td>60 (12% of the hard cap — realistic for an “occasional AI helper”
-usage pattern, not a power-user assumption)</td>
+<td>Average requests/user/month</td>
+<td>60 (an “occasional AI helper” usage pattern, not a power-user
+assumption)</td>
 </tr>
 <tr>
-<td>Average cost/request</td>
+<td>Average cost/request (assuming caps are raised back toward the
+original 4,000/800 token ceiling once trust is established)</td>
 <td>$0.0005</td>
 </tr>
 <tr>
@@ -1205,50 +1407,74 @@ usage pattern, not a power-user assumption)</td>
 <td><strong>500 × 60 × $0.0005 = $15/month</strong></td>
 </tr>
 <tr>
-<td>Worst case: every user maxes every cap every month</td>
+<td>Worst case: every user maxes every cap every month (at the original,
+more generous 500/month cap)</td>
 <td>500 × 500 × $0.002 = <strong>$500/month</strong></td>
 </tr>
 </tbody>
 </table>
-<p><strong>Recommended beta budget cap: $250/month.</strong> This sits
-comfortably above the realistic-average projection ($15) with more than
-15x headroom for adoption growth or heavier-than-expected usage, while
-still being far below the theoretical worst case ($500) — meaning the
-hard per-user caps in §8, not the global budget cap, are the primary
-defense against runaway cost; the global cap is the backstop that
-catches “our per-user math was wrong” rather than the everyday
-control.</p>
-<h3 id="alerting-thresholds">Alerting thresholds</h3>
+<p>At this scale, a $250/month budget cap (15x headroom over the
+realistic projection, well under the theoretical worst case) is the
+appropriate setting — but this is a <em>later</em> config change made
+deliberately, informed by what the initial rollout actually measured,
+never the starting point.</p>
+<h3 id="the-governing-principle">The governing principle</h3>
+<p>The hard per-user caps in §8 (all live-tunable via
+<code>gateway_config</code>, §8.1, §10), not the global budget cap, are
+the primary defense against runaway cost at every scale; the global cap
+is always the backstop that catches “our per-user math was wrong,” never
+the everyday control. Scale the global cap up in step with the per-user
+caps, never ahead of them.</p>
+<h3
+id="alerting-thresholds-percentages-are-the-same-at-either-scale-dollar">Alerting
+thresholds (percentages are the same at either scale; dollar</h3>
+<h3
+id="amounts-shown-for-both-the-initial-rollout-25-cap-and-the-later-250">amounts
+shown for both the initial-rollout $25 cap and the later $250</h3>
+<h3 id="scaling-stage-cap-from-the-projection-above">scaling-stage cap
+from the projection above)</h3>
 <table>
 <colgroup>
-<col style="width: 50%" />
-<col style="width: 50%" />
+<col style="width: 25%" />
+<col style="width: 25%" />
+<col style="width: 25%" />
+<col style="width: 25%" />
 </colgroup>
 <thead>
 <tr>
 <th>Threshold</th>
+<th>Initial rollout ($25 cap)</th>
+<th>Scaling stage ($250 cap)</th>
 <th>Action</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td>50% of monthly budget ($125)</td>
+<td>50%</td>
+<td>$12.50</td>
+<td>$125</td>
 <td>Informational Slack/email/webhook to the maintainer — no action
 needed, just visibility</td>
 </tr>
 <tr>
-<td>75% ($187.50)</td>
+<td>75%</td>
+<td>$18.75</td>
+<td>$187.50</td>
 <td>Same alert, escalated tone; review the usage-by-feature breakdown
 for anything unexpected</td>
 </tr>
 <tr>
-<td>90% ($225)</td>
+<td>90%</td>
+<td>$22.50</td>
+<td>$225</td>
 <td>Alert + recommend tightening per-user caps for the remainder of the
 month via the admin console (§10) rather than waiting for the hard
 stop</td>
 </tr>
 <tr>
-<td>100% ($250)</td>
+<td>100%</td>
+<td>$25</td>
+<td>$250</td>
 <td><code>feature_flags.hosted_ai.enabled</code> auto-flips to
 <code>false</code>; every client sees “Hosted AI is paused while we
 review unusual activity” (§8); BYOK and local models are entirely
@@ -1259,9 +1485,13 @@ unaffected, since they never touch this budget</td>
 <h3 id="recommended-defaults-recap-also-see-8s-full-table">Recommended
 defaults recap (also see §8’s full table)</h3>
 <ul>
-<li>Free monthly allowance: <strong>500 requests/user</strong>, expected
-real average usage far below that.</li>
-<li>Beta global budget cap: <strong>$250/month</strong>.</li>
+<li>Free monthly allowance: <strong>100 requests/user for the initial
+rollout</strong> (§8.1) — expected real average usage far below that;
+raise deliberately via <code>gateway_config</code> once proven safe,
+scaling toward 500/user as adoption grows (§13’s scaling
+projection).</li>
+<li>Initial-rollout global budget cap: <strong>$25/month</strong>.
+Scaling-stage cap (once raised): $250/month.</li>
 <li>Fallback when the cap is reached: <strong>pause hosted AI, not the
 app</strong> — BYOK and local-model paths keep working; the client’s
 messaging always mentions “add your own key to continue now” as the
@@ -1300,7 +1530,9 @@ a consent step before anything server-side is involved:</p>
 <tbody>
 <tr>
 <td>Selected text</td>
-<td>Exactly the selection, verbatim</td>
+<td>Exactly the selection, verbatim, <strong>truncated client-side to
+the current <code>max_input_tokens</code> config value before it’s even
+sent</strong> (§14.1)</td>
 <td>none needed — it’s already small</td>
 </tr>
 <tr>
@@ -1317,8 +1549,10 @@ inventing new boundary detection)</td>
 documents into sections; a lightweight local retrieval step (even simple
 keyword/heading-overlap scoring, no embedding model required for v1)
 picks the top N sections most relevant to the question, capped at the
-Gateway’s 6-chunk/4,000-token limit (§8), and <em>those</em> chunks are
-sent — never the raw whole document</td>
+Gateway’s
+<code>max_chunks_per_request</code>/<code>max_input_tokens</code> limits
+(§8), and <em>those</em> chunks are sent — never the raw whole
+document</td>
 <td>chunk + rank locally</td>
 </tr>
 <tr>
@@ -1331,6 +1565,56 @@ whole-document Q&amp;A is proven out</td>
 </tr>
 </tbody>
 </table>
+<h3
+id="large-document-safeguards-defense-in-depth-three-independent-layers">14.1
+Large-document safeguards (defense in depth — three independent
+layers)</h3>
+<p>The free hosted tier is the one place QUILL must be strict about
+input size, because every extra input token is metered cost on someone
+else’s card. Three layers, each independently sufficient, deliberately
+redundant:</p>
+<ol type="1">
+<li><strong>Client-side pre-check, before the consent dialog even
+appears.</strong> <code>GatewayBackend</code> (or whichever feature is
+about to call it) measures the candidate text’s length <em>before</em>
+offering to send it. If a selection/section/chunk-set exceeds the
+current <code>max_input_tokens</code> value (the client fetches this
+once per session from the Gateway’s <code>/v1/config</code> endpoint, so
+it always reflects the live admin-set value, never a stale hardcoded
+guess), QUILL never shows the consent dialog at all — it shows the
+degradation message from §8 immediately (“This selection is too large
+for the free tier — try a shorter passage, or switch to your own API key
+for full documents.”) This is the layer that saves the round-trip and
+the user’s time, but it is <strong>not</strong> the security boundary —
+a modified or malicious client can skip it entirely, which is exactly
+why layers 2 and 3 exist.</li>
+<li><strong>Server-side hard reject, before tokenizing counts as
+“trusted.”</strong> Every <code>/v1/chat</code> request has its request
+body size checked against a generous absolute byte ceiling (e.g. 64KB)
+<em>before</em> any parsing or tokenization happens — this stops a
+trivial “send a 500MB body” attack from even reaching the tokenizer.
+Then the actual prompt is tokenized server-side (never trusting a
+client-reported token count) and compared against
+<code>max_input_tokens</code>; over the limit is an immediate
+<code>400</code> with the same degradation message, before any OpenAI
+call is attempted. This is the real boundary — it holds even against a
+client that skips layer 1 entirely.</li>
+<li><strong>Chunk-count ceiling, independent of per-chunk size.</strong>
+A document-Q&amp;A request can’t route around the token limit by sending
+many small chunks instead of one big one —
+<code>max_chunks_per_request</code> (§8) caps the chunk <em>count</em>
+independently of the combined token check, so “3 chunks of 1,500 tokens
+each” is still rejected as a whole even though no single chunk looks
+large.</li>
+</ol>
+<p>All three checks run <strong>before</strong> the Gateway calls OpenAI
+— never as a post-hoc cleanup after an expensive call has already
+happened. A request that fails any of them is billed nothing (rejecting
+is free; only the actual OpenAI call has a cost), which is also why
+layer 2 matters even though layer 1 exists: a well-behaved client’s UX
+benefit (skip the round trip) doesn’t help contain cost if a bad actor
+skips it, so the server never relaxes its own check based on trusting
+the client did one already.</p>
 <h3 id="consent-explicitly">Consent, explicitly</h3>
 <p>Before the <em>first</em> time in a session that any text leaves the
 local machine for hosted AI, QUILL shows (once, dismissible,
@@ -1389,6 +1673,21 @@ your own API key or a local vision model, this image is sent to OpenAI’s
 servers to generate a description.”</li>
 </ul>
 <h2 id="recommended-stack">16. Recommended stack</h2>
+<p><strong>Updated recommendation: host it on Jeff’s existing server, on
+Flask.</strong> Jeff already operates a server running Flask for GLOW
+and for <code>quillin-hub</code> (a real, in-repo precedent — see §0 and
+the table below). Reusing known-good, already-operated infrastructure
+beats standing up a new platform (Fly.io) and a new framework (FastAPI)
+for a service this size: one less thing to learn, one less thing to pay
+for, one less set of ops runbooks to write from scratch. The
+async/auto-OpenAPI advantages FastAPI would bring don’t matter much here
+— the Gateway’s request volume (tens of requests/second at most, per
+§13’s projections) doesn’t need async concurrency to stay responsive,
+and a hand-written OpenAPI schema for the one or two client-facing
+routes is a small, one-time cost. Everything else in this plan (the
+Postgres schema in §5, the Redis rate-limiting model in §8/§9, the
+quota/abuse logic) is framework-agnostic and ports to Flask with no
+design changes — only the route-handler syntax differs.</p>
 <table>
 <colgroup>
 <col style="width: 33%" />
@@ -1405,17 +1704,18 @@ servers to generate a description.”</li>
 <tbody>
 <tr>
 <td>Web framework</td>
-<td><strong>FastAPI</strong></td>
-<td>async-native (matters for a proxying service awaiting upstream
-OpenAI calls), automatic OpenAPI schema (useful for the admin console
-and for the client’s <code>GatewayBackend</code> to be generated/kept in
-sync), small dependency footprint vs. Django</td>
+<td><strong>Flask</strong></td>
+<td>matches the framework already running GLOW and
+<code>quillin-hub</code> on Jeff’s server — one runtime, one set of ops
+knowledge, no new platform to learn; use <code>Flask-Limiter</code>
+(Redis-backed) for the rate-limit checks and plain SQLAlchemy for
+Postgres, the same combination <code>quillin-hub</code> already proves
+out</td>
 </tr>
 <tr>
 <td>Database</td>
 <td><strong>PostgreSQL</strong></td>
-<td>matches <code>quillin-hub</code>’s existing choice (one less thing
-for the same small team to operate differently); partitioned
+<td>matches <code>quillin-hub</code>’s existing choice; partitioned
 <code>usage_events</code> table (§5) scales fine for this volume</td>
 </tr>
 <tr>
@@ -1424,14 +1724,19 @@ for the same small team to operate differently); partitioned
 <td>sub-millisecond counter checks are the right tool for “check before
 every OpenAI call”; <code>quillin-hub</code> doesn’t use Redis today,
 but this service’s access pattern (many small counter checks) genuinely
-needs it where the storefront didn’t</td>
+needs it where the storefront didn’t — add it as a new dependency on the
+existing server, it’s a lightweight service to run alongside
+Postgres</td>
 </tr>
 <tr>
 <td>Secrets</td>
-<td>Fly.io Secrets (if deploying there, matching
-<code>quillin-hub</code>’s target) or Doppler/cloud-native secret
-manager otherwise</td>
-<td>see §6</td>
+<td>Whatever secret-injection mechanism the existing server already uses
+for GLOW/<code>quillin-hub</code>’s own credentials (environment
+variables set outside the deployed code, a local <code>.env</code>
+<strong>outside</strong> any git-tracked directory, or the platform’s
+secret store if the host is a managed one)</td>
+<td>see §6 — the mechanism matters less than the invariant: never in a
+repo, never in a file that gets git-added by habit</td>
 </tr>
 <tr>
 <td>Structured logging</td>
@@ -1444,41 +1749,47 @@ discipline</td>
 </tr>
 <tr>
 <td>Admin console</td>
-<td>Start as a small FastAPI-templated internal page (Jinja2,
-server-rendered, basic-auth or the same device-code login flow §7 gated
-to an admin allowlist) — a full SPA is not justified at this scale</td>
+<td>A small Flask-templated internal page (Jinja2, server-rendered,
+basic-auth or the same device-code login flow §7 gated to an admin
+allowlist) — a full SPA is not justified at this scale</td>
 <td>keeps the same small stack, no separate frontend build pipeline</td>
 </tr>
 <tr>
 <td>Deployment</td>
-<td><strong>Fly.io</strong> (matches <code>quillin-hub</code>’s existing
-runbook and conventions — one platform, one set of ops knowledge for the
-team)</td>
-<td>small VPS-class pricing, built-in secrets, easy Postgres/Redis
-add-ons, already-proven for this project</td>
+<td><strong>Jeff’s existing server</strong> (same host as GLOW and
+<code>quillin-hub</code>), behind whatever reverse proxy/TLS termination
+those already use (nginx/Caddy, per <code>quillin-hub</code>’s
+deployment runbook)</td>
+<td>zero new infrastructure to provision; the Gateway becomes a third
+small service on infra that’s already monitored and maintained</td>
 </tr>
 <tr>
 <td>CI/CD</td>
 <td>Separate private repository from the open-source QUILL client;
-GitHub Actions with deploy secrets scoped to that private repo only,
-never triggered by a public-repo PR</td>
+deploy secrets scoped to that private repo only, never triggered by a
+public-repo PR — a simple <code>git pull</code> + process-restart deploy
+(matching a small self-hosted setup) is entirely adequate at this scale,
+no need for a container-orchestration pipeline</td>
 <td>prevents exactly the class of leak GATE-9 exists to catch
-client-side</td>
+client-side, while staying as simple as the existing
+GLOW/<code>quillin-hub</code> deploys</td>
 </tr>
 <tr>
 <td>Monitoring/alerting</td>
-<td>Fly.io’s built-in metrics + a lightweight external uptime check (the
-<code>quillin-hub</code> runbook already calls out a
-<code>/healthz</code> gap as a to-do — build this service’s
+<td>Whatever uptime/monitoring already watches GLOW and
+<code>quillin-hub</code> on that server, extended to this service’s
+<code>/healthz</code> endpoint (the <code>quillin-hub</code> runbook
+calls out a <code>/healthz</code> gap as a to-do — build this service’s
 <code>/healthz</code> from day one) + the budget-threshold alerts (§13)
 via a simple webhook to Slack/email/Discord</td>
-<td>boring, cheap, sufficient at this scale</td>
+<td>reuses existing monitoring instead of standing up new tooling</td>
 </tr>
 <tr>
 <td>Backups</td>
-<td>Managed Postgres automatic backups (Fly Postgres or equivalent) with
-the retention policy (§4.4) enforced via a scheduled cleanup job, not by
-disabling backups of expired-but-not-yet-cleaned rows</td>
+<td>Whatever Postgres backup routine already covers
+GLOW/<code>quillin-hub</code>’s databases, extended to this one, with
+the retention policy (§4.4) additionally enforced via a scheduled
+cleanup job</td>
 <td>standard practice, no custom backup tooling needed</td>
 </tr>
 <tr>
@@ -1500,6 +1811,11 @@ tooling</td>
 </tr>
 </tbody>
 </table>
+<p><strong>If Jeff’s existing server ever needs to be swapped for
+managed hosting</strong> (e.g. outgrowing a single box), everything
+above ports cleanly to Fly.io or similar — the Postgres/Redis/Flask
+combination is supported everywhere; nothing in this plan is tied to one
+host.</p>
 <h2 id="user-experience-flows">17. User experience flows</h2>
 <ol type="1">
 <li><strong>First AI use, no BYOK key configured yet:</strong> AI Hub
@@ -1507,12 +1823,14 @@ shows two paths side by side — “Use QUILL’s free hosted AI (recommended
 for most people)” and “Use your own API key or a local model.” Choosing
 hosted triggers the device-code flow (§7) inline, with the code and URL
 announced clearly.</li>
-<li><strong>Ongoing use:</strong> status bar / AI Hub shows “38 of 500
-free requests left this month” whenever hosted AI is active — always
-visible, never requiring a separate check.</li>
+<li><strong>Ongoing use — the “magical” usage display, in three places
+(§17.2).</strong> status bar, AI Hub, and About Quill all show “38 of
+100 free requests left this month” whenever hosted AI is active — always
+visible, never requiring a separate check, similar in spirit to how
+GitHub Copilot surfaces its own usage in an editor status bar.</li>
 <li><strong>Approaching a limit:</strong> at 90% of the monthly cap, one
-gentle one-time notice: “You’re close to this month’s free AI limit (450
-of 500 used). Add your own API key anytime to keep going without
+gentle one-time notice: “You’re close to this month’s free AI limit (90
+of 100 used). Add your own API key anytime to keep going without
 limits.”</li>
 <li><strong>Hitting a limit:</strong> the exact degradation messages in
 §8, always paired with the two live workarounds (wait for reset, or
@@ -1525,6 +1843,56 @@ their hosted-tier history (both are just providers in the same
 feature sees a specific, honest message (§8) naming what’s paused and
 why, never a generic error.</li>
 </ol>
+<h3
+id="the-usage-display-concretely-client-side-implementation-not-yet-built">17.2
+The usage display, concretely (client-side implementation, not yet
+built)</h3>
+<p>This is specified precisely here as the contract a future client
+change implements against <code>GET /v1/quota</code> (§24); it is
+<strong>not</strong> part of the Flask service in
+<code>quill-ai-gateway/</code> (which is server-only) — it’s a follow-on
+QUILL desktop client (<code>quill/ui/</code>) change, tracked
+separately.</p>
+<ul>
+<li><strong>Status bar</strong> (mirroring how GitHub Copilot shows its
+own usage in an editor status bar): a small, always-visible status-bar
+segment reading e.g. “AI: 38/100” when hosted AI is the active provider,
+hidden entirely when BYOK/local is active (BYOK usage isn’t tracked by
+the Gateway at all — §12 — so there’s nothing to show). Screen-reader
+accessible on demand: focusing or activating the segment announces the
+fuller sentence (“38 of 100 free AI requests left this month, resets
+August 1st”), matching QUILL’s existing convention of pairing every
+visual status with an announced/readable equivalent (§18). Polled from
+<code>GET /v1/quota</code> once per session and refreshed after every
+<code>/v1/chat</code> response (which already returns a
+<code>remaining_quota</code> snapshot, §24 — no extra round trip needed
+for the common case).</li>
+<li><strong>AI Hub:</strong> a dedicated “Hosted AI usage” line on the
+Services/Provider tab wherever <code>quill_gateway</code> is configured
+— the same numbers as the status bar, plus the reset date and current
+<code>status</code> (active/reduced/review/blocked) in plain language,
+plus a direct link to “Add your own API key” for when the free tier
+isn’t enough.</li>
+<li><strong>Help &gt; About Quill:</strong> one line in the existing
+About dialog’s Overview tab (§0’s
+<code>info_pages.py</code>/<code>about_info.py</code> — the existing
+<code>AboutInfo</code> dataclass gains one new, optional field, e.g.
+<code>hosted_ai_usage_summary: str</code>, populated only when hosted AI
+is configured) — “Hosted AI: 38 of 100 free requests used this month.”
+Chosen for About specifically because it’s the place a user already
+looks to understand “what is this copy of QUILL, and what’s it doing” —
+a natural, low-effort second surface for the same information, not a new
+concept.</li>
+<li><strong>Never enforcement, only display:</strong> every one of these
+three surfaces reads <code>GET /v1/quota</code>, which is explicitly
+informational (§24) — the client never uses these numbers to block a
+request itself; the authoritative check always happens server-side on
+the next real <code>/v1/chat</code> call (§8’s core invariant, repeated
+here because it applies to display code too: a client that shows “5
+requests left” and is wrong by one is a cosmetic bug; a client that
+<em>enforces</em> “5 requests left” and is wrong is a security
+bug).</li>
+</ul>
 <h2 id="accessibility-requirements">18. Accessibility requirements</h2>
 <ul>
 <li>Device-code screen-reader announcement: exact code and URL read
@@ -1549,7 +1917,7 @@ from “this one’s about text” without extra navigation).</li>
 </ul>
 <h2 id="implementation-phases">19. Implementation phases</h2>
 <p><strong>Phase 0 — Gateway skeleton (no client changes yet)</strong>
-Stand up the private repo: FastAPI app, Postgres schema (§5), Redis
+Stand up the private repo: Flask app, Postgres schema (§5), Redis
 counters, device-code endpoints (§7), one hardcoded test feature
 (<code>echo</code>) that doesn’t call OpenAI at all — prove the auth +
 quota plumbing works end to end before any real model cost is
@@ -1583,10 +1951,11 @@ continuity (§7), only if the anonymous-per-device model proves limiting
 in practice.</p>
 <h2 id="open-questions">20. Open questions</h2>
 <ol type="1">
-<li><strong>Hosting target confirmation:</strong> Fly.io is recommended
-(§16) to match <code>quillin-hub</code>’s existing operational pattern,
-but this should be confirmed against current pricing/availability before
-committing.</li>
+<li><strong>Hosting target confirmation:</strong> Jeff’s existing server
+(already running GLOW and <code>quillin-hub</code>) is the
+recommendation (§16) — confirm it has the headroom for a third small
+service (a few hundred MB of RAM, negligible CPU at this request volume)
+before committing.</li>
 <li><strong>Legal/ToS:</strong> does QUILL need a short
 hosted-AI-specific terms addendum (separate from the general project
 license), given this is the first QUILL service that handles even
@@ -1716,20 +2085,25 @@ exists in the Gateway repo.</label></li>
 dry-run at least once before launch, not left untested until the first
 real rotation is needed.</label></li>
 </ul>
-<h2 id="recommended-defaults-for-the-first-public-beta-summary">23.
-Recommended defaults for the first public beta (summary)</h2>
+<h2 id="recommended-defaults-for-the-initial-rollout-summary">23.
+Recommended defaults for the initial rollout (summary)</h2>
 <ul>
 <li><strong>Auth:</strong> OAuth device-code flow, anonymous
 registration (no email/ account required), reusing
 <code>device_login.py</code>/<code>copilot_auth.py</code>.</li>
 <li><strong>Model:</strong> one nano-class model, hardcoded server-side
 allowlist of one.</li>
-<li><strong>Monthly allowance:</strong> 500 requests/user, ~$0.0005
-average cost/request.</li>
-<li><strong>Hard caps:</strong> 4,000 input tokens, 800 output tokens,
-60/day, 20/hour, 20 images/day, $0.50/user/month cost ceiling.</li>
-<li><strong>Global budget cap:</strong> $250/month with 50/75/90/100%
-alerting.</li>
+<li><strong>Monthly allowance:</strong> <strong>100
+requests/user</strong> (start small — §8.1), ~$0.0002 average
+cost/request.</li>
+<li><strong>Hard caps (all live-tunable via <code>gateway_config</code>,
+§5/§8/§10):</strong> 1,500 input tokens, 500 output tokens, 20/day,
+8/hour, 5 images/day, $0.15/user/month cost ceiling, max 3 chunks per
+document-Q&amp;A request.</li>
+<li><strong>Global budget cap:</strong> <strong>$25/month</strong> with
+50/75/90/100% alerting, scaling to $250/month only once usage at the
+100/month tier has been observed and the cap is deliberately raised
+(§13).</li>
 <li><strong>First feature shipped:</strong> document Q&amp;A only (Phase
 1); everything else follows once that’s proven stable.</li>
 <li><strong>Data retention:</strong> usage metadata 13 months,
@@ -1738,12 +2112,169 @@ unless explicitly opted in per-incident, 30-day expiry even then.</li>
 <li><strong>Fallback when limits are hit:</strong> always BYOK or local
 model, never a dead end — the free hosted tier is a convenience on top
 of the existing BYOK product, never the only path.</li>
+<li><strong>Large-document safeguards:</strong> three independent layers
+(§14.1) — client-side pre-check (skips the round trip), server-side hard
+reject on real tokenized size (the actual boundary), and an independent
+chunk-count ceiling that can’t be routed around with many small
+chunks.</li>
+</ul>
+<h2 id="api-reference-contract-between-the-client-and-the-gateway">24.
+API reference (contract between the client and the Gateway)</h2>
+<p>This is the concrete interface <code>GatewayBackend</code> (client)
+and the Flask app (server, §16) implement against. Every endpoint
+requires <code>Authorization: Bearer &lt;token&gt;</code> except device
+registration itself. Content type is <code>application/json</code>
+throughout.</p>
+<h3 id="post-v1devicecode"><code>POST /v1/device/code</code></h3>
+<p>Start device-code registration (§7). No auth required (this
+<em>is</em> the auth bootstrap).</p>
+<p>Request body: <code>{}</code> (empty — nothing to send yet).</p>
+<p>Response <code>200</code>:</p>
+<div class="sourceCode" id="cb3"><pre
+class="sourceCode json"><code class="sourceCode json"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="fu">{</span></span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&quot;device_code&quot;</span><span class="fu">:</span> <span class="st">&quot;opaque-string&quot;</span><span class="fu">,</span></span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&quot;user_code&quot;</span><span class="fu">:</span> <span class="st">&quot;ABCD-1234&quot;</span><span class="fu">,</span></span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&quot;verification_uri&quot;</span><span class="fu">:</span> <span class="st">&quot;https://gateway.quillforall.org/connect&quot;</span><span class="fu">,</span></span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&quot;verification_uri_complete&quot;</span><span class="fu">:</span> <span class="st">&quot;https://gateway.quillforall.org/connect?code=ABCD-1234&quot;</span><span class="fu">,</span></span>
+<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&quot;interval&quot;</span><span class="fu">:</span> <span class="dv">5</span><span class="fu">,</span></span>
+<span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&quot;expires_in&quot;</span><span class="fu">:</span> <span class="dv">600</span></span>
+<span id="cb3-8"><a href="#cb3-8" aria-hidden="true" tabindex="-1"></a><span class="fu">}</span></span></code></pre></div>
+<h3 id="post-v1devicetoken"><code>POST /v1/device/token</code></h3>
+<p>Poll for authorization (§7). No auth required.</p>
+<p>Request body: <code>{"device_code": "opaque-string"}</code>.</p>
+<p>Response <code>200</code> (authorized):</p>
+<div class="sourceCode" id="cb4"><pre
+class="sourceCode json"><code class="sourceCode json"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="fu">{</span><span class="dt">&quot;status&quot;</span><span class="fu">:</span> <span class="st">&quot;authorized&quot;</span><span class="fu">,</span> <span class="dt">&quot;token&quot;</span><span class="fu">:</span> <span class="st">&quot;opaque-bearer-token&quot;</span><span class="fu">,</span> <span class="dt">&quot;device_id&quot;</span><span class="fu">:</span> <span class="st">&quot;uuid&quot;</span><span class="fu">}</span></span></code></pre></div>
+<p>Response <code>428</code> (still pending — the client keeps polling
+at <code>interval</code>):</p>
+<div class="sourceCode" id="cb5"><pre
+class="sourceCode json"><code class="sourceCode json"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="fu">{</span><span class="dt">&quot;status&quot;</span><span class="fu">:</span> <span class="st">&quot;pending&quot;</span><span class="fu">}</span></span></code></pre></div>
+<p>Response <code>429</code> (<code>slow_down</code> — client must
+increase its polling interval):</p>
+<div class="sourceCode" id="cb6"><pre
+class="sourceCode json"><code class="sourceCode json"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="fu">{</span><span class="dt">&quot;status&quot;</span><span class="fu">:</span> <span class="st">&quot;slow_down&quot;</span><span class="fu">}</span></span></code></pre></div>
+<p>Response <code>410</code> (expired or denied):</p>
+<div class="sourceCode" id="cb7"><pre
+class="sourceCode json"><code class="sourceCode json"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a><span class="fu">{</span><span class="dt">&quot;status&quot;</span><span class="fu">:</span> <span class="st">&quot;denied&quot;</span><span class="fu">}</span></span></code></pre></div>
+<p>or</p>
+<div class="sourceCode" id="cb8"><pre
+class="sourceCode json"><code class="sourceCode json"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a><span class="fu">{</span><span class="dt">&quot;status&quot;</span><span class="fu">:</span> <span class="st">&quot;expired&quot;</span><span class="fu">}</span></span></code></pre></div>
+<h3 id="get-v1config"><code>GET /v1/config</code></h3>
+<p>Returns the currently-active tunable limits relevant to the client (a
+public subset of <code>gateway_config</code> — never internal-only rows
+like the model allowlist’s exact string). The client calls this once per
+session and uses it for the layer-1 pre-check in §14.1, so it always
+reflects whatever an admin has most recently set.</p>
+<p>Response <code>200</code>:</p>
+<div class="sourceCode" id="cb9"><pre
+class="sourceCode json"><code class="sourceCode json"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a><span class="fu">{</span></span>
+<span id="cb9-2"><a href="#cb9-2" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&quot;max_input_tokens&quot;</span><span class="fu">:</span> <span class="dv">1500</span><span class="fu">,</span></span>
+<span id="cb9-3"><a href="#cb9-3" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&quot;max_output_tokens&quot;</span><span class="fu">:</span> <span class="dv">500</span><span class="fu">,</span></span>
+<span id="cb9-4"><a href="#cb9-4" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&quot;max_chunks_per_request&quot;</span><span class="fu">:</span> <span class="dv">3</span><span class="fu">,</span></span>
+<span id="cb9-5"><a href="#cb9-5" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&quot;max_image_bytes&quot;</span><span class="fu">:</span> <span class="dv">3145728</span><span class="fu">,</span></span>
+<span id="cb9-6"><a href="#cb9-6" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&quot;max_image_edge_px&quot;</span><span class="fu">:</span> <span class="dv">1600</span><span class="fu">,</span></span>
+<span id="cb9-7"><a href="#cb9-7" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&quot;hosted_ai_enabled&quot;</span><span class="fu">:</span> <span class="kw">true</span><span class="fu">,</span></span>
+<span id="cb9-8"><a href="#cb9-8" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&quot;feature_flags&quot;</span><span class="fu">:</span> <span class="fu">{</span><span class="dt">&quot;document_qna&quot;</span><span class="fu">:</span> <span class="kw">true</span><span class="fu">,</span> <span class="dt">&quot;summarize&quot;</span><span class="fu">:</span> <span class="kw">true</span><span class="fu">,</span> <span class="dt">&quot;rewrite&quot;</span><span class="fu">:</span> <span class="kw">true</span><span class="fu">,</span> <span class="dt">&quot;alt_text&quot;</span><span class="fu">:</span> <span class="kw">true</span><span class="fu">,</span> <span class="dt">&quot;chat&quot;</span><span class="fu">:</span> <span class="kw">true</span><span class="fu">}</span></span>
+<span id="cb9-9"><a href="#cb9-9" aria-hidden="true" tabindex="-1"></a><span class="fu">}</span></span></code></pre></div>
+<h3 id="get-v1quota"><code>GET /v1/quota</code></h3>
+<p>Returns the authenticated user’s current usage against their limits —
+this is what powers the client’s “38 of 100 free requests left this
+month” status display (§17.2). Never enforced client-side; purely
+informational.</p>
+<p>Response <code>200</code>:</p>
+<div class="sourceCode" id="cb10"><pre
+class="sourceCode json"><code class="sourceCode json"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a><span class="fu">{</span></span>
+<span id="cb10-2"><a href="#cb10-2" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&quot;monthly_request_cap&quot;</span><span class="fu">:</span> <span class="dv">100</span><span class="fu">,</span></span>
+<span id="cb10-3"><a href="#cb10-3" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&quot;monthly_requests_used&quot;</span><span class="fu">:</span> <span class="dv">38</span><span class="fu">,</span></span>
+<span id="cb10-4"><a href="#cb10-4" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&quot;daily_request_cap&quot;</span><span class="fu">:</span> <span class="dv">20</span><span class="fu">,</span></span>
+<span id="cb10-5"><a href="#cb10-5" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&quot;daily_requests_used&quot;</span><span class="fu">:</span> <span class="dv">3</span><span class="fu">,</span></span>
+<span id="cb10-6"><a href="#cb10-6" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&quot;reset_at&quot;</span><span class="fu">:</span> <span class="st">&quot;2026-08-01T00:00:00Z&quot;</span><span class="fu">,</span></span>
+<span id="cb10-7"><a href="#cb10-7" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&quot;status&quot;</span><span class="fu">:</span> <span class="st">&quot;active&quot;</span></span>
+<span id="cb10-8"><a href="#cb10-8" aria-hidden="true" tabindex="-1"></a><span class="fu">}</span></span></code></pre></div>
+<h3 id="post-v1chat"><code>POST /v1/chat</code></h3>
+<p>The one real inference endpoint. Every feature (document Q&amp;A,
+summarize, rewrite, chat) uses this same route with a different
+<code>feature</code> value; the Gateway looks up the fixed server-side
+prompt template for that <code>feature</code> (§8) rather than accepting
+an arbitrary system prompt from the client.</p>
+<p>Request body:</p>
+<div class="sourceCode" id="cb11"><pre
+class="sourceCode json"><code class="sourceCode json"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a><span class="fu">{</span></span>
+<span id="cb11-2"><a href="#cb11-2" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&quot;feature&quot;</span><span class="fu">:</span> <span class="st">&quot;document_qna&quot;</span><span class="fu">,</span></span>
+<span id="cb11-3"><a href="#cb11-3" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&quot;prompt&quot;</span><span class="fu">:</span> <span class="st">&quot;the user&#39;s question or selected text&quot;</span><span class="fu">,</span></span>
+<span id="cb11-4"><a href="#cb11-4" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&quot;chunks&quot;</span><span class="fu">:</span> <span class="ot">[</span><span class="st">&quot;optional additional context chunks, if the feature uses them&quot;</span><span class="ot">]</span><span class="fu">,</span></span>
+<span id="cb11-5"><a href="#cb11-5" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&quot;device_id&quot;</span><span class="fu">:</span> <span class="st">&quot;uuid&quot;</span></span>
+<span id="cb11-6"><a href="#cb11-6" aria-hidden="true" tabindex="-1"></a><span class="fu">}</span></span></code></pre></div>
+<p>Response <code>200</code> (allowed):</p>
+<div class="sourceCode" id="cb12"><pre
+class="sourceCode json"><code class="sourceCode json"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a><span class="fu">{</span></span>
+<span id="cb12-2"><a href="#cb12-2" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&quot;status&quot;</span><span class="fu">:</span> <span class="st">&quot;allowed&quot;</span><span class="fu">,</span></span>
+<span id="cb12-3"><a href="#cb12-3" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&quot;text&quot;</span><span class="fu">:</span> <span class="st">&quot;the model&#39;s answer&quot;</span><span class="fu">,</span></span>
+<span id="cb12-4"><a href="#cb12-4" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&quot;tokens_in&quot;</span><span class="fu">:</span> <span class="dv">340</span><span class="fu">,</span></span>
+<span id="cb12-5"><a href="#cb12-5" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&quot;tokens_out&quot;</span><span class="fu">:</span> <span class="dv">120</span><span class="fu">,</span></span>
+<span id="cb12-6"><a href="#cb12-6" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&quot;remaining_quota&quot;</span><span class="fu">:</span> <span class="fu">{</span><span class="dt">&quot;monthly&quot;</span><span class="fu">:</span> <span class="dv">61</span><span class="fu">,</span> <span class="dt">&quot;daily&quot;</span><span class="fu">:</span> <span class="dv">16</span><span class="fu">,</span> <span class="dt">&quot;hourly&quot;</span><span class="fu">:</span> <span class="dv">6</span><span class="fu">}</span></span>
+<span id="cb12-7"><a href="#cb12-7" aria-hidden="true" tabindex="-1"></a><span class="fu">}</span></span></code></pre></div>
+<p>Response <code>422</code> (input too large — layer 2 of §14.1
+rejected it):</p>
+<div class="sourceCode" id="cb13"><pre
+class="sourceCode json"><code class="sourceCode json"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a><span class="fu">{</span></span>
+<span id="cb13-2"><a href="#cb13-2" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&quot;status&quot;</span><span class="fu">:</span> <span class="st">&quot;rejected&quot;</span><span class="fu">,</span></span>
+<span id="cb13-3"><a href="#cb13-3" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&quot;reason&quot;</span><span class="fu">:</span> <span class="st">&quot;input_too_large&quot;</span><span class="fu">,</span></span>
+<span id="cb13-4"><a href="#cb13-4" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&quot;message&quot;</span><span class="fu">:</span> <span class="st">&quot;This selection is too large for the free tier — try a shorter passage, or switch to your own API key for full documents.&quot;</span><span class="fu">,</span></span>
+<span id="cb13-5"><a href="#cb13-5" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&quot;max_input_tokens&quot;</span><span class="fu">:</span> <span class="dv">1500</span><span class="fu">,</span></span>
+<span id="cb13-6"><a href="#cb13-6" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&quot;tokens_counted&quot;</span><span class="fu">:</span> <span class="dv">2400</span></span>
+<span id="cb13-7"><a href="#cb13-7" aria-hidden="true" tabindex="-1"></a><span class="fu">}</span></span></code></pre></div>
+<p>Response <code>429</code> (quota exceeded):</p>
+<div class="sourceCode" id="cb14"><pre
+class="sourceCode json"><code class="sourceCode json"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true" tabindex="-1"></a><span class="fu">{</span></span>
+<span id="cb14-2"><a href="#cb14-2" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&quot;status&quot;</span><span class="fu">:</span> <span class="st">&quot;quota_exceeded&quot;</span><span class="fu">,</span></span>
+<span id="cb14-3"><a href="#cb14-3" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&quot;scope&quot;</span><span class="fu">:</span> <span class="st">&quot;monthly&quot;</span><span class="fu">,</span></span>
+<span id="cb14-4"><a href="#cb14-4" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&quot;reset_at&quot;</span><span class="fu">:</span> <span class="st">&quot;2026-08-01T00:00:00Z&quot;</span><span class="fu">,</span></span>
+<span id="cb14-5"><a href="#cb14-5" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&quot;message&quot;</span><span class="fu">:</span> <span class="st">&quot;You&#39;ve used your free QUILL AI allowance for this month. It resets on the 1st, or you can add your own API key to continue right away.&quot;</span></span>
+<span id="cb14-6"><a href="#cb14-6" aria-hidden="true" tabindex="-1"></a><span class="fu">}</span></span></code></pre></div>
+<p>Response <code>503</code> (feature or global kill switch off):</p>
+<div class="sourceCode" id="cb15"><pre
+class="sourceCode json"><code class="sourceCode json"><span id="cb15-1"><a href="#cb15-1" aria-hidden="true" tabindex="-1"></a><span class="fu">{</span></span>
+<span id="cb15-2"><a href="#cb15-2" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&quot;status&quot;</span><span class="fu">:</span> <span class="st">&quot;unavailable&quot;</span><span class="fu">,</span></span>
+<span id="cb15-3"><a href="#cb15-3" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&quot;scope&quot;</span><span class="fu">:</span> <span class="st">&quot;global&quot;</span><span class="fu">,</span></span>
+<span id="cb15-4"><a href="#cb15-4" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&quot;message&quot;</span><span class="fu">:</span> <span class="st">&quot;Hosted AI is paused for everyone right now while we look into something — check quillforall.org/status, or use your own API key in the meantime.&quot;</span></span>
+<span id="cb15-5"><a href="#cb15-5" aria-hidden="true" tabindex="-1"></a><span class="fu">}</span></span></code></pre></div>
+<h3
+id="delete-v1devicesdevice_id"><code>DELETE /v1/devices/{device_id}</code></h3>
+<p>Revoke a device (§7’s “compromised device” flow). Authenticated as
+the owning user (or an admin — see the admin-only routes below).</p>
+<p>Response <code>204</code>: no body.</p>
+<h3
+id="admin-only-routes-10-gated-to-an-admin-allowlist-via-the-same">Admin-only
+routes (§10), gated to an admin allowlist via the same</h3>
+<h3
+id="device-code-login-separate-from-any-user-facing-tokens-permissions">device-code
+login, separate from any user-facing token’s permissions</h3>
+<ul>
+<li><code>GET /admin/config</code> /
+<code>PUT /admin/config/{key}</code> — read/write any
+<code>gateway_config</code> row.</li>
+<li><code>GET /admin/users/{id}/usage</code> — the usage summary for one
+user (never prompt content — see §4).</li>
+<li><code>PUT /admin/users/{id}/status</code> — set
+<code>active</code>/<code>reduced</code>/<code>review</code>/
+<code>blocked</code>.</li>
+<li><code>PUT /admin/devices/{id}/status</code> — set
+<code>active</code>/<code>revoked</code>.</li>
+<li><code>PUT /admin/feature-flags/{feature}</code> — enable/disable one
+feature or the global <code>hosted_ai</code> switch.</li>
+<li><code>GET /admin/spend</code> — current-month total spend vs. the
+global budget cap.</li>
 </ul>
 <hr />
 <p><em>This plan intentionally leaves generic backend engineering (exact
-FastAPI route signatures, exact SQLAlchemy models, deployment YAML) for
-the implementation phase — the goal here was to make every architectural
-and policy decision concrete and grounded in QUILL’s actual code, not to
-pre-write the Gateway’s source.</em></p>
+Flask route signatures beyond the contract in §24, exact SQLAlchemy
+models beyond the schema in §5, deployment scripts) for the
+implementation phase — the goal here was to make every architectural and
+policy decision concrete and grounded in QUILL’s actual code, not to
+pre-write the Gateway’s entire source. The actual Flask implementation
+lives in <code>quill-ai-gateway/</code> at the repository root (a
+sibling to <code>quillin-hub/</code>, matching that precedent) and
+implements this contract.</em></p>
 </body>
 </html>
