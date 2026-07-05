@@ -41,7 +41,9 @@ def create_app(config_object: type[Config] | Config | None = None) -> Flask:
     if problems and not app.config.get("TESTING"):
         for problem in problems:
             logging.getLogger("gateway.startup").error(problem)
-        raise RuntimeError("Refusing to start with an invalid configuration:\n- " + "\n- ".join(problems))
+        raise RuntimeError(
+            "Refusing to start with an invalid configuration:\n- " + "\n- ".join(problems)
+        )
 
     db.init_app(app)
 
@@ -79,7 +81,9 @@ def create_app(config_object: type[Config] | Config | None = None) -> Flask:
 def _init_redis(app: Flask) -> None:
     import redis as redis_lib
 
-    app.extensions["gateway_redis"] = redis_lib.from_url(app.config["REDIS_URL"], decode_responses=True)
+    app.extensions["gateway_redis"] = redis_lib.from_url(
+        app.config["REDIS_URL"], decode_responses=True
+    )
 
 
 def _register_blueprints(app: Flask) -> None:

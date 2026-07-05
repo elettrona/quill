@@ -134,7 +134,10 @@ def poll_device_token(device_code: str) -> tuple[int, dict]:
     if now > grant.expires_at:
         return 410, {"status": "expired"}
 
-    if grant.last_poll_at is not None and (now - grant.last_poll_at).total_seconds() < grant.interval:
+    if (
+        grant.last_poll_at is not None
+        and (now - grant.last_poll_at).total_seconds() < grant.interval
+    ):
         return 429, {"status": "slow_down"}
     grant.last_poll_at = now
 

@@ -79,7 +79,9 @@ def set_default_model(model_id: str, admin_id: str) -> None:
     if target is None:
         raise ValueError(f"Unknown model_id: {model_id!r}")
 
-    db.session.query(GatewayModel).filter(GatewayModel.is_default.is_(True)).update({"is_default": False})
+    db.session.query(GatewayModel).filter(GatewayModel.is_default.is_(True)).update({
+        "is_default": False
+    })
     target.is_default = True
     target.enabled = True
     db.session.add(AdminAction(admin_id=admin_id, action="set_default_model", target=model_id))

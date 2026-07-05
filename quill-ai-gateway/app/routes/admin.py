@@ -21,7 +21,15 @@ from flask import Blueprint, current_app, g, jsonify, request
 
 from app.auth import require_admin, require_auth
 from app.model_registry import list_models, set_default_model, set_model_enabled
-from app.models import AdminAction, Device, FeatureFlag, GatewayConfig, MonthlyUsageSummary, User, db
+from app.models import (
+    AdminAction,
+    Device,
+    FeatureFlag,
+    GatewayConfig,
+    MonthlyUsageSummary,
+    User,
+    db,
+)
 
 bp = Blueprint("admin", __name__, url_prefix="/admin")
 
@@ -119,7 +127,9 @@ def put_config(key: str):
         return jsonify({"status": "not_found", "message": f"Unknown config key: {key!r}"}), 404
     row.value = new_value
     row.updated_by = g.device.id
-    db.session.add(AdminAction(admin_id=g.device.id, action="set_config", target=key, reason=str(new_value)))
+    db.session.add(
+        AdminAction(admin_id=g.device.id, action="set_config", target=key, reason=str(new_value))
+    )
     db.session.commit()
 
     # Invalidate the Redis cache immediately rather than waiting out the
@@ -222,7 +232,9 @@ def delete_user(user_id: str):
     reason = (request.get_json(silent=True) or {}).get("reason", "")
     db.session.query(Device).filter_by(user_id=user_id).delete()
     db.session.delete(user)
-    db.session.add(AdminAction(admin_id=g.device.id, action="delete_user", target=user_id, reason=reason))
+    db.session.add(
+        AdminAction(admin_id=g.device.id, action="delete_user", target=user_id, reason=reason)
+    )
     db.session.commit()
     return "", 204
 
@@ -243,7 +255,9 @@ def put_device_status(device_id: str):
         return jsonify({"status": "not_found"}), 404
     device.status = new_status
     db.session.add(
-        AdminAction(admin_id=g.device.id, action="set_device_status", target=device_id, reason=new_status)
+        AdminAction(
+            admin_id=g.device.id, action="set_device_status", target=device_id, reason=new_status
+        )
     )
     db.session.commit()
     return jsonify({"status": "ok"})

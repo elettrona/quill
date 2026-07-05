@@ -55,7 +55,9 @@ class Config:
     # deployment-time decision, not something the Gateway's own admin
     # console should be able to grant to itself.
     ADMIN_ALLOWLIST = frozenset(
-        entry.strip() for entry in os.environ.get("GATEWAY_ADMIN_ALLOWLIST", "").split(",") if entry.strip()
+        entry.strip()
+        for entry in os.environ.get("GATEWAY_ADMIN_ALLOWLIST", "").split(",")
+        if entry.strip()
     )
 
     # --- Device-code flow (RFC 8628) ------------------------------------

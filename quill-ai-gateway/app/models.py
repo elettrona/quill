@@ -70,7 +70,9 @@ class User(db.Model):
     monthly_cost_cap_usd: Mapped[float | None] = mapped_column(Numeric(8, 4), nullable=True)
 
     email: Mapped[str | None] = mapped_column(String(255), unique=True, nullable=True)
-    email_verified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    email_verified_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
 
     devices: Mapped[list[Device]] = relationship(back_populates="user")
 
@@ -172,7 +174,9 @@ class FeatureFlag(db.Model):
     feature: Mapped[str] = mapped_column(String(32), primary_key=True)
     enabled: Mapped[bool] = mapped_column(Boolean, default=True)
     disabled_reason: Mapped[str | None] = mapped_column(String(500), nullable=True)
-    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow, onupdate=_utcnow)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=_utcnow, onupdate=_utcnow
+    )
 
 
 class GatewayConfig(db.Model):
@@ -194,7 +198,9 @@ class GatewayConfig(db.Model):
     value: Mapped[float] = mapped_column(Numeric, nullable=False)
     description: Mapped[str] = mapped_column(String(500), nullable=False)
     updated_by: Mapped[str | None] = mapped_column(String(255), nullable=True)
-    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow, onupdate=_utcnow)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=_utcnow, onupdate=_utcnow
+    )
 
 
 class GatewayModel(db.Model):
@@ -222,7 +228,9 @@ class GatewayModel(db.Model):
     is_default: Mapped[bool] = mapped_column(Boolean, default=False)
     input_cost_per_million_usd: Mapped[float] = mapped_column(Numeric(10, 4), nullable=False)
     output_cost_per_million_usd: Mapped[float] = mapped_column(Numeric(10, 4), nullable=False)
-    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow, onupdate=_utcnow)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=_utcnow, onupdate=_utcnow
+    )
 
 
 class UserFeatureCap(db.Model):

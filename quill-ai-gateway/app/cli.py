@@ -43,24 +43,31 @@ def register_cli_commands(app: Flask) -> None:
             "device_hourly_request_cap": "Free requests per device per hour.",
             "max_input_tokens": "Maximum tokens in a single request's prompt (plus chunks).",
             "max_output_tokens": "Maximum tokens the model may generate per request.",
-            "max_chunks_per_request": "Maximum document excerpts a document-Q&A request may include.",
+            "max_chunks_per_request": "Maximum document excerpts a document-Q&A request may "
+            "include.",
             "max_image_bytes": "Maximum image file size, in bytes, for alt-text requests.",
-            "max_image_edge_px": "Maximum image longest-edge size, in pixels (client resizes below this).",
+            "max_image_edge_px": "Maximum image longest-edge size, in pixels (client resizes "
+            "below this).",
             "daily_image_cap": "Free image (alt-text) requests per user per day.",
             "monthly_cost_cap_usd": "Maximum estimated cost per user per month, in USD.",
-            "global_monthly_budget_usd": "Total hosted-AI budget per month across all users, in USD.",
+            "global_monthly_budget_usd": "Total hosted-AI budget per month across all users, "
+            "in USD.",
         }
         added = 0
         for key, value in _FAIL_SAFE_DEFAULTS.items():
             if db.session.get(GatewayConfig, key) is None:
-                db.session.add(GatewayConfig(key=key, value=value, description=descriptions.get(key, "")))
+                db.session.add(
+                    GatewayConfig(key=key, value=value, description=descriptions.get(key, ""))
+                )
                 added += 1
         for feature, value in _FEATURE_CAP_FAIL_SAFE_DEFAULTS.items():
             key = f"feature_cap.{feature}"
             if db.session.get(GatewayConfig, key) is None:
                 db.session.add(
                     GatewayConfig(
-                        key=key, value=value, description=f"Monthly cap for the '{feature}' feature."
+                        key=key,
+                        value=value,
+                        description=f"Monthly cap for the '{feature}' feature.",
                     )
                 )
                 added += 1
@@ -104,7 +111,8 @@ def register_cli_commands(app: Flask) -> None:
         # driven from the ORM, since partition management is a DBA-level
         # operation this module shouldn't paper over.
         click.echo(
-            "Reminder: usage_events partition retention is a separate DBA step -- see migrations/README.md."
+            "Reminder: usage_events partition retention is a separate DBA step -- "
+            "see migrations/README.md."
         )
 
     @app.cli.command("reconcile-usage")
@@ -127,12 +135,17 @@ def register_cli_commands(app: Flask) -> None:
                 func.count(UsageEvent.id),
                 func.sum(UsageEvent.estimated_cost_usd),
             )
-            .filter(UsageEvent.created_at >= now.replace(day=1, hour=0, minute=0, second=0, microsecond=0))
+            .filter(
+                UsageEvent.created_at
+                >= now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+            )
             .group_by(UsageEvent.user_id)
             .all()
         )
         for user_id, count, total_cost in rows:
-            summary = db.session.get(MonthlyUsageSummary, {"user_id": user_id, "year_month": year_month})
+            summary = db.session.get(
+                MonthlyUsageSummary, {"user_id": user_id, "year_month": year_month}
+            )
             if summary is None:
                 summary = MonthlyUsageSummary(user_id=user_id, year_month=year_month)
                 db.session.add(summary)

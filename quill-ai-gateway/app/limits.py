@@ -135,7 +135,9 @@ def resolve_feature_cap(app, feature: str) -> float:
         return float(cached)
 
     row = db.session.get(GatewayConfig, f"feature_cap.{feature}")
-    value = float(row.value) if row is not None else _FEATURE_CAP_FAIL_SAFE_DEFAULTS.get(feature, 60.0)
+    value = (
+        float(row.value) if row is not None else _FEATURE_CAP_FAIL_SAFE_DEFAULTS.get(feature, 60.0)
+    )
     _redis(app).set(cache_key, str(value), ex=_CONFIG_CACHE_TTL_SECONDS)
     return value
 
@@ -163,7 +165,9 @@ def _month_key(now: datetime | None = None) -> str:
 def _month_reset_at(now: datetime | None = None) -> datetime:
     now = now or datetime.now(UTC)
     if now.month == 12:
-        return now.replace(year=now.year + 1, month=1, day=1, hour=0, minute=0, second=0, microsecond=0)
+        return now.replace(
+            year=now.year + 1, month=1, day=1, hour=0, minute=0, second=0, microsecond=0
+        )
     return now.replace(month=now.month + 1, day=1, hour=0, minute=0, second=0, microsecond=0)
 
 

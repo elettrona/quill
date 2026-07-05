@@ -54,7 +54,11 @@ def chat():
         )
     if not prompt or not isinstance(prompt, str):
         return (
-            jsonify({"status": "rejected", "reason": "empty_prompt", "message": "No prompt was provided."}),
+            jsonify({
+                "status": "rejected",
+                "reason": "empty_prompt",
+                "message": "No prompt was provided.",
+            }),
             400,
         )
 
@@ -112,7 +116,9 @@ def chat():
     max_output_tokens = int(resolve_limit(current_app, "max_output_tokens"))
 
     try:
-        text, tokens_in, tokens_out = complete(current_app, model.model_id, full_prompt, max_output_tokens)
+        text, tokens_in, tokens_out = complete(
+            current_app, model.model_id, full_prompt, max_output_tokens
+        )
     except OpenAICallError:
         current_app.logger.exception("OpenAI call failed for feature=%s", feature)
         return (
@@ -129,7 +135,15 @@ def chat():
     #    fresh quota snapshot for the client's status display.
     cost = model.estimate_cost_usd(tokens_in, tokens_out)
     record_usage(
-        current_app, g.user, g.device, feature, model.model_id, tokens_in, tokens_out, cost, status="allowed"
+        current_app,
+        g.user,
+        g.device,
+        feature,
+        model.model_id,
+        tokens_in,
+        tokens_out,
+        cost,
+        status="allowed",
     )
     quota = remaining_quota(current_app, g.user)
 
