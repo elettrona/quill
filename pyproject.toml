@@ -160,6 +160,10 @@ pages = ["keynote-parser>=1.14.4.0", "markitdown[docx,pptx,xlsx,xls,pdf]>=0.1.6"
 # pre-split install to satisfy the resolver and leave the engine silently
 # unavailable inside QUILL.
 glow = ["quill-glow-core[glow]>=0.1.1", "acb-large-print>=8.0.0"]
+# LaTeX -> MathML conversion for quill/core/math/ (docs/planning/math.md, Tier 1-B).
+# Pure Python, no native build. Optional: the math bridge degrades to accepting
+# MathML input only (no LaTeX typing) when this is absent.
+math = ["latex2mathml>=3.81.0"]
 # macOS build + runtime. py2app 0.28.x is incompatible with setuptools >= 83
 # (the build aborts with "install_requires is no longer supported"), so pin it.
 # pyobjc powers the macOS platform layer; apple-fm-sdk is the Foundation Models
