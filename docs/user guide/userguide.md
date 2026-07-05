@@ -2541,6 +2541,8 @@ The first page asks what you want to make:
 - **Combine audio files into one chaptered audiobook** — a shorter path: pick the folder of recordings, describe the book (title, author, narrator, cover, M4B or MP3, ACX loudness), review the summary, and Start. Each file becomes one chapter and you always review the chapter list before the book is built.
 - **Edit an existing audiobook** — pick a finished MP3 or M4B and it opens in the **Chapter Workbench** (below). A file with no chapter markers opens as a single chapter, ready to split up.
 
+Two automation extras round the Studio out. **Library mode** (a checkbox on the combine-audio journey) builds every subfolder as its own audiobook in one unattended run — point it at a folder of book folders and come back to a shelf of masters, each titled after its folder. And a new **watch action, "Build audiobook from the folder"**, keeps a drop folder alive: whenever new recordings land in a watched folder, its chaptered master is rebuilt automatically (a batch of files triggers one rebuild, not many).
+
 ### The Chapter Workbench
 
 The Workbench is where a finished audiobook gets fixed by ear. The chapter list reads each row in full ("3. The Long Road — starts 1:02:03, runs 12:40"); press Enter on a chapter to hear it. The built-in **player** has Play/Pause, Stop, Previous/Next chapter, Rewind/Forward, a position slider that speaks minutes and seconds, and a volume slider; the current chapter is announced as playback crosses into it.
@@ -2549,6 +2551,8 @@ The Workbench is where a finished audiobook gets fixed by ear. The chapter list 
 - **Set start to playhead** — retime an existing boundary: select the chapter, park the playhead where it should start, press. The previous chapter's end moves with it, so the timeline always stays contiguous.
 - **Merge into previous**, **Rename** (type and press Enter), and **Restore original** (one press undoes every edit) round out the surgery.
 - **Import chapters...** replaces the whole list from Audacity labels, a CUE sheet, timestamp lines, Podcasting 2.0 JSON, or CSV; **Export chapters...** writes the list in any of the same five formats.
+- **Split into files...** goes the other way: one audio file per chapter, named `NN - Title`, into a folder you pick — instant podcast episodes, or tracks for players without chapter support.
+- The player **remembers where you stopped** in each book and resumes there next time, offers a **playback speed** control (0.75x to 2x, pitch preserved), and answers **"Where am I?"** with the full audible glance: "Chapter 4 of 24: The Long Road. 3:12 into the chapter, 9:28 left in it. 1:02:03 of 7:41:00 in the book, 6:38:57 remaining."
 - **Book details** (title, author, narrator, genre, year) are edited right in the dialog.
 - **Save** writes an MP3's edits **in place** — only the tags are rewritten; the audio is untouched. An M4B is saved with **Save As** instead: a lossless re-mux (no re-encode, no quality loss) into a new file. Long saves run in the background so QUILL stays responsive.
 - **Publish...** opens three ways to get the finished book out into the world, each an explicit action:

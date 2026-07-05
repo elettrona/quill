@@ -39,12 +39,21 @@ class AudioSourcePage(StudioPage):
         self.recursive.SetValue(defaults.recursive)
         self.sizer.Add(self.recursive, 0, wx.LEFT | wx.TOP, 12)
 
+        self.library = wx.CheckBox(
+            self,
+            label=_("&Library mode: every subfolder becomes its own audiobook"),
+        )
+        self.library.SetValue(defaults.library_mode)
+        self.sizer.Add(self.library, 0, wx.LEFT | wx.TOP, 12)
+
         self.sizer.Add(
             wx.StaticText(
                 self,
                 label=_(
                     "MP3, M4A/M4B, WAV, FLAC, Opus and OGG files are accepted.\n"
-                    "Files that look like previous builds are set aside automatically."
+                    "Files that look like previous builds are set aside automatically.\n"
+                    "In library mode each book is titled after its subfolder and\n"
+                    "built without the review step."
                 ),
                 name="audio_studio.audio_source_note",
             ),
@@ -65,7 +74,9 @@ class AudioSourcePage(StudioPage):
         # editor open when a folder has no documents).
         req.extensions = ()
         req.make_book = True
-        req.book_review_chapters = True
+        req.library_mode = self.library.GetValue()
+        # Library mode builds unattended (no per-book review dialogs).
+        req.book_review_chapters = not req.library_mode
         req.dry_run = False
 
     def is_valid(self) -> tuple[bool, str]:

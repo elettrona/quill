@@ -408,3 +408,18 @@ def test_audition_and_credits_collect(wx_app, tmp_path):
     finally:
         dlg.Destroy()
         frame.Destroy()
+
+
+def test_library_mode_collects_and_skips_review(wx_app, tmp_path):
+    frame, dlg = _make(wx_app, tmp_path)
+    try:
+        dlg.start_page._journey.SetSelection(1)  # combine audio files
+        req = dlg.build_request()
+        assert req.library_mode is False and req.book_review_chapters is True
+        dlg.audio_source.library.SetValue(True)
+        req = dlg.build_request()
+        assert req.library_mode is True
+        assert req.book_review_chapters is False  # unattended library builds
+    finally:
+        dlg.Destroy()
+        frame.Destroy()

@@ -46,6 +46,8 @@ class AudioEngine(Protocol):
 
     def set_volume(self, percent: int) -> None: ...
 
+    def set_rate(self, rate: float) -> None: ...
+
 
 class WxMediaEngine:
     """The default engine: ``wx.media.MediaCtrl`` hidden inside the player panel.
@@ -145,6 +147,13 @@ class WxMediaEngine:
     def set_volume(self, percent: int) -> None:
         try:
             self._media.SetVolume(max(0, min(100, int(percent))) / 100.0)
+        except Exception:  # noqa: BLE001
+            pass
+
+    def set_rate(self, rate: float) -> None:
+        """Playback speed (1.0 = normal); the WMP backend preserves pitch."""
+        try:
+            self._media.SetPlaybackRate(max(0.25, min(4.0, float(rate))))
         except Exception:  # noqa: BLE001
             pass
 

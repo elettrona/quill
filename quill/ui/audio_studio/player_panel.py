@@ -61,6 +61,15 @@ class PlayerPanel(wx.Panel):
         self._next_btn = self._button(row, _("Ne&xt chapter"), self._on_next, "player.next")
         self._rew_btn = self._button(row, _("Re&wind"), self._on_rewind, "player.rewind")
         self._fwd_btn = self._button(row, _("&Forward"), self._on_forward, "player.forward")
+        self._where_btn = self._button(
+            row, _("Where am &I?"), self._on_where_am_i, "player.where_am_i"
+        )
+        row.Add(wx.StaticText(self, label=_("Spee&d:")), 0, wx.ALIGN_CENTER_VERTICAL)
+        self._rate = wx.Choice(self, choices=["0.75x", "1x", "1.25x", "1.5x", "2x"])
+        self._rate.SetName(_("Playback speed"))
+        self._rate.SetSelection(1)
+        self._rate.Bind(wx.EVT_CHOICE, lambda _e: self._on_rate())
+        row.Add(self._rate, 0, wx.LEFT, 6)
         sizer.Add(row, 0, wx.LEFT | wx.TOP, 8)
 
         slider_row = wx.BoxSizer(wx.HORIZONTAL)
@@ -84,11 +93,16 @@ class PlayerPanel(wx.Panel):
 
     # -- public API -------------------------------------------------------------
 
-    def load(self, path: str, chapters: list[Chapter]) -> bool:
-        """Begin loading *path*; chapter navigation uses *chapters*."""
+    def load(self, path: str, chapters: list[Chapter], *, resume_ms: int = 0) -> bool:
+        """Begin loading *path*; chapter navigation uses *chapters*.
+
+        A positive *resume_ms* parks the playhead there once loading finishes
+        (paused) — the remembered listening position.
+        """
         self._chapters = list(chapters)
         self._loaded = False
         self._announced_chapter = -1
+        self._resume_ms = max(0, int(resume_ms))
         if self._engine is None:
             return False
         self._status.SetLabel(_("Loading {name}...").format(name=path))
@@ -161,9 +175,11 @@ class PlayerPanel(wx.Panel):
             self._next_btn,
             self._rew_btn,
             self._fwd_btn,
+            self._where_btn,
         ):
             btn.Enable(on)
         self._position.Enable(on)
+        self._rate.Enable(on)
 
     def _sync_play_label(self) -> None:
         playing = self._engine is not None and self._engine.is_playing()
@@ -196,12 +212,20 @@ class PlayerPanel(wx.Panel):
             self._chapters = clamp_chapters(self._chapters, length_ms)
         self._position.SetRange(0, max(1, length_ms))
         self._sync_enabled()
-        self._update_status()
-        self._announce(
-            _("Loaded: {count} chapters, {total}").format(
-                count=len(self._chapters), total=format_timestamp(length_ms)
+        resume = getattr(self, "_resume_ms", 0)
+        if 0 < resume < length_ms and self._engine is not None:
+            self._engine.seek(resume, resume=False)
+            self._position.SetValue(resume)
+            self._announce(
+                _("Resuming where you left off, at {pos}").format(pos=format_timestamp(resume))
             )
-        )
+        else:
+            self._announce(
+                _("Loaded: {count} chapters, {total}").format(
+                    count=len(self._chapters), total=format_timestamp(length_ms)
+                )
+            )
+        self._update_status()
         self._timer.Start(_TICK_MS)
 
     def _on_engine_finished(self) -> None:
@@ -244,6 +268,43 @@ class PlayerPanel(wx.Panel):
             self.play_chapter(idx + 1)
         else:
             self._announce(_("This is the last chapter"))
+
+    def _on_where_am_i(self) -> None:
+        """Speak book, chapter, position, and remaining time — the audible glance."""
+        if not self._loaded:
+            self._announce(_("No file loaded."))
+            return
+        pos = self.playhead_ms()
+        idx = self._chapter_at(pos)
+        parts: list[str] = []
+        if idx >= 0:
+            c = self._chapters[idx]
+            parts.append(
+                _("Chapter {num} of {total}: {title}").format(
+                    num=idx + 1, total=len(self._chapters), title=c.title
+                )
+            )
+            parts.append(
+                _("{elapsed} into the chapter, {left} left in it").format(
+                    elapsed=format_timestamp(pos - c.start_ms),
+                    left=format_timestamp(max(0, c.end_ms - pos)),
+                )
+            )
+        parts.append(
+            _("{pos} of {total} in the book, {left} remaining").format(
+                pos=format_timestamp(pos),
+                total=format_timestamp(self._length_ms),
+                left=format_timestamp(max(0, self._length_ms - pos)),
+            )
+        )
+        self._announce(". ".join(parts))
+
+    def _on_rate(self) -> None:
+        rates = (0.75, 1.0, 1.25, 1.5, 2.0)
+        idx = self._rate.GetSelection()
+        if self._engine is not None and 0 <= idx < len(rates):
+            self._engine.set_rate(rates[idx])
+            self._announce(_("Speed {rate}").format(rate=self._rate.GetString(idx)))
 
     def _on_rewind(self) -> None:
         self._skip(-self._skip_step_ms)

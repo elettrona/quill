@@ -136,10 +136,13 @@ class ChapterWorkbenchDialog(wx.Dialog):
         io_row = wx.BoxSizer(wx.HORIZONTAL)
         import_btn = wx.Button(self, label=_("Import chap&ters..."))
         export_btn = wx.Button(self, label=_("E&xport chapters..."))
+        episodes_btn = wx.Button(self, label=_("Split into &files..."))
         import_btn.Bind(wx.EVT_BUTTON, lambda _e: self._on_import())
         export_btn.Bind(wx.EVT_BUTTON, lambda _e: self._on_export())
+        episodes_btn.Bind(wx.EVT_BUTTON, lambda _e: self._on_split_into_files())
         io_row.Add(import_btn, 0, wx.RIGHT, 6)
-        io_row.Add(export_btn, 0)
+        io_row.Add(export_btn, 0, wx.RIGHT, 6)
+        io_row.Add(episodes_btn, 0)
         root.Add(io_row, 0, wx.LEFT | wx.RIGHT | wx.TOP, 10)
 
         self.player = PlayerPanel(self, announce=announce)
@@ -181,7 +184,14 @@ class ChapterWorkbenchDialog(wx.Dialog):
         self.Fit()
         self.CentreOnParent()
         self._refresh_list()
-        self.player.load(str(book.path), book.chapters)
+        from quill.core.paths import app_data_dir
+        from quill.core.speech.listening_positions import load_position_ms
+
+        self.player.load(
+            str(book.path),
+            book.chapters,
+            resume_ms=load_position_ms(app_data_dir(), book.path),
+        )
 
     # -- helpers ---------------------------------------------------------------
 
@@ -451,6 +461,30 @@ class ChapterWorkbenchDialog(wx.Dialog):
             str(_("Saved {name}").format(name=out.name)),
         )
 
+    def _on_split_into_files(self) -> None:
+        """The reverse trip: one file per chapter (podcast episodes, track players)."""
+        with wx.DirDialog(self, str(_("Choose a folder for the per-chapter files"))) as dlg:
+            if dlg.ShowModal() != wx.ID_OK:  # GATE-42-OK: native folder picker
+                return
+            out_dir = Path(dlg.GetPath())
+        book = self._book
+        extension = ".mp3" if book.kind == "mp3" else ".m4a"
+
+        def work() -> object:
+            from quill.core.speech.audio_edit import split_into_files
+
+            return split_into_files(book.path, book.chapters, out_dir, extension=extension)
+
+        self._run_save(
+            str(_("Splitting into chapter files")),
+            work,
+            str(
+                _("Wrote {count} chapter file(s) to {folder}").format(
+                    count=len(book.chapters), folder=out_dir.name
+                )
+            ),
+        )
+
     def _on_publish(self) -> None:
         if self._on_publish_cb is None:
             self._error(str(_("Publishing is not available here.")))
@@ -464,6 +498,12 @@ class ChapterWorkbenchDialog(wx.Dialog):
     # -- lifecycle --------------------------------------------------------------------
 
     def _on_close(self, evt: wx.CloseEvent) -> None:
+        from quill.core.paths import app_data_dir
+        from quill.core.speech.listening_positions import save_position_ms
+
+        position = self.player.playhead_ms()
+        if position > 0:
+            save_position_ms(app_data_dir(), self._book.path, position)
         self.player.shutdown()
         evt.Skip()
 

@@ -111,3 +111,19 @@ Journey page sequences:
 
 - 2026-07-04: branch `feature/audio-studio` created; design doc moved to
   docs/planning/quill-audio-studio-plan.md; Phase 1 underway.
+- 2026-07-04: ALL SIX PHASES SHIPPED on `feature/audio-studio` (six commits,
+  one per phase). Beyond the plan, the "greatness" extras landed too:
+  audition builds, spoken credits, job files, book lookup, library mode,
+  watch action, split-into-episodes, listening-position memory, playback
+  speed, Where-am-I. Deliberately NOT built (recorded, not dropped):
+  - AI chapter titles — needs transcript text for audio chapters
+    (whisper pass); revisit when the Workbench gains transcript access.
+  - DAISY bridge — QUILL's DAISY export is document-driven; bridging an
+    audio-only master is a different pipeline. Recommend as its own item.
+  - Companion text/show notes — the spoken-text sidecars cover the debug
+    case; a formatted HTML companion is a future nicety.
+  - Incremental per-chapter rebuild cache — worth its own design pass.
+  - libmpv engine backend — the engine protocol is ready (`set_rate`,
+    seek semantics mirror mpv); deliver libmpv via assets-v1 when wanted.
+  Source-folder retirement (design doc section 10) can proceed once this
+  branch merges and Jeff validates with a real screen reader.

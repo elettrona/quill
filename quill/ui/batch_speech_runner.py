@@ -25,6 +25,10 @@ class _BookReviewCancelled(Exception):
     """Internal: the user cancelled the chapter-review dialog, so skip the book build."""
 
 
+class _BookStepDone(Exception):
+    """Internal: the book step already finished on another path (library mode)."""
+
+
 _ENGINE_OPTIONS = [
     ("Windows (SAPI 5)", "sapi5"),
     ("DECtalk", "dectalk"),
@@ -930,6 +934,31 @@ def _run(frame: Any, req: BatchSpeechRequest) -> None:
                 from quill.core.speech.audiobook import scan_audio_folder
 
                 try:
+                    if req.library_mode:
+                        # Library mode: every immediate subfolder with audio becomes
+                        # its own book, titled after the subfolder, unattended.
+                        import dataclasses as _dc
+
+                        built = 0
+                        for sub in sorted(p for p in req.source_folder.iterdir() if p.is_dir()):
+                            sub_audio = scan_audio_folder(sub, recursive=req.recursive)
+                            if not sub_audio:
+                                continue
+                            progress_dialog.set_progress(-1, f"Building {sub.name}...")
+                            sub_req = _dc.replace(
+                                req, source_folder=sub, book_title=sub.name, book_output_path=""
+                            )
+                            try:
+                                log.log(
+                                    f"Library: {_assemble_book(frame, sub_req, sub_audio, log)}"
+                                )
+                                built += 1
+                            except Exception as exc:  # noqa: BLE001 - keep building the rest
+                                errors += 1
+                                log.log(f"Library: {sub.name} failed: {exc}")
+                        book_summary = f"library: {built} audiobook(s) built"
+                        frame._wx.CallAfter(frame._set_status, book_summary)
+                        raise _BookStepDone
                     audio = scan_audio_folder(req.source_folder, recursive=req.recursive)
                     if req.book_credits and files and req.book_title:
                         # Best-effort spoken frame: opening/closing credits in the
@@ -966,6 +995,8 @@ def _run(frame: Any, req: BatchSpeechRequest) -> None:
                     log.log("Assembling audiobook...")
                     book_summary = _assemble_book(frame, req, audio, log, plan=plan)
                     frame._wx.CallAfter(frame._set_status, book_summary)
+                except _BookStepDone:
+                    pass  # library mode built its books; the summary is already set
                 except _BookReviewCancelled:
                     pass  # user cancelled the review; keep the synthesized audio, skip the book
                 except Exception as exc:  # noqa: BLE001 - report, don't crash the run

@@ -255,7 +255,10 @@ class BookPage(StudioPage):
         req.book_format = self.current_format()
         req.book_output_path = self.output.GetValue().strip()
         req.book_acx_normalize = self.acx.GetValue()
-        req.book_review_chapters = True if self._forced else self.review.GetValue()
+        if not self._forced:
+            req.book_review_chapters = self.review.GetValue()
+        # When forced (combine-audio journey) the source page already decided:
+        # review is always on for a single book, off for unattended library mode.
 
 
 class SummaryPage(StudioPage):

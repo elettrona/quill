@@ -50,6 +50,7 @@
   "quill/ui/audio_studio/chapter_workbench.py::ChapterWorkbenchDialog._on_export::wx.SingleChoiceDialog": "native",
   "quill/ui/audio_studio/chapter_workbench.py::ChapterWorkbenchDialog._on_import::wx.FileDialog": "native",
   "quill/ui/audio_studio/chapter_workbench.py::ChapterWorkbenchDialog._on_save_as::wx.FileDialog": "native",
+  "quill/ui/audio_studio/chapter_workbench.py::ChapterWorkbenchDialog._on_split_into_files::wx.DirDialog": "native",
   "quill/ui/audio_studio/chapter_workbench.py::ChapterWorkbenchDialog::subclass:wx.Dialog": "hardened_custom",
   "quill/ui/audio_studio/pages_audio.py::AudioSourcePage._on_browse::wx.DirDialog": "native",
   "quill/ui/audio_studio/pages_audio.py::EditSourcePage._on_browse::wx.FileDialog": "native",

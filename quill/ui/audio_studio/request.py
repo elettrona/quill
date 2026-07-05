@@ -88,6 +88,9 @@ class BatchSpeechRequest:
     # Synthesize spoken opening/closing credits ("<Title>, written by <Author>.
     # Narrated by <Narrator>.") as the book's first and last chapters.
     book_credits: bool = False
+    # Library mode (combine-audio journey): every immediate subfolder that holds
+    # audio becomes its own book, titled after the subfolder; no review step.
+    library_mode: bool = False
     _voice_label: str = field(default="", repr=False)
 
 
