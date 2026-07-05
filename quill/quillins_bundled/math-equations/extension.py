@@ -7,9 +7,20 @@ UX flow:
 3. If the input starts with '<math', insert it verbatim as MathML.
 4. Otherwise show a display-mode choice (Inline / Block) and wrap accordingly.
 
-MathJax rendering in HTML preview and export requires injecting a CDN script
-tag into browser_preview.py and io/export.py. That is a separate core change
-not part of this Quillin.
+Inline equations use \\(...\\) and block equations use a single-line $$...$$
+(on its own paragraph) rather than $...$ / a multi-line $$ fence: both are
+MathJax's own default-recognized delimiters (no config needed in
+browser_preview.py / export.py), \\(...\\) has no ambiguity with ordinary
+prose dollar amounts the way bare $...$ does, and keeping the whole equation
+on one line keeps it inside a single paragraph/run for quill.io.docx_math to
+splice a real Word equation into.
+
+Explore Equation Structure walks a formula's structure one piece at a time
+(numerator/denominator, base/exponent, a square root's radicand, ...) using
+quill.core.math.navigator — a lightweight, dependency-free stand-in for a
+real JAWS-style Math Viewer. It is plain-English structural navigation, not
+Nemeth-quality math speech (that needs MathCAT, tracked separately in
+docs/planning/math.md).
 
 Capabilities: ui.prompt, ui.choices, ui.announce, editor.read, editor.write,
               ui.command.
@@ -17,8 +28,13 @@ Capabilities: ui.prompt, ui.choices, ui.announce, editor.read, editor.write,
 
 from __future__ import annotations
 
-_INLINE = "Inline  ($...$)"
+from quill.core.math.navigator import EquationNavigator, MathNavigatorError, parse_equation
+
+_INLINE = "Inline  (\\(...\\))"
 _BLOCK = "Block  ($$...$$)"
+_READ_ALOUD = "Read this part aloud"
+_BACK_UP = "Back up one level"
+_DONE_EXPLORING = "Done exploring"
 
 
 def _strip_delimiters(text: str) -> tuple[str, str]:
@@ -26,8 +42,8 @@ def _strip_delimiters(text: str) -> tuple[str, str]:
     t = text.strip()
     if t.startswith("$$") and t.endswith("$$") and len(t) > 4:
         return t[2:-2].strip(), "block"
-    if t.startswith("$") and t.endswith("$") and len(t) > 2:
-        return t[1:-1].strip(), "inline"
+    if t.startswith("\\(") and t.endswith("\\)") and len(t) > 4:
+        return t[2:-2].strip(), "inline"
     return t, "inline"
 
 
@@ -65,7 +81,7 @@ def register(api):
         if chosen is None:
             return
 
-        snippet = f"\n$$\n{eq}\n$$\n" if chosen == _BLOCK else f"${eq}$"
+        snippet = f"\n$${eq}$$\n" if chosen == _BLOCK else f"\\({eq}\\)"
 
         if selection:
             ctx.replace_selection(snippet)
@@ -73,4 +89,48 @@ def register(api):
             ctx.insert_text(snippet)
         ctx.announce("Inserted math equation")
 
+    def explore_equation_structure(ctx):
+        selection = ctx.get_selection() or ""
+        default_eq, _mode = _strip_delimiters(selection) if selection else ("", "inline")
+
+        raw = ctx.prompt(
+            "Explore Equation Structure",
+            "LaTeX (e.g. E=mc^2) or MathML (<math ...>):",
+            default_eq,
+        )
+        if raw is None:
+            return
+        eq = raw.strip()
+        if not eq:
+            ctx.announce("Explore equation cancelled")
+            return
+
+        try:
+            root = parse_equation(eq)
+        except MathNavigatorError as exc:
+            ctx.announce(f"Could not read that as an equation: {exc}")
+            return
+
+        nav = EquationNavigator(root)
+        while True:
+            ctx.announce("Whole equation" if nav.at_root() else nav.label())
+            child_options = nav.child_options()
+            numbered = [f"{i + 1}. {opt.label}" for i, opt in enumerate(child_options)]
+            choices = [*numbered, _READ_ALOUD]
+            if not nav.at_root():
+                choices.append(_BACK_UP)
+            choices.append(_DONE_EXPLORING)
+
+            chosen = ctx.show_choices("Explore Equation Structure", choices)
+            if chosen is None or chosen == _DONE_EXPLORING:
+                return
+            if chosen == _READ_ALOUD:
+                ctx.announce(nav.reading())
+                continue
+            if chosen == _BACK_UP:
+                nav.ascend()
+                continue
+            nav.descend(numbered.index(chosen))
+
     api.register_command("insert_equation", insert_equation)
+    api.register_command("explore_equation_structure", explore_equation_structure)
