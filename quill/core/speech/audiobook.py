@@ -21,8 +21,12 @@ import threading
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from quill.core.speech.ffmpeg import AudioMetadata, TranscodeError
+
+if TYPE_CHECKING:
+    from quill.core.speech.chapters import Chapter
 
 # Source audio formats accepted as chapter files, and cover-image discovery.
 AUDIO_EXTENSIONS: tuple[str, ...] = (
@@ -151,6 +155,251 @@ def chapters_from_plan(plan: list[tuple[str, list[Path]]]) -> list[AudiobookChap
             )
         )
     return chapters
+
+
+def is_probable_master(name: str, folder: Path) -> bool:
+    """Heuristic: does *name* look like a previously-built master in *folder*?
+
+    Recognizes a file named after the folder (``My Book.mp3`` inside ``My Book``),
+    the suggested output name (``<folder> - Master.mp3``), and any ``… - Master``.
+    Used to avoid folding a prior build back in as a chapter.
+    """
+    base = folder.name.strip().lower()
+    stem = Path(name).stem.strip().lower()
+    if base and stem in (base, f"{base} - master"):
+        return True
+    return stem.endswith(" - master") or stem.endswith("- master")
+
+
+@dataclass(slots=True)
+class StreamStats:
+    """One source file's audio stream shape, for the pre-flight check."""
+
+    path: Path
+    sample_rate: int = 0
+    channels: int = 0
+    codec: str = ""
+    bit_rate_kbps: int = 0
+
+
+def probe_stream_stats(path: Path, *, timeout_seconds: float = 60.0) -> StreamStats:
+    """Read *path*'s first audio stream shape via ffprobe (zeros when unknown)."""
+    import json
+
+    from quill.core.speech.ffmpeg import find_ffprobe
+    from quill.stability.safe_subprocess import run_subprocess_safely
+
+    stats = StreamStats(path=path)
+    ffprobe = find_ffprobe()
+    if ffprobe is None or not path.is_file():
+        return stats
+    args = [
+        ffprobe,
+        "-v",
+        "error",
+        "-select_streams",
+        "a:0",
+        "-show_entries",
+        "stream=sample_rate,channels,codec_name,bit_rate:format=bit_rate",
+        "-of",
+        "json",
+        str(path),
+    ]
+    try:
+        completed = run_subprocess_safely(args, timeout_seconds=timeout_seconds)
+        data = json.loads(completed.stdout or "{}")
+    except (OSError, ValueError):
+        return stats
+    streams = data.get("streams") or []
+    if streams:
+        stream = streams[0]
+        try:
+            stats.sample_rate = int(stream.get("sample_rate") or 0)
+        except (TypeError, ValueError):
+            pass
+        try:
+            stats.channels = int(stream.get("channels") or 0)
+        except (TypeError, ValueError):
+            pass
+        stats.codec = str(stream.get("codec_name") or "")
+        bit_rate = stream.get("bit_rate")
+        if not bit_rate or bit_rate == "N/A":
+            bit_rate = (data.get("format") or {}).get("bit_rate")
+        try:
+            stats.bit_rate_kbps = int(int(bit_rate) / 1000) if bit_rate else 0
+        except (TypeError, ValueError):
+            pass
+    return stats
+
+
+@dataclass(slots=True)
+class PreflightReport:
+    """The pre-flight verdict for a set of source files, in speakable sentences."""
+
+    uniform: bool
+    notes: list[str] = field(default_factory=list)
+
+
+def preflight_check(stats: list[StreamStats]) -> PreflightReport:
+    """Whether the sources share one stream shape (lossless concat) — and if not, why.
+
+    Pure: probe with :func:`probe_stream_stats` first. Mixed shapes are fine —
+    the build re-encodes — but the user should hear it before a long run.
+    """
+    known = [s for s in stats if s.sample_rate > 0 and s.channels > 0]
+    if not known:
+        return PreflightReport(uniform=True)
+    notes: list[str] = []
+    rates = {s.sample_rate for s in known}
+    channels = {s.channels for s in known}
+    codecs = {s.codec for s in known if s.codec}
+    first = known[0]
+    if len(rates) > 1:
+        offenders = ", ".join(
+            f"{s.path.name} ({s.sample_rate} Hz)"
+            for s in known[:20]
+            if s.sample_rate != first.sample_rate
+        )
+        notes.append(f"Sample rates differ: {offenders}.")
+    if len(channels) > 1:
+        offenders = ", ".join(
+            f"{s.path.name} ({s.channels} ch)" for s in known[:20] if s.channels != first.channels
+        )
+        notes.append(f"Channel counts differ: {offenders}.")
+    if len(codecs) > 1:
+        notes.append(f"Formats differ: {', '.join(sorted(codecs))}.")
+    return PreflightReport(uniform=not notes, notes=notes)
+
+
+def estimate_output(
+    chapters: list[AudiobookChapter], *, bitrate_kbps: int = 96, gap_ms: int = 0
+) -> tuple[int, int]:
+    """Estimate the master's ``(total_ms, approximate_bytes)`` before building."""
+    total_ms = sum(max(0, c.duration_ms) for c in chapters)
+    total_ms += max(0, len(chapters) - 1) * max(0, gap_ms)
+    est_bytes = int(bitrate_kbps * 1000 / 8 * (total_ms / 1000.0))
+    return total_ms, est_bytes
+
+
+def format_size(num_bytes: int) -> str:
+    """Human-readable byte size ("118.3 MB")."""
+    size = float(max(0, num_bytes))
+    for unit in ("bytes", "KB", "MB"):
+        if size < 1024:
+            return f"{int(size)} {unit}" if unit == "bytes" else f"{size:.1f} {unit}"
+        size /= 1024
+    return f"{size:.1f} GB"
+
+
+def read_m4b_chapters(path: Path, *, timeout_seconds: float = 60.0) -> list[Chapter]:
+    """Read the native MP4 chapter atoms from an M4B/M4A via ffprobe."""
+    import json
+
+    from quill.core.speech.chapters import Chapter
+    from quill.core.speech.ffmpeg import find_ffprobe
+    from quill.stability.safe_subprocess import run_subprocess_safely
+
+    ffprobe = find_ffprobe()
+    if ffprobe is None or not path.is_file():
+        return []
+    args = [ffprobe, "-v", "error", "-show_chapters", "-of", "json", str(path)]
+    try:
+        completed = run_subprocess_safely(args, timeout_seconds=timeout_seconds)
+        data = json.loads(completed.stdout or "{}")
+    except (OSError, ValueError):
+        return []
+    chapters: list[Chapter] = []
+    for index, entry in enumerate(data.get("chapters") or []):
+        try:
+            start_ms = int(round(float(entry.get("start_time", 0)) * 1000))
+            end_ms = int(round(float(entry.get("end_time", 0)) * 1000))
+        except (TypeError, ValueError):
+            continue
+        title = str((entry.get("tags") or {}).get("title") or f"Chapter {index + 1}")
+        chapters.append(Chapter(index=index, title=title, start_ms=start_ms, end_ms=end_ms))
+    return chapters
+
+
+def read_chapters(path: Path) -> list[Chapter]:
+    """Read the chapter markers from an existing MP3 (ID3 CHAP) or M4B/M4A file."""
+    from quill.core.speech.chapters import read_mp3_chapters
+
+    if path.suffix.lower() == ".mp3":
+        try:
+            return read_mp3_chapters(path)
+        except Exception:  # noqa: BLE001 - unreadable/absent tags read as no chapters
+            return []
+    return read_m4b_chapters(path)
+
+
+@dataclass(slots=True)
+class VerificationResult:
+    """The post-build read-back: honest numbers for the completion announcement."""
+
+    ok: bool
+    chapter_count: int
+    total_ms: int
+    issues: list[str] = field(default_factory=list)
+
+
+def verify_audiobook(path: Path, *, expected_chapters: int | None = None) -> VerificationResult:
+    """Re-read a freshly built master and sanity-check what a player will see."""
+    from quill.core.speech.ffmpeg import probe_duration_ms
+
+    issues: list[str] = []
+    chapters = read_chapters(path)
+    count = len(chapters)
+    total_ms = probe_duration_ms(path)
+    if expected_chapters is not None and count != expected_chapters:
+        issues.append(f"Expected {expected_chapters} chapter(s) but found {count}.")
+    if total_ms <= 0:
+        issues.append("Could not read a positive duration.")
+    for i in range(1, count):
+        if chapters[i].start_ms < chapters[i - 1].start_ms:
+            issues.append("Chapter start times are out of order.")
+            break
+    return VerificationResult(ok=not issues, chapter_count=count, total_ms=total_ms, issues=issues)
+
+
+def chapter_report_text(chapters: list[AudiobookChapter], *, title: str = "") -> str:
+    """A plain-text chapter report (one readable line per chapter) for the output folder."""
+    from quill.core.speech.chapter_io import format_timestamp
+    from quill.core.speech.chapters import ChapterSection, compute_chapters
+
+    computed = compute_chapters([
+        ChapterSection(title=c.title, duration_ms=c.duration_ms) for c in chapters
+    ])
+    lines = [f"Chapter report{': ' + title if title else ''}", ""]
+    for c in computed:
+        lines.append(
+            f"{c.index + 1:3d}. {c.title} — starts {format_timestamp(c.start_ms)}, "
+            f"runs {format_timestamp(c.duration_ms)}"
+        )
+    total = computed[-1].end_ms if computed else 0
+    lines.extend(["", f"{len(computed)} chapter(s), {format_timestamp(total)} total."])
+    return "\n".join(lines) + "\n"
+
+
+def write_book_sidecars(
+    output_path: Path, chapters: list[AudiobookChapter], *, title: str = ""
+) -> list[Path]:
+    """Write the chapter report and Podcasting 2.0 ``…chapters.json`` next to the book.
+
+    Best-effort artifacts for the completion story: the report is a plain-text
+    listing anyone can read, the sidecar is the podcast-namespace chapters file
+    players and hosts consume. Returns the paths written.
+    """
+    from quill.core.speech.chapter_io import chapters_to_pod2
+    from quill.core.speech.chapters import ChapterSection, compute_chapters
+
+    computed = compute_chapters([
+        ChapterSection(title=c.title, duration_ms=c.duration_ms) for c in chapters
+    ])
+    report_path = output_path.with_suffix(".chapters.txt")
+    report_path.write_text(chapter_report_text(chapters, title=title), encoding="utf-8")
+    sidecar_path = output_path.with_suffix(".chapters.json")
+    sidecar_path.write_text(chapters_to_pod2(computed), encoding="utf-8")
+    return [report_path, sidecar_path]
 
 
 def _ffconcat_quote(path: Path) -> str:

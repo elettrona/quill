@@ -560,7 +560,13 @@ def _assemble_book(
         build_audiobook,
         build_chapter_list,
         chapters_from_plan,
+        estimate_output,
         find_cover,
+        format_size,
+        preflight_check,
+        probe_stream_stats,
+        verify_audiobook,
+        write_book_sidecars,
     )
     from quill.core.speech.ffmpeg import AudioMetadata
 
@@ -584,7 +590,16 @@ def _assemble_book(
         year=req.book_year,
     )
     out.parent.mkdir(parents=True, exist_ok=True)
-    log.log(f"Audiobook: assembling {len(chapters)} chapter(s) -> {out.name} ({req.book_format})")
+    # Pre-flight: mixed stream shapes are fine (the build re-encodes) but the
+    # user should hear about them in the log before a long run.
+    preflight = preflight_check([probe_stream_stats(p) for c in chapters for p in c.all_paths])
+    for note in preflight.notes:
+        log.log(f"Audiobook pre-flight: {note}")
+    total_ms, est_bytes = estimate_output(chapters)
+    log.log(
+        f"Audiobook: assembling {len(chapters)} chapter(s) -> {out.name} "
+        f"({req.book_format}, about {total_ms // 60000} min, ~{format_size(est_bytes)})"
+    )
     result = build_audiobook(
         chapters,
         out,
@@ -594,8 +609,21 @@ def _assemble_book(
         acx_normalize=req.book_acx_normalize,
         on_progress=lambda m: log.log(f"Audiobook: {m}"),
     )
-    log.log(f"Audiobook built: {result.output_path} ({result.chapter_count} chapters)")
-    return f"audiobook {out.name} ({result.chapter_count} chapters)"
+    for note in result.notes:
+        log.log(f"Audiobook: {note}")
+    try:
+        for sidecar in write_book_sidecars(out, chapters, title=req.book_title):
+            log.log(f"Audiobook sidecar: {sidecar.name}")
+    except OSError as exc:  # sidecars are best-effort artifacts
+        log.log(f"Audiobook sidecars not written: {exc}")
+    # Post-build read-back: report what a player will actually see.
+    verdict = verify_audiobook(out, expected_chapters=result.chapter_count)
+    if verdict.ok:
+        verified = f"verified {verdict.chapter_count} chapters"
+    else:
+        verified = "; ".join(verdict.issues) or "verification failed"
+    log.log(f"Audiobook built: {result.output_path} ({verified})")
+    return f"audiobook {out.name} ({verified})"
 
 
 def _run(frame: Any, req: BatchSpeechRequest) -> None:

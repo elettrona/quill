@@ -2582,8 +2582,23 @@ or speech QUILL exported earlier) into a single master.
   track number like `01 - ` is stripped).
 - **Edit the chapters before building.** The dialog lists the chapters; you can
   **rename** the selected one (type a new title and press Rename or Enter), **move**
-  it **up** or **down**, or **merge** it into the chapter above it (two files then
-  play as a single chapter with one marker). The list is fully keyboard-operable.
+  it **up** or **down**, **merge** it into the chapter above it (two files then
+  play as a single chapter with one marker), or **remove** it from the book
+  entirely. **Restore original** undoes all edits in one press. The list is fully
+  keyboard-operable.
+- **Bring your titles with you.** **Import titles...** reads chapter names, in
+  order, from an Audacity label track, a CUE sheet, plain timestamp lines,
+  Podcasting 2.0 chapters JSON, or a **CSV spreadsheet** — any sheet with a
+  "Title" column works, as does a simple `number,title` list — so a chapter list
+  you keep in Excel names your MP3 files in one step. **Export titles...** writes
+  the current list back out as text.
+- **Honest numbers, before and after.** The run log opens with a **pre-flight
+  check** (files whose sample rate, channels, or format differ are named — the
+  build still works; it re-encodes) and an estimated duration and size. After the
+  build QUILL **re-reads the finished book** and reports what a player will
+  actually see: "verified 24 chapters," or exactly what went wrong. A plain-text
+  **chapter report** and a **Podcasting 2.0 `…chapters.json`** sidecar are written
+  next to the book.
 - Choose **M4B audiobook** (native MP4 chapter atoms — the Apple/audiobook format)
   or **MP3** (ID3 chapter markers). Both are navigable in Apple Podcasts, Overcast,
   VLC, foobar2000, and others.
