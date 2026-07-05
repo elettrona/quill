@@ -204,6 +204,8 @@ main.prose { padding: 2.5rem 0 3.5rem; }
 .faq summary::before { content: "\25B8\00a0"; color: var(--accent); }
 .faq details[open] summary::before { content: "\25BE\00a0"; }
 .faq summary:hover { color: var(--accent); }
+/* FAQ questions carry real h3s so heading navigation reaches every answer. */
+.faq summary h3 { display: inline; margin: 0; font-size: 1.05rem; font-weight: 600; }
 .faq details > *:not(summary) { padding: 0 1.1rem 0.4rem; max-width: var(--measure); }
 .faq .toc { columns: 2; gap: 2rem; }
 @media (max-width: 40rem) { .faq .toc { columns: 1; } }
