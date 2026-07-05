@@ -140,16 +140,18 @@ every cloud voice it is optional beside the always-free on-device engines.
 **Why it matters:** every proposed change is an accessible accept/reject preview and
 a single undo step - help you can trust, not magic you have to babysit.
 
-### Bring the AI agent you already pay for
+### Bring the AI agent you already use
 
-Already pay for **GitHub Copilot, ChatGPT, or Claude**? Use it as QUILL's agent -
-no second API key, no per-word charge on your card, running on your plan's models.
-On the **AI Hub > Engines** tab (or by choosing *"Use an AI agent you already pay
-for"* in the Setup Wizard), pick GitHub Copilot, OpenAI Agents, or Claude Agent;
-QUILL installs the small connector on demand, signs you in - a short spoken code
-in your browser for Copilot, or the CLI sign-in - and from then on Ask Quill and
-the agents run on your engine. Prefer QUILL's built-in agent? The **Native** engine
-is always there, on whatever provider you connected.
+QUILL's agent can run on more than one engine. Already pay for **GitHub
+Copilot**? Use that subscription directly - a short spoken device code in your
+browser signs you in, no API key at all, running on your plan's models. Prefer
+the **Claude Agent** or **OpenAI Agents** engines? They plug in with the
+Anthropic or OpenAI API key you already have - no separate QUILL charge, ever.
+On the **AI Hub > Engines** tab (or by choosing *"Use an AI agent you already
+pay for"* in the Setup Wizard), pick your engine; QUILL installs the small
+connector on demand and walks you through the sign-in out loud. Prefer QUILL's
+built-in agent? The **Native** engine is always there, on whatever provider you
+connected.
 
 **Why it matters:** the smartest agent you have access to is often the one you are
 already paying for. And the safety never changes: whichever engine runs, QUILL owns
