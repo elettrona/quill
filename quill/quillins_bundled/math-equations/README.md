@@ -30,10 +30,11 @@ equation.
 ## Explore Equation Structure
 
 Select an equation (or type/paste one) and run **Insert > Explore Equation
-Structure...** to step through it piece by piece — descend into a
-fraction's numerator and denominator, a power's base and exponent, a square
-root's radicand — with a plain-English reading available at any point via
-**Read this part aloud**. This is a lightweight, dependency-free structural
-navigator (`quill.core.math.navigator`), not Nemeth-quality math speech —
-real math braille/speech needs MathCAT, tracked separately as a deferred,
-native-build-pipeline project in `docs/planning/math.md`.
+Structure...**, or press **Ctrl+Shift+Grave, F**, to step through it piece
+by piece — descend into a fraction's numerator and denominator, a power's
+base and exponent, a square root's radicand — with a plain-English reading
+available at any point via **Read this part aloud**. This is a lightweight,
+dependency-free structural navigator (`quill.core.math.navigator`), not
+Nemeth-quality math speech — real math braille/speech needs MathCAT,
+tracked separately as a deferred, native-build-pipeline project in
+`docs/planning/math.md`.

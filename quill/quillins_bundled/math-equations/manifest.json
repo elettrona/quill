@@ -2,7 +2,7 @@
   "schema": "quill.extension/1",
   "id": "com.quill.bundled.math-equations",
   "name": "Math Equations",
-  "version": "1.4.0",
+  "version": "1.5.0",
   "author": "QUILL Project",
   "description": "Bundled Quillin: insert LaTeX or MathML equations at the caret, plus Math AutoCorrect-style abbreviations for common symbols. Wraps LaTeX in $ or $$ delimiters; inserts MathML verbatim.",
   "license": "MIT",
@@ -32,7 +32,8 @@
       { "command": "ext.math.explore_equation_structure", "when": "editor.hasSelection" }
     ],
     "hotkeys": [
-      { "command": "ext.math.insert_equation", "binding": "Ctrl+Shift+E" }
+      { "command": "ext.math.insert_equation", "binding": "Ctrl+Shift+E" },
+      { "command": "ext.math.explore_equation_structure", "binding": "Ctrl+Shift+Grave, F" }
     ],
     "abbreviations": [
       { "trigger": "\\cdot", "expansion": "⋅", "description": "Dot multiplication", "category": "Operators" },

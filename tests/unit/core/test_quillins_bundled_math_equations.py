@@ -123,6 +123,12 @@ def test_manifest_hotkey_ctrl_shift_e() -> None:
     assert "Ctrl+Shift+E" in bindings
 
 
+def test_manifest_hotkey_explore_equation_structure() -> None:
+    manifest = _load_manifest()
+    by_command = {hk.command: hk.binding for hk in manifest.contributes.hotkeys}
+    assert by_command["ext.math.explore_equation_structure"] == "Ctrl+Shift+Grave, F"
+
+
 # -- handler: LaTeX insertion -------------------------------------------------
 
 

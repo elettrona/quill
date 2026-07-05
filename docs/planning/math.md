@@ -1,6 +1,33 @@
 # Math in QUILL: plan of record
 
-Status: draft, not started. Written 2026-07-05 from a source-site deep-dive
+Status: in progress. Steps 1, 2, 4, 5, and 7 of the build order (section 5)
+have shipped (see `docs/superpowers/plans/2026-07-05-math-feature-completion.md`
+for steps 4-5's implementation plan). Step 3 (MathCAT speech/braille) is
+deferred: MathCAT has no pip-installable Python binding — the only existing
+"Python interface" is the GPL v2 NVDA add-on (Python 3.11/wxPython 4.2.2-only,
+not reusable), so real integration means QUILL building its own PyO3/maturin
+binding against the MIT-licensed `libmathcat` Rust crate and shipping a
+compiled native wheel per platform — a native-build-pipeline decision on par
+with the existing `table_uia` C++ provider, deferred until that's decided.
+Step 6 (DAISY MathML export) is explicitly skipped: `quill/io/daisy.py` is a
+DAISY 2.02 *text-only* writer (no OPF/NCX/EPUB3), which has no real MathML
+rendering/speech support in any DAISY 2.02 player, so embedding raw `<math>`
+there would be inert markup, not real accessibility — equations already
+export as readable literal text, which is left as-is until MathCAT (step 3)
+can produce real spoken math.
+
+What shipped: Math AutoCorrect-style abbreviations (seeded from the
+DAISY-published Word list) in the `math-equations` Quillin's manifest;
+`quill/core/math/` (canonical MathML model + a `latex2mathml`-backed LaTeX
+bridge, the `math` optional extra, unit-tested); the `math-tutor` AI agent
+(`quill/core/ai/agents/math-tutor.md`); the `math-equations` Quillin switched
+to MathJax's own default delimiters (`\(...\)` inline, single-line `$$...$$`
+display) so browser preview and HTML export render equations with zero
+template changes; and `quill/io/docx_math.py`, which splices real `<m:oMath>`
+Word equations into the native docx writer via a one-equation Pandoc round
+trip (falling back to literal text if Pandoc is unavailable), with regression
+tests locking in the (already-correct) docx read-side fidelity via both the
+MarkItDown and Pandoc read engines. Written 2026-07-05 from a source-site deep-dive
 (online.math.uh.edu/typing-math-in-ms-word/ and everything it links to:
 Microsoft's Math AutoCorrect and UnicodeMath/LaTeX linear-format docs, Unicode
 Technical Note 28, the DAISY Math AutoCorrect code list, and DAISY's MathCAT
