@@ -13,15 +13,12 @@ from LaTeX (e.g. an imported docx equation) has no LaTeX form to recover, so
 
 from __future__ import annotations
 
-from types import ModuleType
-
 from .mathml import extract_tex_annotation, wrap_with_tex_annotation
 
-_converter: ModuleType | None
 try:
     import latex2mathml.converter as _converter
 except ImportError:  # pragma: no cover - exercised only when the math extra is absent
-    _converter = None
+    _converter = None  # type: ignore[assignment]
 
 
 class LatexConversionError(Exception):

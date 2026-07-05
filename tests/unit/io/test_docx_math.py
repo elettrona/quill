@@ -9,6 +9,12 @@ pytest.importorskip("docx")
 from quill.io.docx_math import MathSegment, omml_fragment_for_latex, split_math_segments
 
 
+def _pandoc_available() -> bool:
+    from quill.core.external_tools import get_external_tool_status
+
+    return get_external_tool_status("pandoc").installed
+
+
 def test_split_plain_text_is_single_text_segment() -> None:
     segments = split_math_segments("just some prose, no math")
     assert segments == [MathSegment(is_math=False, content="just some prose, no math")]
@@ -41,13 +47,26 @@ def test_split_no_dollar_ambiguity_from_plain_prose() -> None:
     assert segments == [MathSegment(is_math=False, content="It costs $5 today.")]
 
 
+@pytest.mark.skipif(not _pandoc_available(), reason="Pandoc not installed")
 def test_omml_fragment_for_valid_latex() -> None:
     fragment = omml_fragment_for_latex("a^2+b^2=c^2", display=False)
     assert fragment is not None
     assert "oMath" in fragment
 
 
+@pytest.mark.skipif(not _pandoc_available(), reason="Pandoc not installed")
 def test_omml_fragment_display_mode() -> None:
     fragment = omml_fragment_for_latex("a^2+b^2=c^2", display=True)
     assert fragment is not None
     assert "oMath" in fragment
+
+
+def test_omml_fragment_returns_none_without_pandoc(monkeypatch: pytest.MonkeyPatch) -> None:
+    """omml_fragment_for_latex degrades to None rather than raising when Pandoc is absent."""
+    import quill.io.docx_math as docx_math_module
+
+    def _raise_unavailable(*args: object, **kwargs: object) -> None:
+        raise docx_math_module.PandocUnavailableError("not installed")
+
+    monkeypatch.setattr(docx_math_module, "convert_file_with_pandoc", _raise_unavailable)
+    assert omml_fragment_for_latex("a^2+b^2=c^2", display=False) is None

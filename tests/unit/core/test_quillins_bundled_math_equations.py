@@ -21,6 +21,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
+import pytest
+
 from quill.core.quillins.loader import bundled_extensions_root
 from quill.core.quillins.registry import build_registry
 from quill.core.quillins.validation import parse_manifest, validate_manifest
@@ -354,6 +356,19 @@ def test_snippet_gallery_bodies_insert_as_block_equations() -> None:
 # -- explore_equation_structure ------------------------------------------------
 
 
+def _latex2mathml_available() -> bool:
+    try:
+        import latex2mathml.converter  # noqa: F401
+    except ImportError:
+        return False
+    return True
+
+
+_needs_latex2mathml = pytest.mark.skipif(
+    not _latex2mathml_available(), reason="latex2mathml not installed"
+)
+
+
 def test_explore_manifest_command_and_menu() -> None:
     manifest = _load_manifest()
     ids = {c.id for c in manifest.contributes.commands}
@@ -387,6 +402,7 @@ def test_explore_malformed_equation_announces_error() -> None:
     assert ctx.announced and "could not read" in ctx.announced[0].lower()
 
 
+@_needs_latex2mathml
 def test_explore_walks_into_a_child_and_announces_its_label() -> None:
     api = _register_extension()
     ctx = _FakeCtx(
@@ -397,6 +413,7 @@ def test_explore_walks_into_a_child_and_announces_its_label() -> None:
     assert ctx.announced == ["Whole equation", "a squared"]
 
 
+@_needs_latex2mathml
 def test_explore_read_aloud_announces_full_reading() -> None:
     api = _register_extension()
     ctx = _FakeCtx(
@@ -411,6 +428,7 @@ def test_explore_read_aloud_announces_full_reading() -> None:
     ]
 
 
+@_needs_latex2mathml
 def test_explore_back_up_returns_to_parent() -> None:
     api = _register_extension()
     ctx = _FakeCtx(
@@ -421,6 +439,7 @@ def test_explore_back_up_returns_to_parent() -> None:
     assert ctx.announced == ["Whole equation", "a squared", "Whole equation"]
 
 
+@_needs_latex2mathml
 def test_explore_none_from_show_choices_ends_the_session() -> None:
     api = _register_extension()
     ctx = _FakeCtx(prompts=["a^2 + b^2 = c^2"], choices=[None])
@@ -428,6 +447,7 @@ def test_explore_none_from_show_choices_ends_the_session() -> None:
     assert ctx.announced == ["Whole equation"]
 
 
+@_needs_latex2mathml
 def test_explore_descends_into_a_fraction_for_numerator_and_denominator() -> None:
     api = _register_extension()
     ctx = _FakeCtx(

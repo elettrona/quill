@@ -385,5 +385,10 @@ module = [
     # on it being installed.
     "docx",
     "docx.*",
+    # Optional LaTeX->MathML bridge (quill[math]); imported lazily in
+    # core/math/latex_bridge.py behind a try/except, so the scoped gate must not
+    # depend on the extra being installed.
+    "latex2mathml",
+    "latex2mathml.*",
 ]
 ignore_missing_imports = true
