@@ -241,9 +241,6 @@
   </style>
 </head>
 <body>
-<header id="title-block-header">
-<h1 class="title">userguide</h1>
-</header>
 <h1 id="quill-user-guide">Quill User Guide</h1>
 <p><strong>QUILL</strong> stands for <strong>Quality, Usable, Inclusive,
 Lightweight, Literate</strong>.</p>
@@ -4947,13 +4944,139 @@ that service — pick an on-device voice to keep everything local. The
 reader page (which contains your document text) is written to QUILL’s
 app-data folder and deleted when you close QUILL, so no plaintext copy
 is left behind.</p>
-<h3 id="batch-export-to-speech-audio">Batch Export to Speech Audio</h3>
-<p><strong>Tools → Speech → Batch Export to Speech Audio</strong>
-converts a whole folder of documents to speech audio in one pass. The
-conversion runs on a background task with per-file progress that you can
-cancel, and the same shared speech pipeline live Read Aloud uses — so
-the voice you audition is the voice you get.</p>
-<p>In the dialog you choose:</p>
+<h3 id="quill-audio-studio">QUILL Audio Studio</h3>
+<p><strong>Tools → Speech → Audio Studio…</strong> is the guided home
+for audio production: it converts a whole folder of documents to speech
+audio in one pass, and it builds chaptered audiobooks — from documents,
+from a folder of recordings, or both. It replaced the old single-page
+Batch Export to Speech Audio dialog with a wizard that asks one thing at
+a time; every option below is still there, just spread across clear
+steps, and your saved project settings still pre-fill everything.</p>
+<p>The first page asks what you want to make:</p>
+<ul>
+<li><strong>Narrate documents into an audiobook or speech audio</strong>
+— the steps are: What should I read? (folder, file types, filters) → Who
+should read it? (engine, voice with a preview button, pace, round-robin
+voices, translated editions) → How should chapters work? (chapter mode,
+spoken headings, the transition sounder and its volume, pauses) → Output
+and diagnostics (format, existing-file policy, loudness, dry run, temp
+folder) → the book page (optional: assemble everything into one
+audiobook) → a plain-language summary.</li>
+<li><strong>Combine audio files into one chaptered audiobook</strong> —
+a shorter path: pick the folder of recordings, describe the book (title,
+author, narrator, cover, M4B or MP3, ACX loudness), review the summary,
+and Start. Each file becomes one chapter and you always review the
+chapter list before the book is built.</li>
+<li><strong>Edit an existing audiobook</strong> — pick a finished MP3 or
+M4B and it opens in the <strong>Chapter Workbench</strong> (below). A
+file with no chapter markers opens as a single chapter, ready to split
+up.</li>
+</ul>
+<p>Two automation extras round the Studio out. <strong>Library
+mode</strong> (a checkbox on the combine-audio journey) builds every
+subfolder as its own audiobook in one unattended run — point it at a
+folder of book folders and come back to a shelf of masters, each titled
+after its folder. And a new <strong>watch action, “Build audiobook from
+the folder”</strong>, keeps a drop folder alive: whenever new recordings
+land in a watched folder, its chaptered master is rebuilt automatically
+(a batch of files triggers one rebuild, not many).</p>
+<h3 id="the-chapter-workbench">The Chapter Workbench</h3>
+<p>The Workbench is where a finished audiobook gets fixed by ear. The
+chapter list reads each row in full (“3. The Long Road — starts 1:02:03,
+runs 12:40”); press Enter on a chapter to hear it. The built-in
+<strong>player</strong> has Play/Pause, Stop, Previous/Next chapter,
+Rewind/Forward, a position slider that speaks minutes and seconds, and a
+volume slider; the current chapter is announced as playback crosses into
+it.</p>
+<ul>
+<li><strong>Split at playhead</strong> — listen for the spot where a
+chapter should begin, pause there, press the button: the chapter is cut
+in two exactly at the playhead. This is how you fix a book whose
+chapters landed in the wrong places.</li>
+<li><strong>Set start to playhead</strong> — retime an existing
+boundary: select the chapter, park the playhead where it should start,
+press. The previous chapter’s end moves with it, so the timeline always
+stays contiguous.</li>
+<li><strong>Merge into previous</strong>, <strong>Rename</strong> (type
+and press Enter), and <strong>Restore original</strong> (one press
+undoes every edit) round out the surgery.</li>
+<li><strong>Import chapters…</strong> replaces the whole list from
+Audacity labels, a CUE sheet, timestamp lines, Podcasting 2.0 JSON, or
+CSV; <strong>Export chapters…</strong> writes the list in any of the
+same five formats.</li>
+<li><strong>Split into files…</strong> goes the other way: one audio
+file per chapter, named <code>NN - Title</code>, into a folder you pick
+— instant podcast episodes, or tracks for players without chapter
+support.</li>
+<li>The player <strong>remembers where you stopped</strong> in each book
+and resumes there next time, offers a <strong>playback speed</strong>
+control (0.75x to 2x, pitch preserved), and answers <strong>“Where am
+I?”</strong> with the full audible glance: “Chapter 4 of 24: The Long
+Road. 3:12 into the chapter, 9:28 left in it. 1:02:03 of 7:41:00 in the
+book, 6:38:57 remaining.”</li>
+<li><strong>Book details</strong> (title, author, narrator, genre, year)
+are edited right in the dialog.</li>
+<li><strong>Save</strong> writes an MP3’s edits <strong>in
+place</strong> — only the tags are rewritten; the audio is untouched. An
+M4B is saved with <strong>Save As</strong> instead: a lossless re-mux
+(no re-encode, no quality loss) into a new file. Long saves run in the
+background so QUILL stays responsive.</li>
+<li><strong>Publish…</strong> opens three ways to get the finished book
+out into the world, each an explicit action:
+<ul>
+<li><strong>Podcast feed</strong> — QUILL writes a complete
+<code>.rss</code> file next to the book (RSS 2.0 with iTunes and
+Podcasting 2.0 tags; chapter navigation rides the
+<code>chapters.json</code> sidecar). Upload the feed and audio anywhere;
+generation itself never touches the network.</li>
+<li><strong>SFTP upload</strong> — save a destination (host, folder, and
+the public URL that mirrors it) and QUILL uploads the book plus its
+companion files through its own SSH machinery, with the same strict
+host-key policy as editing over SSH. The password is kept in the
+<strong>Windows Credential Manager</strong>, never in QUILL’s
+settings.</li>
+<li><strong>Auphonic</strong> — send the book to your own Auphonic
+account for professional post-production; QUILL uploads, waits for the
+production to finish, and downloads the results into a folder next to
+the book. Your API token also lives in the credential vault. QUILL asks
+before anything is uploaded.</li>
+</ul>
+Publishing is unavailable in Safe Mode, and every upload runs in the
+background with spoken completion.</li>
+</ul>
+<p>Each step is announced as you arrive (“Step 2 of 7: What should I
+read?”), <strong>Back</strong> and <strong>Next</strong> move between
+steps, and <strong>Skip to summary</strong> jumps ahead when your saved
+project profile already fills every page — a repeat run is three
+keystrokes. The conversion runs on a background task with per-file
+progress that you can cancel, using the same shared speech pipeline live
+Read Aloud uses — so the voice you audition is the voice you get.</p>
+<p>More Studio conveniences:</p>
+<ul>
+<li><strong>Job files.</strong> On the summary page, <strong>Save a job
+file</strong> writes a small, hand-editable <code>.quilljob</code> that
+pins this exact run — folder, voices, chapters, mastering, and book
+details. <strong>Load a job file</strong> on the first page brings
+everything back, pre-filled; keep one per project, or edit it in Notepad
+between runs.</li>
+<li><strong>Look up book details.</strong> On the book page, type the
+title (and author if you know it) and press <strong>Look up book
+details</strong> — QUILL searches <strong>Open Library</strong> and
+<strong>MusicBrainz</strong>, two free public catalogs, and the match
+you pick fills in the author, genre, and year. QUILL asks before the
+first contact, and only the title and author you typed are ever
+sent.</li>
+<li><strong>Audition first.</strong> Tick <strong>Audition</strong> on
+the output step to convert only the first document — judge the voice,
+the pace, and the loudness in a couple of minutes before committing to
+an overnight run.</li>
+<li><strong>Spoken credits.</strong> Tick <strong>Add spoken opening and
+closing credits</strong> on the book page and QUILL narrates the
+standard audiobook frame — “My Book. Written by Jane Doe. Narrated by
+Sam Reader.” — in the run’s own voice, as the book’s first and last
+chapters.</li>
+</ul>
+<p>Across the steps you choose:</p>
 <ul>
 <li><strong>Source folder</strong> and whether to include subfolders,
 the <strong>file types</strong> to include (<code>.docx</code>,
@@ -5085,14 +5208,15 @@ document. If the document has unsaved changes, QUILL offers to save
 first so your latest edits are the ones translated. As with the batch
 tool, a <strong>combined cost estimate</strong> is shown before any
 metered cloud run.</p>
-<h3 id="build-audiobook-from-a-folder">Build Audiobook from a
-Folder</h3>
-<p><strong>Tools → Speech → Build Audiobook from Folder…</strong>
-combines a folder of existing audio files into one chaptered audiobook —
-the kind your audiobook or podcast app navigates track by track. It
-complements Batch Export to Speech Audio: where that converts documents
-to speech, this stitches a folder of audio (your own recordings, or
-speech QUILL exported earlier) into a single master.</p>
+<h3 id="build-an-audiobook-from-a-folder-of-recordings">Build an
+audiobook from a folder of recordings</h3>
+<p>The Audio Studio’s <strong>Combine audio files</strong> journey
+(<code>Tools → Speech → Audio Studio…</code>, second choice on the first
+page) combines a folder of existing audio files into one chaptered
+audiobook — the kind your audiobook or podcast app navigates track by
+track. It complements the narrate-documents journey: where that converts
+documents to speech, this stitches a folder of audio (your own
+recordings, or speech QUILL exported earlier) into a single master.</p>
 <ul>
 <li>Point it at a <strong>folder of audio files</strong>; each file
 becomes one <strong>chapter</strong>, in natural-sorted order, with the
@@ -5101,9 +5225,27 @@ chapter title taken from the file name (a leading track number like
 <li><strong>Edit the chapters before building.</strong> The dialog lists
 the chapters; you can <strong>rename</strong> the selected one (type a
 new title and press Rename or Enter), <strong>move</strong> it
-<strong>up</strong> or <strong>down</strong>, or <strong>merge</strong>
-it into the chapter above it (two files then play as a single chapter
-with one marker). The list is fully keyboard-operable.</li>
+<strong>up</strong> or <strong>down</strong>, <strong>merge</strong> it
+into the chapter above it (two files then play as a single chapter with
+one marker), or <strong>remove</strong> it from the book entirely.
+<strong>Restore original</strong> undoes all edits in one press. The
+list is fully keyboard-operable.</li>
+<li><strong>Bring your titles with you.</strong> <strong>Import
+titles…</strong> reads chapter names, in order, from an Audacity label
+track, a CUE sheet, plain timestamp lines, Podcasting 2.0 chapters JSON,
+or a <strong>CSV spreadsheet</strong> — any sheet with a “Title” column
+works, as does a simple <code>number,title</code> list — so a chapter
+list you keep in Excel names your MP3 files in one step. <strong>Export
+titles…</strong> writes the current list back out as text.</li>
+<li><strong>Honest numbers, before and after.</strong> The run log opens
+with a <strong>pre-flight check</strong> (files whose sample rate,
+channels, or format differ are named — the build still works; it
+re-encodes) and an estimated duration and size. After the build QUILL
+<strong>re-reads the finished book</strong> and reports what a player
+will actually see: “verified 24 chapters,” or exactly what went wrong. A
+plain-text <strong>chapter report</strong> and a <strong>Podcasting 2.0
+<code>…chapters.json</code></strong> sidecar are written next to the
+book.</li>
 <li>Choose <strong>M4B audiobook</strong> (native MP4 chapter atoms —
 the Apple/audiobook format) or <strong>MP3</strong> (ID3 chapter
 markers). Both are navigable in Apple Podcasts, Overcast, VLC,

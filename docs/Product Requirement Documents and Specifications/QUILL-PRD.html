@@ -241,9 +241,6 @@
   </style>
 </head>
 <body>
-<header id="title-block-header">
-<h1 class="title">QUILL-PRD</h1>
-</header>
 <h1 id="quill-product-requirements-document">Quill: Product Requirements
 Document</h1>
 <h2
@@ -4452,12 +4449,30 @@ are tracked in <a
 href="../../planning/roadmap.md"><code>roadmap.md</code></a> §1.2). All
 synthesis logic is wx-free and headless-testable; the UI wraps it on the
 background task pool.</p>
-<p><strong>Batch Export to Speech Audio
-(<code>Tools → Speech → Batch Export to Speech Audio</code>).</strong> A
-keyboard-first dialog collects a source folder and the conversion
-settings; the run reports per-file progress and is cancelable. The
-conversion uses the same shared pipeline as live Read Aloud (normalize →
-pronounce → polish → synthesize), so audition matches output.</p>
+<p><strong>QUILL Audio Studio
+(<code>Tools → Speech → Audio Studio…</code>).</strong> A guided,
+journey-aware wizard (it replaced the single-page Batch Export to Speech
+Audio dialog at full option parity; the
+<code>tools.speech_batch_export</code> command id is unchanged so
+keymaps and menu customizations keep working). The start page picks a
+journey — <em>narrate documents</em> or <em>combine audio files into one
+chaptered audiobook</em> — and the following pages adapt: What should I
+read? (folder, types, filters) → Who should read it? (engine, voice +
+preview, pace, round-robin rotation, translated editions) → How should
+chapters work? (mode, spoken headings, the transition sounder + volume,
+article/sentence/tail gaps) → Output and diagnostics (format,
+existing-file policy, ACX loudness, dry run, spoken-text sidecars, temp
+folder) → the book page → a plain-sentence summary. Back/Next/Start
+follow the standard wizard keyboard contract, every step is announced
+(“Step 2 of 7: What should I read?”), and <strong>Skip to
+summary</strong> fast-forwards a returning user whose project profile
+already fills every page. <code>AudioStudioWizard</code>
+(<code>quill/ui/audio_studio/</code>) collects the same
+<code>BatchSpeechRequest</code> the classic dialog produced, so the
+tested runner and profile persistence are unchanged. The run reports
+per-file progress and is cancelable; the conversion uses the same shared
+pipeline as live Read Aloud (normalize → pronounce → polish →
+synthesize), so audition matches output.</p>
 <ul>
 <li><strong>Pipeline modules.</strong>
 <code>quill/core/speech/batch_export.py</code> (per-file pipeline),
@@ -4620,9 +4635,11 @@ Build Audiobook from Folder — ChapterForge surface (shipped)</h3>
 <p>The ChapterForge-aligned “folder of audio → one chaptered master”
 feature (design source: the sibling ChapterForge project; only the
 surfaces that fit QUILL’s audiobook vision are ported). Audiobook
-building is folded into <strong>Tools → Speech → Batch Export to Speech
-Audio…</strong>: ticking <strong>Assemble the results into one
-audiobook</strong> reveals the book tags
+building is folded into the <strong>Audio Studio</strong>
+(<code>Tools → Speech → Audio Studio…</code>) — the <em>combine audio
+files</em> journey goes straight to it, and in the <em>narrate
+documents</em> journey the book page’s <strong>Assemble the results into
+one audiobook</strong> reveals the book tags
 (title/author/narrator/genre/year), a cover-image picker, the book
 format, and a save-as path. After the documents are synthesized (one
 chapter per document), the produced — plus any pre-recorded — audio in
@@ -4662,6 +4679,109 @@ edited plan flows through <code>audiobook.chapters_from_plan</code>
 (<code>AudiobookChapter.extra_paths</code> carries merged files). The
 runner shows it by marshalling the modal to the UI thread and blocking
 the background worker until the user closes it.</li>
+<li><strong>Automation + listening extras (shipped).</strong>
+<code>quill/core/watch_audiobook.py</code> registers the
+<code>build_audiobook</code> watch action (WATCH-10) in the default
+registry: an arriving audio file rebuilds its folder’s
+<code>&lt;folder&gt; - Master.&lt;fmt&gt;</code>; a master newer than
+the trigger file skips, so dropped batches coalesce to one build.
+<strong>Library mode</strong> (<code>library_mode</code> request field,
+combine-audio journey): the runner builds one unattended book per
+subfolder (title = folder name, review editor suppressed, per-book
+errors isolated). Workbench <strong>Split into files…</strong> cuts the
+open master into per-chapter files via
+<code>audio_edit.split_into_files</code> (podcast-episode mode). Player
+extras: <code>listening_positions.py</code> (app-data store keyed by
+path+size; the Workbench resumes where the user stopped and records on
+close), a pitch-preserving <strong>playback speed</strong> choice
+(engine <code>set_rate</code>, WMP <code>SetPlaybackRate</code>), and
+<strong>Where am I?</strong> — a spoken glance of chapter n-of-m,
+elapsed/left in chapter, and position/remaining in the book.</li>
+<li><strong>Publishing (shipped).</strong>
+<code>quill/core/publish/</code>: <code>rss.py</code> (RSS 2.0 + iTunes
++ Podcasting 2.0 feed generation, pure XML, chapters linked to the
+<code>…chapters.json</code> sidecar; local file write only),
+<code>destinations.py</code> (saved SFTP destinations, atomic JSON,
+<strong>no secrets on disk</strong> — passwords under
+<code>quill:publish:sftp:&lt;name&gt;</code> in the Credential Manager),
+<code>sftp_publish.py</code> (streams the book + companions via
+<code>core/ssh/client.connect</code>, so SEC-9 host-key policy holds),
+and <code>auphonic.py</code> (compact client for the user’s own account:
+presets, multipart upload + start via the simple API, status poll,
+result download; token under <code>quill:publish:auphonic</code>; single
+reviewed egress site). UI: the Workbench’s <strong>Publish…</strong>
+button opens <code>publish_dialog.py</code> (three sections, each an
+explicit action; Auphonic confirms before upload; dirty chapter edits
+must be saved first; refused in Safe Mode). Egress-audit entries for the
+lookup and Auphonic sites.</li>
+<li><strong>Job files, lookup, audition, credits (shipped).</strong>
+<code>.quilljob</code> files
+(<code>quill/core/speech/job_file.py</code>): a portable JSON recipe
+pinning every <code>BatchSpeechRequest</code> field, written atomically,
+loaded tolerantly (unknown keys ignored, missing keys keep defaults) —
+saved from the wizard’s summary page, loaded from its start page (the
+wizard reopens pre-filled). <strong>Look up book details</strong>
+(<code>quill/core/metadata_lookup.py</code>): Open Library + MusicBrainz
+search behind one reviewed egress site (<code>_http_json</code>,
+HTTPS-only, verified TLS, MusicBrainz 1-req/s throttle, consent stated
+before the first call; entry in <code>network_egress_audit.py</code>);
+results in an accessible single-choice list, chosen match fills the
+tags. <strong>Audition</strong> (<code>audition</code> request field):
+discovery slices to the first document. <strong>Spoken credits</strong>
+(<code>book_credits</code>; <code>quill/core/speech/credits.py</code>):
+opening/closing announcements synthesized with the run’s own spec ride
+as the first/last chapters, best-effort (a credits failure never sinks
+the book).</li>
+<li><strong>Chapter Workbench + player (shipped).</strong> The Studio’s
+third journey, <strong>Edit an existing audiobook</strong>
+(<code>quill/ui/audio_studio/chapter_workbench.py</code>):
+<code>book_file.py</code> reads tags/chapters/duration from an existing
+MP3 (ID3 CHAP/CTOC + text frames via mutagen) or M4B (one ffprobe
+<code>-show_format -show_chapters</code> call); a chapterless file opens
+as one chapter. The Workbench pairs the chapter list (real times in
+every row) with the ported ChapterForge <strong>PlayerPanel</strong>
+(<code>player_panel.py</code>) over an engine protocol
+(<code>audio_engine.py</code>, default backend
+<code>wx.media.MediaCtrl</code>/WMP — no new native dependency; the
+protocol mirrors libmpv so an mpv backend can slot in later):
+Play/Pause, Stop, Previous/Next chapter, Rewind/Forward, spoken position
+slider, volume, and chapter-crossing announcements. Surgery buttons
+drive the tested core ops — <strong>Split at playhead</strong>,
+<strong>Set start to playhead</strong>, Merge, Restore — plus full
+chapter-list import/export and in-place tag editing. Saving: MP3
+<strong>in place</strong> (tag frames only, audio untouched), M4B as a
+<strong>lossless <code>-c copy</code> re-mux</strong>
+(<code>save_m4b_book_as</code>; in-place is refused with a speakable
+message). Long saves run on the background pool.</li>
+<li><strong>Chapter power tools (core).</strong>
+<code>quill/core/speech/chapter_io.py</code> imports/exports chapter
+lists in five formats (Audacity labels, plain timestamps, CUE,
+Podcasting 2.0 JSON, CSV — import auto-detects, including any CSV with a
+Title column); <code>chapters.py</code> gained the surgery ops
+(<code>merge_chapter</code>, <code>split_chapter</code> at a millisecond
+point, <code>set_chapter_start</code> retiming,
+<code>clamp_chapters</code>) with speakable
+<code>ChapterEditError</code> messages; <code>silence.py</code> proposes
+chapters at detected silences (always reviewed, never applied blind) and
+trims head/tail silence; <code>audio_edit.py</code> provides
+trim/fades/pitch-preserving tempo/split-master-into-chapter-files. All
+wx-free, strict-typed, and unit-tested (<code>test_chapter_io.py</code>,
+<code>test_chapter_edits.py</code>, <code>test_silence.py</code>,
+<code>test_audio_edit.py</code>).</li>
+<li><strong>Pre-flight, estimate, verification, sidecars.</strong>
+Before a book build the runner logs a <strong>pre-flight stream
+check</strong> (<code>preflight_check</code> names files whose sample
+rate/channels/codec differ — the build still proceeds; it re-encodes)
+and a duration/size <strong>estimate</strong>. After the build,
+<code>verify_audiobook</code> <strong>re-reads the master</strong> (ID3
+CHAP via mutagen, or M4B chapter atoms via ffprobe) and the summary
+reports “verified N chapters” or the exact issues.
+<code>write_book_sidecars</code> drops a plain-text <strong>chapter
+report</strong> and the <strong>Podcasting 2.0
+<code>…chapters.json</code></strong> next to every book. The review
+editor adds <strong>Remove</strong>, <strong>Restore original</strong>,
+<strong>Import titles…</strong> (all <code>chapter_io</code> formats),
+and <strong>Export titles…</strong>.</li>
 <li><strong>ACX loudness.</strong> A <strong>Normalize to ACX</strong>
 option applies an ffmpeg <code>loudnorm</code> pass (targeting RMS ≈ -20
 dB, true-peak -3.1 dB) during the existing re-encoding build, so
