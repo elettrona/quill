@@ -215,6 +215,14 @@ def build_m4b_remux_command(
 
     ``-map_metadata 1 -map_chapters 1`` takes everything from the FFMETADATA
     input; ``-c copy`` keeps the audio (and attached cover) bit-identical.
+
+    Maps only the audio stream plus an optional video stream (an embedded
+    cover image) — never ``-map 0`` blindly. Some M4B sources carry a stray
+    ``bin_data``/``SubtitleHandler`` data track (seen on a real Windows-built
+    file in end-to-end testing); copying that stream into the ``ipod`` muxer
+    fails with "Tag text incompatible with output codec id", so data/subtitle
+    streams are excluded outright — a real ffmpeg-path bug no stubbed-source
+    unit test could have caught.
     """
     return [
         ffmpeg,
@@ -226,7 +234,9 @@ def build_m4b_remux_command(
         "-i",
         str(ffmetadata),
         "-map",
-        "0",
+        "0:a",
+        "-map",
+        "0:v?",
         "-map_metadata",
         "1",
         "-map_chapters",
