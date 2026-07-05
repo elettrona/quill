@@ -18,7 +18,7 @@ import tempfile
 from pathlib import Path
 from typing import Any
 
-from quill.ui.batch_speech_export_dialog import BatchSpeechExportDialog, BatchSpeechRequest
+from quill.ui.audio_studio.request import BatchSpeechRequest
 
 
 class _BookReviewCancelled(Exception):
@@ -962,25 +962,12 @@ def _run(frame: Any, req: BatchSpeechRequest) -> None:
 
 
 def run_batch_export_to_speech(frame: Any) -> None:
-    """Entry point bound to the Tools > Speech > Batch Export menu item."""
+    """Entry point bound to Tools > Speech > Audio Studio."""
+    from quill.ui.audio_studio import show_audio_studio
 
-    def on_preview(req: BatchSpeechRequest) -> None:
-        if req.voice:
-            frame._preview_voice(req.engine, req.voice)
-        else:
-            frame._set_status("Choose a voice to preview")
-
-    dialog = BatchSpeechExportDialog(
-        frame.frame,
-        engine_options=_ENGINE_OPTIONS,
-        engine_available=_engine_available(frame),
-        voices_for=_voices_for,
-        on_preview=on_preview,
-        defaults=_defaults(frame),
-    )
-    request = dialog.show(frame._show_modal_dialog)
+    request = show_audio_studio(frame)
     if request is None:
-        frame._set_status("Batch speech export cancelled")
+        frame._set_status("Audio Studio cancelled")
         return
     _persist_choices(frame, request)
     _save_project_profile(frame, request)  # auto-remember this run for the project

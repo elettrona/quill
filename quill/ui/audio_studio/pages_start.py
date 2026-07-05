@@ -1,0 +1,56 @@
+"""Audio Studio wizard — the start page (choose a journey)."""
+
+from __future__ import annotations
+
+import wx
+
+from quill.core.i18n import _
+from quill.ui.audio_studio.pages_base import StudioPage
+from quill.ui.audio_studio.request import JOURNEYS
+
+
+class StartPage(StudioPage):
+    """Page 1: what would you like to make?"""
+
+    def __init__(self, parent: wx.Window) -> None:
+        super().__init__(
+            parent,
+            "audio_studio.start",
+            _("Welcome to the Audio Studio"),
+            _("Choose what to make; the next steps adapt to your choice."),
+        )
+        self._journey = wx.RadioBox(
+            self,
+            label=_("What would you like to make?"),
+            choices=[
+                _("Narrate documents into an audiobook or speech audio"),
+                _("Combine audio files into one chaptered audiobook"),
+            ],
+            majorDimension=1,
+            style=wx.RA_SPECIFY_COLS,
+            name="audio_studio.journey",
+        )
+        self._journey.SetSelection(0)
+        self.sizer.Add(self._journey, flag=wx.EXPAND | wx.LEFT | wx.RIGHT, border=12)
+
+        self.sizer.Add(
+            wx.StaticText(
+                self,
+                label=_(
+                    "Narrating documents reads Word, Markdown, HTML, or text files\n"
+                    "aloud with any QUILL voice, one chapter per document or heading.\n"
+                    "Combining audio files merges a folder of recordings into one\n"
+                    "book, one chapter per file, with a review step before the merge."
+                ),
+                name="audio_studio.start_explainer",
+            ),
+            flag=wx.ALL,
+            border=12,
+        )
+
+    def journey(self) -> str:
+        idx = self._journey.GetSelection()
+        return JOURNEYS[idx] if 0 <= idx < len(JOURNEYS) else "documents"
+
+    def bind_journey_changed(self, handler) -> None:
+        self._journey.Bind(wx.EVT_RADIOBOX, lambda _e: handler())

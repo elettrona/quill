@@ -2531,11 +2531,18 @@ Your web browser has voices QUILL's built-in engines cannot reach — including 
 
 **Privacy.** QUILL itself makes no network call, and no audio file is produced. Voices labelled "on this device" synthesize locally. The browser's "Online (Natural)" voices synthesize in the voice vendor's cloud, which means choosing one sends the text being read to that service — pick an on-device voice to keep everything local. The reader page (which contains your document text) is written to QUILL's app-data folder and deleted when you close QUILL, so no plaintext copy is left behind.
 
-### Batch Export to Speech Audio
+### QUILL Audio Studio
 
-**Tools → Speech → Batch Export to Speech Audio** converts a whole folder of documents to speech audio in one pass. The conversion runs on a background task with per-file progress that you can cancel, and the same shared speech pipeline live Read Aloud uses — so the voice you audition is the voice you get.
+**Tools → Speech → Audio Studio…** is the guided home for audio production: it converts a whole folder of documents to speech audio in one pass, and it builds chaptered audiobooks — from documents, from a folder of recordings, or both. It replaced the old single-page Batch Export to Speech Audio dialog with a wizard that asks one thing at a time; every option below is still there, just spread across clear steps, and your saved project settings still pre-fill everything.
 
-In the dialog you choose:
+The first page asks what you want to make:
+
+- **Narrate documents into an audiobook or speech audio** — the steps are: What should I read? (folder, file types, filters) → Who should read it? (engine, voice with a preview button, pace, round-robin voices, translated editions) → How should chapters work? (chapter mode, spoken headings, the transition sounder and its volume, pauses) → Output and diagnostics (format, existing-file policy, loudness, dry run, temp folder) → the book page (optional: assemble everything into one audiobook) → a plain-language summary.
+- **Combine audio files into one chaptered audiobook** — a shorter path: pick the folder of recordings, describe the book (title, author, narrator, cover, M4B or MP3, ACX loudness), review the summary, and Start. Each file becomes one chapter and you always review the chapter list before the book is built.
+
+Each step is announced as you arrive ("Step 2 of 7: What should I read?"), **Back** and **Next** move between steps, and **Skip to summary** jumps ahead when your saved project profile already fills every page — a repeat run is three keystrokes. The conversion runs on a background task with per-file progress that you can cancel, using the same shared speech pipeline live Read Aloud uses — so the voice you audition is the voice you get.
+
+Across the steps you choose:
 
 - **Source folder** and whether to include subfolders, the **file types** to include (`.docx`, `.md`, `.html`/`.htm`, `.txt`), and optional **include/exclude filters** (semicolon- or comma-separated globs, matched against the file name and its path) plus a **maximum file size** to skip very large files.
 - **Engine, voice, and pace** — any of the offline engines (SAPI 5, DECtalk, Piper, Kokoro, eSpeak NG), with a **Preview** button to hear the chosen voice first.
@@ -2561,11 +2568,12 @@ If a voice ever **fails to synthesize** — a broken system voice, a missing mod
 
 **Tools → Speech → Export to Translated Speech Audio** is the single-document version of the translated export above: it translates and narrates **just the document you're editing**, without pointing at a folder. Pick the output format, choose **Translate with** (any configured AI provider, or local LibreTranslate), then add one or more **language + voice** targets the same way — local voices first, then the premium cloud voices. Press **Export** and QUILL writes `<doc> (<Language>).<ext>` next to your document. If the document has unsaved changes, QUILL offers to save first so your latest edits are the ones translated. As with the batch tool, a **combined cost estimate** is shown before any metered cloud run.
 
-### Build Audiobook from a Folder
+### Build an audiobook from a folder of recordings
 
-**Tools → Speech → Build Audiobook from Folder…** combines a folder of existing
+The Audio Studio's **Combine audio files** journey (`Tools → Speech → Audio
+Studio…`, second choice on the first page) combines a folder of existing
 audio files into one chaptered audiobook — the kind your audiobook or podcast app
-navigates track by track. It complements Batch Export to Speech Audio: where that
+navigates track by track. It complements the narrate-documents journey: where that
 converts documents to speech, this stitches a folder of audio (your own recordings,
 or speech QUILL exported earlier) into a single master.
 

@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- **QUILL Audio Studio.** `Tools → Speech → Batch Export to Speech Audio` is now **Audio Studio** — a guided wizard that asks one thing at a time instead of a single forty-control dialog. The first page picks a journey: **narrate documents** into speech audio or an audiobook, or **combine a folder of recordings** into one chaptered book (each file becomes a chapter, and you always review the chapter list before the merge). Every option from the classic dialog survives — the transition sounder and its volume, pauses, round-robin voices, translated editions, dry runs, spoken-text sidecars, ACX loudness, the book tags and cover — spread across announced, keyboard-first steps ("Step 2 of 7: What should I read?"), with **Skip to summary** turning a repeat run on a remembered project into three keystrokes. Saved project profiles, cost estimates, progress, logs, and keymap bindings all carry over unchanged. This is the first slice of the Audio Studio consolidation (docs/planning/quill-audio-studio-plan.md): the chapter workbench with split-at-playhead editing, the chapter-aware player, opening existing audiobooks, metadata lookup, and publishing land next.
+
 ## 0.9.0 Beta 1
 
 The 0.9.0 beta. Rolls up everything through 0.8.0 (below) plus the features, fixes, and enhancements in this release — headlined by the new AI suite, the **Accessible Vault** (linked notes you can traverse by ear), the **GLOW accessibility suite** (guided document audit and repair, shipping as an experimental opt-in), the **ElevenLabs Read Aloud voice**, and a lighter, smaller install. **This is the final feature release before QUILL 1.0**: from this beta forward, no new features are added — only bug fixes and polish, driven by your reports, until 1.0 ships. This section doubles as the in-app release notes: the same text appears when you **Check for Updates** and any time from **Help > What's New**.

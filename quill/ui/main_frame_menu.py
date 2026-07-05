@@ -2033,7 +2033,7 @@ class MenuBuilderMixin:
         )
         speech_menu.Append(
             self._id_speech_batch_export,
-            self._menu_label(_("&Batch Export to Speech Audio..."), "tools.speech_batch_export"),
+            self._menu_label(_("&Audio Studio..."), "tools.speech_batch_export"),
         )
         speech_menu.Append(
             self._id_speech_pronunciations,
