@@ -6,7 +6,7 @@ The 0.9.0 beta. Rolls up everything through 0.8.0 (below) plus the features, fix
 
 ### QUILL parla italiano - the first community translation
 
-- **Italian interface translation**, contributed by **Elena Brescacin** ([elettrona](https://github.com/elettrona)) — QUILL's first shipped display language beyond English: menus, dialogs, and spoken messages at 100% string coverage (669/672), validated by the CI placeholder and coverage gates and compiled into every build. Switch under **Tools > Writing and Language > Change Display Language**; spoken messages change immediately, menus after a restart. Grazie mille, Elena!
+- **Italian interface translation**, contributed by **Elena Brescacin** ([elettrona](https://github.com/elettrona)) — QUILL's first shipped display language beyond English: menus, dialogs, and spoken messages, validated by the CI placeholder and coverage gates and compiled into every build. Elena covered 100% of the catalog at contribution (669/672 strings); the catalog then grew with the Audio Studio's landing, the refreshed template ships in-repo for the translation to continue, and untranslated strings fall back to English. Switch under **Tools > Writing and Language > Change Display Language**; spoken messages change immediately, menus after a restart. Grazie mille, Elena!
 
 ### The Audio Studio - the family homecoming, completed during the beta
 

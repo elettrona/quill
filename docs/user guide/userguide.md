@@ -3537,7 +3537,7 @@ Once a translation is installed, you can switch the language QUILL uses for its 
 2. Choose a language from the list, or **System default** to follow your operating system. Only languages with a compiled translation (`.mo`) appear, so you never pick one that has nothing to show.
 3. QUILL saves your choice and applies it to new spoken messages right away. Restart QUILL so every menu and dialog reloads in the chosen language.
 
-The first community translation ships with QUILL 0.9.0: **Italian**, contributed by Elena Brescacin — 100% string coverage across menus, dialogs, and spoken messages. Pick *Italiano* from the list and QUILL speaks Italian immediately, with every menu following after a restart. More languages appear here automatically as community translations land.
+The first community translation ships with QUILL 0.9.0: **Italian**, contributed by Elena Brescacin — menus, dialogs, and spoken messages, with anything not yet translated falling back to English (the catalog keeps growing as QUILL does, and the translation grows with it). Pick *Italiano* from the list and QUILL speaks Italian immediately, with every menu following after a restart. More languages appear here automatically as community translations land.
 
 ### Contributing Translations
 

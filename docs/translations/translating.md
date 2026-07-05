@@ -314,11 +314,13 @@ The CI gate checks placeholder preservation.
 
 | Language | Translator | Since | Coverage |
 | --- | --- | --- | --- |
-| Italian (`it`) | Elena Brescacin ([elettrona](https://github.com/elettrona)) | 0.9.0 beta | 100% (669/672 strings) |
+| Italian (`it`) | Elena Brescacin ([elettrona](https://github.com/elettrona)) | 0.9.0 beta | 100% of the catalog at contribution (669/672); the catalog then grew to 1,214 strings when the Audio Studio landed, and the refreshed `.po` (new empty `msgstr` entries + `#, fuzzy` marks) is committed and ready to continue |
 
 Italian was QUILL's **first community translation** — contributed exactly
 through the pipeline this document describes: a `.po` from the template, the
-CI placeholder/coverage gates, and a pull request. Grazie, Elena!
+CI placeholder/coverage gates, and a pull request. Grazie, Elena! Untranslated
+strings fall back to English at runtime, so a partially-updated catalog is
+always safe to ship.
 
 **What is not done yet:**
 - A few low-priority internal modules (diagnostic output, developer console

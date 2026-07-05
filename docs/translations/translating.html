@@ -474,14 +474,19 @@ template in
 <td>Elena Brescacin (<a
 href="https://github.com/elettrona">elettrona</a>)</td>
 <td>0.9.0 beta</td>
-<td>100% (669/672 strings)</td>
+<td>100% of the catalog at contribution (669/672); the catalog then grew
+to 1,214 strings when the Audio Studio landed, and the refreshed
+<code>.po</code> (new empty <code>msgstr</code> entries +
+<code>#, fuzzy</code> marks) is committed and ready to continue</td>
 </tr>
 </tbody>
 </table>
 <p>Italian was QUILL’s <strong>first community translation</strong> —
 contributed exactly through the pipeline this document describes: a
 <code>.po</code> from the template, the CI placeholder/coverage gates,
-and a pull request. Grazie, Elena!</p>
+and a pull request. Grazie, Elena! Untranslated strings fall back to
+English at runtime, so a partially-updated catalog is always safe to
+ship.</p>
 <p><strong>What is not done yet:</strong> - A few low-priority internal
 modules (diagnostic output, developer console strings) still have
 unwrapped strings. These are not user-facing in normal operation.</p>
