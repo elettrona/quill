@@ -37,6 +37,15 @@ _EGRESS_CALLEES = frozenset({
 # Reviewed, allowed egress sites: "<relative path>::<enclosing function>" mapped
 # to the reason the call is not silent. Update this when adding a network call.
 _REVIEWED_EGRESS: dict[str, str] = {
+    "core/metadata_lookup.py::_http_json": (
+        "Single egress site for the Audio Studio's 'Look up book details' button "
+        "(Open Library + MusicBrainz, both free and keyless). Reached only by that "
+        "explicit button press; the UI names both services before the first call. "
+        "Only the user-typed title/author is sent. HTTPS-only over a verified TLS "
+        "context with a bounded timeout; MusicBrainz's 1-req/s courtesy limit is "
+        "throttled in code. Disabled in Safe Mode with the rest of the Studio's "
+        "network surfaces."
+    ),
     "core/mastodon/client.py::_http_json": (
         "Single egress site for the 'Post to Mastodon' feature. Reached only by an "
         "explicit user action -- adding an account (app registration + OAuth token "

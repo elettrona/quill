@@ -2554,6 +2554,13 @@ The Workbench is where a finished audiobook gets fixed by ear. The chapter list 
 
 Each step is announced as you arrive ("Step 2 of 7: What should I read?"), **Back** and **Next** move between steps, and **Skip to summary** jumps ahead when your saved project profile already fills every page — a repeat run is three keystrokes. The conversion runs on a background task with per-file progress that you can cancel, using the same shared speech pipeline live Read Aloud uses — so the voice you audition is the voice you get.
 
+More Studio conveniences:
+
+- **Job files.** On the summary page, **Save a job file** writes a small, hand-editable `.quilljob` that pins this exact run — folder, voices, chapters, mastering, and book details. **Load a job file** on the first page brings everything back, pre-filled; keep one per project, or edit it in Notepad between runs.
+- **Look up book details.** On the book page, type the title (and author if you know it) and press **Look up book details** — QUILL searches **Open Library** and **MusicBrainz**, two free public catalogs, and the match you pick fills in the author, genre, and year. QUILL asks before the first contact, and only the title and author you typed are ever sent.
+- **Audition first.** Tick **Audition** on the output step to convert only the first document — judge the voice, the pace, and the loudness in a couple of minutes before committing to an overnight run.
+- **Spoken credits.** Tick **Add spoken opening and closing credits** on the book page and QUILL narrates the standard audiobook frame — "My Book. Written by Jane Doe. Narrated by Sam Reader." — in the run's own voice, as the book's first and last chapters.
+
 Across the steps you choose:
 
 - **Source folder** and whether to include subfolders, the **file types** to include (`.docx`, `.md`, `.html`/`.htm`, `.txt`), and optional **include/exclude filters** (semicolon- or comma-separated globs, matched against the file name and its path) plus a **maximum file size** to skip very large files.

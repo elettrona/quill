@@ -82,6 +82,12 @@ class BatchSpeechRequest:
     # Pause after synthesis to open the chapter editor (rename/reorder/merge) before
     # the book is built. A folder of pre-recorded audio (no documents) always opens it.
     book_review_chapters: bool = False
+    # Audition: process only the first discovered document so the user can judge
+    # voice, pace, and mastering in minutes before committing to the full run.
+    audition: bool = False
+    # Synthesize spoken opening/closing credits ("<Title>, written by <Author>.
+    # Narrated by <Narrator>.") as the book's first and last chapters.
+    book_credits: bool = False
     _voice_label: str = field(default="", repr=False)
 
 

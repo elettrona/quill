@@ -51,9 +51,15 @@ class StartPage(StudioPage):
             border=12,
         )
 
+        self._load_job_btn = wx.Button(self, label=_("&Load a job file..."))
+        self.sizer.Add(self._load_job_btn, 0, wx.LEFT | wx.BOTTOM, 12)
+
     def journey(self) -> str:
         idx = self._journey.GetSelection()
         return JOURNEYS[idx] if 0 <= idx < len(JOURNEYS) else "documents"
 
     def bind_journey_changed(self, handler) -> None:
         self._journey.Bind(wx.EVT_RADIOBOX, lambda _e: handler())
+
+    def bind_load_job(self, handler) -> None:
+        self._load_job_btn.Bind(wx.EVT_BUTTON, lambda _e: handler())

@@ -389,3 +389,22 @@ def test_journey_edit_sequence_and_path(wx_app, tmp_path):
     finally:
         dlg.Destroy()
         frame.Destroy()
+
+
+def test_audition_and_credits_collect(wx_app, tmp_path):
+    frame, dlg = _make(wx_app, tmp_path)
+    try:
+        req = dlg.build_request()
+        assert req.audition is False and req.book_credits is False
+        dlg.output.audition.SetValue(True)
+        dlg.book.make_book.SetValue(True)
+        dlg.book.sync_enabled()
+        dlg.book.credits.SetValue(True)
+        req = dlg.build_request()
+        assert req.audition is True and req.book_credits is True
+        # The combine-audio journey never speaks credits (no narration voice).
+        dlg.start_page._journey.SetSelection(1)
+        assert dlg.build_request().book_credits is False
+    finally:
+        dlg.Destroy()
+        frame.Destroy()

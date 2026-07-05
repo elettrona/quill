@@ -13,6 +13,7 @@ from quill.ui.audio_studio.request import (
     BOOK_FORMATS,
     BatchSpeechRequest,
 )
+from quill.ui.dialog_contract import show_message_box
 
 
 class BookPage(StudioPage):
@@ -51,6 +52,11 @@ class BookPage(StudioPage):
         self.year = self._field(grid, _("Yea&r:"), defaults.book_year)
         self.sizer.Add(grid, 0, wx.EXPAND | wx.LEFT | wx.RIGHT | wx.TOP, 12)
 
+        lookup_btn = wx.Button(self, label=_("Look up book detai&ls..."))
+        lookup_btn.Bind(wx.EVT_BUTTON, lambda _e: self._on_lookup())
+        self.sizer.Add(lookup_btn, 0, wx.LEFT | wx.TOP, 12)
+        self._lookup_consented = False
+
         self.add_label(_("Cover ima&ge (auto-detected from the folder; optional):"))
         cover_row = wx.BoxSizer(wx.HORIZONTAL)
         self.cover = wx.TextCtrl(self, value=defaults.book_cover_path)
@@ -76,6 +82,15 @@ class BookPage(StudioPage):
         self.acx = wx.CheckBox(self, label=_("Normalize the book to ACX (Audible) lou&dness"))
         self.acx.SetValue(defaults.book_acx_normalize)
         self.sizer.Add(self.acx, 0, wx.LEFT | wx.TOP, 12)
+        self.credits = wx.CheckBox(
+            self, label=_("Add spo&ken opening and closing credits (uses the chosen voice)")
+        )
+        self.credits.SetValue(defaults.book_credits)
+        if forced:
+            # The combine-audio journey has no narration voice to speak them with.
+            self.credits.Hide()
+        else:
+            self.sizer.Add(self.credits, 0, wx.LEFT | wx.TOP, 12)
         self.review = wx.CheckBox(
             self, label=_("&Review chapters (rename/reorder/merge) before building")
         )
@@ -135,6 +150,65 @@ class BookPage(StudioPage):
         for ctrl in self._book_controls:
             ctrl.Enable(on)
 
+    def _on_lookup(self) -> None:
+        """Fill the fields from Open Library / MusicBrainz (consented, explicit)."""
+        title = self.title.GetValue().strip()
+        if not title:
+            show_message_box(
+                str(_("Type the book's title first, then look it up.")),
+                str(_("Look up book details")),
+                wx.OK | wx.ICON_INFORMATION,
+                self,
+            )
+            return
+        if not self._lookup_consented:
+            answer = show_message_box(
+                str(
+                    _(
+                        "QUILL will contact Open Library and MusicBrainz — free, public"
+                        " book catalogs — to search for this title. Only the title and"
+                        " author you typed are sent. Continue?"
+                    )
+                ),
+                str(_("Look up book details")),
+                wx.YES_NO | wx.ICON_QUESTION,
+                self,
+            )
+            if answer != wx.YES:
+                return
+            self._lookup_consented = True
+        from quill.core.metadata_lookup import search
+
+        busy = wx.BusyCursor()
+        try:
+            results = search(title, self.author.GetValue().strip())
+        finally:
+            del busy
+        if not results:
+            show_message_box(
+                str(_("No matches were found for that title.")),
+                str(_("Look up book details")),
+                wx.OK | wx.ICON_INFORMATION,
+                self,
+            )
+            return
+        with wx.SingleChoiceDialog(
+            self,
+            str(_("Choose the matching book; its details fill the form:")),
+            str(_("Look up book details")),
+            [r.display for r in results],
+        ) as picker:
+            if picker.ShowModal() != wx.ID_OK:  # GATE-42-OK: native chooser
+                return
+            chosen = results[picker.GetSelection()]
+        self.title.SetValue(chosen.title or title)
+        if chosen.author:
+            self.author.SetValue(chosen.author)
+        if chosen.genre:
+            self.genre.SetValue(chosen.genre)
+        if chosen.year:
+            self.year.SetValue(chosen.year)
+
     def current_format(self) -> str:
         idx = self.format.GetSelection()
         return BOOK_FORMATS[idx] if 0 <= idx < len(BOOK_FORMATS) else "m4b"
@@ -171,6 +245,7 @@ class BookPage(StudioPage):
 
     def collect(self, req: BatchSpeechRequest) -> None:
         req.make_book = True if self._forced else self.make_book.GetValue()
+        req.book_credits = False if self._forced else self.credits.GetValue()
         req.book_title = self.title.GetValue().strip()
         req.book_author = self.author.GetValue().strip()
         req.book_narrator = self.narrator.GetValue().strip()
@@ -201,9 +276,52 @@ class SummaryPage(StudioPage):
         )
         self._text.SetMinSize(wx.Size(-1, 240))
         self.sizer.Add(self._text, proportion=1, flag=wx.EXPAND | wx.ALL, border=12)
+        self._latest: BatchSpeechRequest | None = None
+        save_job_btn = wx.Button(self, label=_("Save a &job file..."))
+        save_job_btn.Bind(wx.EVT_BUTTON, lambda _e: self._on_save_job())
+        self.sizer.Add(save_job_btn, 0, wx.LEFT | wx.BOTTOM, 12)
 
     def on_shown(self, req: BatchSpeechRequest) -> None:
+        self._latest = req
         self._text.SetValue("\n".join(summary_lines(req)))
+
+    def _on_save_job(self) -> None:
+        """Pin this exact run to a portable, hand-editable .quilljob file."""
+        if self._latest is None:
+            return
+        from quill.core.speech.job_file import JOB_EXTENSION, save_job
+
+        with wx.FileDialog(
+            self,
+            str(_("Save this run as a job file")),
+            defaultFile=f"{self._latest.source_folder.name or 'audio-studio'}{JOB_EXTENSION}",
+            wildcard=f"QUILL job (*{JOB_EXTENSION})|*{JOB_EXTENSION}",
+            style=wx.FD_SAVE | wx.FD_OVERWRITE_PROMPT,
+        ) as dlg:
+            if dlg.ShowModal() != wx.ID_OK:  # GATE-42-OK: native file picker
+                return
+            target = Path(dlg.GetPath())
+        try:
+            written = save_job(target, self._latest)
+        except OSError as exc:
+            show_message_box(
+                str(_("Could not write the job file: {error}").format(error=exc)),
+                str(_("Save a job file")),
+                wx.OK | wx.ICON_ERROR,
+                self,
+            )
+            return
+        show_message_box(
+            str(
+                _(
+                    "Saved {name}. Load it from the Audio Studio's first page — or"
+                    " edit it in any text editor — to repeat this exact run."
+                ).format(name=written.name)
+            ),
+            str(_("Save a job file")),
+            wx.OK | wx.ICON_INFORMATION,
+            self,
+        )
 
 
 def summary_lines(req: BatchSpeechRequest) -> list[str]:

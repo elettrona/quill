@@ -42,6 +42,9 @@ from quill.ui.dialog_contract import apply_modal_ids, show_message_box
 
 _log = logging.getLogger(__name__)
 
+#: Modal return code meaning "reopen the wizard pre-filled from loaded_job".
+RELOAD_WITH_JOB = wx.ID_HIGHEST + 71
+
 
 class AudioStudioWizard(wx.Dialog):
     """The wizard host: stacked page panels with Back/Next/Start/Cancel."""
@@ -120,6 +123,10 @@ class AudioStudioWizard(wx.Dialog):
             self.summary,
         ]
         self.start_page.bind_journey_changed(self._on_journey_changed)
+        self.start_page.bind_load_job(self._on_load_job)
+        #: Set when the user loads a .quilljob: the caller reopens the wizard
+        #: with this request as its defaults so every page pre-fills from it.
+        self.loaded_job: BatchSpeechRequest | None = None
 
         self._build_ui()
         self._show_page(0)
@@ -289,3 +296,25 @@ class AudioStudioWizard(wx.Dialog):
     def edit_path(self) -> Path | None:
         """The audiobook chosen in the edit journey (None for the other journeys)."""
         return self.edit_source.chosen_path() if self.journey() == "edit" else None
+
+    def _on_load_job(self) -> None:
+        """Load a .quilljob and hand it to the caller to reopen pre-filled."""
+        from quill.core.speech.job_file import JOB_EXTENSION, JobFileError, load_job
+
+        with wx.FileDialog(
+            self,
+            str(_("Load a job file")),
+            wildcard=f"QUILL job (*{JOB_EXTENSION})|*{JOB_EXTENSION}|All files (*.*)|*.*",
+            style=wx.FD_OPEN | wx.FD_FILE_MUST_EXIST,
+        ) as dlg:
+            if dlg.ShowModal() != wx.ID_OK:  # GATE-42-OK: native file picker
+                return
+            path = Path(dlg.GetPath())
+        try:
+            self.loaded_job = load_job(path, self._defaults)
+        except JobFileError as exc:
+            show_message_box(str(exc), str(_("Load a job file")), wx.OK | wx.ICON_ERROR, self)
+            return
+        if self._announce_cb is not None:
+            self._announce_cb(str(_("Loaded {name}; review and start").format(name=path.name)))
+        self.EndModal(RELOAD_WITH_JOB)

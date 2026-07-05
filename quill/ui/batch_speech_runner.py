@@ -646,6 +646,9 @@ def _run(frame: Any, req: BatchSpeechRequest) -> None:
         exclude_glob=req.exclude_glob,
         max_file_bytes=req.max_file_bytes,
     )
+    if req.audition and files:
+        # Audition: one document proves the voice/pace/mastering before a long run.
+        files = files[:1]
     # With audiobook assembly on, an empty document set is allowed — the run
     # assembles whatever audio is already in the folder (the pre-recorded case).
     if not files and not req.make_book:
@@ -928,6 +931,24 @@ def _run(frame: Any, req: BatchSpeechRequest) -> None:
 
                 try:
                     audio = scan_audio_folder(req.source_folder, recursive=req.recursive)
+                    if req.book_credits and files and req.book_title:
+                        # Best-effort spoken frame: opening/closing credits in the
+                        # run's own voice become the first and last chapters.
+                        from quill.core.speech.credits import synthesize_credit_files
+
+                        try:
+                            log.log("Audiobook: synthesizing opening/closing credits...")
+                            opening, closing = synthesize_credit_files(
+                                req.book_title,
+                                req.book_author,
+                                req.book_narrator,
+                                spec,
+                                ChapterAssembleOptions(output_format="wav"),
+                                temp_root / "credits",
+                            )
+                            audio = [opening, *audio, closing]
+                        except Exception as exc:  # noqa: BLE001 - credits never sink a book
+                            log.log(f"Audiobook: credits skipped ({exc})")
                     # Open the chapter editor when the user asked to review, or when
                     # there were no documents to synthesize (a pure pre-recorded folder,
                     # the old standalone builder's case). Cancelling skips the book.

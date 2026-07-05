@@ -38,21 +38,31 @@ def show_audio_studio(frame: object) -> BatchSpeechRequest | None:
         else:
             frame._set_status(str(_("Choose a voice to preview")))
 
-    dlg = AudioStudioWizard(
-        frame.frame,
-        defaults=runner._defaults(frame),
-        engine_options=runner._ENGINE_OPTIONS,
-        engine_available=runner._engine_available(frame),
-        voices_for=runner._voices_for,
-        on_preview=on_preview,
-        announce_cb=frame._announce,
-    )
-    try:
-        code = frame._show_modal_dialog(dlg, str(_("QUILL Audio Studio")))
-        edit_path = dlg.edit_path() if code == wx.ID_OK else None
-        request = dlg.result() if code == wx.ID_OK else None
-    finally:
-        dlg.Destroy()
+    from quill.ui.audio_studio.wizard import RELOAD_WITH_JOB
+
+    defaults = runner._defaults(frame)
+    while True:
+        dlg = AudioStudioWizard(
+            frame.frame,
+            defaults=defaults,
+            engine_options=runner._ENGINE_OPTIONS,
+            engine_available=runner._engine_available(frame),
+            voices_for=runner._voices_for,
+            on_preview=on_preview,
+            announce_cb=frame._announce,
+        )
+        try:
+            code = frame._show_modal_dialog(dlg, str(_("QUILL Audio Studio")))
+            if code == RELOAD_WITH_JOB and dlg.loaded_job is not None:
+                # A .quilljob was loaded: reopen with it as the defaults so
+                # every page pre-fills and Skip to summary is three keystrokes.
+                defaults = dlg.loaded_job
+                continue
+            edit_path = dlg.edit_path() if code == wx.ID_OK else None
+            request = dlg.result() if code == wx.ID_OK else None
+        finally:
+            dlg.Destroy()
+        break
     if edit_path is not None:
         from quill.ui.audio_studio.chapter_workbench import open_book_in_workbench
 

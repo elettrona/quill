@@ -499,6 +499,12 @@ class OutputPage(StudioPage):
         )
         self.save_spoken.SetValue(defaults.save_spoken_text)
         self.sizer.Add(self.save_spoken, 0, wx.LEFT | wx.TOP, 12)
+        self.audition = wx.CheckBox(
+            self,
+            label=_("A&udition: convert only the first document, so you can judge the result"),
+        )
+        self.audition.SetValue(defaults.audition)
+        self.sizer.Add(self.audition, 0, wx.LEFT | wx.TOP, 12)
 
         self.add_label(_("&Temporary files folder (blank = system temp):"))
         tmp_row = wx.BoxSizer(wx.HORIZONTAL)
@@ -524,4 +530,5 @@ class OutputPage(StudioPage):
         req.normalize_loudness = self.normalize.GetValue()
         req.dry_run = self.dry_run.GetValue()
         req.save_spoken_text = self.save_spoken.GetValue()
+        req.audition = self.audition.GetValue()
         req.temp_folder = self.temp_folder.GetValue().strip()
