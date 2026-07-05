@@ -18,6 +18,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
+from quill.io.docx_math import omml_fragment_for_latex, split_math_segments
 from quill.io.rtf_model import RichDocument, RichParagraph, markdown_to_rich
 
 if TYPE_CHECKING:
@@ -142,29 +143,44 @@ def rich_to_docx(document: RichDocument) -> Any:
         if paragraph.first_line_indent:
             fmt.first_line_indent = Pt(paragraph.first_line_indent)
         for span in paragraph.spans:
-            run = para.add_run(span.text)
-            run.bold = span.bold or None
-            run.italic = span.italic or None
-            run.underline = span.underline or None
-            if span.strike:
-                run.font.strike = True
-            # superscript and subscript share one w:vertAlign element, so set only
-            # the active one; assigning the other (even None) would clear it.
-            if span.superscript:
-                run.font.superscript = True
-            elif span.subscript:
-                run.font.subscript = True
-            if span.font_family:
-                run.font.name = span.font_family
-            if span.font_size_pt:
-                run.font.size = Pt(span.font_size_pt)
-            if span.color:
-                rgb = _parse_rgb(span.color)
-                if rgb is not None:
-                    run.font.color.rgb = RGBColor(*rgb)
-            if span.highlight:
-                name = _HIGHLIGHT_NAMES.get(span.highlight.lower(), "YELLOW")
-                run.font.highlight_color = getattr(WD_COLOR_INDEX, name)
+            for segment in split_math_segments(span.text):
+                if segment.is_math:
+                    fragment = omml_fragment_for_latex(segment.content, display=segment.display)
+                    if fragment is not None:
+                        from docx.oxml import parse_xml
+
+                        para._p.append(parse_xml(fragment))
+                        continue
+                    # Pandoc unavailable or conversion failed: keep the literal text
+                    # rather than silently dropping the equation.
+                    delimited = (
+                        f"$${segment.content}$$" if segment.display else f"\\({segment.content}\\)"
+                    )
+                    run = para.add_run(delimited)
+                else:
+                    run = para.add_run(segment.content)
+                run.bold = span.bold or None
+                run.italic = span.italic or None
+                run.underline = span.underline or None
+                if span.strike:
+                    run.font.strike = True
+                # superscript and subscript share one w:vertAlign element, so set only
+                # the active one; assigning the other (even None) would clear it.
+                if span.superscript:
+                    run.font.superscript = True
+                elif span.subscript:
+                    run.font.subscript = True
+                if span.font_family:
+                    run.font.name = span.font_family
+                if span.font_size_pt:
+                    run.font.size = Pt(span.font_size_pt)
+                if span.color:
+                    rgb = _parse_rgb(span.color)
+                    if rgb is not None:
+                        run.font.color.rgb = RGBColor(*rgb)
+                if span.highlight:
+                    name = _HIGHLIGHT_NAMES.get(span.highlight.lower(), "YELLOW")
+                    run.font.highlight_color = getattr(WD_COLOR_INDEX, name)
     return out
 
 
