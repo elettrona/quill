@@ -108,3 +108,7 @@ docs/planning/source/**/*.log
 
 # Podcast audio is distributed via the podcast-v1 GitHub release, not git.
 docs/podcast/audio/
+
+# Compiled native extensions are per-machine build artifacts; only the C++
+# sources and CMakeLists are tracked (quill/native/*). Built locally or in CI.
+quill/native/**/*.pyd
