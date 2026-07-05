@@ -9,11 +9,10 @@ working notes for durable reference.
 
 | Document | What it covers |
 |---|---|
-| [bundled-publishing-provider-adapter-contract-2026-06-19.md](bundled-publishing-provider-adapter-contract-2026-06-19.md) | The bundled provider adapter contract (the core interface a provider implements). |
-| [publishing-providers-framework-current-state-2026-06-19.md](publishing-providers-framework-current-state-2026-06-19.md) | Framework plan state and phase breakdown. |
-| [publishing-follow-up-phases-2026-06-19.md](publishing-follow-up-phases-2026-06-19.md) | Planned follow-up phases / roadmap. |
-| [publishing-remote-integration-planning-2026-06-10.md](publishing-remote-integration-planning-2026-06-10.md) | Early remote-integration planning. |
-| [publishing-profile-restriction-2026-06-22.md](publishing-profile-restriction-2026-06-22.md) | Scoping plan for restricting publishing to writer-tier-and-above profiles. |
+| [publishing-framework-design-record.md](publishing-framework-design-record.md) | The consolidated, chronological design record: early remote-integration planning (2026-06-10), the follow-up phase plan and bundled provider adapter contract (2026-06-19), the implementation checkpoints through live third-party loading (2026-06-21), and the writer-tier-and-above profile restriction (2026-06-22). |
+| [auphonic-integration-reference-chapterforge.md](auphonic-integration-reference-chapterforge.md) | Archived ChapterForge Auphonic design, kept as reference for growing QUILL's shipped Auphonic client. |
+| [google-docs-drive-inbound-integration-points-2026-06-29.md](google-docs-drive-inbound-integration-points-2026-06-29.md) | Embed map for the on-hold read-only Google Docs/Drive integration. |
+| [wordpress-inbound-embed-and-safety-review-2026-06-29.md](wordpress-inbound-embed-and-safety-review-2026-06-29.md) | Audit of the shipped WordPress inbound touchpoints and their safety posture. |
 
 ## Status: locked off (developer-only)
 

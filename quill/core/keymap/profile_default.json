@@ -43,6 +43,7 @@
     "tools.read_aloud_start_pause": "Ctrl+Shift+Grave, R",
     "tools.read_aloud_stop": "Ctrl+Shift+Grave, Shift+R",
     "tools.dictation_toggle": "Ctrl+Shift+Grave, D",
+    "tools.speech_batch_export": "Ctrl+Shift+Grave, Y",
     "tools.voice_command": "",
     "tools.voice_conversation": "",
     "tools.voice_wakeword": "",

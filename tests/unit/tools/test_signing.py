@@ -8,7 +8,11 @@ import sys
 from pathlib import Path
 
 import pytest
-from nacl import signing as nacl_signing
+
+# PyNaCl ships in the optional [signing] extra; CI runners without it skip
+# these tests instead of failing collection.
+pytest.importorskip("nacl", reason="PyNaCl (the [signing] extra) is not installed")
+from nacl import signing as nacl_signing  # noqa: E402
 
 from quill.tools import signing
 from quill.tools.signing import (

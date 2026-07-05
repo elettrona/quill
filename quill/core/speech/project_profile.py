@@ -26,7 +26,11 @@ from quill.core.storage import read_json, write_json_atomic
 
 PROJECT_DIRNAME = ".quill"
 PROFILE_FILENAME = "speech-project.json"
-PROFILE_VERSION = 1
+# v1: original profile (synthesizer, discovery, output, chapters, etc.).
+# v2: adds top-level ``book_credits`` and ``library_mode`` booleans.
+#     ``from_dict`` is tolerant of v1 data: missing fields default
+#     to False so older project folders load without an upgrade.
+PROFILE_VERSION = 2
 
 _VALID_ENGINES = {"sapi5", "dectalk", "piper", "kokoro", "espeak"}
 _VALID_FORMATS = {"wav", "mp3", "m4a", "m4b", "opus", "flac", "ogg"}
@@ -446,6 +450,12 @@ class SpeechProjectProfile:
     metadata: MetadataProfile = field(default_factory=MetadataProfile)
     execution: ExecutionProfile = field(default_factory=ExecutionProfile)
     translation: TranslationProfile = field(default_factory=TranslationProfile)
+    # Phase 4-6 fields the wizard collects on the output / audio source
+    # pages. Persisted at the top level so a per-folder auto-remember
+    # covers them and "Skip to summary" stays a 3-keystroke fast-path on the
+    # second run.
+    book_credits: bool = False
+    library_mode: bool = False
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -459,6 +469,8 @@ class SpeechProjectProfile:
             "metadata": self.metadata.to_dict(),
             "execution": self.execution.to_dict(),
             "translation": self.translation.to_dict(),
+            "book_credits": bool(self.book_credits),
+            "library_mode": bool(self.library_mode),
         }
 
     @classmethod
@@ -477,6 +489,9 @@ class SpeechProjectProfile:
             metadata=MetadataProfile.from_dict(_sub(data, "metadata")),
             execution=ExecutionProfile.from_dict(_sub(data, "execution")),
             translation=TranslationProfile.from_dict(_sub(data, "translation")),
+            # v1 -> v2 tolerance: missing top-level booleans default to False.
+            book_credits=bool(data.get("book_credits", False)),
+            library_mode=bool(data.get("library_mode", False)),
         )
 
 

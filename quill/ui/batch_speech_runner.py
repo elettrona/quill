@@ -18,11 +18,15 @@ import tempfile
 from pathlib import Path
 from typing import Any
 
-from quill.ui.batch_speech_export_dialog import BatchSpeechExportDialog, BatchSpeechRequest
+from quill.ui.audio_studio.request import BatchSpeechRequest
 
 
 class _BookReviewCancelled(Exception):
     """Internal: the user cancelled the chapter-review dialog, so skip the book build."""
+
+
+class _BookStepDone(Exception):
+    """Internal: the book step already finished on another path (library mode)."""
 
 
 _ENGINE_OPTIONS = [
@@ -406,6 +410,11 @@ def _apply_project_profile(frame: Any, defaults: BatchSpeechRequest) -> BatchSpe
         translation_targets=tuple((t.language, t.engine, t.voice) for t in tr.targets),
         translation_provider=tr.provider,
         libretranslate_url=tr.libretranslate_url,
+        # Phase 4-6 wizard fields are part of the project profile so the
+        # per-folder auto-remember covers them and "Skip to summary" stays
+        # a 3-keystroke fast-path on the second run.
+        book_credits=bool(profile.book_credits),
+        library_mode=bool(profile.library_mode),
     )
 
 
@@ -447,6 +456,10 @@ def _save_project_profile(frame: Any, req: BatchSpeechRequest) -> None:
                 for c, e, v in req.translation_targets
             ],
         ),
+        # Persist the Phase 4-6 wizard flags so the next run on the same
+        # folder pre-selects them in the dialog.
+        book_credits=bool(req.book_credits),
+        library_mode=bool(req.library_mode),
     )
     try:
         save_profile(profile, req.source_folder)
@@ -560,7 +573,13 @@ def _assemble_book(
         build_audiobook,
         build_chapter_list,
         chapters_from_plan,
+        estimate_output,
         find_cover,
+        format_size,
+        preflight_check,
+        probe_stream_stats,
+        verify_audiobook,
+        write_book_sidecars,
     )
     from quill.core.speech.ffmpeg import AudioMetadata
 
@@ -584,7 +603,16 @@ def _assemble_book(
         year=req.book_year,
     )
     out.parent.mkdir(parents=True, exist_ok=True)
-    log.log(f"Audiobook: assembling {len(chapters)} chapter(s) -> {out.name} ({req.book_format})")
+    # Pre-flight: mixed stream shapes are fine (the build re-encodes) but the
+    # user should hear about them in the log before a long run.
+    preflight = preflight_check([probe_stream_stats(p) for c in chapters for p in c.all_paths])
+    for note in preflight.notes:
+        log.log(f"Audiobook pre-flight: {note}")
+    total_ms, est_bytes = estimate_output(chapters)
+    log.log(
+        f"Audiobook: assembling {len(chapters)} chapter(s) -> {out.name} "
+        f"({req.book_format}, about {total_ms // 60000} min, ~{format_size(est_bytes)})"
+    )
     result = build_audiobook(
         chapters,
         out,
@@ -592,10 +620,27 @@ def _assemble_book(
         metadata=metadata,
         cover=cover if (cover and cover.is_file()) else None,
         acx_normalize=req.book_acx_normalize,
+        trim_silence_files=req.trim_silence_files,
+        fade_in_ms=req.book_fade_in_ms,
+        fade_out_ms=req.book_fade_out_ms,
+        tempo=req.book_tempo,
         on_progress=lambda m: log.log(f"Audiobook: {m}"),
     )
-    log.log(f"Audiobook built: {result.output_path} ({result.chapter_count} chapters)")
-    return f"audiobook {out.name} ({result.chapter_count} chapters)"
+    for note in result.notes:
+        log.log(f"Audiobook: {note}")
+    try:
+        for sidecar in write_book_sidecars(out, chapters, title=req.book_title):
+            log.log(f"Audiobook sidecar: {sidecar.name}")
+    except OSError as exc:  # sidecars are best-effort artifacts
+        log.log(f"Audiobook sidecars not written: {exc}")
+    # Post-build read-back: report what a player will actually see.
+    verdict = verify_audiobook(out, expected_chapters=result.chapter_count)
+    if verdict.ok:
+        verified = f"verified {verdict.chapter_count} chapters"
+    else:
+        verified = "; ".join(verdict.issues) or "verification failed"
+    log.log(f"Audiobook built: {result.output_path} ({verified})")
+    return f"audiobook {out.name} ({verified})"
 
 
 def _run(frame: Any, req: BatchSpeechRequest) -> None:
@@ -618,6 +663,9 @@ def _run(frame: Any, req: BatchSpeechRequest) -> None:
         exclude_glob=req.exclude_glob,
         max_file_bytes=req.max_file_bytes,
     )
+    if req.audition and files:
+        # Audition: one document proves the voice/pace/mastering before a long run.
+        files = files[:1]
     # With audiobook assembly on, an empty document set is allowed — the run
     # assembles whatever audio is already in the folder (the pre-recorded case).
     if not files and not req.make_book:
@@ -656,6 +704,44 @@ def _run(frame: Any, req: BatchSpeechRequest) -> None:
     from quill.core.speech.voice_blacklist import load_blacklist, save_blacklist
 
     voice_blacklist = load_blacklist()
+
+    # Incremental rebuilds (the authoring loop): fingerprint each document's
+    # bytes + every audio-shaping setting; a matching, still-present output is
+    # reused instead of re-synthesized. Applies only to the chaptered documents
+    # path with the "overwrite" policy — skip/rename keep their own meanings —
+    # and never to dry runs or auditions.
+    from quill.core.speech.synth_cache import can_reuse, load_cache, save_cache
+    from quill.core.speech.synth_cache import fingerprint as synth_fingerprint
+
+    cache_settings: dict[str, object] = {
+        "engine": req.engine,
+        "voice": req.voice,
+        "rate": req.rate,
+        "speed": req.speed,
+        "format": effective_format,
+        "sound": [
+            req.sound_enabled,
+            req.sound_volume,
+            str(getattr(getattr(frame, "settings", None), "batch_speech_chapter_sound_id", "")),
+        ],
+        "gaps": [req.article_gap_ms, req.sentence_gap_ms, req.tail_padding_ms],
+        "speak_headings": req.speak_headings,
+        "combine_headings": req.combine_headings,
+        "normalize_loudness": req.normalize_loudness,
+        "round_robin": list(req.round_robin_voices),
+        "casting": [list(rule) for rule in req.casting_rules],
+        "translations": [list(t) for t in req.translation_targets],
+        "translation_provider": req.translation_provider,
+        "dictionaries": repr(dictionaries),
+    }
+    reuse_enabled = (
+        req.reuse_unchanged
+        and req.on_existing == "overwrite"
+        and req.chapter_mode == "single"
+        and not req.dry_run
+        and not req.audition
+    )
+    cache_entries: dict[str, str] = load_cache(req.source_folder) if reuse_enabled else {}
 
     # Open the diagnostic log in the output folder (where the audio/book lands) and
     # create this run's scratch root — both before any conversion work starts.
@@ -823,6 +909,16 @@ def _run(frame: Any, req: BatchSpeechRequest) -> None:
                         shutil.rmtree(sep_work, ignore_errors=True)
                     continue
                 final = src.with_suffix(suffix)
+                try:
+                    cache_key = src.relative_to(req.source_folder).as_posix()
+                except ValueError:
+                    cache_key = src.name
+                if reuse_enabled and can_reuse(
+                    cache_entries, cache_key, src, final, cache_settings
+                ):
+                    skipped += 1
+                    advance(words, f"[{i}/{total}] Reused {final.name} (unchanged since last run)")
+                    continue
                 if final.exists():
                     if req.on_existing == "skip":
                         skipped += 1
@@ -862,11 +958,17 @@ def _run(frame: Any, req: BatchSpeechRequest) -> None:
                         pronunciation_dictionaries=dictionaries,
                         combine_headings=req.combine_headings,
                         voice_rotation=list(req.round_robin_voices),
+                        casting_rules=list(req.casting_rules),
                         voice_blacklist=voice_blacklist,
                         on_progress=_file_progress,
                     )
                     deliverable = result.with_tones_path or result.output_path
                     shutil.copyfile(deliverable, final)
+                    if reuse_enabled:
+                        try:
+                            cache_entries[cache_key] = synth_fingerprint(src, cache_settings)
+                        except OSError:
+                            pass  # an unreadable source just misses the cache
                     done += 1
                     chapter_count = len(result.chapters)
                     total_chapters += chapter_count
@@ -899,7 +1001,50 @@ def _run(frame: Any, req: BatchSpeechRequest) -> None:
                 from quill.core.speech.audiobook import scan_audio_folder
 
                 try:
+                    if req.library_mode:
+                        # Library mode: every immediate subfolder with audio becomes
+                        # its own book, titled after the subfolder, unattended.
+                        import dataclasses as _dc
+
+                        built = 0
+                        for sub in sorted(p for p in req.source_folder.iterdir() if p.is_dir()):
+                            sub_audio = scan_audio_folder(sub, recursive=req.recursive)
+                            if not sub_audio:
+                                continue
+                            progress_dialog.set_progress(-1, f"Building {sub.name}...")
+                            sub_req = _dc.replace(
+                                req, source_folder=sub, book_title=sub.name, book_output_path=""
+                            )
+                            try:
+                                log.log(
+                                    f"Library: {_assemble_book(frame, sub_req, sub_audio, log)}"
+                                )
+                                built += 1
+                            except Exception as exc:  # noqa: BLE001 - keep building the rest
+                                errors += 1
+                                log.log(f"Library: {sub.name} failed: {exc}")
+                        book_summary = f"library: {built} audiobook(s) built"
+                        frame._wx.CallAfter(frame._set_status, book_summary)
+                        raise _BookStepDone
                     audio = scan_audio_folder(req.source_folder, recursive=req.recursive)
+                    if req.book_credits and files and req.book_title:
+                        # Best-effort spoken frame: opening/closing credits in the
+                        # run's own voice become the first and last chapters.
+                        from quill.core.speech.credits import synthesize_credit_files
+
+                        try:
+                            log.log("Audiobook: synthesizing opening/closing credits...")
+                            opening, closing = synthesize_credit_files(
+                                req.book_title,
+                                req.book_author,
+                                req.book_narrator,
+                                spec,
+                                ChapterAssembleOptions(output_format="wav"),
+                                temp_root / "credits",
+                            )
+                            audio = [opening, *audio, closing]
+                        except Exception as exc:  # noqa: BLE001 - credits never sink a book
+                            log.log(f"Audiobook: credits skipped ({exc})")
                     # Open the chapter editor when the user asked to review, or when
                     # there were no documents to synthesize (a pure pre-recorded folder,
                     # the old standalone builder's case). Cancelling skips the book.
@@ -917,6 +1062,8 @@ def _run(frame: Any, req: BatchSpeechRequest) -> None:
                     log.log("Assembling audiobook...")
                     book_summary = _assemble_book(frame, req, audio, log, plan=plan)
                     frame._wx.CallAfter(frame._set_status, book_summary)
+                except _BookStepDone:
+                    pass  # library mode built its books; the summary is already set
                 except _BookReviewCancelled:
                     pass  # user cancelled the review; keep the synthesized audio, skip the book
                 except Exception as exc:  # noqa: BLE001 - report, don't crash the run
@@ -927,6 +1074,8 @@ def _run(frame: Any, req: BatchSpeechRequest) -> None:
 
             # Persist any voices that failed this run so later runs skip them.
             save_blacklist(voice_blacklist)
+            if reuse_enabled and cache_entries:
+                save_cache(req.source_folder, cache_entries)
             log.log(
                 f"Done: {done} done, {skipped} skipped, {errors} error(s), "
                 f"{total_chapters} chapter(s). {book_summary}".strip()
@@ -962,26 +1111,37 @@ def _run(frame: Any, req: BatchSpeechRequest) -> None:
 
 
 def run_batch_export_to_speech(frame: Any) -> None:
-    """Entry point bound to the Tools > Speech > Batch Export menu item."""
+    """Entry point bound to Tools > Speech > Audio Studio."""
+    from quill.ui.audio_studio import show_audio_studio
 
-    def on_preview(req: BatchSpeechRequest) -> None:
-        if req.voice:
-            frame._preview_voice(req.engine, req.voice)
-        else:
-            frame._set_status("Choose a voice to preview")
-
-    dialog = BatchSpeechExportDialog(
-        frame.frame,
-        engine_options=_ENGINE_OPTIONS,
-        engine_available=_engine_available(frame),
-        voices_for=_voices_for,
-        on_preview=on_preview,
-        defaults=_defaults(frame),
-    )
-    request = dialog.show(frame._show_modal_dialog)
+    request = show_audio_studio(frame)
     if request is None:
-        frame._set_status("Batch speech export cancelled")
+        frame._set_status("Audio Studio cancelled")
         return
+    _remember_sources(request)  # source MRU writes
     _persist_choices(frame, request)
     _save_project_profile(frame, request)  # auto-remember this run for the project
     _run(frame, request)
+
+
+def _remember_sources(request: BatchSpeechRequest) -> None:
+    """Push the request's source folder onto the Audio Studio's source MRU.
+
+    Both the documents and audio journeys write the same MRU — the wizard
+    does not distinguish between "a folder of documents" and "a folder of
+    audio files" at the filesystem level, so remembering one list for both
+    is the right call. The MRU write is best-effort: a corrupt store does
+    not stop the run, it just means the next launch will not pre-populate
+    the dropdown.
+    """
+    folder = getattr(request, "source_folder", None)
+    if folder is None or not str(folder).strip():
+        return
+    try:
+        from pathlib import Path
+
+        from quill.core.recent import add_recent_audio_source_folder
+
+        add_recent_audio_source_folder(Path(folder), limit=10)
+    except Exception:  # noqa: BLE001 - MRU write is best-effort
+        pass

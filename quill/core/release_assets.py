@@ -120,6 +120,25 @@ ASSETS: dict[str, ReleaseAsset] = {
         license="LGPL-3.0/GPL-3.0 (liblouis); QUILL braille pack",
         version="quill-braille-pack",
     ),
+    # libmpv (the mpv playback library): the Audio Studio player's optional
+    # high-fidelity backend (gapless, exact seeking). Stable-anchored: the
+    # shinchiro 2025-12-28 weekly (mpv git a58dd8a), the first prebuilt
+    # published after the v0.41.0 stable tag — upstream publishes no DLL of
+    # the exact tag, so this is the closest stable artifact (v0.41.0 + one
+    # week of post-release fixes; DLL byte-identical to the upstream asset).
+    # mpv is GPLv2+; the prebuilt is effectively GPLv3, so the zip ships the
+    # GPL texts, mpv's Copyright, and a corresponding-source offer
+    # (README-SOURCE.txt) — same posture as the GPL liblouis pack. Never
+    # bundled; loaded via ctypes only when the user installs it.
+    "libmpv": ReleaseAsset(
+        component="libmpv",
+        tag="assets-v1",
+        filename="libmpv-pack.zip",
+        sha256="637c9a3db848f0cb156edf2d869bf5f658ce399f98f1e31b57bda8e2f2c0db9f",
+        expect_member="libmpv-2.dll",
+        license="GPLv3 (mpv GPLv2+; shinchiro mpv-winbuild prebuilt); source offer in zip",
+        version="mpv v0.41.0-era (git a58dd8a, 2025-12-28 weekly)",
+    ),
     # Optional Hunspell spell-check dictionaries (PRD 10.2.4). English (en_US) is
     # always bundled inside pyenchant; these add other languages on demand. Each
     # zip holds <lang>.dic/.aff plus the upstream license/readme, byte-pinned to a

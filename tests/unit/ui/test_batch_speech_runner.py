@@ -5,7 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 from types import SimpleNamespace
 
-from quill.ui.batch_speech_export_dialog import BatchSpeechRequest
+from quill.ui.audio_studio.request import BatchSpeechRequest
 from quill.ui.batch_speech_runner import (
     _book_output_path,
     _build_translator,
@@ -278,7 +278,7 @@ def test_resolve_chapter_sound_none_for_unknown_id(tmp_path: Path) -> None:
 
 
 def _req(folder: Path, **overrides: object):
-    from quill.ui.batch_speech_export_dialog import BatchSpeechRequest
+    from quill.ui.audio_studio.request import BatchSpeechRequest
 
     base = dict(
         source_folder=folder,

@@ -8,9 +8,10 @@ arrow across a row. F2/Enter edit a cell; Alt+arrows move rows/columns;
 Ctrl+Insert / Delete add or clear. The table can be inserted into the document
 as Markdown or HTML, and CSV files open straight into the grid (CSV Studio).
 
-Ported from ``docs/prototypes/tests/table_studio_proto``. This is an
-experimental opt-in (Preferences > Experimental); the MSAA cell navigation still
-needs real screen-reader validation on a packaged build.
+Ported from the retired Table Studio prototype (its macOS NSAccessibility
+design note survives at ``docs/design/table-studio-macos-nsaccessibility.md``).
+This is an experimental opt-in (Preferences > Experimental); the MSAA cell
+navigation still needs real screen-reader validation on a packaged build.
 """
 
 from __future__ import annotations

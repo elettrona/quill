@@ -74,6 +74,7 @@ _REVIEWED_PERSISTENCE: dict[str, str] = {
     "core/features.py::export_feature_profile_file": "export",
     "core/share_package.py::write_package_file": "export",
     "core/speech/batch_manifest.py::write_manifest": "export",
+    "core/speech/job_file.py::save_job": "export",
     "core/brf_sidecar.py::write_sidecar": "export",
     "io/illumination.py::write_illumination": "export",
     # --- secret (credential store) ---
@@ -83,8 +84,16 @@ _REVIEWED_PERSISTENCE: dict[str, str] = {
     "core/remote_sites.py::delete_password": "secret",
     "core/publishing.py::save_publishing_secret": "secret",
     # --- cache / recency / log (regenerable) ---
+    # Audio Studio: saved SFTP destinations and the folder feed's show settings
+    # are user-created, additive-shaped stores; the listening position and the
+    # incremental-rebuild fingerprints are regenerable.
+    "core/publish/destinations.py::save_destinations": "content",
+    "core/publish/feed_folder.py::save_feed_config": "content",
+    "core/speech/listening_positions.py::save_position_ms": "cache",
+    "core/speech/synth_cache.py::save_cache": "cache",
     "core/palette.py::save_palette_usage": "cache",
     "core/recent.py::save_recent_files": "cache",
+    "core/recent.py::_save_path_list": "cache",
     "core/search_history.py::add_search_term": "cache",
     "core/notifications.py::save_notifications": "cache",
     "core/notifications.py::clear_notifications": "cache",

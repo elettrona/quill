@@ -35,6 +35,7 @@
     "edit.insert_link": "Ctrl+K",
     "help.context_help": "Ctrl+Shift+Grave, Shift+H",
     "help.key_cheatsheet": "Alt+Shift+/",
-    "help.why_unavailable": "Alt+F1"
+    "help.why_unavailable": "Alt+F1",
+    "tools.speech_batch_export": ""
   }
 }

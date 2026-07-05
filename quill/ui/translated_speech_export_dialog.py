@@ -49,6 +49,9 @@ class TranslatedSpeechExportDialog:
 
         self._wx = wx
         self._result: TranslatedSpeechRequest | None = None
+        # The "Open in Audio Studio" button sets this rather than ``_result``
+        # so the runner can branch on a single public flag.
+        self.open_studio_requested: bool = False
         # Ordered (lang_code, engine, voice_id, display_label).
         self._targets: list[tuple[str, str, str, str]] = []
 
@@ -114,9 +117,16 @@ class TranslatedSpeechExportDialog:
         btn_row = wx.BoxSizer(wx.HORIZONTAL)
         ok = wx.Button(self.dialog, id=wx.ID_OK, label="&Export")
         cancel = wx.Button(self.dialog, id=wx.ID_CANCEL)
+        open_studio = wx.Button(self.dialog, label="Open in Audio &Studio")
+        open_studio.SetToolTip(
+            "Close this dialog and open the same document in the Audio Studio wizard, "
+            "where you can build a chaptered audiobook and publish it."
+        )
+        open_studio.Bind(wx.EVT_BUTTON, self._on_open_studio)
         ok.Bind(wx.EVT_BUTTON, self._on_ok)
         btn_row.AddStretchSpacer()
         btn_row.Add(ok, 0, wx.RIGHT, 6)
+        btn_row.Add(open_studio, 0, wx.RIGHT, 6)
         btn_row.Add(cancel, 0)
         root.Add(btn_row, 0, wx.EXPAND | wx.ALL, 10)
 
@@ -188,6 +198,13 @@ class TranslatedSpeechExportDialog:
         )
         evt.Skip()  # let ID_OK close the dialog
 
+    def _on_open_studio(self, _evt: object) -> None:
+        # Close the dialog and signal the runner to route to the Audio Studio.
+        # The button is always reachable — no target list required — so the
+        # cross-link works even from an empty dialog.
+        self.open_studio_requested = True
+        self.dialog.EndModal(self._wx.ID_CANCEL)
+
     # ------------------------------------------------------------------ public
 
     def show(
@@ -195,5 +212,8 @@ class TranslatedSpeechExportDialog:
     ) -> TranslatedSpeechRequest | None:
         code = show_modal_dialog(self.dialog, "Export to Translated Speech Audio")
         result = self._result if code == self._wx.ID_OK else None
+        # The "Open in Audio Studio" button routes through EndModal(ID_CANCEL) but
+        # sets ``open_studio_requested = True`` so the runner can branch on it.
+        # The dialog itself is destroyed here, regardless of how the modal closed.
         self.dialog.Destroy()
         return result

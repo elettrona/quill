@@ -165,5 +165,5 @@ No-go if any are missing.
 ## References
 
 - RELEASE.md
-- docs/planning/quill-macos-dmg-signing-and-notarization-plan.md
+- docs/release/quill-macos-signing-notarization-runbook.md
 - docs/release/macos-release-day-commands.ps1

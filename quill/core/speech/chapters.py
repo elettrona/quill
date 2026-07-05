@@ -20,7 +20,7 @@ loads without it and ``write_mp3_chapters`` raises a clear error if it is absent
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from pathlib import Path
 
 
@@ -32,6 +32,10 @@ class Chapter:
     title: str
     start_ms: int
     end_ms: int
+    #: Podcasting 2.0 extras: an optional link and image for this chapter.
+    #: Round-tripped through the ``…chapters.json`` sidecar; empty = omitted.
+    url: str = ""
+    image: str = ""
 
     @property
     def duration_ms(self) -> int:
@@ -134,6 +138,111 @@ def read_mp3_chapters(path: Path) -> list[Chapter]:
             )
         )
     return chapters
+
+
+class ChapterEditError(ValueError):
+    """A chapter edit (merge/split/retime) was not possible; message is speakable."""
+
+
+def _renumber(chapters: list[Chapter]) -> list[Chapter]:
+    return [replace(c, index=i) for i, c in enumerate(chapters)]
+
+
+def merge_chapter(chapters: list[Chapter], index: int) -> list[Chapter]:
+    """Remove the marker at *index*, merging that chapter into its neighbour.
+
+    The first chapter merges into the second (the first title is kept); any
+    other chapter merges into the previous one. Audio is never removed — only
+    the marker goes away. Ported from ChapterForge's editor.
+    """
+    n = len(chapters)
+    if n < 2:
+        raise ChapterEditError("There must be at least two chapters to merge.")
+    if not 0 <= index < n:
+        raise ChapterEditError("No chapter is selected.")
+    if index == 0:
+        merged = replace(chapters[0], end_ms=chapters[1].end_ms)
+        result = [merged, *chapters[2:]]
+    else:
+        prev = replace(chapters[index - 1], end_ms=chapters[index].end_ms)
+        result = [*chapters[: index - 1], prev, *chapters[index + 1 :]]
+    return _renumber(result)
+
+
+def split_chapter(
+    chapters: list[Chapter],
+    at_ms: int,
+    *,
+    title: str = "New chapter",
+    min_part_ms: int = 1000,
+) -> list[Chapter]:
+    """Insert a new boundary at *at_ms* — the split-at-playhead operation.
+
+    The chapter containing *at_ms* is cut in two; the left half keeps the
+    original title, the right half gets *title*. Raises
+    :class:`ChapterEditError` when the point is not inside a chapter or would
+    leave a sliver shorter than *min_part_ms* on either side.
+    """
+    for i, c in enumerate(chapters):
+        if c.start_ms < at_ms < c.end_ms:
+            if at_ms - c.start_ms < min_part_ms or c.end_ms - at_ms < min_part_ms:
+                raise ChapterEditError("That split point is too close to a chapter boundary.")
+            left = replace(c, end_ms=at_ms)
+            right = Chapter(
+                index=i + 1, title=title or "New chapter", start_ms=at_ms, end_ms=c.end_ms
+            )
+            return _renumber([*chapters[:i], left, right, *chapters[i + 1 :]])
+    raise ChapterEditError("The split point is not inside a chapter.")
+
+
+def set_chapter_start(
+    chapters: list[Chapter],
+    index: int,
+    new_start_ms: int,
+    *,
+    min_part_ms: int = 500,
+) -> list[Chapter]:
+    """Retime chapter *index*'s start (and the previous chapter's end).
+
+    Chapters stay contiguous and ordered; the new start must leave at least
+    *min_part_ms* of both the previous chapter and this one.
+    """
+    if not 0 <= index < len(chapters):
+        raise ChapterEditError("No chapter is selected.")
+    if index == 0:
+        raise ChapterEditError("The first chapter must start at the beginning.")
+    lo = chapters[index - 1].start_ms + min_part_ms
+    hi = chapters[index].end_ms - min_part_ms
+    if not lo <= new_start_ms <= hi:
+        from quill.core.speech.chapter_io import format_timestamp
+
+        raise ChapterEditError(
+            f"Start must be between {format_timestamp(lo)} and {format_timestamp(hi)}."
+        )
+    prev = replace(chapters[index - 1], end_ms=new_start_ms)
+    cur = replace(chapters[index], start_ms=new_start_ms)
+    return _renumber([*chapters[: index - 1], prev, cur, *chapters[index + 1 :]])
+
+
+def clamp_chapters(chapters: list[Chapter], total_ms: int) -> list[Chapter]:
+    """Clamp chapters to ``[0, total_ms]``, dropping any that fall entirely outside.
+
+    Guards a plan against a re-encode that shortened the audio (or an imported
+    list from a different edit of the file): starts/ends are clamped, empty
+    chapters are dropped, and the final chapter is extended to *total_ms* so
+    the whole timeline stays covered.
+    """
+    if total_ms <= 0:
+        return []
+    kept: list[Chapter] = []
+    for c in chapters:
+        start = max(0, min(c.start_ms, total_ms))
+        end = max(0, min(c.end_ms, total_ms))
+        if end > start:
+            kept.append(replace(c, start_ms=start, end_ms=end))
+    if kept:
+        kept[-1] = replace(kept[-1], end_ms=total_ms)
+    return _renumber(kept)
 
 
 @dataclass(slots=True)

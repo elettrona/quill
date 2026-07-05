@@ -86,12 +86,17 @@ def test_load_missing_returns_none(tmp_path: Path) -> None:
 
 def test_defaults_are_sane() -> None:
     p = SpeechProjectProfile()
-    assert p.version == 1
+    # v2 with the Phase 4-6 wizard fields added; older v1 documents still
+    # load via from_dict (see round3 test for the v1->v2 tolerance contract).
+    assert p.version == 2
     assert p.synthesizer.engine == "sapi5"
     assert p.output.format == "wav"
     assert p.chapters.mode == "none"
     assert p.pronunciation.enabled is True
     assert p.pronunciation.dictionaries == []
+    # The two new top-level booleans default to False.
+    assert p.book_credits is False
+    assert p.library_mode is False
 
 
 def test_from_dict_clamps_and_falls_back() -> None:

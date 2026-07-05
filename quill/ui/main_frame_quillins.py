@@ -1099,13 +1099,9 @@ class QuillinsMenuMixin:
             if sig.verified:
                 lines.append(f"Signature: verified, signed by {sig.signer_key_id}.")
             elif sig.signed:
-                lines.append(
-                    f"Signature: invalid ({sig.error or 'does not match publisher key'})."
-                )
+                lines.append(f"Signature: invalid ({sig.error or 'does not match publisher key'}).")
             else:
-                lines.append(
-                    "Signature: unsigned. This Quillin is not publisher-attested."
-                )
+                lines.append("Signature: unsigned. This Quillin is not publisher-attested.")
         except (OSError, ValueError) as exc:
             lines.append(f"Signature: check failed ({exc}).")
 

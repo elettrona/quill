@@ -324,6 +324,7 @@ class SpeechCommandsMixin:
             "ffmpeg": self.download_ffmpeg,
             "pandoc": self.download_pandoc,
             "braille": self.download_braille_pack,
+            "libmpv": self.download_libmpv,
         }
         action = actions.get(chosen)
         if action is not None:
@@ -381,6 +382,68 @@ class SpeechCommandsMixin:
                 on_done(ok)
 
         self._run_background_task("Downloading braille pack", _work, _finished)
+
+    def download_libmpv(self, *, on_done: Callable[[bool], None] | None = None) -> None:
+        """Fetch the mpv playback library for the Audio Studio player.
+
+        Pinned + SHA-256-verified via quill.core.release_assets (the zip carries
+        the GPL texts, mpv's Copyright, and a corresponding-source offer), on a
+        worker thread with live progress, blocked in Safe Mode. The Audio
+        Studio's player prefers libmpv automatically on its next open; nothing
+        else in QUILL changes."""
+        from quill.core.optional_components import _libmpv_installed
+
+        wx = self._wx
+        if bool(getattr(self, "_safe_mode", False)):
+            self._announce("Downloading components is disabled in Safe Mode.")
+            return
+        if _libmpv_installed():
+            again = self._show_message_box(
+                "The mpv player engine is already installed. Download QUILL's "
+                "verified copy again anyway?",
+                "mpv Player Engine",
+                wx.ICON_QUESTION | wx.YES_NO,
+            )
+            if again != wx.YES:
+                if on_done is not None:
+                    on_done(True)
+                return
+        proceed = self._show_message_box(
+            "QUILL will download the mpv playback library (about 44 MB) and verify "
+            "it. It upgrades the Audio Studio's player to gapless audio with exact "
+            "seeking; the built-in Windows engine keeps working without it. "
+            "Continue?",
+            "Download mpv Player Engine",
+            wx.ICON_INFORMATION | wx.YES_NO,
+        )
+        if proceed != wx.YES:
+            return
+
+        def _work(progress):
+            from quill.core.release_assets import fetch_component
+            from quill.core.speech.engine_install import engine_packs_dir
+
+            fetch_component(
+                "libmpv",
+                engine_packs_dir() / "mpv",
+                progress=lambda fraction, message: progress(message, int(fraction * 100), 100),
+                label="Downloading the mpv player engine...",
+            )
+            return True
+
+        def _finished(result: object) -> None:
+            ok = bool(result)
+            if ok:
+                self._announce(
+                    "mpv player engine installed. The Audio Studio's player will "
+                    "use it the next time it opens."
+                )
+            else:
+                self._announce("The mpv player engine could not be installed.")
+            if on_done is not None:
+                on_done(ok)
+
+        self._run_background_task("Downloading mpv player engine", _work, _finished)
 
     def download_pandoc(self, *, on_done: Callable[[bool], None] | None = None) -> None:
         """Fetch the official, pinned Pandoc build on demand (footprint unbundle).

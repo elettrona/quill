@@ -660,6 +660,9 @@ def default_registry(
     )
     registry.register(WhispererTranscribeAction(on_transcribe=on_transcribe))
     registry.register(CloudTranscribeAction())
+    from .watch_audiobook import BuildAudiobookAction
+
+    registry.register(BuildAudiobookAction())
     return registry
 
 

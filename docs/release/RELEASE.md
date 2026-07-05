@@ -169,8 +169,8 @@ gh run watch
 2. Rotate credentials before expiry and validate with a branch dry run.
 3. Keep at least two maintainers with documented recovery access.
 
-Reference planning doc:
-`docs/planning/quill-macos-dmg-signing-and-notarization-plan.md`
+Full runbook:
+`docs/release/quill-macos-signing-notarization-runbook.md`
 
 Quick operator checklist:
 `docs/release/macos-signed-notarized-release-day-checklist.md`

@@ -387,9 +387,7 @@ class MenuBuilderMixin:
         file_menu.Append(self._id_restore_backup, _("Restore &Backup..."))
         file_menu.Append(
             self._id_restore_previous_version,
-            self._menu_label(
-                _("Restore Previous &Version..."), "file.restore_previous_version"
-            ),
+            self._menu_label(_("Restore Previous &Version..."), "file.restore_previous_version"),
         )
         file_menu.AppendSeparator()
         # --- Current-file operations (Power Tools recirculation, menus.md Phase 4) ---
@@ -2033,7 +2031,7 @@ class MenuBuilderMixin:
         )
         speech_menu.Append(
             self._id_speech_batch_export,
-            self._menu_label(_("&Batch Export to Speech Audio..."), "tools.speech_batch_export"),
+            self._menu_label(_("&Audio Studio..."), "tools.speech_batch_export"),
         )
         speech_menu.Append(
             self._id_speech_pronunciations,

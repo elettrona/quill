@@ -9,8 +9,9 @@
 > QUILL voice interaction → PRD §5776 + user guide; Accessible Vault → PRD §5.89d).
 >
 > The Accessible Vault plan has been **retired**: Phases 0–7 shipped (feature-complete
-> for 0.9.0) and the feature now lives in `QUILL-PRD.md` §5.89d and the user guide; the
-> small remaining polish is §1.7 below.
+> for 0.9.0, no open work) and the feature now lives in `QUILL-PRD.md` §5.89d and the
+> user guide. The Audio Studio shipped the same way (PRD, user guide, release notes;
+> only the human validation pass remains, in `audio-studio-roadmap.md`).
 >
 > **Operating principle:** everything here is in scope to **ship** for 1.0 (except
 > rows explicitly marked 2.0). Simplicity for the screen-reader user is king. QUILL
@@ -18,8 +19,10 @@
 > optional and off by default. Platform scope is Windows (primary) and macOS
 > (supported).
 
-**Last consolidated:** 2026-07-02 (GLOW shipped as an experimental opt-in; OCR free local tiers shipped;
-locked-register GLOW block retired into the real docs).
+**Last consolidated:** 2026-07-05 (Audio Studio roadmap completed and folded into the
+canonical docs; libmpv hosted on assets-v1 and surfaced in Download Optional
+Components; completed sections — Accessible Vault, Quillin Hub, libmpv hosting —
+removed from this file).
 
 ---
 
@@ -29,9 +32,9 @@ QUILL is a screen-reader-first writing environment, becoming the home for a fami
 of accessibility products that Blind Information Technology Solutions (BITS) and
 CSE Designs built as separate apps. Rather than ship four editors, we **consolidate
 their durable value into QUILL** as optional, keyboard-clear, screen-reader-first
-feature families. Sibling products still feeding open work: **GLOW** (`s:\code\glow`,
-accessibility audit + agents) and **ChapterForge** (`c:\code\forum`, audio →
-chaptered audiobook). The discipline: take what clears QUILL's quality and
+feature families. The consolidation itself is **done** — BITS Whisperer, GLOW, and
+ChapterForge (now the Audio Studio) all live in QUILL; the only sibling still feeding
+open work is **GLOW**'s extended family (§5). The discipline: take what clears QUILL's quality and
 accessibility bar, re-home it on QUILL's invariants (atomic storage, the dialog
 contract, the announcement grammar, Safe Mode, the network-egress audit), and leave
 behind anything superseded or off-mission.
@@ -72,29 +75,21 @@ are unit-tested. **Still open:**
 - **macOS offline-speech parity** — a mac `whisper-cli`, or Faster Whisper as the mac
   default — the tracked cross-platform gap.
 
-### 1.2 GLOW — shipped as an experimental opt-in (2026-07-02)
+### 1.2 GLOW — open remainder
 
-The **GLOW accessibility suite shipped for 0.9.0** behind the Experimental tab
-(master switch + GLOW checkbox, both default off, no restart): `core.glow` is unlocked, the
-in-editor audit/fix commands are live, and the new **GLOW Audit File... / GLOW Fix
-File...** commands run the shared engine (DOCX, PPTX, XLSX, PDF, EPUB) on the
-background task pool with non-destructive fixed copies. The engine deployment
-contract was hardened (`quill-glow-core[glow]>=0.1.1` + `acb-large-print>=8.0.0`).
-Canonical docs: **PRD §5.92**, user guide "GLOW Workflows Inside QUILL", release
-notes. Only the *extended* GLOW family (ACB large-print document audit, #528–#534,
-the WATCH-8 watch action #566) remains future — see §5.
+GLOW shipped for 0.9.0 (canonical: PRD §5.92, user guide, release notes). Open:
+only the *extended* family — ACB large-print document audit (#528–#534) and the
+WATCH-8 watch action (#566) — see §5.
 
 ### 1.3 Platform & distribution
 
-- The Quillin Hub (#517); plugin capability + signing + marketplace (#519) — the
-  latter gated on the third-party-plugin sandbox (§2).
-- **Agent harnesses — shipped** (PRD §5.84e; user guide "AI engines"; release
-  notes): the Native harness plus on-demand Copilot / OpenAI Agents / Claude
-  Agent packs, surfaced in the AI Setup Wizard and AI Hub Engines tab. One
-  optional deploy nicety remains: register a GitHub OAuth App and provide its
+- **Copilot OAuth deploy nicety**: register a GitHub OAuth App and provide its
   client id via `QUILL_GITHUB_CLIENT_ID` at build time to light the in-app
-  spoken device-code Copilot sign-in. Without it Copilot still works via the
-  Copilot/GitHub CLI sign-in, so this is an enhancement, not a blocker.
+  spoken device-code Copilot sign-in (the Copilot/GitHub CLI sign-in already
+  works without it — enhancement, not blocker). Everything else in this
+  workstream (Quillin Hub + signing #517/#519, agent harnesses) shipped;
+  canonical docs: `docs/signing.md`, `docs/release/quillin-hub-deployment.md`,
+  PRD §5.84e.
 - **Deferred to 2.0** (tracker #680): the Windows 11 modern primary-menu
   `IExplorerCommand` pass (SHELL-3, #525).
 
@@ -105,34 +100,19 @@ tutorials, the podcast/walkthrough series, and content-quality follow-ups
 (#535–#564, #505, #522). Long-horizon ecosystem (#590) and collaboration (#592)
 ideas park here.
 
-### 1.5 Native accessible Table Studio — shipped (experimental)
+### 1.5 Table Studio — open follow-ups
 
-Table Studio shipped as an experimental opt-in: one screen-reader-first
-accessible grid (virtual `wx.ListCtrl` + MSAA, plus an optional compiled native
-UIA provider) for building a table or opening a CSV, with cell navigation that
-speaks the column, a full context menu (sort asc/desc, insert/delete/move rows,
-insert/delete columns, rename/promote headers, row-header toggle), industry-
-standard `<th scope>` markup, and Markdown/HTML/CSV round-trip. The CSV grid
-path (the CSV-grid half of #514) consolidates onto it when enabled. Canonical
-docs: **PRD §5.4.14**, user guide ("Table Studio"), CHANGELOG, release notes.
-Open follow-up: make the CSV a first-class editable *document tab* (retire the
-legacy `CsvGridSurface`), and a real screen-reader validation pass on a packaged
-build.
+Table Studio shipped as an experimental opt-in (canonical: PRD §5.4.14, user
+guide, release notes; a macOS NSAccessibility bridge design note is preserved
+at `docs/design/table-studio-macos-nsaccessibility.md`). Open: make the CSV a
+first-class editable *document tab* (retire the legacy `CsvGridSurface`), and a
+real screen-reader validation pass on a packaged build.
 
 ### 1.6 ElevenLabs — remaining 2.0 extras
 
-Speech-to-text (Quillin), audiobook-grade **Batch Export** TTS, and a selectable **Read
-Aloud voice** (per-session consent, Safe-Mode gated) all shipped. What remains is
-2.0-deferred: live streaming Read Aloud refinements, voice management / cloning /
-design, server-side pronunciation, and Tier-3 surfaces — all in §5. Voice **cloning**
-is deliberately descoped (QUILL narrates with the account's existing voices).
-
-### 1.7 Accessible Vault — complete
-
-The Accessible Vault is **complete for 0.9.0** — Phases 0–7 plus all former "remaining
-polish" (completion, live-preview resolution, Vault Explorer, incremental indexing)
-shipped. Canonical docs: `QUILL-PRD.md` §5.89d, user guide (Tools > Vault), changelog,
-release notes. No open Vault work remains.
+Everything 1.0-scoped shipped. What remains is 2.0-deferred — live streaming
+Read Aloud refinements, voice management, server-side pronunciation, Tier-3
+surfaces — all in §5. Voice **cloning** stays deliberately descoped.
 
 ---
 
@@ -194,6 +174,11 @@ validation**, handled in the normal QA pass rather than tracked as release block
   matching file into a running profile, or enable "Process existing files").
 - **Snapshots vs Versions** — a live repro of the reported empty-submenu render (toggle
   the `core.notebook` / `core.recovery` flags); the user-facing "Versions" rename is done.
+- **Save As conversion (shipped 2026-07-04)** — the manual JAWS/NVDA spot checks for the
+  Save As conversion / window-title / export-fidelity fix (the retired plan's Task 9);
+  the step-by-step script is SAVE-001 in
+  [`docs/release/screen-reader-test-plan.md`](../release/screen-reader-test-plan.md), and
+  the converter verdicts live in [`docs/qa/converter-bakeoff.md`](../qa/converter-bakeoff.md).
 
 Excluded per direction: all table work (§1.5 + the CSV-grid half of #514).
 
@@ -201,17 +186,15 @@ Excluded per direction: all table work (§1.5 + the CSV-grid half of #514).
 
 ## 4. Planned phase outcomes
 
-What the user will notice as the open work lands, screen-reader experience first.
+What the user will notice as the remaining open work lands, screen-reader
+experience first.
 
-- **Phase 3 — An AI that helps without taking over.** One coherent AI Hub; agents that
-  read your selection and propose edits you preview and undo in one step — never silent
-  changes. *Powerful help that stays reviewable, undoable, and spoken.*
-- **Phase 4 — Move faster + publish further.** Structured Word/CSV views and the Table
-  Studio surface (§1.5); broader publishing, e.g. direct publishing to external
-  platforms (#140); the extended GLOW family (§5). *Faster keyboard navigation and
-  accessible publishing.*
-- **Phase 5 — Solid on Windows and macOS.** The Quillin hub (§1.3); better docs/tutorials
-  (§1.4). *A dependable, well-documented product on its supported platforms.*
+- **Move faster + publish further.** The CSV document-tab consolidation (§1.5);
+  direct publishing to external platforms (#140, gated in §2); the extended
+  GLOW family (§5). *Faster keyboard navigation and accessible publishing.*
+- **Solid on Windows and macOS.** Footprint sign-off on real hardware (§1.1),
+  macOS offline-speech parity, better docs/tutorials (§1.4). *A dependable,
+  well-documented product on its supported platforms.*
 
 ---
 
@@ -329,9 +312,9 @@ profiles (#426)**.
 | AI footprint & optimization (§1.1) | Live-app smoke test; Phase 1 installer-size build; Phase 0 committed numbers; macOS speech parity. |
 | GLOW (§1.2) | **Shipped 0.9.0 (experimental opt-in).** Extended family (ACB audit profiles #528–#534, WATCH-8 #566) in §5. |
 | OCR / document conversion (PRD §5.93) | **Free local tiers shipped 0.9.0.** Cloud tier, OCR Review Mode, Services tab in §5. |
-| Platform & distribution (§1.3) | #517, #519; #525 deferred to 2.0 (#680). |
+| Platform & distribution (§1.3) | Copilot OAuth client id (deploy nicety); #525 deferred to 2.0 (#680). |
 | Docs & content (§1.4) | #535–#564, #505, #522, #590, #592. |
 | Table Studio (§1.5) | **Shipped 0.9.0 (experimental opt-in).** Open follow-ups: CSV as an editable document tab; real screen-reader validation pass. |
 | ElevenLabs 2.0 extras (§1.6) | Live streaming Read Aloud, voice management, Tier-3 — all §5. |
-| Accessible Vault (§1.7) | **Complete for 0.9.0** — no open work. |
+| Audio Studio | **Shipped during the beta (all ten roadmap items).** Open: the human validation pass (`audio-studio-roadmap.md`) + episode-24 audio regeneration. |
 | Locked features (§2) | Voice Commands, Rich Text Lens, Publishing (send), Third-Party Plugins (`bw_whisperer` kept locked/inert — not removed). |
