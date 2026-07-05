@@ -25,6 +25,7 @@ class StartPage(StudioPage):
             choices=[
                 _("Narrate documents into an audiobook or speech audio"),
                 _("Combine audio files into one chaptered audiobook"),
+                _("Edit an existing audiobook (chapters, tags, and cover)"),
             ],
             majorDimension=1,
             style=wx.RA_SPECIFY_COLS,
@@ -40,7 +41,9 @@ class StartPage(StudioPage):
                     "Narrating documents reads Word, Markdown, HTML, or text files\n"
                     "aloud with any QUILL voice, one chapter per document or heading.\n"
                     "Combining audio files merges a folder of recordings into one\n"
-                    "book, one chapter per file, with a review step before the merge."
+                    "book, one chapter per file, with a review step before the merge.\n"
+                    "Editing opens a finished MP3 or M4B in the Chapter Workbench:\n"
+                    "listen, rename, split at the playhead, retime, fix tags, save."
                 ),
                 name="audio_studio.start_explainer",
             ),

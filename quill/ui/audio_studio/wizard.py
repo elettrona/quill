@@ -20,11 +20,12 @@ from __future__ import annotations
 import dataclasses
 import logging
 from collections.abc import Callable
+from pathlib import Path
 
 import wx
 
 from quill.core.i18n import _
-from quill.ui.audio_studio.pages_audio import AudioSourcePage
+from quill.ui.audio_studio.pages_audio import AudioSourcePage, EditSourcePage
 from quill.ui.audio_studio.pages_base import StudioPage
 from quill.ui.audio_studio.pages_documents import (
     ChaptersPage,
@@ -82,6 +83,7 @@ class AudioStudioWizard(wx.Dialog):
         self.book = BookPage(self, defaults, forced=False)
         self.audio_source = AudioSourcePage(self, defaults)
         self.audio_book = BookPage(self, defaults, forced=True)
+        self.edit_source = EditSourcePage(self)
         self.summary = SummaryPage(self)
 
         self._sequences: dict[str, list[StudioPage]] = {
@@ -100,6 +102,10 @@ class AudioStudioWizard(wx.Dialog):
                 self.audio_book,
                 self.summary,
             ],
+            "edit": [
+                self.start_page,
+                self.edit_source,
+            ],
         }
         self._all_pages: list[StudioPage] = [
             self.start_page,
@@ -110,6 +116,7 @@ class AudioStudioWizard(wx.Dialog):
             self.book,
             self.audio_source,
             self.audio_book,
+            self.edit_source,
             self.summary,
         ]
         self.start_page.bind_journey_changed(self._on_journey_changed)
@@ -212,6 +219,9 @@ class AudioStudioWizard(wx.Dialog):
         self._next_btn.Show(idx < total - 1)
         self._skip_btn.Show(0 < idx < total - 2)
         self._start_btn.Show(idx == total - 1)
+        self._start_btn.SetLabel(
+            str(_("&Open in Workbench")) if self.journey() == "edit" else str(_("&Start"))
+        )
         self.Layout()
 
     def _focus_current_page(self) -> None:
@@ -256,7 +266,10 @@ class AudioStudioWizard(wx.Dialog):
                 self._show_page(idx)
                 show_message_box(message, _("Please complete this step"), wx.ICON_INFORMATION, self)
                 return
-        self._result = self.build_request()
+        # The edit journey opens the Workbench instead of running a batch; the
+        # caller reads edit_path() and no request is produced.
+        if self.journey() != "edit":
+            self._result = self.build_request()
         self.EndModal(wx.ID_OK)
 
     # -- result ---------------------------------------------------------------------
@@ -273,33 +286,6 @@ class AudioStudioWizard(wx.Dialog):
         """The collected request after a Start, else ``None``."""
         return self._result
 
-
-def run_audio_studio_wizard(
-    parent: wx.Window,
-    *,
-    defaults: BatchSpeechRequest,
-    engine_options: EngineOptions,
-    engine_available: dict[str, bool],
-    voices_for: VoicesFor,
-    on_preview: Callable[[str, str], None],
-    announce_cb: Callable[[str], None] | None = None,
-    show_modal_fn: Callable[[object, str], int] | None = None,
-) -> BatchSpeechRequest | None:
-    """Open the Audio Studio wizard; return the request on Start, None on cancel."""
-    dlg = AudioStudioWizard(
-        parent,
-        defaults=defaults,
-        engine_options=engine_options,
-        engine_available=engine_available,
-        voices_for=voices_for,
-        on_preview=on_preview,
-        announce_cb=announce_cb,
-    )
-    try:
-        if show_modal_fn is not None:
-            code = show_modal_fn(dlg, str(_("QUILL Audio Studio")))
-        else:
-            code = dlg.ShowModal()
-        return dlg.result() if code == wx.ID_OK else None
-    finally:
-        dlg.Destroy()
+    def edit_path(self) -> Path | None:
+        """The audiobook chosen in the edit journey (None for the other journeys)."""
+        return self.edit_source.chosen_path() if self.journey() == "edit" else None

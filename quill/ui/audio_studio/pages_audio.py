@@ -73,3 +73,62 @@ class AudioSourcePage(StudioPage):
         if not text or not Path(text).is_dir():
             return False, _("Choose a folder of audio files that exists.")
         return True, ""
+
+
+class EditSourcePage(StudioPage):
+    """Open a book: pick the finished MP3 or M4B to edit in the Workbench."""
+
+    def __init__(self, parent: wx.Window) -> None:
+        super().__init__(
+            parent,
+            "audio_studio.edit_source",
+            _("Open a book"),
+            _(
+                "Pick a chaptered MP3 or M4B. It opens in the Chapter Workbench,"
+                " where you can listen, rename, split at the playhead, retime"
+                " boundaries, fix the tags, and save."
+            ),
+        )
+        self.add_label(_("&Audiobook file:"))
+        row = wx.BoxSizer(wx.HORIZONTAL)
+        self.file = wx.TextCtrl(self)
+        self.file.SetName(_("Audiobook file"))
+        browse = wx.Button(self, label=_("B&rowse..."))
+        browse.Bind(wx.EVT_BUTTON, self._on_browse)
+        row.Add(self.file, 1, wx.EXPAND | wx.RIGHT, 6)
+        row.Add(browse, 0)
+        self.sizer.Add(row, 0, wx.EXPAND | wx.LEFT | wx.RIGHT, 12)
+
+        self.sizer.Add(
+            wx.StaticText(
+                self,
+                label=_(
+                    "An MP3 saves its edits in place (the audio is untouched).\n"
+                    "An M4B saves as a new file, losslessly. A file with no chapter\n"
+                    "markers opens as one chapter, ready to split up."
+                ),
+                name="audio_studio.edit_source_note",
+            ),
+            flag=wx.ALL,
+            border=12,
+        )
+
+    def _on_browse(self, _evt: wx.Event) -> None:
+        with wx.FileDialog(
+            self,
+            _("Open an audiobook"),
+            wildcard=_("Audiobooks (*.mp3;*.m4b;*.m4a)|*.mp3;*.m4b;*.m4a|All files (*.*)|*.*"),
+            style=wx.FD_OPEN | wx.FD_FILE_MUST_EXIST,
+        ) as dlg:
+            if dlg.ShowModal() == wx.ID_OK:  # GATE-42-OK: native file picker
+                self.file.SetValue(dlg.GetPath())
+
+    def chosen_path(self) -> Path | None:
+        text = self.file.GetValue().strip()
+        return Path(text) if text else None
+
+    def is_valid(self) -> tuple[bool, str]:
+        path = self.chosen_path()
+        if path is None or not path.is_file():
+            return False, _("Choose an audiobook file that exists.")
+        return True, ""

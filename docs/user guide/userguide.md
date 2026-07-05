@@ -2539,6 +2539,18 @@ The first page asks what you want to make:
 
 - **Narrate documents into an audiobook or speech audio** — the steps are: What should I read? (folder, file types, filters) → Who should read it? (engine, voice with a preview button, pace, round-robin voices, translated editions) → How should chapters work? (chapter mode, spoken headings, the transition sounder and its volume, pauses) → Output and diagnostics (format, existing-file policy, loudness, dry run, temp folder) → the book page (optional: assemble everything into one audiobook) → a plain-language summary.
 - **Combine audio files into one chaptered audiobook** — a shorter path: pick the folder of recordings, describe the book (title, author, narrator, cover, M4B or MP3, ACX loudness), review the summary, and Start. Each file becomes one chapter and you always review the chapter list before the book is built.
+- **Edit an existing audiobook** — pick a finished MP3 or M4B and it opens in the **Chapter Workbench** (below). A file with no chapter markers opens as a single chapter, ready to split up.
+
+### The Chapter Workbench
+
+The Workbench is where a finished audiobook gets fixed by ear. The chapter list reads each row in full ("3. The Long Road — starts 1:02:03, runs 12:40"); press Enter on a chapter to hear it. The built-in **player** has Play/Pause, Stop, Previous/Next chapter, Rewind/Forward, a position slider that speaks minutes and seconds, and a volume slider; the current chapter is announced as playback crosses into it.
+
+- **Split at playhead** — listen for the spot where a chapter should begin, pause there, press the button: the chapter is cut in two exactly at the playhead. This is how you fix a book whose chapters landed in the wrong places.
+- **Set start to playhead** — retime an existing boundary: select the chapter, park the playhead where it should start, press. The previous chapter's end moves with it, so the timeline always stays contiguous.
+- **Merge into previous**, **Rename** (type and press Enter), and **Restore original** (one press undoes every edit) round out the surgery.
+- **Import chapters...** replaces the whole list from Audacity labels, a CUE sheet, timestamp lines, Podcasting 2.0 JSON, or CSV; **Export chapters...** writes the list in any of the same five formats.
+- **Book details** (title, author, narrator, genre, year) are edited right in the dialog.
+- **Save** writes an MP3's edits **in place** — only the tags are rewritten; the audio is untouched. An M4B is saved with **Save As** instead: a lossless re-mux (no re-encode, no quality loss) into a new file. Long saves run in the background so QUILL stays responsive.
 
 Each step is announced as you arrive ("Step 2 of 7: What should I read?"), **Back** and **Next** move between steps, and **Skip to summary** jumps ahead when your saved project profile already fills every page — a repeat run is three keystrokes. The conversion runs on a background task with per-file progress that you can cancel, using the same shared speech pipeline live Read Aloud uses — so the voice you audition is the voice you get.
 

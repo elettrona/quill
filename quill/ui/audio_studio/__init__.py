@@ -1,10 +1,12 @@
 """QUILL Audio Studio — the guided audio-production surface.
 
-One studio, multiple journeys: narrate documents into chaptered speech audio
-or an audiobook; combine a folder of recordings into one chaptered master.
-The wizard collects a :class:`~quill.ui.audio_studio.request.BatchSpeechRequest`
-and the existing ``quill.ui.batch_speech_runner`` executes it — the Studio is
-the front door, not a second pipeline.
+One studio, three journeys: narrate documents into chaptered speech audio or
+an audiobook; combine a folder of recordings into one chaptered master; open
+an existing book in the Chapter Workbench (player + chapter surgery + tags).
+The first two journeys collect a
+:class:`~quill.ui.audio_studio.request.BatchSpeechRequest` and the existing
+``quill.ui.batch_speech_runner`` executes it — the Studio is the front door,
+not a second pipeline.
 """
 
 from __future__ import annotations
@@ -19,12 +21,16 @@ def show_audio_studio(frame: object) -> BatchSpeechRequest | None:
 
     Wires the wizard to the frame's engine catalog, voice lists, voice preview,
     defaults (global settings overlaid by the folder's project profile), the
-    screen-reader announcer, and ``_show_modal_dialog``. Returns ``None`` on
-    cancel. Imported lazily by the runner so a headless import stays wx-free.
+    screen-reader announcer, and ``_show_modal_dialog``. The edit journey opens
+    the Chapter Workbench directly and returns ``None`` (there is no batch to
+    run); cancel also returns ``None``. Imported lazily by the runner so a
+    headless import stays wx-free.
     """
+    import wx
+
     from quill.core.i18n import _
     from quill.ui import batch_speech_runner as runner
-    from quill.ui.audio_studio.wizard import run_audio_studio_wizard
+    from quill.ui.audio_studio.wizard import AudioStudioWizard
 
     def on_preview(engine: str, voice: str) -> None:
         if voice:
@@ -32,7 +38,7 @@ def show_audio_studio(frame: object) -> BatchSpeechRequest | None:
         else:
             frame._set_status(str(_("Choose a voice to preview")))
 
-    return run_audio_studio_wizard(
+    dlg = AudioStudioWizard(
         frame.frame,
         defaults=runner._defaults(frame),
         engine_options=runner._ENGINE_OPTIONS,
@@ -40,5 +46,16 @@ def show_audio_studio(frame: object) -> BatchSpeechRequest | None:
         voices_for=runner._voices_for,
         on_preview=on_preview,
         announce_cb=frame._announce,
-        show_modal_fn=frame._show_modal_dialog,
     )
+    try:
+        code = frame._show_modal_dialog(dlg, str(_("QUILL Audio Studio")))
+        edit_path = dlg.edit_path() if code == wx.ID_OK else None
+        request = dlg.result() if code == wx.ID_OK else None
+    finally:
+        dlg.Destroy()
+    if edit_path is not None:
+        from quill.ui.audio_studio.chapter_workbench import open_book_in_workbench
+
+        open_book_in_workbench(frame, edit_path)
+        return None
+    return request

@@ -368,3 +368,24 @@ def test_summary_reflects_choices(wx_app, tmp_path):
     finally:
         dlg.Destroy()
         frame.Destroy()
+
+
+def test_journey_edit_sequence_and_path(wx_app, tmp_path):
+    frame, dlg = _make(wx_app, tmp_path)
+    try:
+        dlg.start_page._journey.SetSelection(2)
+        assert dlg.journey() == "edit"
+        names = [p.GetName() for p in dlg._sequence()]
+        assert names == ["audio_studio.start", "audio_studio.edit_source"]
+        book = tmp_path / "book.mp3"
+        book.write_bytes(b"stub")
+        dlg.edit_source.file.SetValue(str(book))
+        assert dlg.edit_path() == book
+        ok, _msg = dlg.edit_source.is_valid()
+        assert ok
+        dlg.edit_source.file.SetValue(str(tmp_path / "missing.mp3"))
+        ok, msg = dlg.edit_source.is_valid()
+        assert not ok and msg
+    finally:
+        dlg.Destroy()
+        frame.Destroy()
