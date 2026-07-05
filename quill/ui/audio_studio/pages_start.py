@@ -12,7 +12,7 @@ from quill.ui.audio_studio.request import JOURNEYS
 class StartPage(StudioPage):
     """Page 1: what would you like to make?"""
 
-    def __init__(self, parent: wx.Window) -> None:
+    def __init__(self, parent: wx.Window, *, initial_journey: str = "documents") -> None:
         super().__init__(
             parent,
             "audio_studio.start",
@@ -31,7 +31,14 @@ class StartPage(StudioPage):
             style=wx.RA_SPECIFY_COLS,
             name="audio_studio.journey",
         )
-        self._journey.SetSelection(0)
+        # Pre-select the journey the user used last (remembered journey).
+        # Falls back to "documents" (the first option) for any unknown
+        # value so a stale setting never strands the wizard.
+        try:
+            initial_idx = JOURNEYS.index(initial_journey)
+        except ValueError:
+            initial_idx = 0
+        self._journey.SetSelection(initial_idx)
         self.sizer.Add(self._journey, flag=wx.EXPAND | wx.LEFT | wx.RIGHT, border=12)
 
         self.sizer.Add(

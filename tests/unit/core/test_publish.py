@@ -3,8 +3,16 @@
 from __future__ import annotations
 
 from pathlib import Path
+from types import SimpleNamespace
 
-from quill.core.publish.auphonic import ProductionStatus, _multipart
+import pytest
+
+from quill.core.publish.auphonic import (
+    AuphonicCancelled,
+    ProductionStatus,
+    _multipart,
+    _ProgressReader,
+)
 from quill.core.publish.destinations import (
     DestinationStore,
     SftpDestination,
@@ -111,6 +119,189 @@ def test_auphonic_multipart_shape(tmp_path: Path) -> None:
     assert b'filename="a.mp3"' in body
     assert b"AUDIO" in body
     assert body.endswith(f"--{boundary}--\r\n".encode())
+
+
+def test_progress_reader_reports_and_streams() -> None:
+    seen: list[tuple[int, int]] = []
+    reader = _ProgressReader(b"abcdefghij", lambda done, total: seen.append((done, total)), None)
+    assert reader.read(4) == b"abcd"
+    assert reader.read(4) == b"efgh"
+    assert reader.read(4) == b"ij"
+    assert reader.read(4) == b""
+    assert seen == [(4, 10), (8, 10), (10, 10)]
+
+
+def test_progress_reader_cancel_aborts_before_sending() -> None:
+    cancelled = {"flag": False}
+    reader = _ProgressReader(b"abcdef", None, lambda: cancelled["flag"])
+    assert reader.read(3) == b"abc"
+    cancelled["flag"] = True
+    with pytest.raises(AuphonicCancelled):
+        reader.read(3)
+
+
+def _fake_sftp_connection(puts: list[dict[str, object]], *, blocks: list[tuple[int, int]]):
+    """A stand-in for quill.core.ssh.client.connect returning a put-recorder."""
+
+    class FakeSftp:
+        def put(self, local: str, remote: str, confirm: bool = True, callback=None) -> None:
+            puts.append({"local": local, "remote": remote, "callback": callback})
+            if callback is not None:
+                for sent, total in blocks:
+                    callback(sent, total)
+
+    class FakeConnection:
+        service = SimpleNamespace(_sftp=FakeSftp())
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args: object) -> None:
+            return None
+
+    return FakeConnection()
+
+
+def test_publish_files_reports_bytes_per_file(tmp_path: Path, monkeypatch) -> None:
+    import quill.core.ssh.client as ssh_client
+    from quill.core.publish.sftp_publish import publish_files
+
+    book = tmp_path / "book.m4b"
+    book.write_bytes(b"x" * 10)
+    puts: list[dict[str, object]] = []
+    monkeypatch.setattr(
+        ssh_client,
+        "connect",
+        lambda *a, **k: _fake_sftp_connection(puts, blocks=[(5, 10), (10, 10)]),
+    )
+    seen: list[tuple[str, int, int]] = []
+    dest = SftpDestination(name="d", host="h", username="u", remote_dir="/pod")
+    remote = publish_files(
+        dest,
+        [book],
+        "pw",
+        on_bytes=lambda name, sent, total: seen.append((name, sent, total)),
+    )
+    assert remote == ["/pod/book.m4b"]
+    assert seen == [("book.m4b", 5, 10), ("book.m4b", 10, 10)]
+
+
+def test_publish_files_cancel_raises_publish_cancelled(tmp_path: Path, monkeypatch) -> None:
+    import quill.core.ssh.client as ssh_client
+    from quill.core.publish.sftp_publish import PublishCancelled, publish_files
+
+    book = tmp_path / "book.m4b"
+    book.write_bytes(b"x" * 10)
+    puts: list[dict[str, object]] = []
+    monkeypatch.setattr(
+        ssh_client,
+        "connect",
+        lambda *a, **k: _fake_sftp_connection(puts, blocks=[(5, 10)]),
+    )
+    dest = SftpDestination(name="d", host="h", username="u", remote_dir="/pod")
+    with pytest.raises(PublishCancelled):
+        publish_files(dest, [book], "pw", is_cancelled=lambda: True)
+
+
+def test_feed_config_round_trip(tmp_path: Path) -> None:
+    from quill.core.publish.feed_folder import (
+        FeedFolderConfig,
+        load_feed_config,
+        save_feed_config,
+    )
+
+    config = FeedFolderConfig(
+        title="My Show",
+        author="Jane",
+        description="A show",
+        media_base="https://e.com/pod",
+        feed_url="https://e.com/pod/feed.rss",
+        cover_url="https://e.com/pod/cover.jpg",
+    )
+    config.episode("ep1.mp3").description = "The first one"
+    save_feed_config(tmp_path, config)
+    loaded = load_feed_config(tmp_path)
+    assert loaded.title == "My Show" and loaded.media_base == "https://e.com/pod"
+    assert loaded.episodes["ep1.mp3"].description == "The first one"
+    assert load_feed_config(tmp_path / "nowhere").title == ""
+
+
+def test_folder_feed_items_order_urls_and_dates(tmp_path: Path) -> None:
+    import os
+
+    from quill.core.publish.feed_folder import FeedFolderConfig, folder_feed_items
+
+    older = tmp_path / "b-older.mp3"
+    newer = tmp_path / "a-newer.m4b"
+    older.write_bytes(b"x" * 10)
+    newer.write_bytes(b"y" * 20)
+    os.utime(older, (1_600_000_000, 1_600_000_000))
+    os.utime(newer, (1_700_000_000, 1_700_000_000))
+    newer.with_suffix(".chapters.json").write_text('{"chapters": []}', encoding="utf-8")
+    (tmp_path / "notes.txt").write_text("not audio", encoding="utf-8")
+
+    config = FeedFolderConfig(media_base="https://e.com/pod/")
+    config.episode("b-older.mp3").description = "Origins"
+    items = folder_feed_items(tmp_path, config)
+    assert [i.path.name for i in items] == ["b-older.mp3", "a-newer.m4b"]
+    assert items[0].media_url == "https://e.com/pod/b-older.mp3"
+    assert items[0].description == "Origins"
+    assert items[1].has_chapters and not items[0].has_chapters
+    assert items[0].pub_date.endswith("+0000") and "2020" in items[0].pub_date
+
+
+def test_write_folder_feed_and_show_notes(tmp_path: Path) -> None:
+    from quill.core.publish.feed_folder import (
+        FeedFolderConfig,
+        write_folder_feed,
+        write_show_notes,
+    )
+
+    (tmp_path / "ep1.mp3").write_bytes(b"x" * 10)
+    (tmp_path / "ep2.mp3").write_bytes(b"y" * 10)
+    config = FeedFolderConfig(title="My Show", author="Jane", media_base="https://e.com/pod")
+    config.episode("ep1.mp3").description = "About <things>"
+    written, count = write_folder_feed(tmp_path, config)
+    assert written.name == "feed.rss" and count == 2
+    xml = written.read_text(encoding="utf-8")
+    assert xml.count("<item>") == 2
+    assert "https://e.com/pod/ep1.mp3" in xml and "isPermaLink" in xml
+
+    notes = write_show_notes(tmp_path, config)
+    text = notes.read_text(encoding="utf-8")
+    assert "<h1>My Show</h1>" in text
+    assert "<h2>Episode 1:" in text and "<h2>Episode 2:" in text
+    assert "About &lt;things&gt;" in text  # descriptions are escaped
+
+
+def test_write_folder_feed_refuses_empty_folder(tmp_path: Path) -> None:
+    from quill.core.publish.feed_folder import FeedFolderConfig, write_folder_feed
+
+    with pytest.raises(ValueError):
+        write_folder_feed(tmp_path, FeedFolderConfig(media_base="https://e.com"))
+
+
+def test_auphonic_account_info_parses(monkeypatch) -> None:
+    import quill.core.publish.auphonic as auphonic
+
+    monkeypatch.setattr(
+        auphonic,
+        "_json",
+        lambda url, token, **k: {"data": {"username": "jeff", "credits": 3.5}},
+    )
+    info = auphonic.account_info("tok")
+    assert info.username == "jeff" and info.credits == 3.5
+
+
+def test_auphonic_account_info_tolerates_junk_credits(monkeypatch) -> None:
+    import quill.core.publish.auphonic as auphonic
+
+    monkeypatch.setattr(
+        auphonic,
+        "_json",
+        lambda url, token, **k: {"data": {"username": "jeff", "credits": "lots"}},
+    )
+    assert auphonic.account_info("tok").credits == 0.0
 
 
 def test_auphonic_status_flags() -> None:

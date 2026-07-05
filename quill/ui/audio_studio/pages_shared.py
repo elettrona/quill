@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from pathlib import Path
 
 import wx
@@ -25,7 +26,12 @@ class BookPage(StudioPage):
     """
 
     def __init__(
-        self, parent: wx.Window, defaults: BatchSpeechRequest, *, forced: bool = False
+        self,
+        parent: wx.Window,
+        defaults: BatchSpeechRequest,
+        *,
+        forced: bool = False,
+        source_provider: Callable[[], BatchSpeechRequest] | None = None,
     ) -> None:
         super().__init__(
             parent,
@@ -34,6 +40,7 @@ class BookPage(StudioPage):
             _("Titles and tags travel with the book in every player."),
         )
         self._forced = forced
+        self._source_provider = source_provider
 
         self.make_book = wx.CheckBox(self, label=_("Assemble the results into one audioboo&k"))
         self.make_book.SetValue(True if forced else defaults.make_book)
@@ -82,6 +89,27 @@ class BookPage(StudioPage):
         self.acx = wx.CheckBox(self, label=_("Normalize the book to ACX (Audible) lou&dness"))
         self.acx.SetValue(defaults.book_acx_normalize)
         self.sizer.Add(self.acx, 0, wx.LEFT | wx.TOP, 12)
+
+        polish_grid = wx.FlexGridSizer(cols=2, vgap=4, hgap=8)
+        self.fade_in = self._ms_spin(
+            polish_grid, _("Fade &in at each chapter start (ms):"), defaults.book_fade_in_ms
+        )
+        self.fade_out = self._ms_spin(
+            polish_grid, _("Fade out at each chapter &end (ms):"), defaults.book_fade_out_ms
+        )
+        polish_grid.Add(
+            wx.StaticText(self, label=_("Book temp&o (1.0 = as recorded):")),
+            0,
+            wx.ALIGN_CENTER_VERTICAL,
+        )
+        self.tempo = wx.SpinCtrlDouble(
+            self, min=0.5, max=2.0, inc=0.05, initial=max(0.5, min(2.0, defaults.book_tempo))
+        )
+        from quill.ui.audio_studio.pages_base import set_accessible_name
+
+        set_accessible_name(self.tempo, _("Book tempo"))
+        polish_grid.Add(self.tempo, 0)
+        self.sizer.Add(polish_grid, 0, wx.LEFT | wx.TOP, 12)
         self.credits = wx.CheckBox(
             self, label=_("Add spo&ken opening and closing credits (uses the chosen voice)")
         )
@@ -143,6 +171,15 @@ class BookPage(StudioPage):
         ctrl.SetName(text.replace("&", "").rstrip(":"))
         grid.Add(ctrl, 0, wx.EXPAND)
         return ctrl
+
+    def _ms_spin(self, grid: wx.FlexGridSizer, text: str, value: int) -> wx.SpinCtrl:
+        from quill.ui.audio_studio.pages_base import set_accessible_name
+
+        grid.Add(wx.StaticText(self, label=text), 0, wx.ALIGN_CENTER_VERTICAL)
+        spin = wx.SpinCtrl(self, min=0, max=10000, initial=max(0, int(value)))
+        set_accessible_name(spin, text.replace("&", "").rstrip(":"))
+        grid.Add(spin, 0)
+        return spin
 
     def sync_enabled(self) -> None:
         """Enable the book fields only while assembly is on (always on when forced)."""
@@ -208,6 +245,53 @@ class BookPage(StudioPage):
             self.genre.SetValue(chosen.genre)
         if chosen.year:
             self.year.SetValue(chosen.year)
+        if chosen.cover_id and not self.cover.GetValue().strip():
+            self._offer_cover(chosen.cover_id)
+
+    def _cover_target(self) -> Path | None:
+        """Where the fetched jacket should land: cover.jpg beside the sources."""
+        if self._source_provider is None:
+            return None
+        try:
+            folder = self._source_provider().source_folder
+        except Exception:  # noqa: BLE001 - a half-filled wizard must not crash lookup
+            return None
+        if not str(folder) or str(folder) == ".":
+            return None
+        return Path(folder) / "cover.jpg"
+
+    def _offer_cover(self, cover_id: int) -> None:
+        """One more consented fetch: the chosen match's jacket as cover.jpg."""
+        from quill.core.metadata_lookup import LookupError_, fetch_cover
+
+        target = self._cover_target()
+        if target is None:
+            return
+        answer = show_message_box(
+            str(
+                _(
+                    "The chosen match has a cover image on Open Library."
+                    " Download it as {name} next to your audio and use it"
+                    " for the book?"
+                ).format(name=target.name)
+            ),
+            str(_("Download cover art")),
+            wx.YES_NO | wx.ICON_QUESTION,
+            self,
+        )
+        if answer != wx.YES:
+            return
+        busy = wx.BusyCursor()
+        try:
+            written = fetch_cover(cover_id, target)
+        except LookupError_ as exc:
+            show_message_box(
+                str(exc), str(_("Download cover art")), wx.OK | wx.ICON_INFORMATION, self
+            )
+            return
+        finally:
+            del busy
+        self.cover.SetValue(str(written))
 
     def current_format(self) -> str:
         idx = self.format.GetSelection()
@@ -255,6 +339,9 @@ class BookPage(StudioPage):
         req.book_format = self.current_format()
         req.book_output_path = self.output.GetValue().strip()
         req.book_acx_normalize = self.acx.GetValue()
+        req.book_fade_in_ms = int(self.fade_in.GetValue())
+        req.book_fade_out_ms = int(self.fade_out.GetValue())
+        req.book_tempo = float(self.tempo.GetValue())
         if not self._forced:
             req.book_review_chapters = self.review.GetValue()
         # When forced (combine-audio journey) the source page already decided:

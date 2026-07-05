@@ -241,6 +241,9 @@
   </style>
 </head>
 <body>
+<header id="title-block-header">
+<h1 class="title">QUILL-PRD</h1>
+</header>
 <h1 id="quill-product-requirements-document">Quill: Product Requirements
 Document</h1>
 <h2
@@ -4707,13 +4710,112 @@ elapsed/left in chapter, and position/remaining in the book.</li>
 <code>sftp_publish.py</code> (streams the book + companions via
 <code>core/ssh/client.connect</code>, so SEC-9 host-key policy holds),
 and <code>auphonic.py</code> (compact client for the user’s own account:
-presets, multipart upload + start via the simple API, status poll,
-result download; token under <code>quill:publish:auphonic</code>; single
-reviewed egress site). UI: the Workbench’s <strong>Publish…</strong>
+presets, <code>account_info</code> username/credits, multipart upload +
+start via the simple API — <code>preset_uuid</code> honored — status
+poll, result download; token under <code>quill:publish:auphonic</code>;
+single reviewed egress site; the publish dialog’s “Check account and
+load presets” fills an accessible preset picker and the send
+confirmation names the preset and credit balance; the token is also
+managed in AI Hub &gt; Services beside the other service keys; OAuth was
+considered and deliberately deferred — it needs a registered Auphonic
+client app, and the token flow with vault storage meets the same
+no-secrets-on-disk bar). UI: the Workbench’s <strong>Publish…</strong>
 button opens <code>publish_dialog.py</code> (three sections, each an
 explicit action; Auphonic confirms before upload; dirty chapter edits
 must be saved first; refused in Safe Mode). Egress-audit entries for the
-lookup and Auphonic sites.</li>
+lookup and Auphonic sites. <strong>Transfer progress + cancel:</strong>
+both transfer paths report real byte progress and honor cancel —
+<code>publish_files</code> threads paramiko’s <code>sftp.put</code>
+callback into
+<code>on_bytes(name, sent, total)</code>/<code>is_cancelled</code>
+(raising <code>PublishCancelled</code> aborts mid-file; completed files
+stay), and the Auphonic client streams uploads through a file-like
+<code>_ProgressReader</code> (Content-Length preserved, so
+<code>urlopen</code> remains the single audited egress site) and
+downloads in blocks, raising <code>AuphonicCancelled</code> between
+blocks. The dialog shows an <code>AIProgressDialog</code> with
+whole-percent throttled updates (never per-block, so the UI queue and
+screen reader aren’t flooded), mirrors progress to the status bar via
+the frame’s background-task progress contract, and announces the exact
+cancel outcome (SFTP: completed files stay; Auphonic
+pre-upload-complete: no production started; after: production continues
+in the account, download skipped).</li>
+<li><strong>AI chapter titles + voice casting (shipped).</strong>
+Titles: <code>quill/core/speech/chapter_titles.py</code> —
+<code>slice_chapter_opening</code> (pure ffmpeg argv builder +
+safe_subprocess runner; 16 kHz mono, whisper’s shape), transcription via
+the installed offline model
+(<code>transcribe.transcribe_audio_file</code>; audio never leaves the
+machine), <code>propose_chapter_titles</code> sends only the transcript
+to the caller’s <code>ask</code> callable (the frame’s
+<code>Assistant.ask</code>, absent in Safe Mode) with a strict
+short-title prompt, <code>clean_title</code> normalizes replies (strips
+quotes/prefixes/periods, clamps to 8 words) and any per-chapter failure
+keeps the existing title. Workbench: <strong>Propose AI titles…</strong>
+— consent dialog states the exact data flow, runs on the background
+pool, proposals land through the same <code>_apply</code> path as
+silence proposals (review-first, Restore original undoes; Pod-2.0
+url/img preserved). Casting: <code>quill/core/speech/casting.py</code> —
+ordered (pattern, voice) rules; <code>#N</code> matches section number
+(1-based), anything else is a case-insensitive fnmatch glob on the
+heading title; first match wins.
+<code>document_speech._build_casting</code> builds one wrapped
+synthesizer per cast voice (same engine/pace = one PCM format;
+pronunciation + failure-recording wrappers; blacklisted voices lose
+their rules) and <code>assemble_chaptered_audio</code> consults the new
+<code>synthesizer_for(index, title)</code> seam before the rotation.
+<code>BatchSpeechRequest.casting_rules</code> rides job files (typed
+load in <code>job_file.py</code>); the wizard’s voice page has the
+pattern + voice + Add-rule editor with a first-match-wins list (engine
+change clears it, like the rotation). <em>Remaining nicety:</em>
+persisting casting rules in the project profile (schema v3), as with
+translation targets.</li>
+<li><strong>Incremental rebuilds (shipped).</strong>
+<code>quill/core/speech/synth_cache.py</code>:
+<code>fingerprint(source, settings)</code> = SHA-256 over the document’s
+bytes + <code>settings_digest</code> (canonical sorted JSON of every
+audio-shaping setting; secrets never enter it); entries persist at
+<code>&lt;source folder&gt;/.quill/speech-cache.json</code> (classified
+<code>cache</code> in the persistence audit — regenerable). The batch
+runner builds the settings map once per run (engine/voice/rate/speed,
+format, sounder id+volume, gaps, spoken headings, combine-headings,
+loudness, round-robin, translations + provider, dictionaries digest)
+and, per document, reuses the existing output when
+<code>can_reuse</code> matches — counted as skipped with the message
+“Reused <name> (unchanged since last run)”. Gated by
+<code>BatchSpeechRequest.reuse_unchanged</code> (default True; checkbox
+on the wizard’s output step) and active only on the chaptered path with
+the <code>overwrite</code> policy — never on dry runs, auditions, skip,
+or rename. Any settings change invalidates every fingerprint by
+construction.</li>
+<li><strong>Folder feeds (shipped).</strong>
+<code>quill/core/publish/feed_folder.py</code>: a folder of masters run
+as one show. <code>FeedFolderConfig</code> (show
+title/author/description, media URL base, feed URL, cover URL,
+per-episode title/description overrides) persists atomically at
+<code>&lt;folder&gt;/.quill/feed.json</code> (same project dir as the
+speech profile). <code>discover_masters</code> orders MP3/M4B/M4A
+oldest-first (episode 1 = oldest); <code>folder_feed_items</code> builds
+one <code>FeedItem</code> per master — title from override else tags
+(<code>read_book</code>) else stem, duration via ffprobe when available
+(0 otherwise, never fatal), <code>has_chapters</code> from the sidecar,
+per-episode <code>pubDate</code> from file mtime
+(<code>rss.rfc2822</code>); <code>write_folder_feed</code> regenerates
+<code>&lt;folder&gt;/feed.rss</code> on demand (refuses an empty
+folder); <code>write_show_notes</code> writes an accessible
+<code>show-notes.html</code> (h1 show / h2 episodes / h3 chapters, all
+text escaped, no scripts). <code>rss.py</code> items now carry
+per-episode <code>pub_date</code> and a stable non-permalink
+<code>guid</code>. <code>Chapter</code> gained Podcasting 2.0
+<code>url</code>/<code>image</code> fields, emitted as
+<code>url</code>/<code>img</code> in <code>chapters_to_pod2</code>
+(omitted when empty) and preserved through Pod-2.0 import in
+<code>parse_chapter_text</code>. UI:
+<code>feed_dialog.FolderFeedDialog</code> (from the Publish dialog’s
+“Folder feed (all episodes)…” button) — show fields, an accessible
+episode ListBox with apply-to-selected title/description editing, “Write
+feed.rss now”, “Write show notes page”; config saved on every write. All
+local file IO; uploading stays the SFTP destination’s explicit job.</li>
 <li><strong>Job files, lookup, audition, credits (shipped).</strong>
 <code>.quilljob</code> files
 (<code>quill/core/speech/job_file.py</code>): a portable JSON recipe
@@ -4726,12 +4828,19 @@ search behind one reviewed egress site (<code>_http_json</code>,
 HTTPS-only, verified TLS, MusicBrainz 1-req/s throttle, consent stated
 before the first call; entry in <code>network_egress_audit.py</code>);
 results in an accessible single-choice list, chosen match fills the
-tags. <strong>Audition</strong> (<code>audition</code> request field):
-discovery slices to the first document. <strong>Spoken credits</strong>
-(<code>book_credits</code>; <code>quill/core/speech/credits.py</code>):
-opening/closing announcements synthesized with the run’s own spec ride
-as the first/last chapters, best-effort (a credits failure never sinks
-the book).</li>
+tags. <strong>Cover art:</strong> Open Library matches carry
+<code>cover_i</code> (<code>LookupResult.cover_id</code>); after a pick,
+if the cover field is empty the book page offers a second consented
+fetch — <code>fetch_cover</code> downloads the <code>-L.jpg</code>
+jacket from covers.openlibrary.org (<code>?default=false</code> so a
+missing cover 404s; payloads under 1 KB rejected as placeholders) to
+<code>cover.jpg</code> in the source folder (own reviewed egress entry
+<code>metadata_lookup.py::fetch_cover</code>). <strong>Audition</strong>
+(<code>audition</code> request field): discovery slices to the first
+document. <strong>Spoken credits</strong> (<code>book_credits</code>;
+<code>quill/core/speech/credits.py</code>): opening/closing
+announcements synthesized with the run’s own spec ride as the first/last
+chapters, best-effort (a credits failure never sinks the book).</li>
 <li><strong>Chapter Workbench + player (shipped).</strong> The Studio’s
 third journey, <strong>Edit an existing audiobook</strong>
 (<code>quill/ui/audio_studio/chapter_workbench.py</code>):
@@ -4742,8 +4851,26 @@ as one chapter. The Workbench pairs the chapter list (real times in
 every row) with the ported ChapterForge <strong>PlayerPanel</strong>
 (<code>player_panel.py</code>) over an engine protocol
 (<code>audio_engine.py</code>, default backend
-<code>wx.media.MediaCtrl</code>/WMP — no new native dependency; the
-protocol mirrors libmpv so an mpv backend can slot in later):
+<code>wx.media.MediaCtrl</code>/WMP — no new native dependency;
+<strong>the mpv backend is now implemented</strong>:
+<code>mpv_engine.MpvAudioEngine</code>, a minimal ctypes binding over
+the libmpv client API — create/initialize/command/get-set
+property/destroy — with a <code>wx.Timer</code> polling
+<code>duration</code>/<code>eof-reached</code> so every call and
+callback stays on the UI thread; <code>create_engine</code> prefers it
+whenever <code>find_libmpv()</code> locates <code>libmpv-2.dll</code> in
+<code>engine-packs/mpv</code>, beside the executable, or via
+<code>QUILL_LIBMPV</code>, and any mpv failure falls back to wx.media;
+the DLL is never bundled — it is a pinned assets-v1 component
+(<code>ASSETS["libmpv"]</code>: <code>libmpv-pack.zip</code>,
+stable-anchored — the shinchiro 2025-12-28 weekly, mpv git a58dd8a, the
+first prebuilt after the v0.41.0 stable tag (upstream publishes no DLL
+of the exact tag); DLL byte-identical to upstream, SHA-256-pinned,
+<code>expect_member="libmpv-2.dll"</code>; the zip carries GPLv2/GPLv3
+texts, mpv’s Copyright, and a corresponding-source offer, the same GPL
+redistribution posture as the liblouis braille pack) surfaced as “mpv
+player engine” in Help &gt; Download Optional Components
+(<code>download_libmpv</code>, Safe-Mode-blocked, background progress)):
 Play/Pause, Stop, Previous/Next chapter, Rewind/Forward, spoken position
 slider, volume, and chapter-crossing announcements. Surgery buttons
 drive the tested core ops — <strong>Split at playhead</strong>,

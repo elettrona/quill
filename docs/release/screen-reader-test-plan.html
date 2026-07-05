@@ -176,6 +176,9 @@
   </style>
 </head>
 <body>
+<header id="title-block-header">
+<h1 class="title">screen-reader-test-plan</h1>
+</header>
 <h1 id="quill-screen-reader-and-keyboard-test-plan">QUILL Screen-Reader
 and Keyboard Test Plan</h1>
 <p>Manual validation steps for every accessibility/focus/keyboard fix in
@@ -397,6 +400,45 @@ context (not user-visible, no SR step needed)</h2>
 check, listed so the plan is complete: - TEST-002: watchdog re-dump test
 made deterministic (unit test). - CALL-1 gate: undefined-private-method
 audit (CI gate).</p>
+<h2
+id="save-001-save-as-conversion-window-title-and-export-fidelity-0.9.0">SAVE-001
+— Save As conversion, window title, and export fidelity (0.9.0)</h2>
+<p>Run with JAWS or NVDA on a real build. This is the manual
+verification (Task 9) carried over from the retired
+<code>save-as-conversion-fix</code> plan; converter bake-off verdicts
+are in <code>docs/qa/converter-bakeoff.md</code>.</p>
+<ul class="task-list">
+<li><label><input type="checkbox" /><strong>Original repro:</strong> new
+document, 8 lines, Ctrl-S, switch type to Word, name it, Enter. Verify:
+title bar reads “name.docx - QUILL for All …” (no [modified]); second
+Ctrl-S saves silently with no dialog; the save announcement speaks; the
+file opens in Word with 8 paragraphs.</label></li>
+<li><label><input type="checkbox" /><strong>Save As each type:</strong>
+.txt, .md, .html, .rtf, .docx — title updates, status speaks the format
+label, file opens in Notepad/browser/WordPad/Word
+respectively.</label></li>
+<li><label><input type="checkbox" /><strong>Typed rogue
+extension:</strong> Save As, type <code>notes.pdf</code> — the Export
+routing prompt appears; accepting lands in Export as PDF; declining
+returns safely.</label></li>
+<li><label><input type="checkbox" /><strong>Binary protection:</strong>
+open any .pdf and any .xlsx, edit, Ctrl-S — the explanation speaks, Save
+As opens, the original file on disk is byte-identical.</label></li>
+<li><label><input type="checkbox" /><strong>Export each Tier-1
+format</strong> (with Pandoc installed) from an 8-line doc — line breaks
+survive in docx/odt/html/rtf outputs; PDF either produces a file or
+speaks the missing-PDF-engine error clearly.</label></li>
+<li><label><input type="checkbox" /><strong>DAISY export</strong> of the
+same doc — 8 phrases in the book (line breaks and headings map to
+phrases; it was built line-oriented).</label></li>
+<li><label><input type="checkbox" /><strong>First-line title:</strong>
+untitled doc starting <code># Trip Report</code>, Ctrl-S — name box
+pre-filled “Trip Report”.</label></li>
+<li><label><input type="checkbox" /><strong>Engine preference:</strong>
+flip <code>docx_write_engine</code> to pandoc, Save As .docx, open in
+Word — structure present, fonts absent, matching the documented
+outcome.</label></li>
+</ul>
 <h2 id="sign-off">Sign-off</h2>
 <ul>
 <li>Tester:</li>

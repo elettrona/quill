@@ -41,6 +41,18 @@ def show_audio_studio(frame: object) -> BatchSpeechRequest | None:
     from quill.ui.audio_studio.wizard import RELOAD_WITH_JOB
 
     defaults = runner._defaults(frame)
+    # Pre-select the journey the user used last so the second run lands
+    # on the same first page (Skip to summary stays a 3-keystroke
+    # promise). ``audio_studio_last_journey`` is a free-form string, so clamp
+    # it to the JOURNEYS set; unknown values fall back to "documents".
+    try:
+        from quill.ui.audio_studio.request import JOURNEYS
+
+        last_journey = str(getattr(frame.settings, "audio_studio_last_journey", "documents"))
+        if last_journey not in JOURNEYS:
+            last_journey = "documents"
+    except Exception:  # noqa: BLE001 - settings import may be unavailable headless
+        last_journey = "documents"
     while True:
         dlg = AudioStudioWizard(
             frame.frame,
@@ -50,6 +62,7 @@ def show_audio_studio(frame: object) -> BatchSpeechRequest | None:
             voices_for=runner._voices_for,
             on_preview=on_preview,
             announce_cb=frame._announce,
+            initial_journey=last_journey,
         )
         try:
             code = frame._show_modal_dialog(dlg, str(_("QUILL Audio Studio")))

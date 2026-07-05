@@ -32,6 +32,10 @@ class Chapter:
     title: str
     start_ms: int
     end_ms: int
+    #: Podcasting 2.0 extras: an optional link and image for this chapter.
+    #: Round-tripped through the ``…chapters.json`` sidecar; empty = omitted.
+    url: str = ""
+    image: str = ""
 
     @property
     def duration_ms(self) -> int:

@@ -118,10 +118,10 @@ which opens as one big chapter, ready to carve.
 The built-in player anchors everything: Play/Pause, Previous/Next chapter,
 Rewind/Forward, a position slider that speaks human time, a pitch-preserved
 speed control, and **Where am I?** for the full audible glance. The player
-remembers where you stopped in every book. (Power listeners: drop a
-`libmpv-2.dll` into the data folder's `engine-packs\mpv` and playback
-switches to mpv — gapless, exact seeking; QUILL falls back to the built-in
-engine automatically otherwise.)
+remembers where you stopped in every book. (Want gapless audio and exact
+seeking? Download the **mpv player engine** from **Help > Download Optional
+Components** and playback upgrades to libmpv automatically; QUILL falls
+back to the built-in engine whenever mpv is absent.)
 
 The surgery, all by ear:
 

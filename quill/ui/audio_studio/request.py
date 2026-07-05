@@ -40,6 +40,11 @@ class BatchSpeechRequest:
     max_file_bytes: int = 0
     # What to do when a target audio file already exists.
     on_existing: str = "overwrite"  # skip | overwrite | rename
+    # Incremental rebuilds: reuse a document's existing audio when neither its
+    # text nor any audio-shaping setting changed since the last successful run
+    # (fingerprints in <folder>/.quill/speech-cache.json). Only applies while
+    # on_existing is "overwrite"; "skip" and "rename" keep their own meanings.
+    reuse_unchanged: bool = True
     # Chapter mode: "single" = one chaptered file per document; "separate" = one
     # audio file per article/heading, into a per-document folder.
     chapter_mode: str = "single"
@@ -54,6 +59,11 @@ class BatchSpeechRequest:
     # Round-robin voices: ordered voice ids (of the selected engine) cycled one per
     # article/heading. Empty or one voice -> the single `voice` above is used.
     round_robin_voices: tuple[str, ...] = ()
+    # Voice casting: ordered (pattern, voice_id) rules — explicit per-section
+    # assignment layered over the rotation. Patterns match the section's heading
+    # title (fnmatch glob, case-insensitive) or "#N" for section number N
+    # (1-based). First match wins; unmatched sections use the rotation/voice.
+    casting_rules: tuple[tuple[str, str], ...] = ()
     # Translated audio export (§7): also export each document in these languages.
     # Each target is (language_code, engine, voice_id); the document is translated
     # into the language then synthesized with that voice. Empty = no translation.
@@ -91,6 +101,14 @@ class BatchSpeechRequest:
     # Library mode (combine-audio journey): every immediate subfolder that holds
     # audio becomes its own book, titled after the subfolder; no review step.
     library_mode: bool = False
+    # Chapters start at heading level N (0 = every heading, the historical
+    # behavior); deeper headings fold into the chapter above them.
+    chapter_heading_level: int = 0
+    # Audio polish applied per chapter file before the book is assembled.
+    trim_silence_files: bool = False
+    book_fade_in_ms: int = 0
+    book_fade_out_ms: int = 0
+    book_tempo: float = 1.0
     _voice_label: str = field(default="", repr=False)
 
 

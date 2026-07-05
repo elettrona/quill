@@ -112,13 +112,20 @@ def chapters_to_cue(
 
 
 def chapters_to_pod2(chapters: list[Chapter]) -> str:
-    """Podcasting 2.0 chapters JSON (the ``…chapters.json`` sidecar body)."""
-    data = {
-        "version": POD2_VERSION,
-        "chapters": [
-            {"startTime": round(c.start_ms / 1000.0, 3), "title": c.title} for c in chapters
-        ],
-    }
+    """Podcasting 2.0 chapters JSON (the ``…chapters.json`` sidecar body).
+
+    Per-chapter ``url`` and ``img`` ride along when set, so a link or image
+    attached to a chapter survives export, import, and re-export.
+    """
+    entries: list[dict[str, object]] = []
+    for c in chapters:
+        entry: dict[str, object] = {"startTime": round(c.start_ms / 1000.0, 3), "title": c.title}
+        if c.url:
+            entry["url"] = c.url
+        if c.image:
+            entry["img"] = c.image
+        entries.append(entry)
+    data = {"version": POD2_VERSION, "chapters": entries}
     return json.dumps(data, indent=2, ensure_ascii=False) + "\n"
 
 
@@ -254,6 +261,11 @@ def _parse_cue_pairs(lines: list[str]) -> list[tuple[int, str]]:
 
 
 def _parse_pod2_pairs(text: str) -> list[tuple[int, str]]:
+    return [(ms, title) for ms, title, _url, _img in _parse_pod2_entries(text)]
+
+
+def _parse_pod2_entries(text: str) -> list[tuple[int, str, str, str]]:
+    """Podcasting 2.0 entries as ``(ms, title, url, img)`` tuples."""
     try:
         data = json.loads(text)
     except json.JSONDecodeError:
@@ -261,16 +273,21 @@ def _parse_pod2_pairs(text: str) -> list[tuple[int, str]]:
     entries = data.get("chapters") if isinstance(data, dict) else None
     if not isinstance(entries, list):
         return []
-    pairs: list[tuple[int, str]] = []
+    parsed: list[tuple[int, str, str, str]] = []
     for entry in entries:
         if not isinstance(entry, dict):
             continue
         start = entry.get("startTime")
         if not isinstance(start, (int, float)):
             continue
-        title = str(entry.get("title") or f"Chapter {len(pairs) + 1}")
-        pairs.append((int(round(float(start) * 1000)), title))
-    return pairs
+        title = str(entry.get("title") or f"Chapter {len(parsed) + 1}")
+        parsed.append((
+            int(round(float(start) * 1000)),
+            title,
+            str(entry.get("url") or ""),
+            str(entry.get("img") or ""),
+        ))
+    return parsed
 
 
 def _is_float(token: str) -> bool:
@@ -295,8 +312,11 @@ def parse_chapter_text(text: str, total_ms: int) -> list[Chapter]:
     stripped = text.lstrip()
     lines = text.splitlines()
     pairs: list[tuple[int, str]] = []
+    extras_by_start: dict[int, tuple[str, str]] = {}
     if stripped.startswith("{"):
-        pairs = _parse_pod2_pairs(text)
+        entries = _parse_pod2_entries(text)
+        pairs = [(ms, title) for ms, title, _u, _i in entries]
+        extras_by_start = {ms: (url, img) for ms, _t, url, img in entries if url or img}
     elif any("INDEX 01" in line.upper() for line in lines):
         pairs = _parse_cue_pairs(lines)
     else:
@@ -335,12 +355,15 @@ def parse_chapter_text(text: str, total_ms: int) -> list[Chapter]:
         end = starts[i + 1] if i + 1 < len(starts) else total_ms
         if end <= start:
             continue
+        url, img = extras_by_start.get(start, ("", ""))
         chapters.append(
             Chapter(
                 index=len(chapters),
                 title=title_by_start.get(start, f"Chapter {i + 1}"),
                 start_ms=start,
                 end_ms=end,
+                url=url,
+                image=img,
             )
         )
     return chapters

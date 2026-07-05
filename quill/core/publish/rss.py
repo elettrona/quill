@@ -34,6 +34,13 @@ class FeedItem:
     description: str = ""
     duration_s: int = 0
     has_chapters: bool = False
+    #: RFC 2822 publication date; empty = the feed's generation time.
+    pub_date: str = ""
+
+
+def rfc2822(when: datetime) -> str:
+    """The RSS pubDate form of *when* (always rendered as UTC)."""
+    return when.astimezone(UTC).strftime("%a, %d %b %Y %H:%M:%S +0000")
 
 
 def _sub(parent: ET.Element, tag: str, text: str = "") -> ET.Element:
@@ -92,12 +99,14 @@ def generate_rss(
         _sub(image, "link", feed_url or "")
         ET.SubElement(channel, _itunes("image"), {"href": cover_url})
 
-    pub_date = datetime.now(UTC).strftime("%a, %d %b %Y %H:%M:%S +0000")
+    pub_date = rfc2822(datetime.now(UTC))
     for index, item in enumerate(items, start=1):
         element = ET.SubElement(channel, "item")
         _sub(element, "title", item.title or f"Episode {index}")
         _sub(element, "description", item.description or item.title)
-        _sub(element, "pubDate", pub_date)
+        _sub(element, "pubDate", item.pub_date or pub_date)
+        guid = _sub(element, "guid", item.media_url)
+        guid.set("isPermaLink", "false")
         if item.duration_s > 0:
             _sub(element, _itunes("duration"), str(item.duration_s))
         _sub(element, _itunes("episode"), str(index))

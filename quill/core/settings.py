@@ -523,6 +523,7 @@ class Settings:
     batch_speech_intro_section_title: str = "Introduction"
     batch_speech_temp_folder: str = ""  # parent for scratch dirs; blank = system temp
     batch_speech_save_spoken_text: bool = False  # also save the text sent to the engine
+    audio_studio_last_journey: str = "documents"  # remembered journey
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> Settings:
@@ -1178,6 +1179,14 @@ class Settings:
         )
         batch_speech_temp_folder = str(data.get("batch_speech_temp_folder", "")).strip()
         batch_speech_save_spoken_text = bool(data.get("batch_speech_save_spoken_text", False))
+        # Remember the last journey so the wizard's first page lands on
+        # the radio the user used last. Falls back to "documents" when
+        # missing or unrecognized so older settings files still work.
+        audio_studio_last_journey = (
+            str(data.get("audio_studio_last_journey", "documents")).strip().lower()
+        )
+        if audio_studio_last_journey not in {"documents", "audio", "edit"}:
+            audio_studio_last_journey = "documents"
         if recent_files_limit < 1:
             recent_files_limit = 1
         if recent_files_limit > 50:
@@ -1461,6 +1470,7 @@ class Settings:
             batch_speech_temp_folder=batch_speech_temp_folder,
             batch_speech_save_spoken_text=batch_speech_save_spoken_text,
             batch_speech_intro_section_title=batch_speech_intro_section_title,
+            audio_studio_last_journey=audio_studio_last_journey,
         )
 
 

@@ -91,6 +91,16 @@ def load_job(path: Path, defaults: Any) -> Any:
                         if isinstance(t, (list, tuple)) and len(t) == 3
                     ),
                 )
+            elif key == "casting_rules":
+                setattr(
+                    request,
+                    key,
+                    tuple(
+                        (str(t[0]), str(t[1]))
+                        for t in value
+                        if isinstance(t, (list, tuple)) and len(t) == 2
+                    ),
+                )
             else:
                 setattr(request, key, tuple(str(v) for v in value))
     return request

@@ -241,6 +241,9 @@
   </style>
 </head>
 <body>
+<header id="title-block-header">
+<h1 class="title">userguide</h1>
+</header>
 <h1 id="quill-user-guide">Quill User Guide</h1>
 <p><strong>QUILL</strong> stands for <strong>Quality, Usable, Inclusive,
 Lightweight, Literate</strong>.</p>
@@ -4957,11 +4960,12 @@ steps, and your saved project settings still pre-fill everything.</p>
 <li><strong>Narrate documents into an audiobook or speech audio</strong>
 — the steps are: What should I read? (folder, file types, filters) → Who
 should read it? (engine, voice with a preview button, pace, round-robin
-voices, translated editions) → How should chapters work? (chapter mode,
-spoken headings, the transition sounder and its volume, pauses) → Output
-and diagnostics (format, existing-file policy, loudness, dry run, temp
-folder) → the book page (optional: assemble everything into one
-audiobook) → a plain-language summary.</li>
+voices, voice casting rules, translated editions) → How should chapters
+work? (chapter mode, spoken headings, the transition sounder and its
+volume, pauses) → Output and diagnostics (format, existing-file policy,
+loudness, incremental-rebuild reuse, dry run, temp folder) → the book
+page (optional: assemble everything into one audiobook) → a
+plain-language summary.</li>
 <li><strong>Combine audio files into one chaptered audiobook</strong> —
 a shorter path: pick the folder of recordings, describe the book (title,
 author, narrator, cover, M4B or MP3, ACX loudness), review the summary,
@@ -4980,6 +4984,28 @@ after its folder. And a new <strong>watch action, “Build audiobook from
 the folder”</strong>, keeps a drop folder alive: whenever new recordings
 land in a watched folder, its chaptered master is rebuilt automatically
 (a batch of files triggers one rebuild, not many).</p>
+<p>A few reach-shortcuts have grown around the Studio. <strong>The first
+page remembers which journey you used last</strong> (documents / audio /
+edit) and pre-selects that radio, so the second run lands on the same
+first page without a click. The source pages show a <strong>combo of
+recent source folders</strong>, and the <strong>edit</strong> journey’s
+file picker remembers <strong>recently opened audiobooks</strong> — both
+lists persist across sessions and are independent from the
+recent-document list, so they never grow without bound. The
+<strong>default key binding</strong> for the Studio is
+<code>Ctrl+Shift+Grave, Y</code>; the entry shows up in the command
+palette under “Audio Studio…”. The <strong>Export to Translated Speech
+Audio</strong> dialog has an <strong>“Open in Audio Studio”</strong>
+button that closes it and opens the wizard with the document pre-filled,
+so the one-shot translation flow advertises the richer chaptered
+path.</p>
+<p>The whole flow is covered by a nightly UIA-regression suite (CI-only,
+never on your desktop) that walks every page of the wizard, asserts each
+page’s “Step N of M” announcement lands in the spoken trace, opens the
+Workbench on a corpus chaptered MP3 from the edit journey, and drives
+the silence-proposal parameters dialog from the Workbench. A regression
+in focus order, modal-id wiring, or screen-reader announcements is
+caught by the robot overnight instead of by your ears after release.</p>
 <h3 id="the-chapter-workbench">The Chapter Workbench</h3>
 <p>The Workbench is where a finished audiobook gets fixed by ear. The
 chapter list reads each row in full (“3. The Long Road — starts 1:02:03,
@@ -5000,6 +5026,22 @@ stays contiguous.</li>
 <li><strong>Merge into previous</strong>, <strong>Rename</strong> (type
 and press Enter), and <strong>Restore original</strong> (one press
 undoes every edit) round out the surgery.</li>
+<li><strong>Propose chapters from silences…</strong> scans the recording
+with ffmpeg’s <code>silencedetect</code>, with a small dialog asking for
+the <strong>noise threshold</strong> (dB, default -30) and
+<strong>minimum silence</strong> length (seconds, default 0.8), and
+proposes chapter boundaries at the silence midpoints. The proposal lands
+in the chapter list for review — never applied blind; press
+<strong>Restore original</strong> to undo. The one-long-recording story
+is complete: open a single 80-minute file (it opens as one chapter),
+press one button, review, save.</li>
+<li><strong>Check against ACX</strong> measures the file with fbmpeg’s
+loudnorm and shows a verdict dialog with integrated loudness, true peak,
+and noise floor, plus a speakable recommendation for each failing
+criterion (“Integrated loudness is -14.2 LUFS, target -20 plus or minus
+3; make the recording 5.8 dB quieter”). The verdict is announced when
+the measurement finishes, regardless of how the dialog is
+dismissed.</li>
 <li><strong>Import chapters…</strong> replaces the whole list from
 Audacity labels, a CUE sheet, timestamp lines, Podcasting 2.0 JSON, or
 CSV; <strong>Export chapters…</strong> writes the list in any of the
@@ -5008,12 +5050,30 @@ same five formats.</li>
 file per chapter, named <code>NN - Title</code>, into a folder you pick
 — instant podcast episodes, or tracks for players without chapter
 support.</li>
+<li><strong>Propose AI titles…</strong> names a folder of
+<code>track07</code>-style chapters by listening to them: the opening
+minute of each chapter is transcribed on this machine by the local
+speech model (the audio never leaves your computer), only that text goes
+to your configured AI (a local model keeps even the text on-device), and
+a short proposed title per chapter lands in the list for your review —
+<strong>Restore original</strong> undoes the lot. Needs a configured AI;
+unavailable in Safe Mode.</li>
 <li>The player <strong>remembers where you stopped</strong> in each book
 and resumes there next time, offers a <strong>playback speed</strong>
 control (0.75x to 2x, pitch preserved), and answers <strong>“Where am
 I?”</strong> with the full audible glance: “Chapter 4 of 24: The Long
 Road. 3:12 into the chapter, 9:28 left in it. 1:02:03 of 7:41:00 in the
 book, 6:38:57 remaining.”</li>
+<li>Playback normally uses Windows’ built-in media engine — nothing to
+install. For gapless audio, exact seeking, and instant chapter jumps
+even on 8-hour books, download the <strong>mpv player engine</strong>
+from <strong>Help &gt; Download Optional Components</strong> (about 44
+MB, checksum-verified; its licenses and a source offer ship inside the
+download) and the player switches to <strong>libmpv</strong> the next
+time it opens. Power users can instead drop a <code>libmpv-2.dll</code>
+into the data folder’s <code>engine-packs\mpv</code> directory or point
+<code>QUILL_LIBMPV</code> at one. If the DLL is missing or broken, QUILL
+quietly stays on the built-in engine.</li>
 <li><strong>Book details</strong> (title, author, narrator, genre, year)
 are edited right in the dialog.</li>
 <li><strong>Save</strong> writes an MP3’s edits <strong>in
@@ -5029,6 +5089,16 @@ out into the world, each an explicit action:
 Podcasting 2.0 tags; chapter navigation rides the
 <code>chapters.json</code> sidecar). Upload the feed and audio anywhere;
 generation itself never touches the network.</li>
+<li><strong>Folder feed (all episodes)</strong> — run a whole show from
+one folder. Every MP3, M4B, or M4A master becomes an episode (oldest
+file = episode 1) with its title from its tags or your override, your
+per-episode description (edited in an accessible episode list), its real
+publication date, duration, and chapter link. The show settings persist
+in the folder, so after each new build, one press of <strong>Write
+feed.rss now</strong> regenerates the complete feed. <strong>Write show
+notes page</strong> produces an accessible <code>show-notes.html</code>
+beside it — headings per episode, descriptions, and chapter lists —
+ready to upload with the feed.</li>
 <li><strong>SFTP upload</strong> — save a destination (host, folder, and
 the public URL that mirrors it) and QUILL uploads the book plus its
 companion files through its own SSH machinery, with the same strict
@@ -5038,11 +5108,24 @@ settings.</li>
 <li><strong>Auphonic</strong> — send the book to your own Auphonic
 account for professional post-production; QUILL uploads, waits for the
 production to finish, and downloads the results into a folder next to
-the book. Your API token also lives in the credential vault. QUILL asks
-before anything is uploaded.</li>
+the book. Your API token also lives in the credential vault. Press
+<strong>Check account and load presets</strong> first and QUILL
+announces whose account the token belongs to, how many processing
+credits remain, and fills the <strong>preset picker</strong> with your
+saved Auphonic presets; the send confirmation then names the preset and
+your balance before anything uploads. The token can also be managed
+centrally in <strong>AI &gt; AI Hub &gt; Services</strong>, alongside
+QUILL’s other service keys. QUILL asks before anything is uploaded.</li>
 </ul>
 Publishing is unavailable in Safe Mode, and every upload runs in the
-background with spoken completion.</li>
+background with spoken completion. SFTP uploads and Auphonic transfers
+show a progress dialog that speaks whole-percent steps as bytes move
+(“Uploading book.m4b: 42%”) and has a real <strong>Cancel</strong>
+button: cancelling an SFTP upload stops mid-file (already-completed
+files stay on the server), cancelling an Auphonic run before the upload
+finishes means no production starts, and cancelling after that leaves
+the production running in your Auphonic account and skips the download —
+QUILL announces which of these happened.</li>
 </ul>
 <p>Each step is announced as you arrive (“Step 2 of 7: What should I
 read?”), <strong>Back</strong> and <strong>Next</strong> move between
@@ -5064,12 +5147,25 @@ title (and author if you know it) and press <strong>Look up book
 details</strong> — QUILL searches <strong>Open Library</strong> and
 <strong>MusicBrainz</strong>, two free public catalogs, and the match
 you pick fills in the author, genre, and year. QUILL asks before the
-first contact, and only the title and author you typed are ever
-sent.</li>
+first contact, and only the title and author you typed are ever sent. If
+the chosen match has a cover image on Open Library and you haven’t set
+one, QUILL offers to download it as <code>cover.jpg</code> next to your
+audio and fills the cover field — say no and nothing is fetched.</li>
 <li><strong>Audition first.</strong> Tick <strong>Audition</strong> on
 the output step to convert only the first document — judge the voice,
 the pace, and the loudness in a couple of minutes before committing to
 an overnight run.</li>
+<li><strong>Incremental rebuilds.</strong> With <strong>Reuse unchanged
+audio from the last run</strong> ticked (the default), QUILL
+fingerprints each document’s text together with every setting that
+shapes its audio. On a re-run, documents that haven’t changed — and
+whose audio is still on disk — are reused instead of re-synthesized,
+announced as “Reused … (unchanged since last run)”. Edit one chapter of
+a forty-document book and only that chapter is narrated again; change
+the voice or any audio setting and everything rebuilds automatically.
+Untick the box to force a full rebuild. The fingerprints live in the
+source folder’s <code>.quill/speech-cache.json</code>; deleting that
+file also forces a fresh run.</li>
 <li><strong>Spoken credits.</strong> Tick <strong>Add spoken opening and
 closing credits</strong> on the book page and QUILL narrates the
 standard audiobook frame — “My Book. Written by Jane Doe. Narrated by
@@ -5085,6 +5181,26 @@ the <strong>file types</strong> to include (<code>.docx</code>,
 filters</strong> (semicolon- or comma-separated globs, matched against
 the file name and its path) plus a <strong>maximum file size</strong> to
 skip very large files.</li>
+<li><strong>Skip files larger than (MB)</strong> — on the <em>What
+should I read?</em> step, the discovery controls now include a
+<strong>maximum-file-size filter</strong> (in megabytes, <code>0</code>
+= no limit). A folder with one accidental 400 MB export no longer
+hijacks an overnight run: any file above the cap is excluded from
+discovery and the live document count on the same step reflects the cap
+as you change it. Press <strong>Count documents</strong> to hear the
+settled count announced.</li>
+<li><strong>Polish runs during the build.</strong> The audio source
+page’s <strong>Trim silences from each recording</strong> and the book
+page’s <strong>fade-in / fade-out / tempo</strong> controls now actually
+run during the audiobook build. Each chapter file is staged through
+<code>core/speech/audio_edit.prepare_chapter_files</code> (head/tail
+silence trim, fades, pitch-preserving tempo via ffmpeg
+<code>atempo</code>) before ffmpeg concatenates them into the master.
+Staged files live in the build’s temp directory, so your source
+recordings are never overwritten, and a polish failure on one file keeps
+the build going with that file’s previous form. Defaults (no trim,
+<code>0</code> ms fades, <code>1.0</code> tempo) keep the build
+byte-identical to the pre-polish path.</li>
 <li><strong>Engine, voice, and pace</strong> — any of the offline
 engines (SAPI 5, DECtalk, Piper, Kokoro, eSpeak NG), with a
 <strong>Preview</strong> button to hear the chosen voice first.</li>
@@ -5165,6 +5281,16 @@ of the <strong>engine you selected</strong> (so everything stays one
 consistent audio quality); changing the engine clears it. Leave the list
 empty to use the single chosen voice as usual. Your combine and
 round-robin choices are remembered per project.</li>
+<li><strong>Voice casting</strong> — explicit assignment layered on top
+of the rotation. Add rules on the same page: a pattern plus the voice
+that should read every matching chapter. Patterns match the heading
+title as a glob (<code>Chapter *</code>, <code>*interview*</code>, or an
+exact title, case-insensitive) or a section number (<code>#1</code> for
+the opener). The first matching rule wins; chapters no rule matches fall
+through to the rotation or the single voice. Rules use voices of the
+selected engine (switching engines clears them) and are pinned in saved
+job files — so a dialogue-heavy production or an interview show casts
+its voices deliberately instead of by rotation order.</li>
 <li><strong>Audiobook metadata</strong> — album, author/narrator, genre,
 and year stamped onto compressed files (each file’s title comes from its
 heading or name, and its track number from its position).</li>

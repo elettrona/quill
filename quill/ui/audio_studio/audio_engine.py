@@ -168,6 +168,16 @@ class WxMediaEngine:
         self._on_finished()
 
 
+def preferred_backend() -> str:
+    """``"mpv"`` when a libmpv DLL is present, else ``"wx"`` (the default)."""
+    from quill.ui.audio_studio.mpv_engine import find_libmpv
+
+    try:
+        return "mpv" if find_libmpv() is not None else "wx"
+    except Exception:  # noqa: BLE001 - discovery must never block playback
+        return "wx"
+
+
 def create_engine(
     parent: wx.Window,
     *,
@@ -175,7 +185,22 @@ def create_engine(
     on_finished: Callable[[], None],
     on_error: Callable[[str], None],
 ) -> AudioEngine | None:
-    """The best available engine for this machine, or None with the error spoken."""
+    """The best available engine for this machine, or None with the error spoken.
+
+    libmpv (gapless, exact seeking, wide format coverage) is preferred when its
+    DLL is installed — the on-demand download, a ``QUILL_LIBMPV`` override, or
+    a copy beside the executable. Any mpv failure falls back to wx.media so a
+    broken DLL can never take playback away.
+    """
+    if preferred_backend() == "mpv":
+        try:
+            from quill.ui.audio_studio.mpv_engine import MpvAudioEngine
+
+            return MpvAudioEngine(
+                parent, on_loaded=on_loaded, on_finished=on_finished, on_error=on_error
+            )
+        except Exception:  # noqa: BLE001 - fall back to the zero-dependency backend
+            _log.exception("libmpv found but unusable; falling back to wx.media")
     try:
         return WxMediaEngine(
             parent, on_loaded=on_loaded, on_finished=on_finished, on_error=on_error

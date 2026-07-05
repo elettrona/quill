@@ -71,6 +71,21 @@ def test_pod2_round_trip() -> None:
     assert [c.start_ms for c in parsed] == [0, 60_000, 3_723_000]
 
 
+def test_pod2_url_and_image_round_trip() -> None:
+    chapters = _chapters()
+    chapters[1].url = "https://example.com/road"
+    chapters[1].image = "https://example.com/road.jpg"
+    text = chapters_to_pod2(chapters)
+    data = json.loads(text)
+    assert data["chapters"][1]["url"] == "https://example.com/road"
+    assert data["chapters"][1]["img"] == "https://example.com/road.jpg"
+    assert "url" not in data["chapters"][0]  # empty extras are omitted
+    parsed = parse_chapter_text(text, 3_900_000)
+    assert parsed[1].url == "https://example.com/road"
+    assert parsed[1].image == "https://example.com/road.jpg"
+    assert parsed[0].url == "" and parsed[0].image == ""
+
+
 def test_csv_export_shape() -> None:
     text = chapters_to_csv(_chapters())
     lines = text.splitlines()

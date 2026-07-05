@@ -59,6 +59,7 @@ class AudioStudioWizard(wx.Dialog):
         voices_for: VoicesFor,
         on_preview: Callable[[str, str], None],
         announce_cb: Callable[[str], None] | None = None,
+        initial_journey: str = "documents",
     ) -> None:
         super().__init__(
             parent,
@@ -71,8 +72,8 @@ class AudioStudioWizard(wx.Dialog):
         self._result: BatchSpeechRequest | None = None
         self._current_idx = -1
 
-        self.start_page = StartPage(self)
-        self.doc_source = DocSourcePage(self, defaults)
+        self.start_page = StartPage(self, initial_journey=initial_journey)
+        self.doc_source = DocSourcePage(self, defaults, announce=announce_cb)
         self.voices = VoicesPage(
             self,
             defaults,
@@ -81,11 +82,11 @@ class AudioStudioWizard(wx.Dialog):
             voices_for=voices_for,
             on_preview=on_preview,
         )
-        self.chapters = ChaptersPage(self, defaults)
+        self.chapters = ChaptersPage(self, defaults, source_provider=self.build_request)
         self.output = OutputPage(self, defaults)
-        self.book = BookPage(self, defaults, forced=False)
+        self.book = BookPage(self, defaults, forced=False, source_provider=self.build_request)
         self.audio_source = AudioSourcePage(self, defaults)
-        self.audio_book = BookPage(self, defaults, forced=True)
+        self.audio_book = BookPage(self, defaults, forced=True, source_provider=self.build_request)
         self.edit_source = EditSourcePage(self)
         self.summary = SummaryPage(self)
 
@@ -190,6 +191,33 @@ class AudioStudioWizard(wx.Dialog):
         # Only reachable while the start page is showing; the later pages of the
         # new journey are re-entered via Next as usual.
         self._sync_nav()
+        # Persist the last journey so the second launch lands on the same
+        # radio. Writing on every change (not just on Start) means the
+        # remembered choice tracks what the user *intended*, not just
+        # what they confirmed. The save is best-effort; if settings
+        # persistence fails (headless test, locked profile) the wizard
+        # still works.
+        self._persist_last_journey()
+
+    def _persist_last_journey(self) -> None:
+        """Best-effort write of ``audio_studio_last_journey`` to disk.
+
+        Walks up to the MainFrame (``self.GetParent()`` is the frame; the
+        Audio Studio is a child dialog), reads ``settings``, and calls
+        :func:`save_settings`. A failure here is non-fatal: the wizard
+        still works in-memory and the next launch falls back to "documents".
+        """
+        try:
+            from quill.core.settings import save_settings
+
+            frame = self.GetParent()
+            settings = getattr(frame, "settings", None)
+            if settings is None or not hasattr(settings, "audio_studio_last_journey"):
+                return
+            settings.audio_studio_last_journey = self.journey()
+            save_settings(settings)
+        except Exception:  # noqa: BLE001 - best-effort persistence
+            pass
 
     # -- navigation ---------------------------------------------------------------
 

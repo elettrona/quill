@@ -8,6 +8,7 @@ and unit-tested; runners raise :class:`TranscodeError` with speakable messages.
 from __future__ import annotations
 
 import re
+from collections.abc import Callable
 from pathlib import Path
 
 from quill.core.speech.chapters import Chapter
@@ -152,6 +153,69 @@ def apply_fades(
         out_path,
         "apply the fades",
     )
+
+
+def prepare_chapter_files(
+    paths: list[Path],
+    work_dir: Path,
+    *,
+    trim_silence_files: bool = False,
+    fade_in_ms: int = 0,
+    fade_out_ms: int = 0,
+    tempo: float = 1.0,
+    on_progress: Callable[[str], None] | None = None,
+) -> list[Path]:
+    """Run each source file through the enabled polish steps; returns new paths.
+
+    Steps, in order per file: head/tail silence trim, fades, pitch-preserving
+    tempo. Files keep their names (under *work_dir*) so filename-derived
+    chapter titles and natural ordering are unchanged. With nothing enabled
+    the original paths come back untouched — zero cost on the default path.
+    A file that fails a step keeps its previous form and the run continues;
+    polish must never sink a book.
+    """
+    from quill.core.speech.ffmpeg import probe_duration_ms
+    from quill.core.speech.silence import trim_silence
+
+    wants_tempo = abs(tempo - 1.0) > 1e-6
+    if not (trim_silence_files or fade_in_ms > 0 or fade_out_ms > 0 or wants_tempo):
+        return list(paths)
+    work_dir.mkdir(parents=True, exist_ok=True)
+    prepared: list[Path] = []
+    for index, source in enumerate(paths):
+        current = source
+        stage_dir = work_dir / f"{index:03d}"
+        try:
+            if trim_silence_files:
+                if on_progress is not None:
+                    on_progress(f"Trimming silence: {source.name}")
+                current = trim_silence(current, stage_dir / f"trim_{source.name}")
+            if fade_in_ms > 0 or fade_out_ms > 0:
+                if on_progress is not None:
+                    on_progress(f"Applying fades: {source.name}")
+                current = apply_fades(
+                    current,
+                    stage_dir / f"fade_{source.name}",
+                    duration_ms=probe_duration_ms(current),
+                    fade_in_ms=fade_in_ms,
+                    fade_out_ms=fade_out_ms,
+                )
+            if wants_tempo:
+                if on_progress is not None:
+                    on_progress(f"Adjusting tempo: {source.name}")
+                current = apply_tempo(current, stage_dir / f"tempo_{source.name}", speed=tempo)
+        except TranscodeError:
+            pass  # keep the last good form of this file; the build goes on
+        # The final copy carries the ORIGINAL name so titles/order are stable.
+        if current != source:
+            final = stage_dir / source.name
+            try:
+                current.replace(final)
+                current = final
+            except OSError:
+                pass
+        prepared.append(current)
+    return prepared
 
 
 def safe_chapter_filename(index: int, title: str, extension: str) -> str:

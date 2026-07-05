@@ -19,6 +19,7 @@ background task pool; every outcome is announced.
 from __future__ import annotations
 
 import logging
+import threading
 import time
 from collections.abc import Callable
 from pathlib import Path
@@ -93,8 +94,11 @@ class PublishDialog(wx.Dialog):
         self._media_url.SetHint("https://example.com/podcast/" + book.path.name)
         feed_btn = wx.Button(self, label=_("Write &feed file"))
         feed_btn.Bind(wx.EVT_BUTTON, lambda _e: self._on_write_feed())
+        folder_feed_btn = wx.Button(self, label=_("Folder feed (all episodes)&..."))
+        folder_feed_btn.Bind(wx.EVT_BUTTON, lambda _e: self._on_folder_feed())
         feed_row.Add(self._media_url, 1, wx.EXPAND | wx.RIGHT, 6)
-        feed_row.Add(feed_btn, 0)
+        feed_row.Add(feed_btn, 0, wx.RIGHT, 6)
+        feed_row.Add(folder_feed_btn, 0)
         root.Add(feed_row, 0, wx.EXPAND | wx.LEFT | wx.RIGHT, 10)
 
         # --- SFTP destination ---
@@ -159,11 +163,26 @@ class PublishDialog(wx.Dialog):
         self._token = wx.TextCtrl(self, style=wx.TE_PASSWORD)
         self._token.SetName(_("Auphonic API token"))
         self._load_token()
+        check_btn = wx.Button(self, label=_("Check &account and load presets"))
+        check_btn.Bind(wx.EVT_BUTTON, lambda _e: self._on_check_auphonic())
+        auphonic_row.Add(self._token, 1, wx.EXPAND | wx.RIGHT, 6)
+        auphonic_row.Add(check_btn, 0)
+        root.Add(auphonic_row, 0, wx.EXPAND | wx.LEFT | wx.RIGHT, 10)
+
+        preset_row = wx.BoxSizer(wx.HORIZONTAL)
+        preset_row.Add(
+            wx.StaticText(self, label=_("Auphonic pr&eset:")), 0, wx.ALIGN_CENTER_VERTICAL
+        )
+        self._preset_pick = wx.Choice(self, choices=[str(_("(account default preset)"))])
+        self._preset_pick.SetName(_("Auphonic preset"))
+        self._preset_pick.SetSelection(0)
+        self._presets: list[object] = []
+        self._credits: float | None = None
         auphonic_btn = wx.Button(self, label=_("Send to Auphonic&..."))
         auphonic_btn.Bind(wx.EVT_BUTTON, lambda _e: self._on_auphonic())
-        auphonic_row.Add(self._token, 1, wx.EXPAND | wx.RIGHT, 6)
-        auphonic_row.Add(auphonic_btn, 0)
-        root.Add(auphonic_row, 0, wx.EXPAND | wx.LEFT | wx.RIGHT, 10)
+        preset_row.Add(self._preset_pick, 1, wx.EXPAND | wx.LEFT | wx.RIGHT, 6)
+        preset_row.Add(auphonic_btn, 0)
+        root.Add(preset_row, 0, wx.EXPAND | wx.LEFT | wx.RIGHT | wx.TOP, 6)
 
         btn_row = wx.BoxSizer(wx.HORIZONTAL)
         close_btn = wx.Button(self, wx.ID_CANCEL, label=_("Close"))
@@ -196,17 +215,35 @@ class PublishDialog(wx.Dialog):
     def _info(self, message: str) -> None:
         show_message_box(message, str(_("Publish Audiobook")), wx.OK | wx.ICON_INFORMATION, self)
 
-    def _run(self, title: str, work: Callable[[], object], done: Callable[[object], str]) -> None:
-        """Run *work* on the background pool (or inline in tests), then announce."""
+    def _run(
+        self,
+        title: str,
+        work: Callable[[Callable[[str, int, int], None]], object],
+        done: Callable[[object], str],
+    ) -> None:
+        """Run *work* on the background pool (or inline in tests), then announce.
+
+        *work* receives the frame's progress callable ``(message, current,
+        total)`` — the same contract as ``MainFrame._run_background_task`` —
+        so transfer progress reaches the status bar and the task tracker.
+        """
         if self._run_background is not None:
             self._run_background(title, work, lambda result: self._announce(done(result)))
             return
         try:
-            result = work()
+            result = work(lambda _message, _current, _total: None)
         except Exception as exc:  # noqa: BLE001 - surfaced, not raised through wx
             self._error(str(exc))
             return
         self._announce(done(result))
+
+    def _progress_ui(self, title: str, message: str, cancel: threading.Event) -> object:
+        """A modeless announced progress dialog with a live Cancel button."""
+        from quill.ui.ai_transcribe_dialog import AIProgressDialog
+
+        dialog = AIProgressDialog(self, title, message, on_cancel=cancel.set)
+        dialog.show()
+        return dialog
 
     # -- podcast feed -------------------------------------------------------------
 
@@ -256,6 +293,13 @@ class PublishDialog(wx.Dialog):
                 ).format(name=written.name)
             )
         )
+
+    def _on_folder_feed(self) -> None:
+        """Manage the whole folder as a show: every master an episode."""
+        from quill.ui.audio_studio.feed_dialog import FolderFeedDialog
+
+        with FolderFeedDialog(self, self._book.path.parent) as dlg:
+            dlg.ShowModal()  # GATE-42-OK: nested modal within the publish dialog
 
     # -- sftp -----------------------------------------------------------------------
 
@@ -316,21 +360,56 @@ class PublishDialog(wx.Dialog):
         if not password:
             self._error(str(_("Type the password (or save the destination with one).")))
             return
+        from quill.core.publish.sftp_publish import PublishCancelled
+
         files = [self._book.path, *companion_files(self._book.path)]
         book = self._book
         announce = self._announce
         trust = self._trust_first_use
+        cancel = threading.Event()
+        progress_ui = self._progress_ui(
+            str(_("Uploading audiobook")),
+            str(_("Connecting to {host}...").format(host=dest.host)),
+            cancel,
+        )
 
-        def work() -> object:
-            return publish_files(
-                dest,
-                files,
-                password,
-                trust_first_use=trust,
-                on_progress=lambda m: _log.info("publish: %s", m),
-            )
+        def work(progress: Callable[[str, int, int], None]) -> object:
+            last_pct = -1
+
+            def on_bytes(name: str, sent: int, total: int) -> None:
+                # paramiko reports every block; only surface whole-percent steps
+                # so the UI queue (and the screen reader) is never flooded.
+                nonlocal last_pct
+                pct = int(sent * 100 / total) if total else -1
+                if pct == last_pct:
+                    return
+                last_pct = pct
+                label = str(_("Uploading {name}: {pct}%").format(name=name, pct=max(pct, 0)))
+                progress_ui.set_progress(pct, label)  # type: ignore[attr-defined]
+                progress(label, max(pct, 0), 100)
+
+            try:
+                return publish_files(
+                    dest,
+                    files,
+                    password,
+                    trust_first_use=trust,
+                    on_progress=lambda m: _log.info("publish: %s", m),
+                    on_bytes=on_bytes,
+                    is_cancelled=cancel.is_set,
+                )
+            except PublishCancelled:
+                return None
+            finally:
+                progress_ui.close()  # type: ignore[attr-defined]
 
         def done(result: object) -> str:
+            if result is None:
+                return str(
+                    _("Upload cancelled. Files already completed stay on {host}.").format(
+                        host=dest.host
+                    )
+                )
             count = len(result) if isinstance(result, list) else 0
             return str(
                 _("Published {name}: {count} file(s) uploaded to {host}").format(
@@ -354,6 +433,50 @@ class PublishDialog(wx.Dialog):
         except Exception:  # noqa: BLE001
             pass
 
+    def selected_preset_uuid(self) -> str:
+        """The chosen preset's uuid ('' = the account's default preset)."""
+        idx = self._preset_pick.GetSelection()
+        if idx <= 0 or idx > len(self._presets):
+            return ""
+        return str(getattr(self._presets[idx - 1], "uuid", ""))
+
+    def _on_check_auphonic(self) -> None:
+        """One explicit call: who am I, how many credits, which presets."""
+        from quill.core.publish import auphonic
+
+        token = self._token.GetValue().strip()
+        if not token:
+            self._error(
+                str(_("Paste your Auphonic API token first (from your Auphonic account settings)."))
+            )
+            return
+
+        def work(progress: Callable[[str, int, int], None]) -> object:
+            return (auphonic.list_presets(token), auphonic.account_info(token))
+
+        def done(result: object) -> str:
+            presets, info = result  # type: ignore[misc]
+            self._presets = list(presets)
+            self._preset_pick.Set(
+                [str(_("(account default preset)"))]
+                + [getattr(p, "name", "") or getattr(p, "uuid", "") for p in self._presets]
+            )
+            self._preset_pick.SetSelection(0)
+            self._credits = float(info.credits)
+            return str(
+                _(
+                    "Auphonic account {user}: {credits} credits available,"
+                    " {count} preset(s) loaded."
+                ).format(
+                    user=info.username or _("(unnamed)"),
+                    credits=f"{info.credits:g}",
+                    count=len(self._presets),
+                )
+            )
+
+        self._announce(str(_("Checking your Auphonic account...")))
+        self._run(str(_("Checking Auphonic account")), work, done)
+
     def _on_auphonic(self) -> None:
         from quill.core.publish import auphonic
 
@@ -363,14 +486,23 @@ class PublishDialog(wx.Dialog):
                 str(_("Paste your Auphonic API token first (from your Auphonic account settings)."))
             )
             return
+        preset_uuid = self.selected_preset_uuid()
+        preset_label = (
+            self._preset_pick.GetStringSelection()
+            if preset_uuid
+            else str(_("your account's default preset"))
+        )
+        message = _(
+            "QUILL will upload {name} to your own Auphonic account for"
+            " post-production with {preset} and download the results next"
+            " to the book."
+        ).format(name=self._book.path.name, preset=preset_label)
+        if self._credits is not None:
+            message += " " + str(
+                _("Your account has {credits} credits.").format(credits=f"{self._credits:g}")
+            )
         answer = show_message_box(
-            str(
-                _(
-                    "QUILL will upload {name} to your own Auphonic account for"
-                    " post-production and download the results next to the book."
-                    " Continue?"
-                ).format(name=self._book.path.name)
-            ),
+            str(message) + " " + str(_("Continue?")),
             str(_("Send to Auphonic")),
             wx.YES_NO | wx.ICON_QUESTION,
             self,
@@ -385,25 +517,81 @@ class PublishDialog(wx.Dialog):
         except Exception:  # noqa: BLE001
             _log.warning("Could not store the Auphonic token in the credential manager")
         book = self._book
+        cancel = threading.Event()
+        progress_ui = self._progress_ui(
+            str(_("Auphonic production")),
+            str(_("Uploading {name} to Auphonic...").format(name=book.path.name)),
+            cancel,
+        )
 
-        def work() -> object:
-            production = auphonic.start_production(token, book.path)
-            # Poll politely until done (or a clear failure); the task pool owns
-            # this thread, so sleeping here never touches the UI thread.
-            for _attempt in range(360):  # up to ~30 minutes
-                status = auphonic.production_status(token, production)
-                if status.done:
-                    return auphonic.download_results(
-                        token, status, book.path.parent / f"{book.path.stem} (Auphonic)"
+        def work(progress: Callable[[str, int, int], None]) -> object:
+            last_pct = -1
+
+            def transfer(verb: str, name: str, moved: int, total: int) -> None:
+                nonlocal last_pct
+                pct = int(moved * 100 / total) if total else -1
+                if pct == last_pct:
+                    return
+                last_pct = pct
+                label = f"{verb} {name}: {max(pct, 0)}%"
+                progress_ui.set_progress(pct, label)  # type: ignore[attr-defined]
+                progress(label, max(pct, 0), 100)
+
+            try:
+                try:
+                    production = auphonic.start_production(
+                        token,
+                        book.path,
+                        preset_uuid=preset_uuid,
+                        on_bytes=lambda sent, total: transfer(
+                            str(_("Uploading")), book.path.name, sent, total
+                        ),
+                        is_cancelled=cancel.is_set,
                     )
-                if status.failed:
-                    raise auphonic.AuphonicError(
-                        f"Auphonic reported an error: {status.status_string}"
+                except auphonic.AuphonicCancelled:
+                    return "cancelled-upload"
+                # Poll politely until done (or a clear failure); the task pool owns
+                # this thread, so sleeping here never touches the UI thread.
+                for _attempt in range(360):  # up to ~30 minutes
+                    if cancel.is_set():
+                        return "cancelled-production"
+                    status = auphonic.production_status(token, production)
+                    if status.done:
+                        last_pct = -1
+                        try:
+                            return auphonic.download_results(
+                                token,
+                                status,
+                                book.path.parent / f"{book.path.stem} (Auphonic)",
+                                on_bytes=lambda name, got, total: transfer(
+                                    str(_("Downloading")), name, got, total
+                                ),
+                                is_cancelled=cancel.is_set,
+                            )
+                        except auphonic.AuphonicCancelled:
+                            return "cancelled-production"
+                    if status.failed:
+                        raise auphonic.AuphonicError(
+                            f"Auphonic reported an error: {status.status_string}"
+                        )
+                    progress_ui.set_progress(  # type: ignore[attr-defined]
+                        -1, str(_("Auphonic: {status}...").format(status=status.status_string))
                     )
-                time.sleep(5.0)
-            raise auphonic.AuphonicError("Auphonic did not finish in time; check your account.")
+                    time.sleep(5.0)
+                raise auphonic.AuphonicError("Auphonic did not finish in time; check your account.")
+            finally:
+                progress_ui.close()  # type: ignore[attr-defined]
 
         def done(result: object) -> str:
+            if result == "cancelled-upload":
+                return str(_("Cancelled. The upload was stopped; no production started."))
+            if result == "cancelled-production":
+                return str(
+                    _(
+                        "Cancelled. The production continues in your Auphonic account;"
+                        " nothing was downloaded."
+                    )
+                )
             count = len(result) if isinstance(result, list) else 0
             return str(
                 _("Auphonic finished: {count} file(s) saved next to the book").format(count=count)

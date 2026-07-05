@@ -137,3 +137,13 @@ def test_fetch_verifies_then_unpacks_expected_member(
     out = ra.fetch_component("t", dest)
     assert (out / "whisper-cli.exe").is_file()  # the engine binary lands flat in the target
     assert (out / "whisper.dll").is_file()  # alongside its deps
+
+
+def test_libmpv_asset_is_pinned_pack_on_assets_v1() -> None:
+    """libmpv is self-hosted: a pinned zip carrying the DLL + GPL texts + source offer."""
+    asset = ra.ASSETS["libmpv"]
+    assert asset.tag == "assets-v1"
+    assert asset.expect_member == "libmpv-2.dll"
+    assert ra.is_pinned(asset) is True
+    assert asset.url.endswith("/assets-v1/libmpv-pack.zip")
+    assert "GPL" in asset.license and "source offer" in asset.license

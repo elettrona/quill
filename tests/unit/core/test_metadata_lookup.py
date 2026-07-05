@@ -2,9 +2,16 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+
+import pytest
+
 from quill.core.metadata_lookup import (
+    LookupError_,
     LookupResult,
     _lucene_escape,
+    cover_url,
+    fetch_cover,
     results_from_musicbrainz,
     results_from_open_library,
 )
@@ -23,6 +30,7 @@ def test_results_from_open_library_parses_and_scores() -> None:
                 "first_publish_year": 2001,
                 "subject": ["Fiction", "Adventure"],
                 "series": ["The Saga"],
+                "cover_i": 1234567,
             },
             {"title": "Another", "author_name": []},
             "junk",
@@ -35,8 +43,47 @@ def test_results_from_open_library_parses_and_scores() -> None:
     assert results[0].year == "2001"
     assert results[0].series_title == "The Saga"
     assert results[0].score == 95  # exact title match
+    assert results[0].cover_id == 1234567
     assert results[1].score == 75
+    assert results[1].cover_id == 0  # no cover_i in the doc
     assert len(results) == 2  # junk entry skipped
+
+
+def test_cover_url_shape() -> None:
+    assert cover_url(42) == "https://covers.openlibrary.org/b/id/42-L.jpg?default=false"
+
+
+def test_fetch_cover_rejects_missing_id(tmp_path: Path) -> None:
+    with pytest.raises(LookupError_):
+        fetch_cover(0, tmp_path / "cover.jpg")
+
+
+def test_fetch_cover_writes_target_and_rejects_placeholders(tmp_path: Path, monkeypatch) -> None:
+    import quill.core.metadata_lookup as ml
+
+    class FakeResponse:
+        def __init__(self, payload: bytes) -> None:
+            self._payload = payload
+
+        def read(self) -> bytes:
+            return self._payload
+
+        def __enter__(self) -> FakeResponse:
+            return self
+
+        def __exit__(self, *args: object) -> None:
+            return None
+
+    real = b"\xff\xd8" + b"j" * 5000  # plausible JPEG-sized payload
+    monkeypatch.setattr(ml.urllib.request, "urlopen", lambda *a, **k: FakeResponse(real))
+    target = tmp_path / "audio" / "cover.jpg"
+    written = fetch_cover(99, target)
+    assert written == target and target.read_bytes() == real
+
+    tiny = b"x" * 10  # the "no cover" placeholder is never this small a real jacket
+    monkeypatch.setattr(ml.urllib.request, "urlopen", lambda *a, **k: FakeResponse(tiny))
+    with pytest.raises(LookupError_):
+        fetch_cover(99, tmp_path / "cover2.jpg")
 
 
 def test_results_from_musicbrainz_parses() -> None:

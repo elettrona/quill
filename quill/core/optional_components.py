@@ -94,6 +94,13 @@ def _braille_pack_installed() -> bool:
     return is_braille_pack_installed()
 
 
+def _libmpv_installed() -> bool:
+    from quill.core.speech.engine_install import engine_packs_dir
+
+    pack = engine_packs_dir() / "mpv"
+    return any((pack / name).is_file() for name in ("libmpv-2.dll", "mpv-2.dll", "libmpv.dll"))
+
+
 def _pandoc_installed() -> bool:
     from quill.core.external_tools import get_external_tool_status
 
@@ -185,6 +192,18 @@ def gather_optional_components() -> list[OptionalComponent]:
             "~9 MB",
             note="QUILL braille pack (liblouis, LGPL-3.0/GPL-3.0); fetched from QUILL's "
             "pinned release.",
+        ),
+        OptionalComponent(
+            "libmpv",
+            "mpv player engine (Audio Studio playback)",
+            "A higher-fidelity playback engine for the Audio Studio's player: "
+            "gapless audio, exact seeking, and instant chapter jumps on long "
+            "books. Playback works without it on the built-in Windows engine.",
+            TOOL,
+            _safe(_libmpv_installed),
+            "~44 MB",
+            note="mpv playback library (GPL; the download carries its licenses and a "
+            "source offer); fetched from QUILL's pinned release.",
         ),
     ]
     out.extend(_dictionary_components())

@@ -42,6 +42,82 @@ def clear_recent_files() -> None:
     save_recent_files([])
 
 
+# --- Audio Studio MRU lists ---------------------------------------------
+# Two parallel MRU lists (audio source folders + audiobooks) used by the
+# wizard's source pages and the edit journey's EditSourcePage ComboBox.
+# Each list prepends, dedupes, caps at 10, and persists via the same
+# read_json / write_json_atomic pattern as the document MRU.
+#
+# Two short, parallel MRU lists share the same store-on-disk discipline as
+# ``recent.json`` so they survive across sessions. They are deliberately
+# separate files (not folded into recent.json) because the Audio Studio does
+# not depend on the document MRU: a folder MRU and a finished-book MRU are
+# both independent of "files I just opened." Both lists cap at ten entries.
+
+
+def _audio_source_folders_path() -> Path:
+    return app_data_dir() / "audio-studio-recent-source-folders.json"
+
+
+def _audiobook_files_path() -> Path:
+    return app_data_dir() / "audio-studio-recent-audiobooks.json"
+
+
+def _load_path_list(store: Path) -> list[Path]:
+    raw = read_json(store, default=[])
+    if not isinstance(raw, list):
+        return []
+    out: list[Path] = []
+    for item in raw:
+        if isinstance(item, str):
+            out.append(Path(item))
+    return out
+
+
+def _save_path_list(store: Path, paths: list[Path]) -> None:
+    write_json_atomic(store, [str(p) for p in paths], base=app_data_dir())
+
+
+def _add_to_path_list(store: Path, path: Path, *, limit: int) -> list[Path]:
+    """Resolve *path*, dedupe, prepend, truncate, persist.
+
+    Mirrors :func:`add_recent_file` so the two MRU lists feel the same to
+    callers; the only difference is which JSON file the entries land in.
+    """
+    normalized = path.resolve()
+    existing = [entry.resolve() for entry in _load_path_list(store)]
+    deduped = [entry for entry in existing if entry != normalized]
+    updated = [normalized, *deduped][:limit]
+    _save_path_list(store, updated)
+    return updated
+
+
+def recent_audio_source_folders() -> list[Path]:
+    """Most-recently-used folders for the Audio Studio's source pages."""
+    return _load_path_list(_audio_source_folders_path())
+
+
+def add_recent_audio_source_folder(path: Path, limit: int = 10) -> list[Path]:
+    return _add_to_path_list(_audio_source_folders_path(), path, limit=limit)
+
+
+def clear_recent_audio_source_folders() -> None:
+    _save_path_list(_audio_source_folders_path(), [])
+
+
+def recent_audiobook_files() -> list[Path]:
+    """Most-recently-used finished audiobooks (master + project files)."""
+    return _load_path_list(_audiobook_files_path())
+
+
+def add_recent_audiobook_file(path: Path, limit: int = 10) -> list[Path]:
+    return _add_to_path_list(_audiobook_files_path(), path, limit=limit)
+
+
+def clear_recent_audiobook_files() -> None:
+    _save_path_list(_audiobook_files_path(), [])
+
+
 def _is_fixed_drive(path: Path) -> bool:
     """True only when *path* can be positively confirmed to live on a fixed,
     internal drive.

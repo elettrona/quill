@@ -480,16 +480,30 @@ def build_audiobook(
     metadata: AudioMetadata | None = None,
     cover: Path | None = None,
     acx_normalize: bool = False,
+    trim_silence_files: bool = False,
+    fade_in_ms: int = 0,
+    fade_out_ms: int = 0,
+    tempo: float = 1.0,
     on_progress: Callable[[str], None] | None = None,
     cancel_event: threading.Event | None = None,
 ) -> AudiobookResult:
     """Concatenate *chapters* into one chaptered audiobook master at *output_path*.
+
+    Before concatenation each source file is run through the optional polish
+    pipeline in :func:`quill.core.speech.audio_edit.prepare_chapter_files`:
+    head/tail silence trim (when *trim_silence_files*), fade-in/fade-out
+    (when *fade_in_ms* / *fade_out_ms*), and pitch-preserving tempo
+    (*tempo* != 1.0). A failure in one step keeps the file's previous form
+    and the build continues — polish must never sink a book. Polish writes
+    to a per-chapter stage directory under the build's tempdir, so the
+    caller's source files are never modified.
 
     Returns an :class:`AudiobookResult`. Raises :class:`TranscodeError` when ffmpeg
     is unavailable or the build fails, and :class:`ValueError` on empty input.
     """
     import tempfile
 
+    from quill.core.speech.audio_edit import prepare_chapter_files
     from quill.core.speech.chapters import (
         ChapterSection,
         compute_chapters,
@@ -513,21 +527,42 @@ def build_audiobook(
 
         raise TranscodeError(f"ffmpeg is not installed. {INSTALL_HINT}")
 
-    computed = compute_chapters(
-        [ChapterSection(title=c.title, duration_ms=c.duration_ms) for c in speakable], gap_ms=0
+    # Pre-build polish: trim/fade/tempo runs against the flat concat list, in
+    # order, with the original chapter structure preserved (polish is per-file;
+    # it never reorders or splits anything). The staged files are written under
+    # the build's tempdir so the caller's sources are untouched.
+    want_polish = (
+        trim_silence_files or fade_in_ms > 0 or fade_out_ms > 0 or abs(float(tempo) - 1.0) > 1e-6
     )
-    notes: list[str] = []
-    output_path.parent.mkdir(parents=True, exist_ok=True)
-
-    if on_progress is not None:
-        on_progress("Combining chapters...")
-
+    concat_paths: list[Path]
     with tempfile.TemporaryDirectory(prefix="quill_audiobook_") as tmp:
         tmp_dir = Path(tmp)
+        if want_polish:
+            if on_progress is not None:
+                on_progress("Polishing chapter files...")
+            staged_src = [p for c in speakable for p in c.all_paths if p.is_file()]
+            concat_paths = prepare_chapter_files(
+                staged_src,
+                tmp_dir / "polish",
+                trim_silence_files=trim_silence_files,
+                fade_in_ms=fade_in_ms,
+                fade_out_ms=fade_out_ms,
+                tempo=float(tempo),
+                on_progress=on_progress,
+            )
+        else:
+            concat_paths = [p for c in speakable for p in c.all_paths if p.is_file()]
+
+        computed = compute_chapters(
+            [ChapterSection(title=c.title, duration_ms=c.duration_ms) for c in speakable], gap_ms=0
+        )
+        notes: list[str] = []
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+
+        if on_progress is not None:
+            on_progress("Combining chapters...")
+
         list_path = tmp_dir / "chapters.txt"
-        # A merged chapter contributes all of its files (primary + merged) to the
-        # concat list, in order, but still emits a single chapter marker.
-        concat_paths = [p for c in speakable for p in c.all_paths if p.is_file()]
         list_path.write_text(build_concat_list(concat_paths), encoding="utf-8")
         meta_path = tmp_dir / "meta.ffmeta"
         # M4B carries chapters natively; MP3 gets tags from ffmpeg and chapters from

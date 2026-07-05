@@ -410,6 +410,11 @@ def _apply_project_profile(frame: Any, defaults: BatchSpeechRequest) -> BatchSpe
         translation_targets=tuple((t.language, t.engine, t.voice) for t in tr.targets),
         translation_provider=tr.provider,
         libretranslate_url=tr.libretranslate_url,
+        # Phase 4-6 wizard fields are part of the project profile so the
+        # per-folder auto-remember covers them and "Skip to summary" stays
+        # a 3-keystroke fast-path on the second run.
+        book_credits=bool(profile.book_credits),
+        library_mode=bool(profile.library_mode),
     )
 
 
@@ -451,6 +456,10 @@ def _save_project_profile(frame: Any, req: BatchSpeechRequest) -> None:
                 for c, e, v in req.translation_targets
             ],
         ),
+        # Persist the Phase 4-6 wizard flags so the next run on the same
+        # folder pre-selects them in the dialog.
+        book_credits=bool(req.book_credits),
+        library_mode=bool(req.library_mode),
     )
     try:
         save_profile(profile, req.source_folder)
@@ -611,6 +620,10 @@ def _assemble_book(
         metadata=metadata,
         cover=cover if (cover and cover.is_file()) else None,
         acx_normalize=req.book_acx_normalize,
+        trim_silence_files=req.trim_silence_files,
+        fade_in_ms=req.book_fade_in_ms,
+        fade_out_ms=req.book_fade_out_ms,
+        tempo=req.book_tempo,
         on_progress=lambda m: log.log(f"Audiobook: {m}"),
     )
     for note in result.notes:
@@ -691,6 +704,44 @@ def _run(frame: Any, req: BatchSpeechRequest) -> None:
     from quill.core.speech.voice_blacklist import load_blacklist, save_blacklist
 
     voice_blacklist = load_blacklist()
+
+    # Incremental rebuilds (the authoring loop): fingerprint each document's
+    # bytes + every audio-shaping setting; a matching, still-present output is
+    # reused instead of re-synthesized. Applies only to the chaptered documents
+    # path with the "overwrite" policy — skip/rename keep their own meanings —
+    # and never to dry runs or auditions.
+    from quill.core.speech.synth_cache import can_reuse, load_cache, save_cache
+    from quill.core.speech.synth_cache import fingerprint as synth_fingerprint
+
+    cache_settings: dict[str, object] = {
+        "engine": req.engine,
+        "voice": req.voice,
+        "rate": req.rate,
+        "speed": req.speed,
+        "format": effective_format,
+        "sound": [
+            req.sound_enabled,
+            req.sound_volume,
+            str(getattr(getattr(frame, "settings", None), "batch_speech_chapter_sound_id", "")),
+        ],
+        "gaps": [req.article_gap_ms, req.sentence_gap_ms, req.tail_padding_ms],
+        "speak_headings": req.speak_headings,
+        "combine_headings": req.combine_headings,
+        "normalize_loudness": req.normalize_loudness,
+        "round_robin": list(req.round_robin_voices),
+        "casting": [list(rule) for rule in req.casting_rules],
+        "translations": [list(t) for t in req.translation_targets],
+        "translation_provider": req.translation_provider,
+        "dictionaries": repr(dictionaries),
+    }
+    reuse_enabled = (
+        req.reuse_unchanged
+        and req.on_existing == "overwrite"
+        and req.chapter_mode == "single"
+        and not req.dry_run
+        and not req.audition
+    )
+    cache_entries: dict[str, str] = load_cache(req.source_folder) if reuse_enabled else {}
 
     # Open the diagnostic log in the output folder (where the audio/book lands) and
     # create this run's scratch root — both before any conversion work starts.
@@ -858,6 +909,16 @@ def _run(frame: Any, req: BatchSpeechRequest) -> None:
                         shutil.rmtree(sep_work, ignore_errors=True)
                     continue
                 final = src.with_suffix(suffix)
+                try:
+                    cache_key = src.relative_to(req.source_folder).as_posix()
+                except ValueError:
+                    cache_key = src.name
+                if reuse_enabled and can_reuse(
+                    cache_entries, cache_key, src, final, cache_settings
+                ):
+                    skipped += 1
+                    advance(words, f"[{i}/{total}] Reused {final.name} (unchanged since last run)")
+                    continue
                 if final.exists():
                     if req.on_existing == "skip":
                         skipped += 1
@@ -897,11 +958,17 @@ def _run(frame: Any, req: BatchSpeechRequest) -> None:
                         pronunciation_dictionaries=dictionaries,
                         combine_headings=req.combine_headings,
                         voice_rotation=list(req.round_robin_voices),
+                        casting_rules=list(req.casting_rules),
                         voice_blacklist=voice_blacklist,
                         on_progress=_file_progress,
                     )
                     deliverable = result.with_tones_path or result.output_path
                     shutil.copyfile(deliverable, final)
+                    if reuse_enabled:
+                        try:
+                            cache_entries[cache_key] = synth_fingerprint(src, cache_settings)
+                        except OSError:
+                            pass  # an unreadable source just misses the cache
                     done += 1
                     chapter_count = len(result.chapters)
                     total_chapters += chapter_count
@@ -1007,6 +1074,8 @@ def _run(frame: Any, req: BatchSpeechRequest) -> None:
 
             # Persist any voices that failed this run so later runs skip them.
             save_blacklist(voice_blacklist)
+            if reuse_enabled and cache_entries:
+                save_cache(req.source_folder, cache_entries)
             log.log(
                 f"Done: {done} done, {skipped} skipped, {errors} error(s), "
                 f"{total_chapters} chapter(s). {book_summary}".strip()
@@ -1049,6 +1118,30 @@ def run_batch_export_to_speech(frame: Any) -> None:
     if request is None:
         frame._set_status("Audio Studio cancelled")
         return
+    _remember_sources(request)  # source MRU writes
     _persist_choices(frame, request)
     _save_project_profile(frame, request)  # auto-remember this run for the project
     _run(frame, request)
+
+
+def _remember_sources(request: BatchSpeechRequest) -> None:
+    """Push the request's source folder onto the Audio Studio's source MRU.
+
+    Both the documents and audio journeys write the same MRU — the wizard
+    does not distinguish between "a folder of documents" and "a folder of
+    audio files" at the filesystem level, so remembering one list for both
+    is the right call. The MRU write is best-effort: a corrupt store does
+    not stop the run, it just means the next launch will not pre-populate
+    the dropdown.
+    """
+    folder = getattr(request, "source_folder", None)
+    if folder is None or not str(folder).strip():
+        return
+    try:
+        from pathlib import Path
+
+        from quill.core.recent import add_recent_audio_source_folder
+
+        add_recent_audio_source_folder(Path(folder), limit=10)
+    except Exception:  # noqa: BLE001 - MRU write is best-effort
+        pass

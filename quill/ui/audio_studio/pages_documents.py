@@ -35,18 +35,38 @@ VoicesFor = Callable[[str], list[tuple[str, str]]]
 
 
 class DocSourcePage(StudioPage):
-    """What should I read? Folder, file types, and discovery filters."""
+    """What should I read? Folder, file types, discovery filters, live count."""
 
-    def __init__(self, parent: wx.Window, defaults: BatchSpeechRequest) -> None:
+    def __init__(
+        self,
+        parent: wx.Window,
+        defaults: BatchSpeechRequest,
+        *,
+        announce: Callable[[str], None] | None = None,
+    ) -> None:
         super().__init__(
             parent,
             "audio_studio.doc_source",
             _("What should I read?"),
             _("Pick the folder of documents and which file types to include."),
         )
+        self._announce_cb = announce
+        self._count_generation = 0
         self.add_label(_("&Source folder (documents to convert):"))
         row = wx.BoxSizer(wx.HORIZONTAL)
-        self.source = wx.TextCtrl(self, value=str(defaults.source_folder))
+        # A ComboBox lets the user pick from a recent-folders MRU
+        # without retyping the path. Choices are seeded from the
+        # Audio Studio's source-folder MRU on init; the Browse button
+        # populates ``SetValue`` so the new path is offered on the next
+        # launch. The current request's source is added as the first
+        # non-duplicate choice so the default always shows.
+        self._seed_source_choices(defaults.source_folder)
+        self.source = wx.ComboBox(
+            self,
+            value=str(defaults.source_folder),
+            choices=self._source_choices,
+            style=wx.CB_DROPDOWN | wx.TE_PROCESS_ENTER,
+        )
         self.source.SetName(_("Source folder"))
         browse = wx.Button(self, label=_("B&rowse..."))
         browse.Bind(wx.EVT_BUTTON, self._on_browse)
@@ -77,10 +97,117 @@ class DocSourcePage(StudioPage):
         self.exclude.SetName(_("Exclude files matching"))
         self.sizer.Add(self.exclude, 0, wx.EXPAND | wx.LEFT | wx.RIGHT, 12)
 
+        size_row = wx.BoxSizer(wx.HORIZONTAL)
+        size_row.Add(
+            wx.StaticText(self, label=_("Skip files lar&ger than (MB, 0 = no limit):")),
+            0,
+            wx.ALIGN_CENTER_VERTICAL,
+        )
+        self.max_mb = wx.SpinCtrl(
+            self, min=0, max=4096, initial=max(0, defaults.max_file_bytes // (1024 * 1024))
+        )
+        set_accessible_name(self.max_mb, _("Skip files larger than (MB)"))
+        size_row.Add(self.max_mb, 0, wx.LEFT, 6)
+        self.sizer.Add(size_row, 0, wx.LEFT | wx.TOP, 12)
+
+        count_row = wx.BoxSizer(wx.HORIZONTAL)
+        count_btn = wx.Button(self, label=_("Coun&t documents"))
+        count_btn.Bind(wx.EVT_BUTTON, lambda _e: self.start_count())
+        self._count_label = wx.StaticText(
+            self,
+            label=_("Press Count documents to preview the run."),
+            name="audio_studio.doc_count",
+        )
+        count_row.Add(count_btn, 0, wx.RIGHT, 8)
+        count_row.Add(self._count_label, 1, wx.ALIGN_CENTER_VERTICAL)
+        self.sizer.Add(count_row, 0, wx.EXPAND | wx.LEFT | wx.TOP, 12)
+
+    def _seed_source_choices(self, current: str) -> None:
+        """Populate ``self._source_choices`` from the MRU plus the current value.
+
+        The current value always appears first; the MRU follows in most-
+        recently-used order. The ComboBox's dropdown is then a one-keystroke
+        list of recent folders, which is what the screen-reader user wants
+        for the second run.
+        """
+        try:
+            from quill.core.recent import recent_audio_source_folders
+
+            mru = [str(p) for p in recent_audio_source_folders()]
+        except Exception:  # noqa: BLE001 - MRU read is best-effort
+            mru = []
+        seen: set[str] = set()
+        ordered: list[str] = []
+        if current:
+            ordered.append(str(current))
+            seen.add(str(current))
+        for entry in mru:
+            if entry in seen:
+                continue
+            seen.add(entry)
+            ordered.append(entry)
+        self._source_choices = ordered
+
     def _on_browse(self, _evt: wx.Event) -> None:
         with wx.DirDialog(self, _("Choose the folder of documents to convert")) as dlg:
             if dlg.ShowModal() == wx.ID_OK:  # GATE-42-OK: native folder picker
                 self.source.SetValue(dlg.GetPath())
+                # Reseed the dropdown so the freshly-picked folder is
+                # offered on the next run without waiting for settings.
+                self._seed_source_choices(dlg.GetPath())
+                self.source.SetItems(self._source_choices)
+                self.source.SetValue(dlg.GetPath())
+                self.start_count()
+
+    def on_shown(self, req: BatchSpeechRequest) -> None:
+        self.start_count()
+
+    def start_count(self) -> None:
+        """Count matching documents and words off the UI thread; announce when settled."""
+        import threading
+
+        folder_text = self.source.GetValue().strip()
+        extensions = self.selected_extensions()
+        if not folder_text or not Path(folder_text).is_dir() or not extensions:
+            return
+        self._count_generation += 1
+        generation = self._count_generation
+        include = self.include.GetValue().strip()
+        exclude = self.exclude.GetValue().strip()
+        recursive = self.recursive.GetValue()
+        max_bytes = int(self.max_mb.GetValue()) * 1024 * 1024
+        self._count_label.SetLabel(_("Counting..."))
+
+        def work() -> None:
+            from quill.core.speech.batch_export import count_document_words, discover_files
+
+            try:
+                files = discover_files(
+                    Path(folder_text),
+                    list(extensions),
+                    recursive,
+                    include_glob=include,
+                    exclude_glob=exclude,
+                    max_file_bytes=max_bytes,
+                )
+                words = sum(count_document_words(f) for f in files)
+            except Exception:  # noqa: BLE001 - a broken folder just shows no count
+                return
+            message = _("{count} document(s) found, about {words:,} words.").format(
+                count=len(files), words=words
+            )
+
+            def apply() -> None:
+                # A newer count superseded this one while it was running.
+                if generation != self._count_generation or not self:
+                    return
+                self._count_label.SetLabel(message)
+                if self._announce_cb is not None and self.IsShown():
+                    self._announce_cb(str(message))
+
+            wx.CallAfter(apply)
+
+        threading.Thread(target=work, name="audio-studio-count", daemon=True).start()
 
     def selected_extensions(self) -> tuple[str, ...]:
         exts: list[str] = []
@@ -95,6 +222,7 @@ class DocSourcePage(StudioPage):
         req.extensions = self.selected_extensions()
         req.include_glob = self.include.GetValue().strip()
         req.exclude_glob = self.exclude.GetValue().strip()
+        req.max_file_bytes = int(self.max_mb.GetValue()) * 1024 * 1024
 
     def is_valid(self) -> tuple[bool, str]:
         text = self.source.GetValue().strip()
@@ -192,6 +320,39 @@ class VoicesPage(StudioPage):
             rr_btn_row.Add(btn, 0, wx.RIGHT, 6)
         self.sizer.Add(rr_btn_row, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM, 12)
 
+        # --- Voice casting (optional; overrides the rotation per section) ---
+        self.add_label(
+            _(
+                "Voice cas&ting (optional): assign a voice to matching chapters."
+                " Patterns match the heading title (Chapter *, *interview*) or a"
+                " section number (#1). First match wins; others use the rotation."
+            )
+        )
+        cast_add_row = wx.BoxSizer(wx.HORIZONTAL)
+        self.cast_pattern = wx.TextCtrl(self)
+        self.cast_pattern.SetName(_("Casting pattern (title glob or #number)"))
+        self.cast_pattern.SetHint(_("Chapter * or #1"))
+        self.cast_pick = wx.Choice(self, choices=[])
+        self.cast_pick.SetName(_("Casting voice"))
+        cast_add = wx.Button(self, label=_("Add r&ule"))
+        cast_add.Bind(wx.EVT_BUTTON, lambda _e: self.cast_add())
+        cast_add_row.Add(self.cast_pattern, 1, wx.EXPAND | wx.RIGHT, 6)
+        cast_add_row.Add(self.cast_pick, 1, wx.EXPAND | wx.RIGHT, 6)
+        cast_add_row.Add(cast_add, 0)
+        self.sizer.Add(cast_add_row, 0, wx.EXPAND | wx.LEFT | wx.RIGHT | wx.TOP, 12)
+        self.add_label(_("Casting rules (first match &wins):"))
+        self.cast_list = wx.ListBox(self, style=wx.LB_SINGLE)
+        self.cast_list.SetName(_("Casting rules"))
+        apply_listbox_activation(self.cast_list, lambda _e: self.cast_pattern.SetFocus())
+        self.sizer.Add(self.cast_list, 0, wx.EXPAND | wx.LEFT | wx.RIGHT, 12)
+        cast_btn_row = wx.BoxSizer(wx.HORIZONTAL)
+        cast_remove = wx.Button(self, label=_("Remove rule"))
+        cast_remove.Bind(wx.EVT_BUTTON, lambda _e: self.cast_remove())
+        cast_btn_row.Add(cast_remove, 0)
+        self.sizer.Add(cast_btn_row, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM, 12)
+        # Ordered (pattern, voice_id, display label) rows.
+        self._cast_rules: list[tuple[str, str, str]] = []
+
         # --- Translated editions (optional) ---
         self.add_label(_("Also export in other &languages (translated):"))
         from quill.core.ai.translation import SUPPORTED_LANGUAGES
@@ -232,6 +393,7 @@ class VoicesPage(StudioPage):
 
         self.reload_voices(initial_voice=defaults.voice)
         self.seed_rotation(defaults.round_robin_voices)
+        self.seed_casting(defaults.casting_rules)
         self.reload_tr_voices()
         self.seed_translations(defaults.translation_targets)
 
@@ -261,8 +423,10 @@ class VoicesPage(StudioPage):
         labels = [lbl for lbl, _vid in self._voice_pairs]
         self.voice.Set(labels)
         self.rr_pick.Set(labels)
+        self.cast_pick.Set(labels)
         if labels:
             self.rr_pick.SetSelection(0)
+            self.cast_pick.SetSelection(0)
         chosen = 0
         for i, (_lbl, vid) in enumerate(self._voice_pairs):
             if vid == initial_voice:
@@ -272,10 +436,13 @@ class VoicesPage(StudioPage):
             self.voice.SetSelection(chosen)
 
     def _on_engine_change(self) -> None:
-        # Voices are engine-specific, so switching engines clears the rotation.
+        # Voices are engine-specific, so switching engines clears the rotation
+        # and the casting rules (both name voices of the previous engine).
         self.reload_voices()
         self._rr_voices = []
         self._refresh_rr_list()
+        self._cast_rules = []
+        self._refresh_cast_list()
 
     def current_voice_id(self) -> str:
         idx = self.voice.GetSelection()
@@ -331,6 +498,42 @@ class VoicesPage(StudioPage):
             return
         del self._rr_voices[idx]
         self._refresh_rr_list(select=min(idx, len(self._rr_voices) - 1))
+
+    # -- voice casting -----------------------------------------------------------
+
+    def seed_casting(self, rules: tuple[tuple[str, str], ...]) -> None:
+        """Pre-fill the casting rules from saved (pattern, voice id) pairs."""
+        by_id = {vid: lbl for lbl, vid in self._voice_pairs}
+        self._cast_rules = [
+            (pattern, vid, f"{pattern} = {by_id[vid]}")
+            for pattern, vid in rules
+            if vid in by_id and pattern.strip()
+        ]
+        self._refresh_cast_list()
+
+    def _refresh_cast_list(self, *, select: int = -1) -> None:
+        self.cast_list.Set([label for _p, _v, label in self._cast_rules])
+        if self._cast_rules:
+            index = select if 0 <= select < len(self._cast_rules) else 0
+            self.cast_list.SetSelection(index)
+
+    def cast_add(self) -> None:
+        pattern = self.cast_pattern.GetValue().strip()
+        idx = self.cast_pick.GetSelection()
+        if not pattern or not (0 <= idx < len(self._voice_pairs)):
+            return
+        label, vid = self._voice_pairs[idx]
+        if any(p == pattern for p, _v, _l in self._cast_rules):
+            return  # one rule per pattern; remove it to reassign
+        self._cast_rules.append((pattern, vid, f"{pattern} = {label}"))
+        self._refresh_cast_list(select=len(self._cast_rules) - 1)
+        self.cast_pattern.SetValue("")
+
+    def cast_remove(self) -> None:
+        idx = self.cast_list.GetSelection()
+        if 0 <= idx < len(self._cast_rules):
+            del self._cast_rules[idx]
+            self._refresh_cast_list(select=min(idx, len(self._cast_rules) - 1))
 
     # -- translated editions ----------------------------------------------------
 
@@ -389,22 +592,39 @@ class VoicesPage(StudioPage):
         req.rate = int(self.rate.GetValue())
         req.speed = float(self.speed.GetValue())
         req.round_robin_voices = tuple(vid for vid, _lbl in self._rr_voices)
+        req.casting_rules = tuple((p, v) for p, v, _lbl in self._cast_rules)
         req.translation_targets = tuple((c, e, v) for c, e, v, _ in self._tr_targets)
         req.translation_provider = (
             "libretranslate" if self.tr_provider.GetSelection() == 1 else "ai_assistant"
         )
 
 
+_HEADING_LEVEL_CHOICES: tuple[tuple[str, int], ...] = (
+    ("Every heading starts a chapter", 0),
+    ("Level 1 headings only", 1),
+    ("Levels 1 and 2", 2),
+    ("Levels 1 to 3", 3),
+)
+
+
 class ChaptersPage(StudioPage):
     """How should chapters work? Mode, headings, the transition sounder, gaps."""
 
-    def __init__(self, parent: wx.Window, defaults: BatchSpeechRequest) -> None:
+    def __init__(
+        self,
+        parent: wx.Window,
+        defaults: BatchSpeechRequest,
+        *,
+        source_provider: Callable[[], BatchSpeechRequest] | None = None,
+    ) -> None:
         super().__init__(
             parent,
             "audio_studio.chapters",
             _("How should chapters work?"),
             _("Shape the chapter structure and the sound between chapters."),
         )
+        self._source_provider = source_provider
+        self._preview_generation = 0
         self.add_label(_("Chapter &mode:"))
         self.mode = wx.Choice(
             self,
@@ -413,6 +633,36 @@ class ChaptersPage(StudioPage):
         self.mode.SetName(_("Chapter mode"))
         self.mode.SetSelection(MODE_INDEX.get(defaults.chapter_mode, 0))
         self.sizer.Add(self.mode, 0, wx.EXPAND | wx.LEFT | wx.RIGHT, 12)
+
+        level_row = wx.BoxSizer(wx.HORIZONTAL)
+        level_row.Add(
+            wx.StaticText(self, label=_("Chapters start at heading le&vel:")),
+            0,
+            wx.ALIGN_CENTER_VERTICAL,
+        )
+        self.heading_level = wx.Choice(
+            self, choices=[_(label) for label, _lvl in _HEADING_LEVEL_CHOICES]
+        )
+        self.heading_level.SetName(_("Chapters start at heading level"))
+        level_index = next(
+            (
+                i
+                for i, (_l, lvl) in enumerate(_HEADING_LEVEL_CHOICES)
+                if lvl == defaults.chapter_heading_level
+            ),
+            0,
+        )
+        self.heading_level.SetSelection(level_index)
+        preview_btn = wx.Button(self, label=_("Preview chapter titles"))
+        preview_btn.Bind(wx.EVT_BUTTON, lambda _e: self.start_title_preview())
+        level_row.Add(self.heading_level, 0, wx.LEFT | wx.RIGHT, 6)
+        level_row.Add(preview_btn, 0)
+        self.sizer.Add(level_row, 0, wx.LEFT | wx.TOP, 12)
+        self.add_label(_("First chapter titles this choice would produce:"))
+        self.title_preview = wx.ListBox(self, style=wx.LB_SINGLE)
+        self.title_preview.SetName(_("Chapter title preview"))
+        self.title_preview.SetMinSize(wx.Size(-1, 120))
+        self.sizer.Add(self.title_preview, 0, wx.EXPAND | wx.LEFT | wx.RIGHT, 12)
 
         self.speak_headings = wx.CheckBox(self, label=_("Speak each &heading aloud"))
         self.speak_headings.SetValue(defaults.speak_headings)
@@ -441,9 +691,65 @@ class ChaptersPage(StudioPage):
         )
         self.sizer.Add(gap_grid, 0, wx.LEFT | wx.TOP, 12)
 
+    def current_heading_level(self) -> int:
+        idx = self.heading_level.GetSelection()
+        if 0 <= idx < len(_HEADING_LEVEL_CHOICES):
+            return _HEADING_LEVEL_CHOICES[idx][1]
+        return 0
+
+    def start_title_preview(self) -> None:
+        """List the first 20 chapter titles the level choice would carve, off-thread."""
+        import threading
+
+        if self._source_provider is None:
+            return
+        req = self._source_provider()
+        if not req.source_folder.is_dir() or not req.extensions:
+            self.title_preview.Set([str(_("Choose a source folder first."))])
+            return
+        self._preview_generation += 1
+        generation = self._preview_generation
+        max_level = self.current_heading_level()
+        combine = self.combine.GetValue()
+        self.title_preview.Set([str(_("Reading the documents..."))])
+
+        def work() -> None:
+            from quill.core.speech.batch_export import discover_files
+            from quill.core.speech.text_polish import preview_chapter_titles
+
+            try:
+                files = discover_files(
+                    req.source_folder,
+                    list(req.extensions),
+                    req.recursive,
+                    include_glob=req.include_glob,
+                    exclude_glob=req.exclude_glob,
+                    max_file_bytes=req.max_file_bytes,
+                )
+                titles = preview_chapter_titles(
+                    files, combine_headings=combine, max_heading_level=max_level, limit=20
+                )
+            except Exception:  # noqa: BLE001 - a broken folder shows an empty preview
+                titles = []
+
+            def apply() -> None:
+                if generation != self._preview_generation or not self:
+                    return
+                if titles:
+                    self.title_preview.Set([
+                        f"{i}. {title}" for i, title in enumerate(titles, start=1)
+                    ])
+                else:
+                    self.title_preview.Set([str(_("No chapters would be produced."))])
+
+            wx.CallAfter(apply)
+
+        threading.Thread(target=work, name="audio-studio-preview", daemon=True).start()
+
     def collect(self, req: BatchSpeechRequest) -> None:
         idx = self.mode.GetSelection()
         req.chapter_mode = MODE_CHOICES[idx] if 0 <= idx < len(MODE_CHOICES) else "single"
+        req.chapter_heading_level = self.current_heading_level()
         req.speak_headings = self.speak_headings.GetValue()
         req.combine_headings = self.combine.GetValue()
         req.sound_enabled = self.sound.GetValue()
@@ -489,6 +795,12 @@ class OutputPage(StudioPage):
         self.normalize = wx.CheckBox(self, label=_("Normalize &loudness to audiobook (ACX) level"))
         self.normalize.SetValue(defaults.normalize_loudness)
         self.sizer.Add(self.normalize, 0, wx.LEFT | wx.TOP, 12)
+        self.reuse = wx.CheckBox(
+            self,
+            label=_("Reuse unchan&ged audio from the last run (incremental rebuild)"),
+        )
+        self.reuse.SetValue(defaults.reuse_unchanged)
+        self.sizer.Add(self.reuse, 0, wx.LEFT | wx.TOP, 12)
         self.dry_run = wx.CheckBox(
             self, label=_("Dr&y run: write preview text only (don't synthesize)")
         )
@@ -528,6 +840,7 @@ class OutputPage(StudioPage):
         req.on_existing = EXISTING_POLICIES[pidx] if 0 <= pidx < 3 else "overwrite"
         req.skip_existing = req.on_existing == "skip"
         req.normalize_loudness = self.normalize.GetValue()
+        req.reuse_unchanged = self.reuse.GetValue()
         req.dry_run = self.dry_run.GetValue()
         req.save_spoken_text = self.save_spoken.GetValue()
         req.audition = self.audition.GetValue()

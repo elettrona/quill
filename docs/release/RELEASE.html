@@ -241,6 +241,9 @@
   </style>
 </head>
 <body>
+<header id="title-block-header">
+<h1 class="title">RELEASE</h1>
+</header>
 <h1 id="quill-release-process">QUILL Release Process</h1>
 <p>This file documents the operational steps for cutting a QUILL
 release. It is the canonical checklist referenced from
@@ -273,6 +276,16 @@ empty.</li>
 <code>docs/site/updates/manifests/manifest-&lt;X&gt;.json</code> exists
 for the target version, alongside the historical <code>0.5.0</code>
 manifest that the public feed still points at during pre-release.</li>
+<li><strong>Quillin Hub service code shipped.</strong>
+<code>quillin-hub/</code> is a Flask service in this repo; the registry
+API, Submission Forge, sync worker, and smoke test are all in-tree.
+Public deployment (<code>hub.quillforall.org</code> – DNS, hosting,
+Postgres) is a separate ops track and is tracked separately from the
+release cut. The Ed25519 publisher signature gate
+(<code>quill/tools/signing.py</code> plus the Submission Forge
+fail-closed hook) and the deployment runbook
+(<code>docs/release/quillin-hub-deployment.md</code>) are in; the
+protocol is documented in <code>docs/signing.md</code>.</li>
 </ol>
 <h2 id="tag-time-flip">Tag-time flip</h2>
 <ol start="7" type="1">
@@ -300,46 +313,12 @@ the website.</li>
 <li><strong>Archive old notes.</strong> Move the prior release notes
 into <code>docs/release notes/archived/</code>.</li>
 </ol>
-<h2 id="emergency-remotely-disable-a-feature-kill-switch">Emergency:
-remotely disable a feature (kill switch)</h2>
-<p>If a serious problem is found in a released feature, you can disable
-it on users' machines without shipping a new build. Kill switches are
-signed <code>advisories</code> inside the update feed (PRD §2.3.1), so
-they are trusted and can only make a feature <em>unavailable</em> —
-never enable or run anything.</p>
-<ol type="1">
-<li><p><strong>Find the feature id.</strong> It is the command's feature
-id from <code>quill/core/feature_command_map.py</code> (e.g.
-<code>core.glow</code>, <code>core.format</code>).</p></li>
-<li><p><strong>Re-sign the feed with the advisory.</strong> From the
-repo root, with the same <code>QUILL_UPDATE_MANIFEST_KEY</code> you sign
-releases with:</p>
-<pre><code>python scripts/generate_update_feed.py \
-  --lock-feature &lt;feature.id&gt; \
-  --lock-reason &quot;Short spoken reason users hear&quot; \
-  --lock-max-version &lt;last-affected-version&gt; \
-  --output docs/site/updates/.quill-update-feed-v1.json</code></pre>
-<p>Repeat <code>--lock-feature</code> to disable several at once. Omit
-<code>--lock-max-version</code> to lock every version until you lift
-it.</p></li>
-<li><p><strong>Publish the feed</strong> to the GitHub Pages updates
-path and verify it
-(<code>python -m quill.tools.verify_update_manifest</code>).</p></li>
-<li><p><strong>Effect.</strong> On each user's next update check the
-feature dims with a spoken notice; the lock is cached so it persists
-offline and across restarts.</p></li>
-<li><p><strong>Lift it.</strong> Re-run step 2 <strong>without</strong>
-the <code>--lock-feature</code> for that id (or set a
-<code>--lock-max-version</code> below the fixed build) and publish. The
-next update check clears the lock. Users can also override locally in an
-emergency with <code>QUILL_IGNORE_FEATURE_LOCKS=1</code>.</p></li>
-</ol>
 <h2 id="macos-signednotarized-dmg-runbook-start-to-finish">macOS
 signed/notarized DMG runbook (start to finish)</h2>
 <p>Use this when onboarding a maintainer or standing up macOS release
 signing for the first time. This is the canonical operational path from
 fresh Apple account to a shipped, trusted DMG.</p>
-<h3 id="1-apple-account-and-certificate-setup-one-time">1) Apple account
+<h3 id="apple-account-and-certificate-setup-one-time">1) Apple account
 and certificate setup (one-time)</h3>
 <ol type="1">
 <li>Join and activate Apple Developer Program membership.</li>
@@ -359,7 +338,7 @@ download the <code>.p8</code> key file.</li>
 <code>Developer ID Application: Team Name (TEAMID)</code>).</li>
 </ul></li>
 </ol>
-<h3 id="2-local-prerequisites">2) Local prerequisites</h3>
+<h3 id="local-prerequisites">2) Local prerequisites</h3>
 <ol type="1">
 <li>Install GitHub CLI (<code>gh</code>) and authenticate with repo
 admin/maintainer scope.</li>
@@ -367,16 +346,16 @@ admin/maintainer scope.</li>
 <code>.github/workflows/macos-release.yml</code>.</li>
 <li>From terminal:</li>
 </ol>
-<div class="sourceCode" id="cb2"><pre
-class="sourceCode powershell"><code class="sourceCode powershell"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="fu">cd</span> S<span class="op">:</span>\quill</span>
-<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>gh auth status</span>
-<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>gh repo set-default Community-Access<span class="op">/</span>quill</span></code></pre></div>
-<h3 id="3-create-release-environment">3) Create release environment</h3>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode powershell"><code class="sourceCode powershell"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="fu">cd</span> S<span class="op">:</span>\quill</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>gh auth status</span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>gh repo set-default Community-Access<span class="op">/</span>quill</span></code></pre></div>
+<h3 id="create-release-environment">3) Create release environment</h3>
 <ol type="1">
 <li>Create the protected GitHub Actions environment:</li>
 </ol>
-<div class="sourceCode" id="cb3"><pre
-class="sourceCode powershell"><code class="sourceCode powershell"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a>gh api <span class="op">--</span>method PUT repos<span class="op">/</span>Community-Access<span class="op">/</span>quill<span class="op">/</span>environments<span class="op">/</span>macos-release</span></code></pre></div>
+<div class="sourceCode" id="cb2"><pre
+class="sourceCode powershell"><code class="sourceCode powershell"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>gh api <span class="op">--</span>method PUT repos<span class="op">/</span>Community-Access<span class="op">/</span>quill<span class="op">/</span>environments<span class="op">/</span>macos-release</span></code></pre></div>
 <ol start="2" type="1">
 <li>In GitHub UI, configure environment protections for
 <code>macos-release</code>:
@@ -385,44 +364,43 @@ class="sourceCode powershell"><code class="sourceCode powershell"><span id="cb3-
 <li>Restrict deployment branches as needed.</li>
 </ul></li>
 </ol>
-<h3 id="4-upload-all-required-secrets">4) Upload all required
-secrets</h3>
+<h3 id="upload-all-required-secrets">4) Upload all required secrets</h3>
 <ol type="1">
 <li>File secrets:</li>
 </ol>
-<div class="sourceCode" id="cb4"><pre
-class="sourceCode powershell"><code class="sourceCode powershell"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="op">[</span>Convert<span class="op">]::</span>ToBase64String<span class="op">([</span>IO<span class="op">.</span><span class="fu">File</span><span class="op">]::</span>ReadAllBytes<span class="op">(</span><span class="st">&quot;C:\path\to\DeveloperID.p12&quot;</span><span class="op">))</span> <span class="op">|</span> gh secret <span class="fu">set</span> <span class="op">-</span>e macos-release BUILD_CERTIFICATE_BASE64</span>
-<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a><span class="op">[</span>Convert<span class="op">]::</span>ToBase64String<span class="op">([</span>IO<span class="op">.</span><span class="fu">File</span><span class="op">]::</span>ReadAllBytes<span class="op">(</span><span class="st">&quot;C:\path\to\AuthKey_ABC123XYZ.p8&quot;</span><span class="op">))</span> <span class="op">|</span> gh secret <span class="fu">set</span> <span class="op">-</span>e macos-release APPLE_API_KEY_B64</span></code></pre></div>
+<div class="sourceCode" id="cb3"><pre
+class="sourceCode powershell"><code class="sourceCode powershell"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="op">[</span>Convert<span class="op">]::</span>ToBase64String<span class="op">([</span>IO<span class="op">.</span><span class="fu">File</span><span class="op">]::</span>ReadAllBytes<span class="op">(</span><span class="st">&quot;C:\path\to\DeveloperID.p12&quot;</span><span class="op">))</span> <span class="op">|</span> gh secret <span class="fu">set</span> <span class="op">-</span>e macos-release BUILD_CERTIFICATE_BASE64</span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a><span class="op">[</span>Convert<span class="op">]::</span>ToBase64String<span class="op">([</span>IO<span class="op">.</span><span class="fu">File</span><span class="op">]::</span>ReadAllBytes<span class="op">(</span><span class="st">&quot;C:\path\to\AuthKey_ABC123XYZ.p8&quot;</span><span class="op">))</span> <span class="op">|</span> gh secret <span class="fu">set</span> <span class="op">-</span>e macos-release APPLE_API_KEY_B64</span></code></pre></div>
 <ol start="2" type="1">
 <li>Prompted text secrets:</li>
 </ol>
-<div class="sourceCode" id="cb5"><pre
-class="sourceCode powershell"><code class="sourceCode powershell"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a>gh secret <span class="fu">set</span> <span class="op">-</span>e macos-release P12_PASSWORD</span>
-<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a>gh secret <span class="fu">set</span> <span class="op">-</span>e macos-release KEYCHAIN_PASSWORD</span>
-<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a>gh secret <span class="fu">set</span> <span class="op">-</span>e macos-release MACOS_CODESIGN_IDENTITY</span>
-<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a>gh secret <span class="fu">set</span> <span class="op">-</span>e macos-release APPLE_API_KEY_ID</span>
-<span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a>gh secret <span class="fu">set</span> <span class="op">-</span>e macos-release APPLE_API_ISSUER</span>
-<span id="cb5-6"><a href="#cb5-6" aria-hidden="true" tabindex="-1"></a>gh secret <span class="fu">set</span> <span class="op">-</span>e macos-release APPLE_TEAM_ID</span></code></pre></div>
+<div class="sourceCode" id="cb4"><pre
+class="sourceCode powershell"><code class="sourceCode powershell"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a>gh secret <span class="fu">set</span> <span class="op">-</span>e macos-release P12_PASSWORD</span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a>gh secret <span class="fu">set</span> <span class="op">-</span>e macos-release KEYCHAIN_PASSWORD</span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a>gh secret <span class="fu">set</span> <span class="op">-</span>e macos-release MACOS_CODESIGN_IDENTITY</span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a>gh secret <span class="fu">set</span> <span class="op">-</span>e macos-release APPLE_API_KEY_ID</span>
+<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a>gh secret <span class="fu">set</span> <span class="op">-</span>e macos-release APPLE_API_ISSUER</span>
+<span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a>gh secret <span class="fu">set</span> <span class="op">-</span>e macos-release APPLE_TEAM_ID</span></code></pre></div>
 <ol start="3" type="1">
 <li>Verify:</li>
 </ol>
-<div class="sourceCode" id="cb6"><pre
-class="sourceCode powershell"><code class="sourceCode powershell"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a>gh secret list <span class="op">-</span>e macos-release</span></code></pre></div>
-<h3 id="5-dry-run-on-branch">5) Dry run on branch</h3>
+<div class="sourceCode" id="cb5"><pre
+class="sourceCode powershell"><code class="sourceCode powershell"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a>gh secret list <span class="op">-</span>e macos-release</span></code></pre></div>
+<h3 id="dry-run-on-branch">5) Dry run on branch</h3>
 <ol type="1">
 <li>Trigger a manual build on your working branch:</li>
 </ol>
-<div class="sourceCode" id="cb7"><pre
-class="sourceCode powershell"><code class="sourceCode powershell"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a>gh <span class="kw">workflow</span> run macos-release<span class="op">.</span><span class="fu">yml</span> <span class="op">--</span>ref <span class="op">&lt;</span>branch-name<span class="op">&gt;</span></span>
-<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a>gh run list <span class="op">--</span>workflow macos-release<span class="op">.</span><span class="fu">yml</span> <span class="op">--</span>limit <span class="dv">5</span></span>
-<span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a><span class="dt">gh</span> run watch</span></code></pre></div>
+<div class="sourceCode" id="cb6"><pre
+class="sourceCode powershell"><code class="sourceCode powershell"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a>gh <span class="kw">workflow</span> run macos-release<span class="op">.</span><span class="fu">yml</span> <span class="op">--</span>ref <span class="op">&lt;</span>branch-name<span class="op">&gt;</span></span>
+<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a>gh run list <span class="op">--</span>workflow macos-release<span class="op">.</span><span class="fu">yml</span> <span class="op">--</span>limit <span class="dv">5</span></span>
+<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a><span class="dt">gh</span> run watch</span></code></pre></div>
 <ol start="2" type="1">
-<li><p>Confirm artifacts exist:</p>
+<li>Confirm artifacts exist:
 <ul>
 <li><code>Quill.dmg</code></li>
 <li><code>Quill.app</code> (if workflow uploads app bundle)</li>
 </ul></li>
-<li><p>If the run fails, triage quickly:</p>
+<li>If the run fails, triage quickly:
 <ul>
 <li>Certificate import errors: re-export <code>.p12</code>, recheck
 <code>P12_PASSWORD</code>.</li>
@@ -432,14 +410,14 @@ Keychain.</li>
 <code>.p8</code> source.</li>
 </ul></li>
 </ol>
-<h3 id="6-gate-beta-publication">6) Gate beta publication</h3>
+<h3 id="gate-beta-publication">6) Gate beta publication</h3>
 <ol type="1">
 <li>Do not publish external beta artifacts unless macOS workflow is
 green.</li>
 <li>Require the macOS signed/notarized workflow in PR/release policy for
 any beta that includes non-engineering testers.</li>
 </ol>
-<h3 id="7-release-execution">7) Release execution</h3>
+<h3 id="release-execution">7) Release execution</h3>
 <ol type="1">
 <li>Complete normal release pre-tag checks from this file.</li>
 <li>Push tag (<code>v&lt;X&gt;</code>) to trigger release
@@ -453,15 +431,15 @@ signed/notarized macOS DMG.</li>
 <li>Launch with no unidentified-developer warnings.</li>
 </ul></li>
 </ol>
-<h3 id="8-ongoing-operations">8) Ongoing operations</h3>
+<h3 id="ongoing-operations">8) Ongoing operations</h3>
 <ol type="1">
 <li>Track certificate and API key expiry on calendar.</li>
 <li>Rotate credentials before expiry and validate with a branch dry
 run.</li>
 <li>Keep at least two maintainers with documented recovery access.</li>
 </ol>
-<p>Reference planning doc:
-<code>docs/planning/quill-macos-dmg-signing-and-notarization-plan.md</code></p>
+<p>Full runbook:
+<code>docs/release/quill-macos-signing-notarization-runbook.md</code></p>
 <p>Quick operator checklist:
 <code>docs/release/macos-signed-notarized-release-day-checklist.md</code></p>
 <p>Command-only script:

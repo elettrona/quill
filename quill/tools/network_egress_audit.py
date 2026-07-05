@@ -38,8 +38,10 @@ _EGRESS_CALLEES = frozenset({
 # to the reason the call is not silent. Update this when adding a network call.
 _REVIEWED_EGRESS: dict[str, str] = {
     "core/publish/auphonic.py::_request": (
-        "Single egress site for Auphonic post-production (publish dialog only): "
-        "preset list, production upload/start, status poll, result download. "
+        "Single egress site for Auphonic post-production: preset list, account/"
+        "credit check, production upload/start, status poll, result download. "
+        "Reached only from the publish dialog's explicit buttons and the AI Hub "
+        "Services tab's 'Check Account and Credits' button. "
         "Requires the user's own API token from the Windows Credential Manager "
         "(never settings); every use is an explicit publish action in a dialog "
         "that names the service; absent in Safe Mode. HTTPS-only, verified TLS, "
@@ -53,6 +55,14 @@ _REVIEWED_EGRESS: dict[str, str] = {
         "context with a bounded timeout; MusicBrainz's 1-req/s courtesy limit is "
         "throttled in code. Disabled in Safe Mode with the rest of the Studio's "
         "network surfaces."
+    ),
+    "core/metadata_lookup.py::fetch_cover": (
+        "Companion to the lookup above: downloads the chosen match's jacket image "
+        "from covers.openlibrary.org (same free, keyless Open Library service) as "
+        "cover.jpg next to the audio folder. Reached only after the user picks a "
+        "match in the consented lookup flow and confirms the cover download. "
+        "HTTPS-only over a verified TLS context with a bounded timeout. Disabled "
+        "in Safe Mode with the rest of the Studio's network surfaces."
     ),
     "core/mastodon/client.py::_http_json": (
         "Single egress site for the 'Post to Mastodon' feature. Reached only by an "

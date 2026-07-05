@@ -545,6 +545,60 @@ class AIHubDialog:
         box.Add(links, 0, wx.ALL, 6)
         sizer.Add(box, 0, wx.EXPAND | wx.ALL, 8)
 
+        # --- Auphonic (audio post-production for the Audio Studio) ---
+        auphonic_box = wx.StaticBoxSizer(
+            wx.StaticBox(
+                panel, label=str(_("Auphonic audio post-production (cloud, your own account)"))
+            ),
+            wx.VERTICAL,
+        )
+        auphonic_note = wx.StaticText(
+            panel,
+            label=str(
+                _(
+                    "Auphonic masters finished audiobooks and podcast episodes "
+                    "(leveling, noise reduction, encoding). QUILL uses it from the "
+                    "Audio Studio's Chapter Workbench: Publish > Send to Auphonic. "
+                    "The API token is stored in the Windows Credential Manager, "
+                    "never in a settings file, and nothing is ever uploaded "
+                    "without a per-book confirmation."
+                )
+            ),
+        )
+        auphonic_note.Wrap(640)
+        auphonic_box.Add(auphonic_note, 0, wx.ALL, 6)
+
+        auphonic_grid = wx.FlexGridSizer(0, 2, 6, 8)
+        auphonic_grid.AddGrowableCol(1, 1)
+        auphonic_grid.Add(
+            wx.StaticText(panel, label=str(_("API token:"))), 0, wx.ALIGN_CENTER_VERTICAL
+        )
+        self._auphonic_token_ctrl = wx.TextCtrl(panel, style=wx.TE_PASSWORD)
+        self._auphonic_token_ctrl.SetName(
+            "Auphonic API token. Stored securely in the credential vault, never in settings files."
+        )
+        self._auphonic_token_ctrl.SetValue(self._load_auphonic_token())
+        auphonic_grid.Add(self._auphonic_token_ctrl, 0, wx.EXPAND)
+        auphonic_box.Add(auphonic_grid, 0, wx.EXPAND | wx.ALL, 6)
+
+        auphonic_actions = wx.BoxSizer(wx.HORIZONTAL)
+        auphonic_save_btn = wx.Button(panel, label=str(_("Save Auphonic To&ken")))
+        auphonic_save_btn.Bind(wx.EVT_BUTTON, self._on_save_auphonic_token)
+        auphonic_check_btn = wx.Button(panel, label=str(_("Check Acco&unt and Credits")))
+        auphonic_check_btn.Bind(wx.EVT_BUTTON, self._on_check_auphonic_account)
+        auphonic_actions.Add(auphonic_save_btn, 0, wx.RIGHT, 6)
+        auphonic_actions.Add(auphonic_check_btn, 0, wx.RIGHT, 6)
+        for label, url in (
+            (_("Visit Auphonic &Website"), "https://auphonic.com"),
+            (_("Auphonic API D&ocumentation"), "https://auphonic.com/api-docs/"),
+        ):
+            button = wx.Button(panel, label=str(label))
+            button.SetName(f"{label} (opens in your browser)")
+            button.Bind(wx.EVT_BUTTON, lambda _e, target=url: self._open_service_link(target))
+            auphonic_actions.Add(button, 0, wx.RIGHT, 6)
+        auphonic_box.Add(auphonic_actions, 0, wx.ALL, 6)
+        sizer.Add(auphonic_box, 0, wx.EXPAND | wx.ALL, 8)
+
         footer = wx.StaticText(
             panel,
             label=str(
@@ -564,6 +618,66 @@ class AIHubDialog:
         panel.SetSizer(sizer)
         self._refresh_services_status()
         return panel
+
+    def _load_auphonic_token(self) -> str:
+        try:
+            from quill.core.publish.auphonic import CREDENTIAL_TARGET
+            from quill.platform.windows.credential_manager import load_generic_credential
+
+            credential = load_generic_credential(CREDENTIAL_TARGET)
+            return (credential.secret or "") if credential is not None else ""
+        except Exception:  # noqa: BLE001 - no credential store on this platform
+            return ""
+
+    def _on_save_auphonic_token(self, _event: object) -> None:
+        token = str(self._auphonic_token_ctrl.GetValue()).strip()
+        try:
+            from quill.core.publish.auphonic import CREDENTIAL_TARGET
+            from quill.platform.windows.credential_manager import save_generic_credential
+
+            save_generic_credential(CREDENTIAL_TARGET, token, user_name="auphonic")
+        except Exception:  # noqa: BLE001
+            self._announce(
+                str(_("The token could not be stored in the credential vault on this system."))
+            )
+            return
+        self._announce(
+            str(_("Auphonic token saved to the credential vault."))
+            if token
+            else str(_("Auphonic token cleared."))
+        )
+
+    def _on_check_auphonic_account(self, _event: object) -> None:
+        """One explicit, named call to Auphonic: username, credits, preset count."""
+        from quill.core.publish import auphonic
+
+        token = str(self._auphonic_token_ctrl.GetValue()).strip()
+        if not token:
+            self._announce(
+                str(_("No Auphonic token entered. Paste one, or get it from auphonic.com."))
+            )
+            return
+        wx = self._wx
+        busy = wx.BusyCursor()
+        try:
+            info = auphonic.account_info(token)
+            presets = auphonic.list_presets(token)
+        except auphonic.AuphonicError as exc:
+            self._announce(str(exc))
+            return
+        finally:
+            del busy
+        self._announce(
+            str(
+                _(
+                    "Auphonic account {user}: {credits} credits available, {count} preset(s)."
+                ).format(
+                    user=info.username or _("(unnamed)"),
+                    credits=f"{info.credits:g}",
+                    count=len(presets),
+                )
+            )
+        )
 
     def _open_service_link(self, url: str) -> None:
         import webbrowser

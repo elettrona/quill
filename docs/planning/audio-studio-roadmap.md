@@ -26,6 +26,6 @@ exercised by unit tests with stubbed transports.
 
 **Outcome:** Either confidence that the zero-dependency playback engine is
 good enough to ship, or an early, cheap discovery that the libmpv backend
-(already implemented — drop a `libmpv-2.dll` into `engine-packs\mpv` to use
-it today; hosting tracked in `roadmap.md` §1.8) must become the default.
-Also shakes out ffmpeg-path issues no unit test can see.
+(already shipped — Help > Download Optional Components > mpv player engine)
+must become the default. Also shakes out ffmpeg-path issues no unit test
+can see.
