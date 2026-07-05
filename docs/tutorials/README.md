@@ -21,6 +21,10 @@ ground by ear).
    backlinks, tags, daily notes, and Git sync, from an empty folder.
 6. [Make a document accessible with GLOW](06-make-it-accessible-with-glow.md)
    — audit, fix with a compare, and grade the exported Word file.
+7. [Write math without learning a new language](07-type-math-like-a-pro.md)
+   — a ready-made formula gallery, typing an equation with ordinary keyboard
+   characters, exploring one by ear, rendering live, and a real, editable
+   Word equation on export and back.
 
 Every tutorial assumes only a default QUILL install and a screen reader (or
 none — everything here works identically by sight).
