@@ -87,12 +87,13 @@ def _init_redis(app: Flask) -> None:
 
 
 def _register_blueprints(app: Flask) -> None:
-    from app.routes import admin, chat, client_config, device
+    from app.routes import admin, chat, client_config, dashboard, device
 
     app.register_blueprint(device.bp)
     app.register_blueprint(chat.bp)
     app.register_blueprint(client_config.bp)
     app.register_blueprint(admin.bp)
+    app.register_blueprint(dashboard.bp)
 
 
 def _register_cli(app: Flask) -> None:

@@ -27,10 +27,20 @@ class Config:
     # log this value, never include it in a response, never re-export it.
     OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY", "")
 
-    # Flask's own session/cookie signing key (used for the admin console's
+    # Flask's own session/cookie signing key (used for the admin dashboard's
     # login session, not for the bearer-token API auth). Generate with
     # ``python -c "import secrets; print(secrets.token_hex(32))"``.
     SECRET_KEY = os.environ.get("GATEWAY_SECRET_KEY", "")
+
+    # --- Dashboard session cookie (app/routes/dashboard.py) --------------
+    # The cookie holds the admin's bearer token (the same credential the
+    # JSON API uses -- app/dashboard_auth.py), so it's treated as sensitive
+    # as the token itself: httponly (no JS access), SameSite=Lax (blocks
+    # cross-site POST forgery of dashboard actions), Secure in production
+    # (never sent over plain HTTP -- disabled only for local http:// dev).
+    SESSION_COOKIE_HTTPONLY = True
+    SESSION_COOKIE_SAMESITE = "Lax"
+    SESSION_COOKIE_SECURE = os.environ.get("GATEWAY_DASHBOARD_INSECURE_COOKIE", "") != "1"
 
     # --- Storage ---------------------------------------------------------
     SQLALCHEMY_DATABASE_URI = os.environ.get("DATABASE_URL", "postgresql:///quill_ai_gateway")
@@ -111,6 +121,7 @@ class TestingConfig(Config):
     TESTING = True
     OPENAI_API_KEY = "test-key-never-used-for-real-calls"
     SECRET_KEY = "test-secret-key"
+    SESSION_COOKIE_SECURE = False  # the test client doesn't use HTTPS
     SQLALCHEMY_DATABASE_URI = os.environ.get("TEST_DATABASE_URL", "sqlite:///:memory:")
     REDIS_URL = os.environ.get("TEST_REDIS_URL", "redis://localhost:6379/15")
     ADMIN_ALLOWLIST = frozenset({"test-admin-device"})

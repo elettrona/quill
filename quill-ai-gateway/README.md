@@ -84,6 +84,32 @@ Register your own device (so you can reach `/admin/*`):
    — note the `device_id` in the response.
 4. Add that `device_id` to `GATEWAY_ADMIN_ALLOWLIST` in `.env`, restart.
 
+## The admin dashboard (no file editing, no `curl` required)
+
+Once you have an admin device id in `GATEWAY_ADMIN_ALLOWLIST` (above),
+open `http://localhost:5000/dashboard/` in a browser. Sign in by pasting
+the same bearer token your device registered with (this is *not* a
+second password — see `app/dashboard_auth.py`'s docstring). From there:
+
+- **Overview** — this month's spend against the budget cap, a monthly
+  request-volume trend, and account totals.
+- **Models** — turn a model on or off, or change which one is the active
+  default.
+- **Limits** — every `gateway_config` row, editable, live (no restart).
+- **Users** — view usage, set a user's status (active/reduced/review/
+  blocked — reversible), or permanently remove a user.
+- **Feature flags** — pause one feature, or hit the global "Hosted AI"
+  kill switch.
+- **Audit log** — every admin action taken anywhere (API or dashboard),
+  who did it, and when.
+
+The dashboard is plain, server-rendered HTML — no JavaScript, no build
+step, fully keyboard- and screen-reader-operable. See
+`docs/planning/openai.md`'s dashboard section for the full accessibility
+rationale (it follows this project's dataviz skill: status colors are
+never the only signal, every chart has a data-table twin, focus is always
+visible).
+
 ## Running the tests
 
 ```bash
@@ -93,15 +119,34 @@ pytest
 ```
 
 The suite uses an in-memory SQLite database and `fakeredis` — no external
-services required (see `tests/conftest.py`). 34 tests cover the quota
+services required (see `tests/conftest.py`). 45 tests cover the quota
 engine, the large-document safeguards, the device-code auth flow, the
-model registry, and the admin API.
+model registry, the admin API, and the admin dashboard.
 
 ## Deployment
 
-Recommended: **the same server already running GLOW and `quillin-hub`**
-(see PRD §16 for the full reasoning — reusing known-good infrastructure
-beats standing up a new platform for a service this size).
+Recommended: **the same server already running GLOW**, using the exact
+same shape GLOW's `web/` service already proves out on that host --
+Docker Compose + Caddy reverse proxy (see `/s/code/glow/web/` for the
+precedent this mirrors: `docker-compose.yml`, `Caddyfile.example`,
+`.env`-file secret injection).
+
+```bash
+cp .env.example .env
+# Fill in OPENAI_API_KEY, GATEWAY_SECRET_KEY, GATEWAY_ADMIN_ALLOWLIST,
+# and set POSTGRES_PASSWORD (used only by docker-compose.yml's postgres
+# service; not read by the app itself, which uses DATABASE_URL).
+
+docker compose up -d --build
+docker compose exec web flask --app run.py init-db      # first deploy only
+docker compose exec web flask --app run.py seed-config  # first deploy only; safe to re-run
+```
+
+Then append `Caddyfile.example`'s block to the Caddy instance already
+terminating TLS for GLOW on this host, and `caddy reload`.
+
+**Without Docker** (a plain Gunicorn process, if that's a better fit for
+this host):
 
 ```bash
 pip install -r requirements.txt
@@ -110,9 +155,19 @@ flask --app run.py seed-config  # first deploy only; safe to re-run later
 gunicorn -w 2 -b 127.0.0.1:8001 'app:create_app()'
 ```
 
-Put this behind the same reverse proxy (nginx/Caddy) that already
-terminates TLS for `quillin-hub`, proxying `gateway.quillforall.org` (or
-whatever subdomain you choose) to `127.0.0.1:8001`.
+and point the reverse proxy at `127.0.0.1:8001` instead of a Docker
+service name.
+
+### A nicer admin login later: Keycloak
+
+The dashboard's v1 login (README above: "paste your admin token") is
+deliberately the simplest thing that works today. GLOW already runs a
+Keycloak instance on this server for its own admin login
+(`/s/code/glow/web/docker-compose.keycloak.yml`) — wiring the dashboard
+into that same realm as an OIDC client is the natural upgrade once a
+nicer login screen (SSO, no token-pasting) is worth the added
+complexity. Not built yet; `app/dashboard_auth.py`'s docstring notes this
+as the intended next step.
 
 **Secrets:** set `OPENAI_API_KEY`, `GATEWAY_SECRET_KEY`, `DATABASE_URL`,
 and `GATEWAY_ADMIN_ALLOWLIST` through whatever mechanism already injects

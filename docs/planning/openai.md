@@ -425,6 +425,31 @@ is Postgres), and the salted-IP-hash sets for abuse heuristics (§9).
   person) can read the value," enforced by file permissions/shell access
   rather than a platform IAM feature.
 
+### 6.1 Concretely, on a self-administered Unix server: the real options
+
+Jeff's server is a real Unix box, not a managed PaaS, so "the platform's
+secret manager" above needs a concrete Unix-native answer. In increasing
+order of operational weight — pick the lightest one that meets the
+moment, not the heaviest one available:
+
+| Option | How it works | When it's the right call |
+|---|---|---|
+| **`.env` file + restrictive permissions** (what `quill-ai-gateway/` ships with today) | A file outside any git-tracked directory, `chmod 600`, owned by the service's own Unix user (not root, not a shared account); `docker-compose.yml`/`run.py` read it via `env_file:`/`python-dotenv`. Exactly the pattern GLOW's `web/.env` already uses on this host. | The default. Zero new infrastructure, matches proven practice, appropriate for a service this size with two people who can reach the box at all. |
+| **Docker named secrets** (`docker secret` / Compose's `secrets:` key) | The secret is mounted as a file inside the container's filesystem (`/run/secrets/openai_api_key`) rather than an environment variable — avoids the key ever appearing in `docker inspect`'s environment dump or a process's `/proc/<pid>/environ`. | Worth adopting if `docker inspect`/`ps` visibility of env vars ever becomes a real concern — a small code change (`Config` reads a `_FILE`-suffixed path if present, matching the common `SOME_VAR_FILE` convention) away from the current `.env` approach. |
+| **`systemd-creds` / `LoadCredentialEncrypted=`** (if running as a systemd unit instead of Docker) | systemd encrypts the credential at rest using a machine-specific key (optionally TPM-backed) and decrypts it only into the unit's private, unlinked runtime directory — never written to disk in plaintext, never visible to other users on the box even briefly. | The strongest *Unix-native, no-third-party-service* option. Natural fit if this deployment ever moves off Docker Compose onto a plain systemd unit; overkill to adopt before that move. |
+| **age/sops-encrypted file, checked into the private ops repo** | The secret is encrypted with `age` (or `sops` using `age` as the backend) against the deploying admin's public key; the *encrypted* blob is safe to commit, decrypted only at deploy time (`sops exec-env` or `age -d`) into the process environment. | Useful once more than one person needs to deploy and a shared, versioned, auditable secrets file (who changed what, when) is worth the setup — a natural fit if this project grows contributors with deploy access. |
+| **A real secrets manager (HashiCorp Vault / OpenBao, self-hosted)** | Dynamic secret leasing, short-TTL credentials, and a full access-audit log; the app fetches the key at startup via a Vault Agent sidecar instead of reading an env var at all. | The right answer at real organizational scale (many services, many operators, compliance requirements) — deliberately **not** recommended for this project's current size; naming it here is "think broadly," not "build this now." |
+
+**Recommendation for the initial rollout:** the first row — a `.env`
+file with `600` permissions, owned by a dedicated `gateway` Unix user
+(see the Dockerfile's `USER gateway`), matching what's already proven on
+this exact host for GLOW. Revisit this table if the operational picture
+changes (more deployers, a compliance requirement, or genuine unease
+about `.env`-file handling) rather than pre-building capability the
+project doesn't need yet — the same "start small and learn" principle
+that governs the quota numbers (§8.1) applies to infrastructure choices
+too.
+
 ## 7. Authentication and onboarding
 
 **Recommendation: OAuth 2.0 Device Authorization Grant, reusing
@@ -617,6 +642,17 @@ this problem regardless.
 
 ## 10. Admin console requirements
 
+**Built:** `quill-ai-gateway/app/routes/dashboard.py` — an accessible,
+server-rendered web UI (no JavaScript, no build step; every action is a
+plain `<form>` POST) at `/dashboard/`, covering every bullet below. Login
+bridges the existing admin bearer-token credential into a browser session
+(`app/dashboard_auth.py`) rather than inventing a second auth system —
+see §10.1 for the full design and the accessibility rationale, and the
+`quill-ai-gateway/README.md`'s "admin dashboard" section for how to use
+it day to day. What follows was the original requirements list this
+implements; it's kept as the spec the dashboard is checked against, not
+replaced by the "built" note above.
+
 A small internal web UI (or, for the first beta, a CLI + a handful of
 authenticated API endpoints — a full UI is a nice-to-have, not a beta
 blocker) that can, for any user/device/feature:
@@ -673,6 +709,55 @@ blocker) that can, for any user/device/feature:
 - Every admin action writes an `admin_actions` row (§5) — the admin
   console itself is audited, so "who disabled this user and why" is always
   answerable.
+
+### 10.1 The dashboard, concretely: pages, auth, and the accessibility design
+
+**Auth (v1, built):** the dashboard's "sign in" form takes the same admin
+device bearer token the JSON API already checks against
+`GATEWAY_ADMIN_ALLOWLIST` (`app/auth.py`) — pasted once, then held in
+Flask's signed, `HttpOnly`+`Secure`+`SameSite=Lax` session cookie
+(`app/config.py`). This is a deliberate "simplest thing that actually
+works" choice: no new credential, no CAPTCHA, no password to forget. Every
+dashboard request re-validates the token against the live allowlist and
+device status on every page load (`app/dashboard_auth.py`'s
+`dashboard_login_required`), so a revoked device is logged out of the
+dashboard exactly as fast as it's locked out of the JSON API — there is no
+separate, longer-lived "dashboard session" trust boundary to reason about.
+
+**Auth (planned upgrade):** GLOW already runs a Keycloak instance on this
+same server for its own admin login (real-oidc, magic-link fallback,
+per-user accounts). Wiring the Gateway dashboard into that same realm as
+a second OIDC client is the natural next step once "paste a token" stops
+being good enough — noted here as the intended direction, not yet built
+(`app/dashboard_auth.py`'s docstring points back to this paragraph).
+
+**Pages, each mapping directly to a bullet above:**
+
+| Page | Requirement it satisfies |
+|---|---|
+| Overview | Spend vs. budget cap, monthly request-volume trend, account totals — see the visualization design below |
+| Models | Enable/disable a model, choose the active default (§10's model-registry bullet) |
+| Limits | Every `gateway_config` row, editable, live — the "one field, no redeploy" requirement |
+| Users | Usage summary, set `status`, or permanently remove — the two *distinct* actions this section requires |
+| Feature flags | Per-feature pause, plus the global `hosted_ai` kill switch |
+| Audit log | Every `admin_actions` row, most recent first |
+
+**The budget/usage visualization design** (produced with this project's
+dataviz skill, not ad hoc): the spend-vs-budget number is a stat tile —
+a single headline value, not a chart, per that skill's "pick the form"
+step — paired with a native `<progress>` element and, critically, a full
+sentence stating the percentage in text (`aria-label` and visible copy
+both), so nothing here depends on perceiving the bar's fill or color.
+Status (good/warning/serious/critical at 0/75/90/100% of budget) uses the
+skill's *reserved* status palette, distinct from any categorical series
+color, and is **never color-alone** — every status indicator pairs an
+icon, a color, and a text word. The monthly request-volume trend is a
+plain-HTML bar chart (an ordered list of labeled `<li>` bars, each
+direct-labeled with its number) immediately followed by a `<table>` with
+the identical numbers — the chart is illustrative reinforcement, the
+table is the source of truth a screen reader reads without needing to
+parse a `<canvas>` or SVG at all. No JavaScript, and therefore no charting
+library, is used anywhere on the page.
 
 ## 11. Secret management — see §6 (kept together intentionally; this
 section number preserved for the deliverable checklist below)
@@ -949,8 +1034,8 @@ differs.
 | Rate limiting | **Redis** | sub-millisecond counter checks are the right tool for "check before every OpenAI call"; `quillin-hub` doesn't use Redis today, but this service's access pattern (many small counter checks) genuinely needs it where the storefront didn't — add it as a new dependency on the existing server, it's a lightweight service to run alongside Postgres |
 | Secrets | Whatever secret-injection mechanism the existing server already uses for GLOW/`quillin-hub`'s own credentials (environment variables set outside the deployed code, a local `.env` **outside** any git-tracked directory, or the platform's secret store if the host is a managed one) | see §6 — the mechanism matters less than the invariant: never in a repo, never in a file that gets git-added by habit |
 | Structured logging | Python `structlog` or stdlib `logging` with a JSON formatter + a redaction filter (mirrors `quill/stability/redaction.py`'s existing scrub-pattern approach, ported server-side) | never emits prompt/document text by construction, not just by discipline |
-| Admin console | A small Flask-templated internal page (Jinja2, server-rendered, basic-auth or the same device-code login flow §7 gated to an admin allowlist) — a full SPA is not justified at this scale | keeps the same small stack, no separate frontend build pipeline |
-| Deployment | **Jeff's existing server** (same host as GLOW and `quillin-hub`), behind whatever reverse proxy/TLS termination those already use (nginx/Caddy, per `quillin-hub`'s deployment runbook) | zero new infrastructure to provision; the Gateway becomes a third small service on infra that's already monitored and maintained |
+| Admin console | **Built**: a Flask-templated, server-rendered dashboard (Jinja2, no JS) at `/dashboard/`, session-auth bridged over the existing admin bearer token — §10.1 has the full design | keeps the same small stack, no separate frontend build pipeline |
+| Deployment | **Built**: Docker Compose (`docker-compose.yml`: web + redis + postgres) on Jeff's existing server, same shape as GLOW's own `web/docker-compose.yml` on that host, behind the same Caddy instance (`Caddyfile.example`) | zero new infrastructure to provision or learn; the Gateway becomes a third small service on infra that's already monitored and maintained |
 | CI/CD | Separate private repository from the open-source QUILL client; deploy secrets scoped to that private repo only, never triggered by a public-repo PR — a simple `git pull` + process-restart deploy (matching a small self-hosted setup) is entirely adequate at this scale, no need for a container-orchestration pipeline | prevents exactly the class of leak GATE-9 exists to catch client-side, while staying as simple as the existing GLOW/`quillin-hub` deploys |
 | Monitoring/alerting | Whatever uptime/monitoring already watches GLOW and `quillin-hub` on that server, extended to this service's `/healthz` endpoint (the `quillin-hub` runbook calls out a `/healthz` gap as a to-do — build this service's `/healthz` from day one) + the budget-threshold alerts (§13) via a simple webhook to Slack/email/Discord | reuses existing monitoring instead of standing up new tooling |
 | Backups | Whatever Postgres backup routine already covers GLOW/`quillin-hub`'s databases, extended to this one, with the retention policy (§4.4) additionally enforced via a scheduled cleanup job | standard practice, no custom backup tooling needed |
