@@ -11,6 +11,7 @@ the whole docx write.
 
 from __future__ import annotations
 
+import functools
 import re
 import tempfile
 import xml.etree.ElementTree as ET
@@ -60,11 +61,14 @@ def split_math_segments(text: str) -> list[MathSegment]:
     return segments
 
 
+@functools.lru_cache(maxsize=256)
 def omml_fragment_for_latex(latex: str, *, display: bool) -> str | None:
     """Return an ``<m:oMath>``/``<m:oMathPara>`` XML fragment for *latex*, or None.
 
     Returns None (never raises) when Pandoc is unavailable, fails, or the
     conversion produces no math element — callers fall back to plain text.
+    Memoized: a document repeating the same formula (or Pandoc being simply
+    unavailable) should not spawn a Pandoc subprocess per occurrence.
     """
     try:
         with tempfile.TemporaryDirectory() as tmpdir:

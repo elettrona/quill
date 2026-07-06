@@ -8,6 +8,7 @@ cannot silently regress it.
 
 from __future__ import annotations
 
+import zipfile
 from pathlib import Path
 
 import pytest
@@ -20,11 +21,24 @@ from quill.io.rtf_model import markdown_to_rich
 from quill.io.structured import read_structured_document
 
 
+def _pandoc_available() -> bool:
+    from quill.core.external_tools import get_external_tool_status
+
+    return get_external_tool_status("pandoc").installed
+
+
+pytestmark = pytest.mark.skipif(not _pandoc_available(), reason="Pandoc not installed")
+
+
 def _write_math_docx(tmp_path: Path) -> Path:
+    """Write a docx whose equation is a real <m:oMath>, not the writer's literal-text fallback."""
     rich = markdown_to_rich("Pythagorean theorem: \\(a^2 + b^2 = c^2\\)\n")
     data = rich_to_docx_bytes(rich)
     path = tmp_path / "math.docx"
     path.write_bytes(data)
+    with zipfile.ZipFile(path) as z:
+        xml = z.read("word/document.xml").decode("utf-8")
+    assert "oMath" in xml, "fixture docx has no real OMML equation to round-trip"
     return path
 
 
