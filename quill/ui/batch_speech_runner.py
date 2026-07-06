@@ -1116,9 +1116,6 @@ def run_batch_export_to_speech(frame: Any) -> None:
 
     request = show_audio_studio(frame)
     if request is None:
-        # Quiet: the screen reader already announces the focus return to the
-        # editor when the wizard closes, so speaking "cancelled" on top of
-        # that is a redundant, unwanted verbosity cue on plain Escape/Cancel.
         frame._set_status_quiet("Audio Studio cancelled")
         return
     _remember_sources(request)  # source MRU writes
