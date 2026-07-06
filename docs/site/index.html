@@ -21,9 +21,9 @@
             <details class="nav-dropdown">
               <summary>Download</summary>
               <ul>
-                <li><a href="https://github.com/Community-Access/quill/releases/download/v0.8.0-beta.1/Quill-for-All-Setup-0.8.0.Beta.1.exe">Windows: System Installer</a></li>
-                <li><a href="https://github.com/Community-Access/quill/releases/download/v0.8.0-beta.1/Quill-Portable-v0.8.0-beta.1.zip">Windows: Portable ZIP</a></li>
-                <li><a href="https://github.com/Community-Access/quill/releases/download/v0.8.0-beta.1/Quill-macOS-0.8.0-beta.1.dmg">macOS: Disk Image (.dmg)</a></li>
+                <li><a href="https://github.com/Community-Access/quill/releases/download/v0.9.0-beta.1/Quill-for-All-Setup-0.9.0.Beta.1.exe">Windows: System Installer</a></li>
+                <li><a href="https://github.com/Community-Access/quill/releases/download/v0.9.0-beta.1/Quill-Portable-v0.9.0-beta.1.zip">Windows: Portable ZIP</a></li>
+                <li><a href="https://github.com/Community-Access/quill/releases/download/v0.9.0-beta.1/Quill-macOS-0.9.0-beta.1.dmg">macOS: Disk Image (.dmg)</a></li>
               </ul>
             </details>
           </li>
@@ -61,11 +61,10 @@
           <strong>L</strong>iterate
         </p>
         <div class="cta">
-          <!-- RELEASE-DAY: swap these three links to the v0.9.0-beta.1 assets when published. -->
-          <a class="btn" href="https://github.com/Community-Access/quill/releases/download/v0.8.0-beta.1/Quill-for-All-Setup-0.8.0.Beta.1.exe">Download QUILL 0.8.0 Beta 1 - System Installer</a>
-          <a class="btn" href="https://github.com/Community-Access/quill/releases/download/v0.8.0-beta.1/Quill-Portable-v0.8.0-beta.1.zip">Download QUILL 0.8.0 Beta 1 - Portable</a>
-          <a class="btn" href="https://github.com/Community-Access/quill/releases/download/v0.8.0-beta.1/Quill-macOS-0.8.0-beta.1.dmg">Download QUILL 0.8.0 Beta 1 - macOS</a>
-          <a class="btn secondary" href="/docs/release0.9.0-beta1.html">What's coming in 0.9.0 - the announcement</a>
+          <a class="btn" href="https://github.com/Community-Access/quill/releases/download/v0.9.0-beta.1/Quill-for-All-Setup-0.9.0.Beta.1.exe">Download QUILL 0.9.0 Beta 1 - System Installer</a>
+          <a class="btn" href="https://github.com/Community-Access/quill/releases/download/v0.9.0-beta.1/Quill-Portable-v0.9.0-beta.1.zip">Download QUILL 0.9.0 Beta 1 - Portable</a>
+          <a class="btn" href="https://github.com/Community-Access/quill/releases/download/v0.9.0-beta.1/Quill-macOS-0.9.0-beta.1.dmg">Download QUILL 0.9.0 Beta 1 - macOS</a>
+          <a class="btn secondary" href="/docs/release0.9.0-beta1.html">The 0.9.0 announcement</a>
           <a class="btn secondary" href="/docs/userguide.html">User guide</a>
         </div>
         <p class="req-note">Windows 10 or later, 64-bit. System installer: installs to Program Files. Portable: extract the ZIP and run from any folder, no installation required. macOS 12 or later: download the disk image (.dmg) and drag QUILL to Applications. All builds include the Python runtime, and the heavy optional pieces - speech engines, document converters, braille tables - download on demand, so the base install stays small.</p>
@@ -96,7 +95,7 @@
           </div>
           <div class="card">
             <h3><a href="/tutorials/index.html">Learn by doing: hands-on tutorials</a></h3>
-            <p>Six complete walkthroughs, ten to twenty minutes each, starting with
+            <p>Seven complete walkthroughs, ten to twenty minutes each, starting with
             "your first hour in QUILL" - install, write, save, and hear what QUILL
             tells you along the way.</p>
             <span class="more"><a href="/tutorials/index.html">Start the first tutorial <span aria-hidden="true">&rarr;</span></a></span>
@@ -240,6 +239,16 @@
             design. An optional system-tray presence keeps QUILL a keystroke away - with the
             Copy Tray reachable from the tray menu - and a notification center collects
             update and workflow events instead of interrupting your writing.</p>
+            <h4>QUILL parla italiano - the first community translation</h4>
+            <p>QUILL's first shipped display language beyond English arrived from the
+            community, not a vendor: menus, dialogs, and spoken messages, translated in full
+            by <strong>Elena Brescacin</strong> (<a href="https://github.com/elettrona">elettrona</a>)
+            - 669 of 672 catalog strings at contribution, checked by the CI placeholder and
+            coverage gates, and compiled into every build. Switch it under
+            <strong>Tools &gt; Writing and Language &gt; Change Display Language</strong> -
+            spoken messages change immediately, menus after a restart. Untranslated strings
+            fall back to English, and the refreshed template ships in-repo so the
+            translation keeps growing. Grazie mille, Elena.</p>
           </div>
         </details>
 
@@ -393,6 +402,69 @@
             only alternative with full multi-level undo and redo) - each explained before you
             switch, all behind two deliberate consents so nothing changes under your hands by
             accident.</p>
+          </div>
+        </details>
+      </div>
+    </section>
+
+    <!-- Math -->
+    <section class="band" aria-labelledby="math-h">
+      <div class="wrap">
+        <h2 id="math-h">Math that types, sounds, and travels to Word</h2>
+        <p class="intro">
+          Equations get the same screen-reader-first treatment as everything else in QUILL -
+          typed as fast as prose, explored piece by piece, spoken in real math language, and
+          exported as genuine, editable Word equations.
+        </p>
+
+        <details class="deep">
+          <summary><h3>Type an equation like AutoCorrect</h3></summary>
+          <div>
+            <p>88 backslash-code abbreviations - <code>\alpha</code>, <code>\sqrt</code>,
+            <code>\ne</code>, <code>\pi</code>, and more, seeded from the DAISY-published
+            Word Math AutoCorrect list - expand to their symbol the instant you type the
+            code and a space or punctuation, anywhere in ordinary prose. Ten ready-made
+            formulas (the quadratic formula, the Pythagorean theorem, slope-intercept,
+            distance, midpoint, and more) are one selection away in <strong>Insert &gt;
+            Snippet Gallery...</strong> - nothing to type from memory.</p>
+          </div>
+        </details>
+
+        <details class="deep">
+          <summary><h3>Explore an equation's structure</h3></summary>
+          <div>
+            <p><strong>Explore Equation Structure...</strong> (Ctrl+Shift+Grave, F, or the
+            Insert menu) steps through a formula's parts - numerator and denominator, base
+            and exponent, a root's radicand - through an ordinary Windows single-select list
+            you already know how to drive: arrow keys, type-ahead, Enter to choose. Escape
+            ends the whole session at any depth; <strong>Back up one level</strong> is the
+            dedicated choice for stepping out one layer instead.</p>
+          </div>
+        </details>
+
+        <details class="deep">
+          <summary><h3>Real math speech, not just a template</h3></summary>
+          <div>
+            <p>"Read this part aloud" upgrades automatically to genuine natural-language math
+            speech - the same MathCAT engine NVDA itself ships - once you install it from
+            <strong>Help &gt; Download Optional Components &gt; MathCAT math speech
+            engine</strong> (about 3 MB). Without it, the same command keeps working with
+            QUILL's built-in template reading - nothing regresses either way.</p>
+            <h4>Math Tutor</h4>
+            <p>A read-only AI agent explains a selected equation in plain language - what it
+            means, what each symbol is - without solving anything or touching your
+            document.</p>
+          </div>
+        </details>
+
+        <details class="deep">
+          <summary><h3>Real Word equations, both directions</h3></summary>
+          <div>
+            <p><strong>File &gt; Export &gt; Word Document</strong> writes a genuine equation
+            object for every formula in your document - editable in Word, read as math by
+            JAWS, never a picture and never literal text. Open that file back in QUILL and
+            the same plain, editable equation text returns, in either Word-reading
+            engine.</p>
           </div>
         </details>
       </div>
@@ -970,12 +1042,12 @@
         <h2 id="next-h">Start here</h2>
         <div class="cards">
           <div class="card">
-            <h3>Download QUILL 0.8.0 Beta 1</h3>
-            <p>Windows 10 or later, 64-bit, or macOS 12 or later. Includes Python runtime - no separate install required. The 0.9.0 beta - the final feature release - is being prepared now.</p>
+            <h3>Download QUILL 0.9.0 Beta 1</h3>
+            <p>Windows 10 or later, 64-bit, or macOS 12 or later. Includes Python runtime - no separate install required. This is 0.9.0 - the final feature beta before 1.0.</p>
             <ul class="doc-links">
-              <li><a href="https://github.com/Community-Access/quill/releases/download/v0.8.0-beta.1/Quill-for-All-Setup-0.8.0.Beta.1.exe">Windows: System installer (installs to Program Files)</a></li>
-              <li><a href="https://github.com/Community-Access/quill/releases/download/v0.8.0-beta.1/Quill-Portable-v0.8.0-beta.1.zip">Windows: Portable ZIP (extract and run from any folder)</a></li>
-              <li><a href="https://github.com/Community-Access/quill/releases/download/v0.8.0-beta.1/Quill-macOS-0.8.0-beta.1.dmg">macOS: Disk Image (drag to Applications)</a></li>
+              <li><a href="https://github.com/Community-Access/quill/releases/download/v0.9.0-beta.1/Quill-for-All-Setup-0.9.0.Beta.1.exe">Windows: System installer (installs to Program Files)</a></li>
+              <li><a href="https://github.com/Community-Access/quill/releases/download/v0.9.0-beta.1/Quill-Portable-v0.9.0-beta.1.zip">Windows: Portable ZIP (extract and run from any folder)</a></li>
+              <li><a href="https://github.com/Community-Access/quill/releases/download/v0.9.0-beta.1/Quill-macOS-0.9.0-beta.1.dmg">macOS: Disk Image (drag to Applications)</a></li>
             </ul>
             <span class="more"><a href="https://github.com/Community-Access/quill/releases">View all releases on GitHub <span aria-hidden="true">&rarr;</span></a></span>
           </div>
@@ -1006,7 +1078,7 @@
           </div>
           <div class="card">
             <h3><a href="/tutorials/index.html">Hands-on tutorials</a></h3>
-            <p>Six complete walkthroughs, ten to twenty minutes each: your first hour, keyboard mastery, rescuing a scanned PDF, building an audiobook, starting a linked-notes Vault, and shipping an accessible document with GLOW.</p>
+            <p>Seven complete walkthroughs, ten to twenty minutes each: your first hour, keyboard mastery, rescuing a scanned PDF, building an audiobook, starting a linked-notes Vault, shipping an accessible document with GLOW, and typing math like a pro.</p>
             <span class="more"><a href="/tutorials/index.html">Start a tutorial <span aria-hidden="true">&rarr;</span></a></span>
           </div>
           <div class="card">
@@ -1041,7 +1113,7 @@
         <ul>
           <li><a href="/docs/userguide.html">User guide</a></li>
           <li><a href="/docs/release0.9.0-beta1.html">0.9.0 announcement</a></li>
-          <li><a href="/docs/release0.8.0-beta1.html">0.8.0 Beta 1 release notes</a></li>
+          <li><a href="/docs/release0.9.0-beta1.html">0.9.0 Beta 1 release notes</a></li>
           <li><a href="/docs/quillins.html">Quillin tutorial</a></li>
           <li><a href="/faq.html">FAQ</a></li>
           <li><a href="/docs.html">All documentation</a></li>
@@ -1050,7 +1122,7 @@
       <nav aria-label="Project">
         <h4>Project</h4>
         <ul>
-          <li><a href="https://github.com/Community-Access/quill/releases/tag/v0.8.0-beta.1">Download 0.8.0 Beta 1</a></li>
+          <li><a href="https://github.com/Community-Access/quill/releases/tag/v0.9.0-beta.1">Download 0.9.0 Beta 1</a></li>
           <li><a href="https://hub.quillforall.org">Quillin Hub</a></li>
           <li><a href="/docs/contributing.html">Contributing</a></li>
           <li><a href="/docs/governance.html">Governance</a></li>

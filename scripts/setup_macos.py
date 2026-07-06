@@ -46,6 +46,7 @@ import py2app.build_app as _py2app_build_app
 from setuptools import setup
 
 from quill import __version__
+from quill.build_info import get_short_version
 
 _orig_py2app_finalize = _py2app_build_app.py2app.finalize_options
 
@@ -83,7 +84,7 @@ OPTIONS = {
         "CFBundleName": APP_DISPLAY_NAME,
         "CFBundleDisplayName": APP_DISPLAY_NAME,
         "CFBundleIdentifier": BUNDLE_IDENTIFIER,
-        "CFBundleShortVersionString": __version__,
+        "CFBundleShortVersionString": get_short_version(),
         "CFBundleVersion": __version__,
         "LSMinimumSystemVersion": "12.0",
         "NSHighResolutionCapable": True,

@@ -7,6 +7,12 @@ set -euo pipefail
 
 ENTITLEMENTS="scripts/macos_entitlements.plist"
 
+echo "==> Generating build-identity module (quill/_build_info.py)"
+# Best-effort: requires build/version.toml (gitignored, hand-maintained), so a
+# bare CI checkout without one falls through to setup_macos.py's own
+# get_short_version()/__version__ fallback instead of failing the build.
+python tools/generate_build_info.py || echo "!! build/version.toml not found - shipping without a channel-annotated version label"
+
 echo "==> Building .app with py2app"
 python scripts/setup_macos.py py2app
 
