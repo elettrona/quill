@@ -113,15 +113,6 @@ from quill.core.features import (
     export_feature_profile_file,
     import_feature_profile_file,
 )
-from quill.core.file_search import (
-    FileReplaceReport,
-    FileSearchReport,
-    render_replace_preview,
-    render_replace_report,
-    render_search_report,
-    replace_files,
-    search_files,
-)
 from quill.core.format_ops import (
     continue_markdown_list,
     describe_indent_depth,
@@ -21538,6 +21529,8 @@ class MainFrame(
             dialog.Destroy()
 
     def search_in_files(self) -> None:
+        from quill.core.file_search import FileSearchReport, render_search_report, search_files
+
         request = self._prompt_file_search(replace=False)
         if request is None:
             self._set_status("Search in files cancelled")
@@ -21565,6 +21558,8 @@ class MainFrame(
         self._run_background_task("Searching files", work, on_success)
 
     def replace_in_files(self) -> None:
+        from quill.core.file_search import FileSearchReport, render_replace_preview, search_files
+
         request = self._prompt_file_search(replace=True)
         if request is None:
             self._set_status("Replace across files cancelled")
@@ -21606,6 +21601,8 @@ class MainFrame(
         self._run_background_task("Previewing file replacements", preview_work, preview_done)
 
     def _start_replace_files(self, request: _FileSearchRequest, replacement: str) -> None:
+        from quill.core.file_search import FileReplaceReport, render_replace_report, replace_files
+
         def work(progress: Callable[[str, int, int], None]) -> FileReplaceReport:
             return replace_files(
                 request.root,
