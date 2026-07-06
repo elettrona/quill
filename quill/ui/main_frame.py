@@ -23,6 +23,7 @@ except ImportError:  # pragma: no cover - non-Windows fallback
 
 if TYPE_CHECKING:  # imports kept out of cold-start path
     from quill.core.epub import EpubBook, EpubChapter
+    from quill.core.glow_updates import GlowUpdateCheck
     from quill.core.updates import GitHubRelease, UpdateManifest
 
 from quill import __version__, build_info
@@ -172,11 +173,6 @@ from quill.core.format_ops import (
     toggle_line_comment,
 )
 from quill.core.glow import build_audit_report, build_fix_report, fix_text
-from quill.core.glow_updates import (
-    GlowUpdateCheck,
-    apply_glow_update,
-    check_for_glow_update,
-)
 from quill.core.guides import (
     build_keyboard_shortcut_html,
     build_welcome_guide,
@@ -20139,6 +20135,8 @@ class MainFrame(
         install rolls back to the vendored wheels. The new engine loads on
         restart.
         """
+        from quill.core.glow_updates import check_for_glow_update
+
         wx = self._wx
         if not self._ensure_glow_enabled():
             return
@@ -20198,6 +20196,8 @@ class MainFrame(
             return
 
         import tempfile
+
+        from quill.core.glow_updates import apply_glow_update
 
         staging = Path(tempfile.mkdtemp(prefix="quill-glow-update-"))
         self._set_status(f"Downloading GLOW engine {manifest.version}...")
