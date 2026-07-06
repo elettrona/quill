@@ -517,7 +517,6 @@ from quill.ui.publishing_tools import (
     SchedulePublishDialog,
 )
 from quill.ui.rich_text_surface import RichTextSurface
-from quill.ui.session_browser import SessionBrowserDialog
 from quill.ui.share_dialogs import (
     apply_import,
     build_export_document,
@@ -527,7 +526,6 @@ from quill.ui.share_dialogs import (
     write_export,
 )
 from quill.ui.sticky_notes import StickyNoteEditorDialog, StickyNotesVaultDialog
-from quill.ui.train_style_dialog import TrainStyleDialog
 from quill.ui.word_view import WordDocumentSurface
 
 
@@ -22276,6 +22274,8 @@ class MainFrame(
                 "AI is turned off. Enable 'Use Artificial Intelligence' in Tools > AI Assistant."
             )
             return
+        from quill.ui.train_style_dialog import TrainStyleDialog
+
         TrainStyleDialog(
             self.frame,
             self._get_assistant(),
@@ -23508,6 +23508,8 @@ class MainFrame(
             )
             self._set_status("No saved AI writing sessions yet")
             return
+        from quill.ui.session_browser import SessionBrowserDialog
+
         SessionBrowserDialog(
             self.frame,
             session,
@@ -26964,9 +26966,10 @@ def run_app(
     ]
     _t_show = time.perf_counter()
     frame.show()
-    frame._cold_start_times.append(
-        ("frame.show() (synchronous part)", time.perf_counter() - _t_show)
-    )
+    frame._cold_start_times.append((
+        "frame.show() (synchronous part)",
+        time.perf_counter() - _t_show,
+    ))
     try:
         app.MainLoop()
     finally:
