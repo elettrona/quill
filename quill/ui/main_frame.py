@@ -384,8 +384,6 @@ from quill.stability.memory_watch import should_trace_memory, start_memory_traci
 from quill.stability.task_manager import TaskManager
 from quill.stability.ui_responsiveness import mark_wx_main_thread
 from quill.stability.wx_heartbeat import HeartbeatState, WxHeartbeatTimer, WxHeartbeatWatchdog
-from quill.ui.ai_model_panel import AIModelDialog
-from quill.ui.assistant_panel import AskQuillChatDialog
 from quill.ui.context_help import ContextHelpMixin, warm_help_topics
 from quill.ui.csv_grid import CsvGridSurface
 from quill.ui.dialog_contract import apply_modal_ids, focus_primary_control, show_modal_dialog
@@ -435,9 +433,7 @@ from quill.ui.main_frame_vault import VaultMixin
 from quill.ui.main_frame_verbosity import VerbosityCommandsMixin
 from quill.ui.main_frame_watch_profile import WatchProfileDialogMixin
 from quill.ui.notebook_panel import NotebookEntriesPanel
-from quill.ui.palette import CommandPaletteDialog
 from quill.ui.rich_text_surface import RichTextSurface
-from quill.ui.sticky_notes import StickyNoteEditorDialog, StickyNotesVaultDialog
 from quill.ui.word_view import WordDocumentSurface
 
 
@@ -10682,6 +10678,8 @@ class MainFrame(
             self._open_palette_dialog()
 
     def _open_palette_dialog(self) -> None:
+        from quill.ui.palette import CommandPaletteDialog
+
         dialog = CommandPaletteDialog(
             self.frame, self.commands, self.features, announce_fn=self._announce
         )
@@ -10755,6 +10753,8 @@ class MainFrame(
         if self._safe_mode:
             self._set_status("Sticky notes are unavailable in safe mode")
             return
+        from quill.ui.sticky_notes import StickyNoteEditorDialog
+
         editor = StickyNoteEditorDialog(self.frame)
         body = editor.show_modal_and_get_body()
         if body is None:
@@ -10767,6 +10767,8 @@ class MainFrame(
         if self._safe_mode:
             self._set_status("Sticky notes are unavailable in safe mode")
             return
+        from quill.ui.sticky_notes import StickyNotesVaultDialog
+
         StickyNotesVaultDialog(self.frame).show_modal()
         self._set_status("Closed sticky notes vault")
 
@@ -22428,6 +22430,7 @@ class MainFrame(
     def _open_ask_quill(self, *, voice_mode: bool, initial_prompt: str = "") -> None:
         from quill.core.ai.model_manager import load_ai_enabled
         from quill.core.ai.onboarding import active_connection_consented, ai_connection_ready
+        from quill.ui.assistant_panel import AskQuillChatDialog
 
         # Offer setup not only when AI is off, but also when it's on yet the connection
         # isn't usable (no provider/key) or the active provider has no standing share
@@ -23475,6 +23478,8 @@ class MainFrame(
     def open_ai_model_settings(self) -> None:
         # Combined AI Model & Connection — the model dialog hosts a button to the
         # connection settings, so there's one entry point for all AI setup.
+        from quill.ui.ai_model_panel import AIModelDialog
+
         AIModelDialog(
             self.frame,
             announce=self._set_status,
