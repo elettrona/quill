@@ -59,7 +59,6 @@ from quill.core.quillins.smart_triggers import (
     parse_smart_trigger_line,
     resolve_smart_trigger,
 )
-from quill.core.speech.quillin_providers import register_quillin_transcription_providers
 from quill.plugins import THIRD_PARTY_PLUGINS_FEATURE
 from quill.ui.main_frame_quillins_host import _EditorHostServices
 
@@ -196,9 +195,11 @@ class QuillinsMenuMixin:
         # H-SAFE-1: Safe Mode keeps the manager/wizard commands but skips
         # contribution registration entirely -- the load-bearing gate that makes
         # ``--safe-mode`` safe (no live commands, no contributed providers).
-        if self._safe_mode:
-            return
-        self._register_quillin_contributions()
+        # Actual contribution loading (disk scan + manifest parse + registry
+        # build) is deferred to _run_deferred_startup_tasks -- it runs via
+        # wx.CallAfter right after the window is shown, before the user can
+        # physically reach the Quillins menu, so this is not visible as a
+        # startup gap (see #startup-perf-optimization plan, Task 2).
 
     def _quillins_enabled(self) -> bool:
         is_enabled = getattr(self.features, "is_enabled", None)
@@ -225,6 +226,7 @@ class QuillinsMenuMixin:
         the SEC-8 ``core.third_party_plugins`` flag is enabled. Both feed the one
         shared registry so their ids collide-detect uniformly.
         """
+        from quill.core.speech.quillin_providers import register_quillin_transcription_providers
 
         # Stop any timers from a previous load before rebuilding the indices, so
         # a reload/disable never leaves an orphaned wx.Timer firing.
