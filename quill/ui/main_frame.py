@@ -1582,9 +1582,11 @@ class MainFrame(
     def _write_startup_timing(self, times: list[tuple[str, float]]) -> None:
         from quill.core.paths import app_data_dir
 
-        total = sum(e for _, e in times)
+        cold_times: list[tuple[str, float]] = getattr(self, "_cold_start_times", None) or []
+        all_times = [*cold_times, *times]
+        total = sum(e for _, e in all_times)
         lines = [f"Startup task timing  (total {total * 1000:.0f} ms)\n", "=" * 50 + "\n"]
-        for label, elapsed in times:
+        for label, elapsed in all_times:
             pct = elapsed / total * 100 if total > 0 else 0
             lines.append(f"  {label:<45} {elapsed * 1000:7.1f} ms  ({pct:.0f}%)\n")
         out = app_data_dir() / "logs" / "startup_tasks.txt"
@@ -26912,6 +26914,7 @@ def run_app(
     startup_requests: list[object] | None = None,
     safe_mode: bool = False,
     diagnostics_mode: bool = False,
+    cold_import_seconds: float = 0.0,
 ) -> None:
     import wx
 
@@ -26923,7 +26926,9 @@ def run_app(
     mark_wx_main_thread()
     if diagnostics_mode or should_trace_memory():
         start_memory_tracing()
+    _t_construct = time.perf_counter()
     frame = MainFrame(safe_mode=safe_mode)
+    _construct_seconds = time.perf_counter() - _t_construct
     heartbeat_state = HeartbeatState()
     frame._stability_heartbeat_state = heartbeat_state
     frame._stability_heartbeat_timer = WxHeartbeatTimer(frame.frame, heartbeat_state)
@@ -26935,7 +26940,17 @@ def run_app(
         path = getattr(request, "path", None)
         if isinstance(path, Path) and path.exists() and path.is_file():
             frame._handle_shell_request(request)
+    # Cold-start timing (import + construction + the synchronous part of
+    # show()) is recorded on the instance so _write_startup_timing can
+    # prepend it ahead of the deferred-task timings it already collects,
+    # giving one combined picture of the whole launch in startup_tasks.txt.
+    frame._cold_start_times = [
+        ("import quill.ui.main_frame", cold_import_seconds),
+        ("MainFrame.__init__", _construct_seconds),
+    ]
+    _t_show = time.perf_counter()
     frame.show()
+    frame._cold_start_times.append(("frame.show() (synchronous part)", time.perf_counter() - _t_show))
     try:
         app.MainLoop()
     finally:

@@ -453,7 +453,10 @@ def main() -> int:
         bootstrap_bundled_publishing_providers()
 
         try:
+            _t_import_main_frame = time.perf_counter()
             from quill.ui.main_frame import run_app
+
+            _import_main_frame_seconds = time.perf_counter() - _t_import_main_frame
         except ModuleNotFoundError as exc:
             if exc.name == "wx":
                 print("wxPython is required to run the UI. Install with: pip install -e .[ui]")
@@ -496,7 +499,12 @@ def main() -> int:
                 _wait_for_primary_instance_shutdown()
             return 0
         try:
-            run_app(launch_requests, safe_mode=safe_mode, diagnostics_mode=diagnostics_mode)
+            run_app(
+                launch_requests,
+                safe_mode=safe_mode,
+                diagnostics_mode=diagnostics_mode,
+                cold_import_seconds=_import_main_frame_seconds,
+            )
         finally:
             release_primary_instance()
     finally:
