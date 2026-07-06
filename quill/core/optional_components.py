@@ -107,6 +107,12 @@ def _pandoc_installed() -> bool:
     return get_external_tool_status("pandoc").installed
 
 
+def _mathcat_installed() -> bool:
+    from quill.core.math import mathcat_engine
+
+    return mathcat_engine.is_available()
+
+
 def gather_optional_components() -> list[OptionalComponent]:
     """Return every optional component with its current installed status.
 
@@ -204,6 +210,17 @@ def gather_optional_components() -> list[OptionalComponent]:
             "~44 MB",
             note="mpv playback library (GPL; the download carries its licenses and a "
             "source offer); fetched from QUILL's pinned release.",
+        ),
+        OptionalComponent(
+            "mathcat",
+            "MathCAT math speech engine",
+            "Real natural-language speech for equations — used by Insert > Explore "
+            'Equation Structure...\'s "Read this part aloud". Equations are still '
+            "readable without it, via a simpler built-in template reading.",
+            SPEECH_ENGINE,
+            _safe(_mathcat_installed),
+            "~3 MB",
+            note="MathCAT (MIT, daisy/MathCATForC); fetched from QUILL's pinned release.",
         ),
     ]
     out.extend(_dictionary_components())

@@ -163,6 +163,22 @@ ASSETS: dict[str, ReleaseAsset] = {
         license="MPL-2.0/GPL-3.0/LGPL-3.0 (LibreOffice fr_FR / Dicollecte)",
         version="libreoffice-dictionaries 93d537d",
     ),
+    # MathCAT (real math speech, docs/planning/math.md step 3): daisy/MathCATForC
+    # publishes prebuilt Windows DLLs, so no Rust build is needed at all -- just
+    # a byte-identical re-publish of their libmathcat_c.dll (64-bit Windows) plus
+    # the Rules/ speech data it needs at runtime, repackaged into one zip. Loaded
+    # via ctypes only when the user installs it (quill.core.math.mathcat_engine);
+    # quill.core.math.navigator's template-based reading is the fallback when it
+    # is absent.
+    "mathcat": ReleaseAsset(
+        component="mathcat",
+        tag="assets-v1",
+        filename="mathcat-pack.zip",
+        sha256="5ce409c8b720978f1994e0f125e26d786519d4d16eec4482d10d9380413273f8",
+        expect_member="libmathcat_c.dll",
+        license="MIT (daisy/MathCATForC); byte-identical re-publish",
+        version="v0.7.6-beta.5",
+    ),
 }
 
 

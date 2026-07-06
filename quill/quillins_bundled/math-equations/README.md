@@ -31,10 +31,39 @@ equation.
 
 Select an equation (or type/paste one) and run **Insert > Explore Equation
 Structure...**, or press **Ctrl+Shift+Grave, F**, to step through it piece
-by piece — descend into a fraction's numerator and denominator, a power's
-base and exponent, a square root's radicand — with a plain-English reading
-available at any point via **Read this part aloud**. This is a lightweight,
-dependency-free structural navigator (`quill.core.math.navigator`), not
-Nemeth-quality math speech — real math braille/speech needs MathCAT,
-tracked separately as a deferred, native-build-pipeline project in
-`docs/planning/math.md`.
+by piece instead of reading it start to finish in one breath.
+
+**Keyboard interaction, precisely:**
+
+- If nothing is selected, an ordinary text prompt asks for LaTeX or MathML
+  first (Enter accepts, Escape cancels the command before it starts).
+- Each step: QUILL **announces** the current piece (speech only — "Whole
+  equation" at the top, or the piece's name once you've descended), then
+  opens a standard `wx.SingleChoiceDialog` (a normal Windows single-select
+  list) with that piece's children as choices, always followed by **Read
+  this part aloud**, then **Back up one level** (once you're below the
+  root), then **Done exploring**.
+- Inside that list: **Up/Down arrows** move the highlight, typing a letter
+  jumps to the next matching item, and **Enter** (or **OK**) activates the
+  highlighted choice:
+  - a numbered child **descends** into it and reopens the list for its
+    children (e.g. a fraction's **Numerator** and **Denominator**);
+  - **Read this part aloud** speaks a full reading of only the current
+    piece, then **reopens the same list at the same position**;
+  - **Back up one level** moves to the parent and reopens the list there;
+  - **Done exploring** ends the session and returns focus to the editor.
+- **Escape** (or **Cancel**), at any list, at any depth, **ends the whole
+  session immediately** — the same as Done exploring. It is *not* "go back
+  one level"; **Back up one level** is the dedicated choice for that.
+
+Structural navigation itself (the numerator/denominator/base/exponent
+stepping above) is always the lightweight, dependency-free
+`quill.core.math.navigator` walker — no download, no setup. **Read this
+part aloud** is the one part that upgrades: install the free MathCAT engine
+(**Help > Download Optional Components... > MathCAT math speech engine**,
+~3 MB, MIT-licensed, daisy/MathCATForC) and that command switches to the
+same natural-language math speech engine NVDA itself ships; without it, or
+if MathCAT fails on a given formula, the same command keeps working with
+navigator's simpler template-based reading — nothing breaks either way. See
+`quill.core.math.speech` and `quill.core.math.mathcat_engine`, and
+`docs/planning/math.md` for the full architecture writeup.

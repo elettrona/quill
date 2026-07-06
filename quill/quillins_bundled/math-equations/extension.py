@@ -17,10 +17,11 @@ splice a real Word equation into.
 
 Explore Equation Structure walks a formula's structure one piece at a time
 (numerator/denominator, base/exponent, a square root's radicand, ...) using
-quill.core.math.navigator — a lightweight, dependency-free stand-in for a
-real JAWS-style Math Viewer. It is plain-English structural navigation, not
-Nemeth-quality math speech (that needs MathCAT, tracked separately in
-docs/planning/math.md).
+quill.core.math.navigator for the structural walk. "Read this part aloud"
+goes through quill.core.math.speech, which uses the real MathCAT engine
+(daisy/MathCATForC) when the user has downloaded it (Help > Download
+Optional Components...), and navigator's own plain-English template
+reading otherwise — never a hard requirement, always a usable reading.
 
 Capabilities: ui.prompt, ui.choices, ui.announce, editor.read, editor.write,
               ui.command.
@@ -28,6 +29,7 @@ Capabilities: ui.prompt, ui.choices, ui.announce, editor.read, editor.write,
 
 from __future__ import annotations
 
+from quill.core.math import speech
 from quill.core.math.navigator import EquationNavigator, MathNavigatorError, parse_equation
 
 _INLINE = "Inline  (\\(...\\))"
@@ -125,7 +127,7 @@ def register(api):
             if chosen is None or chosen == _DONE_EXPLORING:
                 return
             if chosen == _READ_ALOUD:
-                ctx.announce(nav.reading())
+                ctx.announce(speech.speak(nav.current))
                 continue
             if chosen == _BACK_UP:
                 nav.ascend()
