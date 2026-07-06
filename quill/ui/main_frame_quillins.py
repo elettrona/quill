@@ -196,9 +196,11 @@ class QuillinsMenuMixin:
         # H-SAFE-1: Safe Mode keeps the manager/wizard commands but skips
         # contribution registration entirely -- the load-bearing gate that makes
         # ``--safe-mode`` safe (no live commands, no contributed providers).
-        if self._safe_mode:
-            return
-        self._register_quillin_contributions()
+        # Actual contribution loading (disk scan + manifest parse + registry
+        # build) is deferred to _run_deferred_startup_tasks -- it runs via
+        # wx.CallAfter right after the window is shown, before the user can
+        # physically reach the Quillins menu, so this is not visible as a
+        # startup gap (see #startup-perf-optimization plan, Task 2).
 
     def _quillins_enabled(self) -> bool:
         is_enabled = getattr(self.features, "is_enabled", None)

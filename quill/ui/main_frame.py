@@ -1484,6 +1484,14 @@ class MainFrame(
         except Exception:
             self._report_startup_task_failure("trust-consent onboarding")
         for label, task in (
+            # H-SAFE-1: mirrors the safe_mode gate that used to live in
+            # _register_quillins_commands -- Safe Mode keeps the manager/wizard
+            # commands (registered synchronously in __init__) but never loads
+            # contributed commands/providers.
+            (
+                "quillin contributions",
+                lambda: None if self._safe_mode else self._register_quillin_contributions(),
+            ),
             ("crash recovery", self._offer_crash_recovery),
             ("first-run onboarding", self._maybe_run_first_run_onboarding),
             ("migration notice", self._surface_migration_notice),
