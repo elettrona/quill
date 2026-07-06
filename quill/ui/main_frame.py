@@ -23,6 +23,7 @@ except ImportError:  # pragma: no cover - non-Windows fallback
 
 if TYPE_CHECKING:  # imports kept out of cold-start path
     from quill.core.epub import EpubBook, EpubChapter
+    from quill.core.updates import GitHubRelease, UpdateManifest
 
 from quill import __version__, build_info
 from quill.branding import APP_SHORT_NAME
@@ -395,18 +396,6 @@ from quill.core.token_nav import classify_token, next_token_position, prev_token
 from quill.core.transforms import to_lower, to_sentence_case, to_title, to_toggle_case, to_upper
 from quill.core.trust import is_trusted_location, load_trusted_locations, save_trusted_locations
 from quill.core.undo_store import load_undo_history, save_undo_history
-from quill.core.updates import (
-    GitHubRelease,
-    UpdateManifest,
-    download_release_asset,
-    fetch_latest_release,
-    fetch_releases,
-    fetch_update_manifest,
-    find_release,
-    is_newer_version,
-    running_portable,
-    select_latest,
-)
 from quill.core.url_ops import format_content_length
 from quill.core.watch_actions import WatchActionOutcome
 from quill.core.watch_profiles import (
@@ -19882,6 +19871,13 @@ class MainFrame(
         return datetime.now(UTC) - previous >= timedelta(hours=interval_hours)
 
     def check_for_updates(self, silent_no_update: bool = False) -> None:
+        from quill.core.updates import (
+            fetch_releases,
+            fetch_update_manifest,
+            is_newer_version,
+            running_portable,
+        )
+
         if getattr(self, "_update_check_in_progress", False):
             if not silent_no_update:
                 self._set_status("Update check already in progress")
@@ -19974,6 +19970,13 @@ class MainFrame(
         beta: bool,
     ) -> None:
         """UI-thread callback once the background update-network fetch finishes."""
+        from quill.core.updates import (
+            find_release,
+            is_newer_version,
+            running_portable,
+            select_latest,
+        )
+
         self._update_check_in_progress = False
         wx = self._wx
 
@@ -20393,6 +20396,8 @@ class MainFrame(
             self._offer_latest_beta(current_version)
 
     def _offer_latest_beta(self, current_version: str) -> None:
+        from quill.core.updates import fetch_latest_release
+
         try:
             release = fetch_latest_release(include_prereleases=True)
         except (URLError, ValueError, OSError) as error:
@@ -20449,6 +20454,7 @@ class MainFrame(
         import threading
 
         from quill.core.paths import app_data_dir
+        from quill.core.updates import download_release_asset
 
         url = release.download_url or ""
         if "/releases/download/" not in url:
@@ -26958,7 +26964,9 @@ def run_app(
     ]
     _t_show = time.perf_counter()
     frame.show()
-    frame._cold_start_times.append(("frame.show() (synchronous part)", time.perf_counter() - _t_show))
+    frame._cold_start_times.append(
+        ("frame.show() (synchronous part)", time.perf_counter() - _t_show)
+    )
     try:
         app.MainLoop()
     finally:
