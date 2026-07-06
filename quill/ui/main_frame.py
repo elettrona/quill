@@ -263,14 +263,6 @@ from quill.core.onboarding import (
 )
 from quill.core.outline import OutlineEntry, extract_outline_entries
 from quill.core.paths import app_data_dir, ensure_app_directories
-from quill.core.publishing import (
-    compare_publishing_remote_item,
-    create_publishing_remote_item,
-    prepare_publishing_remote_content,
-    publishing_comparison_message,
-    publishing_result_message,
-    update_publishing_remote_item,
-)
 from quill.core.publishing_linkage import (
     apply_publishing_linkage_to_source_metadata,
     get_publishing_linkage,
@@ -323,13 +315,6 @@ from quill.core.sessions import (
     load_recent_sessions,
 )
 from quill.core.settings import Settings, load_settings, save_settings
-from quill.core.share_package import (
-    KIND_BACKUP,
-    KIND_PROFILE,
-    PackageError,
-    extension_for_kind,
-    package_summary,
-)
 from quill.core.snippets import (
     ExpansionResult as SnippetExpansionResult,
 )
@@ -511,20 +496,7 @@ from quill.ui.main_frame_verbosity import VerbosityCommandsMixin
 from quill.ui.main_frame_watch_profile import WatchProfileDialogMixin
 from quill.ui.notebook_panel import NotebookEntriesPanel
 from quill.ui.palette import CommandPaletteDialog
-from quill.ui.publishing_tools import (
-    BrowsePublishingContentDialog,
-    PublishingConnectionsDialog,
-    SchedulePublishDialog,
-)
 from quill.ui.rich_text_surface import RichTextSurface
-from quill.ui.share_dialogs import (
-    apply_import,
-    build_export_document,
-    gather_export_offers,
-    importable_sections,
-    read_import,
-    write_export,
-)
 from quill.ui.sticky_notes import StickyNoteEditorDialog, StickyNotesVaultDialog
 from quill.ui.word_view import WordDocumentSurface
 
@@ -13053,6 +13025,8 @@ class MainFrame(
             self._set_status("AI connection settings cancelled")
 
     def _open_publishing_connections(self) -> None:
+        from quill.ui.publishing_tools import PublishingConnectionsDialog
+
         dialog = PublishingConnectionsDialog(self.frame, announce_cb=self._announce)
         if dialog.show_modal():
             self._set_status("Updated publishing connections")
@@ -13082,6 +13056,9 @@ class MainFrame(
         self._set_status(message)
 
     def _browse_publishing_content(self) -> None:
+        from quill.core.publishing import prepare_publishing_remote_content
+        from quill.ui.publishing_tools import BrowsePublishingContentDialog
+
         dialog = BrowsePublishingContentDialog(
             self.frame, self._task_manager, announce_cb=self._announce
         )
@@ -13123,7 +13100,12 @@ class MainFrame(
         self._set_status(f"Opened {content_kind} from publishing.")
 
     def _compare_publishing_remote_item(self) -> None:
-        from quill.core.publishing import current_publishing_connection, load_publishing_secret
+        from quill.core.publishing import (
+            compare_publishing_remote_item,
+            current_publishing_connection,
+            load_publishing_secret,
+            publishing_comparison_message,
+        )
 
         dialog_title = "Compare With Remote"
         metadata = self.document.source_metadata
@@ -13178,7 +13160,12 @@ class MainFrame(
         self._send_publishing_remote_item(status="publish")
 
     def _send_publishing_remote_item(self, *, status: str | None) -> None:
-        from quill.core.publishing import current_publishing_connection, load_publishing_secret
+        from quill.core.publishing import (
+            current_publishing_connection,
+            load_publishing_secret,
+            publishing_result_message,
+            update_publishing_remote_item,
+        )
 
         metadata = self.document.source_metadata
         if metadata.get("source_kind") != "publishing_remote":
@@ -13298,7 +13285,12 @@ class MainFrame(
         self._create_publishing_item("page", status="publish")
 
     def _create_publishing_item(self, content_kind: str, *, status: str) -> None:
-        from quill.core.publishing import current_publishing_connection, load_publishing_secret
+        from quill.core.publishing import (
+            create_publishing_remote_item,
+            current_publishing_connection,
+            load_publishing_secret,
+            publishing_result_message,
+        )
 
         profile = current_publishing_connection()
         if profile is None:
@@ -13402,7 +13394,14 @@ class MainFrame(
         return "markdown"
 
     def _schedule_publishing_publish(self) -> None:
-        from quill.core.publishing import current_publishing_connection, load_publishing_secret
+        from quill.core.publishing import (
+            create_publishing_remote_item,
+            current_publishing_connection,
+            load_publishing_secret,
+            publishing_result_message,
+            update_publishing_remote_item,
+        )
+        from quill.ui.publishing_tools import SchedulePublishDialog
 
         profile = current_publishing_connection()
         if profile is None:
@@ -13754,6 +13753,14 @@ class MainFrame(
         machine-specific paths or secrets; backup mode keeps everything for the
         person's own use.
         """
+        from quill.core.share_package import (
+            KIND_BACKUP,
+            KIND_PROFILE,
+            PackageError,
+            extension_for_kind,
+        )
+        from quill.ui.share_dialogs import build_export_document, gather_export_offers, write_export
+
         wx = self._wx
         offers = gather_export_offers(self.settings, self.features)
         if not offers:
@@ -13880,6 +13887,9 @@ class MainFrame(
         Feature changes are snapshotted and rolled back automatically if any
         section fails to apply, so a bad file never leaves the app half-changed.
         """
+        from quill.core.share_package import PackageError, package_summary
+        from quill.ui.share_dialogs import apply_import, importable_sections, read_import
+
         wx = self._wx
         with wx.FileDialog(
             self.frame,
