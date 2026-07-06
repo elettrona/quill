@@ -386,12 +386,6 @@ from quill.stability.ui_responsiveness import mark_wx_main_thread
 from quill.stability.wx_heartbeat import HeartbeatState, WxHeartbeatTimer, WxHeartbeatWatchdog
 from quill.ui.ai_model_panel import AIModelDialog
 from quill.ui.assistant_panel import AskQuillChatDialog
-from quill.ui.assistant_tools import (
-    AccessibilityAgentDialog,
-    AssistantConnectionDialog,
-    RunPythonDialog,
-    WritingAssistantDialog,
-)
 from quill.ui.context_help import ContextHelpMixin, warm_help_topics
 from quill.ui.csv_grid import CsvGridSurface
 from quill.ui.dialog_contract import apply_modal_ids, focus_primary_control, show_modal_dialog
@@ -12954,6 +12948,8 @@ class MainFrame(
         self._settings_dialog_apply_refresh("Updated settings")
 
     def open_ai_preferences(self) -> None:
+        from quill.ui.assistant_tools import AssistantConnectionDialog
+
         dialog = AssistantConnectionDialog(self.frame)
         if dialog.show_modal():
             self._set_ai_menu_status_badge(
@@ -15039,6 +15035,7 @@ class MainFrame(
 
     def make_document_accessible(self) -> None:
         from quill.core.accessibility_agent import summarize_plan
+        from quill.ui.assistant_tools import AccessibilityAgentDialog
 
         markup = self._current_markup_context()
         original = self.editor.GetValue()
@@ -23579,6 +23576,8 @@ class MainFrame(
         if self._safe_mode:
             self._set_status("Writing assistant is unavailable in safe mode")
             return
+        from quill.ui.assistant_tools import WritingAssistantDialog
+
         dialog = WritingAssistantDialog(
             self.frame,
             self.commands,
@@ -23604,6 +23603,8 @@ class MainFrame(
         self.open_ai_library()
 
     def run_python_tool(self) -> None:
+        from quill.ui.assistant_tools import RunPythonDialog
+
         outline = [
             {"level": entry.level, "title": entry.title, "position": entry.position}
             for entry in self._outline_entries()
