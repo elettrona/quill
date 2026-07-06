@@ -22,6 +22,7 @@ except ImportError:  # pragma: no cover - non-Windows fallback
     _winsound = None  # type: ignore[assignment]
 
 if TYPE_CHECKING:  # imports kept out of cold-start path
+    from quill.core.accessibility_agent import AgentRunResult
     from quill.core.epub import EpubBook, EpubChapter
     from quill.core.glow_updates import GlowUpdateCheck
     from quill.core.updates import GitHubRelease, UpdateManifest
@@ -32,7 +33,6 @@ from quill.core import thesaurus as thesaurus_engine
 from quill.core.a11y_regions import (
     RegionTracker,
 )
-from quill.core.accessibility_agent import AgentRunResult, summarize_plan
 from quill.core.ai import Assistant
 from quill.core.ai.agent import allowed_tools
 from quill.core.autoformat import EM_DASH, is_dash_merge, smart_quote_for
@@ -56,9 +56,6 @@ from quill.core.browser_preview import (
     render_preview_html,
 )
 from quill.core.commands import CommandRegistry
-from quill.core.compliance import (
-    render_full_third_party_notices,
-)
 from quill.core.context_menu import (
     CMD_COPY,
     CMD_CUT,
@@ -14355,6 +14352,8 @@ class MainFrame(
             self._set_status(f"User guide saved to {target_path}")
 
     def open_third_party_notices(self) -> None:
+        from quill.core.compliance import render_full_third_party_notices
+
         project_root = self._project_root_path()
         pyproject_path = self._pyproject_path()
         if not pyproject_path.exists():
@@ -15039,6 +15038,8 @@ class MainFrame(
         self._set_status(f"Applied {len(result.fixes)} GLOW fixes to {scope_label}")
 
     def make_document_accessible(self) -> None:
+        from quill.core.accessibility_agent import summarize_plan
+
         markup = self._current_markup_context()
         original = self.editor.GetValue()
 
