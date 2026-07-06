@@ -132,6 +132,7 @@
   "download_ffmpeg",
   "download_kokoro_engine",
   "download_libmpv",
+  "download_mathcat",
   "download_offline_speech_engine",
   "download_pandoc",
   "download_piper_exe",
