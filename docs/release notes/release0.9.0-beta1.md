@@ -855,10 +855,21 @@ delimiters QUILL now uses are MathJax's own defaults. And for a formula
 that is hard to hold in your head all at once, **Insert > Explore Equation
 Structure...** (or **Ctrl+Shift+Grave, F**) steps through it piece by
 piece - into a fraction's numerator and denominator, a power's base and
-exponent, a root's radicand - with a plain-English reading at any point.
-It is a lightweight, dependency-free stand-in for a JAWS-style Math Viewer,
-not Nemeth-quality math speech; real math braille and speech engine
-integration (MathCAT) is tracked separately as future work.
+exponent, a root's radicand - one ordinary Windows list per level (arrow
+keys, type-ahead, Enter/OK to choose; Escape ends the session outright at
+any depth - **Back up one level** is the dedicated choice for retracing a
+step instead).
+
+**Read this part aloud**, the command that speaks just the piece you're
+on, can now use real math speech instead of a template: install the free
+**MathCAT math speech engine** (**Help > Download Optional Components...**,
+about 3 MB, MIT-licensed, `daisy/MathCATForC`) and that command switches to
+the same natural-language speech engine NVDA itself ships - a `ctypes`
+binding to their prebuilt library, no Rust toolchain required to build it.
+Skip the download and the command keeps working exactly as before, with a
+simpler built-in reading; nothing regresses either way. Math braille
+(Nemeth/UEB) isn't wired up yet - a follow-up once the speech side has been
+validated by ear.
 
 ### A real equation in Word, not a picture
 

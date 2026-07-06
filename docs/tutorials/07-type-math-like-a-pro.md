@@ -106,24 +106,52 @@ Reading a long formula start to finish, in one breath, is hard whether you
 are listening or looking. **Select an equation** (or type one fresh) and run
 **Insert > Explore Equation Structure...** — or press **Ctrl+Shift+Grave,
 F** directly from the keyboard, no menu required — to step through it one
-piece at a time instead:
+piece at a time instead.
+
+**Exactly how the keyboard works, start to finish:**
 
 1. Select `x = \frac{-b \pm \sqrt{b^2 - 4ac}}{2a}` (or any equation) and run
-   the command, or press Ctrl+Shift+Grave, F.
-2. QUILL announces "Whole equation" and offers a list of its pieces:
-   `x`, `equals`, and the fraction.
-3. Choose the fraction. QUILL announces "Fraction" and now offers
-   **Numerator** and **Denominator**.
-4. Choose either one, or pick **Read this part aloud** at any point to hear
-   a full plain-English reading of just that piece — e.g. "the square root
-   of b squared minus 4 a c" — without the rest of the formula around it.
-5. **Back up one level** retraces your steps; **Done exploring** exits.
+   the command, or press Ctrl+Shift+Grave, F. If nothing is selected, a
+   normal text box prompts you to type or paste one instead — Enter accepts
+   it, Escape cancels the whole command before it starts.
+2. QUILL speaks where you are ("Whole equation" the first time, or the
+   current piece's name after that), then opens a standard single-selection
+   list dialog with the current piece's contents as choices — for the whole
+   equation above, that is `x`, `equals`, and the fraction. This is an
+   ordinary Windows list box: **Up/Down arrows** move through the items,
+   typing a letter jumps to the next item starting with it, and the list
+   always ends with **Read this part aloud**, then **Back up one level**
+   (only once you've descended at least one level), then **Done exploring**.
+3. **Enter**, or the **OK** button, activates whichever item is highlighted:
+   - Choosing a numbered piece (like the fraction) **descends into it** —
+     QUILL speaks its name ("Fraction") and the list refreshes to show
+     *its* pieces (**Numerator**, **Denominator**).
+   - **Read this part aloud** speaks a full reading of exactly the piece
+     you're currently on — e.g. "the square root of b squared minus 4 a c"
+     — without the rest of the formula around it, then reopens the same
+     list so you can keep exploring from where you were.
+   - **Back up one level** moves to the parent piece and reopens the list
+     there.
+   - **Done exploring** closes the explorer and returns you to the editor.
+4. **Escape**, or the **Cancel** button, at any point — on any list, at any
+   depth — **ends the whole session immediately**, exactly like choosing
+   Done exploring. It does not step back one level; **Back up one level**
+   is the only way to retrace a step without exiting entirely.
 
 This is a genuinely useful way to make sense of a formula piece by piece,
-but it's worth being precise about what it is: a plain-English structural
-walk-through, not the Nemeth or UEB math braille a dedicated screen-reader
-math engine produces. If you use JAWS, its own Math Viewer (on a native
-Word equation, after the export step below) gives you that fuller,
+but it's worth being precise about what it is: **the stepping through
+numerator/denominator/base/exponent is always a plain, dependency-free
+structural walk** — no download, no setup, works the moment you install
+QUILL. **Read this part aloud** is the one piece that can get richer: if
+you install the free MathCAT engine (**Help > Download Optional
+Components... > MathCAT math speech engine**, about 3 MB, one-time), that
+command switches from a template-built reading to the same natural-language
+math speech engine NVDA itself ships. Without it — or if MathCAT fails on a
+particular formula — the same command keeps working with the simpler
+built-in reading; nothing breaks either way. Neither path is
+the Nemeth or UEB math braille a dedicated screen-reader math engine
+produces on its own display. If you use JAWS, its own Math Viewer (on a
+native Word equation, after the export step below) gives you that fuller,
 braille-aware experience; QUILL's explorer is the fast, no-extra-software
 version for getting your bearings in a formula while you're still writing
 it.

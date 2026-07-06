@@ -4540,10 +4540,64 @@ was silently dropping the manifest's `case_sensitive` field.
 **Structural exploration.** **Insert → Explore Equation Structure...**
 (`Ctrl+Shift+Grave, F`) parses the selection (or a fresh prompt) via
 `navigator.py` and drives a sequence of `ui.choices` calls — no new core UI,
-entirely within the existing Quillin capability model — offering the
-current node's children with role labels (Numerator, Denominator, Base,
-Exponent, ...), **Read this part aloud** for a full reading of just that
-piece, **Back up one level**, and **Done exploring**.
+entirely within the existing Quillin capability model. Each `ui.choices`
+call is a `wx.SingleChoiceDialog` (standard listbox semantics: arrow keys
+move the highlight, type-ahead jumps to a match, Enter/OK activates the
+highlighted item); **Escape/Cancel at any depth ends the whole session
+immediately**, identically to choosing **Done exploring** — it is not "go
+up one level," which is the dedicated **Back up one level** choice.
+Descending into a numbered child re-announces (`ctx.announce`, speech only)
+the new node and reopens the list for its children (role labels: Numerator,
+Denominator, Base, Exponent, ...); **Read this part aloud** speaks a full
+reading of only the current node via `quill.core.math.speech.speak()`
+(below) and reopens the same list at the same position.
+
+**Real math speech (`quill/core/math/mathcat_engine.py`,
+`quill/core/math/speech.py`).** **Read this part aloud** is the one part of
+Explore Equation Structure that upgrades: `speech.speak(element)` tries the
+real MathCAT engine first and falls back to `navigator.read_aloud()` (the
+template renderer) on any failure or absence — never raises, always
+returns a usable string. The structural walk itself (numerator/denominator/
+base/exponent stepping, the ambient per-step labels) is intentionally left
+on the lightweight template system even when MathCAT is installed: those
+labels are meant to be short list items ("Fraction", "Numerator: Group"),
+and MathCAT's fuller natural-language prose would make them unwieldy;
+`navigator.py` stays MathCAT-free by design so the mandatory install-nothing
+path never depends on it.
+
+MathCAT itself has no pip-installable Python binding, but a maintained,
+separate C-interface project (`daisy/MathCATForC`, MIT) publishes prebuilt
+Windows DLLs, header, and Rules data as GitHub release assets — no Rust
+toolchain or PyO3 wrapper needed at all. `mathcat_engine.py` binds that DLL
+via plain `ctypes` against its C-string API (`SetMathML`, `GetSpokenText`,
+`SetRulesDir`, ...). The API is process-global mutable state (`SetMathML`
+sets "the" current equation for the whole process), so every call is
+serialized behind a lock. **Memory safety note, found and fixed the hard
+way**: declaring a string-returning function's `restype` as
+`ctypes.c_char_p` makes ctypes copy the string into a new Python `bytes`
+object and discard the original pointer — freeing "it" afterwards then
+frees memory Rust's allocator never allocated (confirmed by hand:
+`STATUS_HEAP_CORRUPTION`). Every string-returning function is declared
+`c_void_p` instead; a dedicated `_read_and_free` helper casts that exact
+address to read it, then frees that exact address.
+
+Distribution follows the existing `quill.core.release_assets` pattern
+(whisper.cpp, kokoro, vosk, the braille pack, libmpv, spell dictionaries):
+a byte-identical re-publish, pinned by SHA-256, on QUILL's own `assets-v1`
+release tag, fetched on demand (**Help → Download Optional Components... →
+MathCAT math speech engine**, ~3 MB) with the same already-installed/consent
+dialog pair and Safe Mode gate every other component in that list uses.
+`quill.core.optional_components._mathcat_installed()` is the availability
+check surfaced in that dialog.
+
+Known open item: MathCAT's own speech phrasing has at least one rough edge
+observed directly (an implicit-multiplication connector rendered oddly in
+one tested equation) that needs a real screen-reader user's ears and
+possibly a `SetPreference` tuning pass (verbosity, `ImpliedTimes` style)
+before this is the polished default experience — tracked as a follow-up,
+not blocking the current shipment. Real Nemeth/UEB math **braille** (the
+crate also produces it) is not wired here; that is a further follow-up once
+speech quality is validated.
 
 **Rendering.** Browser Preview and HTML export already carried a MathJax
 CDN `<script>` tag; the actual fix was recognizing that MathJax's default
@@ -4571,18 +4625,22 @@ text correctly; regression tests lock that in.
 `modify_selection: deny`) explains a selected equation in plain language
 without solving anything or touching the document.
 
-**Explicitly deferred.** Real MathCAT-backed math speech/braille (Nemeth,
-UEB Technical) is **not** part of this shipment: MathCAT has no
-pip-installable Python binding — the only existing "Python interface" is the
-NVDA add-on itself, GPL v2 and pinned to Python 3.11 / wxPython 4.2.2, not
-reusable as a library — so real integration means QUILL building its own
-PyO3/Rust binding against the MIT-licensed `libmathcat` crate and shipping a
-compiled native wheel per platform, a native-build-pipeline decision on par
-with the existing `table_uia` C++ provider. Tracked, not scheduled.
-DAISY MathML export is skipped: `quill/io/daisy.py` is a DAISY 2.02
-*text-only* writer (no OPF/NCX/EPUB3), and no DAISY 2.02 player has real
-MathML rendering/speech support, so embedding raw `<math>` there would be
-inert markup, not real accessibility.
+**Shipped after all: real MathCAT speech.** An earlier pass through this
+section concluded MathCAT integration meant QUILL building its own
+PyO3/Rust binding against the `libmathcat` crate and standing up a new
+native-build CI pipeline (comparable to `table_uia`) — that conclusion was
+wrong, corrected once `daisy/MathCATForC` (a separate, actively maintained,
+MIT-licensed C-interface project publishing prebuilt Windows DLLs) was
+found. See "Real math speech" above: the binding is a `ctypes` wrapper
+against an already-compiled binary, not a new Rust toolchain. Real Nemeth/
+UEB math **braille** (MathCAT also produces it) is not wired yet — a
+follow-up once the speech path is validated by ear, not a native-build
+blocker.
+
+**Explicitly skipped.** DAISY MathML export: `quill/io/daisy.py` is a
+DAISY 2.02 *text-only* writer (no OPF/NCX/EPUB3), and no DAISY 2.02 player
+has real MathML rendering/speech support, so embedding raw `<math>` there
+would be inert markup, not real accessibility.
 
 **Tutorial:** [07-type-math-like-a-pro.md](../tutorials/07-type-math-like-a-pro.md)
 teaches the whole surface end to end — gallery first, then typed input, the

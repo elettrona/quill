@@ -2458,7 +2458,20 @@ Typing a backslash code followed by a space or punctuation — matching Word's o
 
 #### Explore Equation Structure — step through a formula by ear
 
-Select an equation (or type one fresh) and run **Insert → Explore Equation Structure...**, or press **Ctrl+Shift+Grave, F**, to step through it one piece at a time instead of reading it start to finish in one breath. QUILL announces the current piece (for example "Whole equation" or "Fraction") and offers its children as a choice list — descend into a fraction's **Numerator** and **Denominator**, a power's **Base** and **Exponent**, a root's radicand — with **Read this part aloud** available at any point for a full plain-English reading of just that piece, **Back up one level** to retrace, and **Done exploring** to exit. This is a lightweight, dependency-free structural navigator, not Nemeth-quality math speech; a real math-braille/speech engine (MathCAT) is tracked as future work. If you use JAWS, its own Math Viewer becomes available once an equation is a native Word equation object (see Word export, below), and remains the fuller, braille-aware option.
+Select an equation (or type one fresh) and run **Insert → Explore Equation Structure...**, or press **Ctrl+Shift+Grave, F**, to step through it one piece at a time instead of reading it start to finish in one breath.
+
+**The keyboard interaction, precisely:**
+
+- If nothing is selected, an ordinary text prompt asks for LaTeX or MathML first — Enter accepts it, Escape cancels the command before it starts.
+- At each step, QUILL **announces** the current piece (speech only — "Whole equation" at the top, or the piece's name once you've descended, e.g. "Fraction"), then opens a standard Windows single-selection list (`wx.SingleChoiceDialog`) with that piece's children as choices, always followed by **Read this part aloud**, then **Back up one level** (once you're below the root), then **Done exploring**.
+- Inside that list: **Up/Down arrows** move the highlight, typing a letter jumps to the next item starting with it, and **Enter** (or the **OK** button) activates whichever item is highlighted:
+  - a numbered child (for example a fraction's **Numerator** and **Denominator**, or a power's **Base** and **Exponent**) **descends into it** and reopens the list for its own children;
+  - **Read this part aloud** speaks a full reading of only the current piece, then **reopens the same list at the same position** so you can keep exploring;
+  - **Back up one level** moves to the parent piece and reopens the list there;
+  - **Done exploring** ends the session and returns focus to the editor.
+- **Escape** (or the **Cancel** button), at any list, at any depth, **ends the whole session immediately** — the same as choosing Done exploring. It is *not* "go back one level"; **Back up one level** is the dedicated choice for that.
+
+The stepping itself (numerator/denominator/base/exponent, and the short per-step announcements) is always a lightweight, dependency-free structural walk (`quill.core.math.navigator`) — no download, no setup, works the moment QUILL is installed. **Read this part aloud** is the one part that can get richer: install the free **MathCAT math speech engine** (**Help → Download Optional Components... → MathCAT math speech engine**, about 3 MB, MIT-licensed, from the `daisy/MathCATForC` project) and that command switches to the same natural-language math speech engine NVDA itself ships, instead of the simpler built-in template reading. Skip the download, or if MathCAT fails on a particular formula, and the same command keeps working with the template reading — nothing regresses either way. Real Nemeth/UEB math **braille** is not wired up yet; that is separate follow-up work once the speech side has been validated by ear. If you use JAWS, its own Math Viewer becomes available once an equation is a native Word equation object (see Word export, below), and remains the fuller, braille-aware option.
 
 #### Word export and round-trip
 

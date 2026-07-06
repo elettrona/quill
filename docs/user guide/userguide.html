@@ -4706,19 +4706,60 @@ Equation Structure — step through a formula by ear</h4>
 <p>Select an equation (or type one fresh) and run <strong>Insert →
 Explore Equation Structure...</strong>, or press
 <strong>Ctrl+Shift+Grave, F</strong>, to step through it one piece at a
-time instead of reading it start to finish in one breath. QUILL
-announces the current piece (for example "Whole equation" or "Fraction")
-and offers its children as a choice list — descend into a fraction's
-<strong>Numerator</strong> and <strong>Denominator</strong>, a power's
-<strong>Base</strong> and <strong>Exponent</strong>, a root's radicand —
-with <strong>Read this part aloud</strong> available at any point for a
-full plain-English reading of just that piece, <strong>Back up one
-level</strong> to retrace, and <strong>Done exploring</strong> to exit.
-This is a lightweight, dependency-free structural navigator, not
-Nemeth-quality math speech; a real math-braille/speech engine (MathCAT)
-is tracked as future work. If you use JAWS, its own Math Viewer becomes
-available once an equation is a native Word equation object (see Word
-export, below), and remains the fuller, braille-aware option.</p>
+time instead of reading it start to finish in one breath.</p>
+<p><strong>The keyboard interaction, precisely:</strong></p>
+<ul>
+<li>If nothing is selected, an ordinary text prompt asks for LaTeX or
+MathML first — Enter accepts it, Escape cancels the command before it
+starts.</li>
+<li>At each step, QUILL <strong>announces</strong> the current piece
+(speech only — "Whole equation" at the top, or the piece's name once
+you've descended, e.g. "Fraction"), then opens a standard Windows
+single-selection list (<code>wx.SingleChoiceDialog</code>) with that
+piece's children as choices, always followed by <strong>Read this part
+aloud</strong>, then <strong>Back up one level</strong> (once you're
+below the root), then <strong>Done exploring</strong>.</li>
+<li>Inside that list: <strong>Up/Down arrows</strong> move the
+highlight, typing a letter jumps to the next item starting with it, and
+<strong>Enter</strong> (or the <strong>OK</strong> button) activates
+whichever item is highlighted:
+<ul>
+<li>a numbered child (for example a fraction's
+<strong>Numerator</strong> and <strong>Denominator</strong>, or a
+power's <strong>Base</strong> and <strong>Exponent</strong>)
+<strong>descends into it</strong> and reopens the list for its own
+children;</li>
+<li><strong>Read this part aloud</strong> speaks a full reading of only
+the current piece, then <strong>reopens the same list at the same
+position</strong> so you can keep exploring;</li>
+<li><strong>Back up one level</strong> moves to the parent piece and
+reopens the list there;</li>
+<li><strong>Done exploring</strong> ends the session and returns focus
+to the editor.</li>
+</ul></li>
+<li><strong>Escape</strong> (or the <strong>Cancel</strong> button), at
+any list, at any depth, <strong>ends the whole session
+immediately</strong> — the same as choosing Done exploring. It is
+<em>not</em> "go back one level"; <strong>Back up one level</strong> is
+the dedicated choice for that.</li>
+</ul>
+<p>The stepping itself (numerator/denominator/base/exponent, and the
+short per-step announcements) is always a lightweight, dependency-free
+structural walk (<code>quill.core.math.navigator</code>) — no download,
+no setup, works the moment QUILL is installed. <strong>Read this part
+aloud</strong> is the one part that can get richer: install the free
+<strong>MathCAT math speech engine</strong> (<strong>Help → Download
+Optional Components... → MathCAT math speech engine</strong>, about 3
+MB, MIT-licensed, from the <code>daisy/MathCATForC</code> project) and
+that command switches to the same natural-language math speech engine
+NVDA itself ships, instead of the simpler built-in template reading.
+Skip the download, or if MathCAT fails on a particular formula, and the
+same command keeps working with the template reading — nothing regresses
+either way. Real Nemeth/UEB math <strong>braille</strong> is not wired
+up yet; that is separate follow-up work once the speech side has been
+validated by ear. If you use JAWS, its own Math Viewer becomes available
+once an equation is a native Word equation object (see Word export,
+below), and remains the fuller, braille-aware option.</p>
 <h4 id="word-export-and-round-trip">Word export and round-trip</h4>
 <p><strong>File → Export → Word Document...</strong> writes a genuine
 Word equation object — the same kind Word's own equation editor produces
