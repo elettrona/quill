@@ -4499,6 +4499,155 @@ and services surfaces) so OCR-less profiles stay clean.
 
 ---
 
+### 5.94 Math in QUILL — equation input, rendering, structural exploration, and Word export (shipped)
+
+**Goal.** Close the gap the bundled math-equations Quillin always had: an
+equation could be typed in, but nothing rendered it, nothing let a
+screen-reader user explore its structure, and Word never saw a real
+equation object. Full plan of record: `docs/planning/math.md`.
+
+**Canonical model (`quill/core/math/`, wx-free, unit-tested).**
+`mathml.py` holds the canonical in-memory representation — MathML, the same
+input MathCAT and every screen-reader math engine already expects — with
+the original LaTeX source recoverable via a `semantics`/`annotation` pair
+(the same interop convention MathJax's own `tex2mathml` uses), so no general
+MathML-to-LaTeX parser is needed. `latex_bridge.py` is a `latex2mathml`-backed
+LaTeX-to-MathML bridge (the optional `math` extra; the module degrades to a
+clear `LatexBridgeUnavailable` rather than failing at import time when it is
+absent). `navigator.py` is a lightweight structural navigator — not a
+MathCAT-quality math-speech engine — that steps through an equation's parts
+(numerator/denominator, base/exponent, a root's radicand) and produces a
+plain-English linear reading with a small set of template rules; it is the
+"basic algebra, useful today" alternative to real Nemeth/UEB math speech.
+
+**Input (math-equations Quillin).** `Ctrl+Shift+E` / **Insert → Insert
+Equation...** takes LaTeX or MathML and wraps LaTeX as `\(...\)` (inline) or
+a single-line `$$...$$` (display) — both MathJax's own default-recognized
+delimiters, chosen specifically so no rendering template needs a config
+change and so a bare `$` in ordinary dollar-amount prose is never
+mistaken for math (the earlier `$...$` convention was replaced for exactly
+this reason). **Insert → Snippet Gallery...** carries ten static
+`$$...$$` formulas (quadratic formula, Pythagorean theorem, slope-intercept
+and point-slope forms, slope/distance/midpoint formulas, difference of
+squares, circle area/circumference) contributed via the existing
+`contributes.snippet_gallery` manifest mechanism — no new UI. 88 Math
+AutoCorrect-style abbreviations (seeded from the DAISY-published Word list,
+daisy.org/MSMathCodes) are contributed via the existing Insert Automation
+abbreviation system; `\delta`/`\Delta` and similar case-differentiated pairs
+depend on a fix in `quill/core/abbreviations.py` — `build_contributed_library`
+was silently dropping the manifest's `case_sensitive` field.
+
+**Structural exploration.** **Insert → Explore Equation Structure...**
+(`Ctrl+Shift+Grave, F`) parses the selection (or a fresh prompt) via
+`navigator.py` and drives a sequence of `ui.choices` calls — no new core UI,
+entirely within the existing Quillin capability model. Each `ui.choices`
+call is a `wx.SingleChoiceDialog` (standard listbox semantics: arrow keys
+move the highlight, type-ahead jumps to a match, Enter/OK activates the
+highlighted item); **Escape/Cancel at any depth ends the whole session
+immediately**, identically to choosing **Done exploring** — it is not "go
+up one level," which is the dedicated **Back up one level** choice.
+Descending into a numbered child re-announces (`ctx.announce`, speech only)
+the new node and reopens the list for its children (role labels: Numerator,
+Denominator, Base, Exponent, ...); **Read this part aloud** speaks a full
+reading of only the current node via `quill.core.math.speech.speak()`
+(below) and reopens the same list at the same position.
+
+**Real math speech (`quill/core/math/mathcat_engine.py`,
+`quill/core/math/speech.py`).** **Read this part aloud** is the one part of
+Explore Equation Structure that upgrades: `speech.speak(element)` tries the
+real MathCAT engine first and falls back to `navigator.read_aloud()` (the
+template renderer) on any failure or absence — never raises, always
+returns a usable string. The structural walk itself (numerator/denominator/
+base/exponent stepping, the ambient per-step labels) is intentionally left
+on the lightweight template system even when MathCAT is installed: those
+labels are meant to be short list items ("Fraction", "Numerator: Group"),
+and MathCAT's fuller natural-language prose would make them unwieldy;
+`navigator.py` stays MathCAT-free by design so the mandatory install-nothing
+path never depends on it.
+
+MathCAT itself has no pip-installable Python binding, but a maintained,
+separate C-interface project (`daisy/MathCATForC`, MIT) publishes prebuilt
+Windows DLLs, header, and Rules data as GitHub release assets — no Rust
+toolchain or PyO3 wrapper needed at all. `mathcat_engine.py` binds that DLL
+via plain `ctypes` against its C-string API (`SetMathML`, `GetSpokenText`,
+`SetRulesDir`, ...). The API is process-global mutable state (`SetMathML`
+sets "the" current equation for the whole process), so every call is
+serialized behind a lock. **Memory safety note, found and fixed the hard
+way**: declaring a string-returning function's `restype` as
+`ctypes.c_char_p` makes ctypes copy the string into a new Python `bytes`
+object and discard the original pointer — freeing "it" afterwards then
+frees memory Rust's allocator never allocated (confirmed by hand:
+`STATUS_HEAP_CORRUPTION`). Every string-returning function is declared
+`c_void_p` instead; a dedicated `_read_and_free` helper casts that exact
+address to read it, then frees that exact address.
+
+Distribution follows the existing `quill.core.release_assets` pattern
+(whisper.cpp, kokoro, vosk, the braille pack, libmpv, spell dictionaries):
+a byte-identical re-publish, pinned by SHA-256, on QUILL's own `assets-v1`
+release tag, fetched on demand (**Help → Download Optional Components... →
+MathCAT math speech engine**, ~3 MB) with the same already-installed/consent
+dialog pair and Safe Mode gate every other component in that list uses.
+`quill.core.optional_components._mathcat_installed()` is the availability
+check surfaced in that dialog.
+
+Known open item: MathCAT's own speech phrasing has at least one rough edge
+observed directly (an implicit-multiplication connector rendered oddly in
+one tested equation) that needs a real screen-reader user's ears and
+possibly a `SetPreference` tuning pass (verbosity, `ImpliedTimes` style)
+before this is the polished default experience — tracked as a follow-up,
+not blocking the current shipment. Real Nemeth/UEB math **braille** (the
+crate also produces it) is not wired here; that is a further follow-up once
+speech quality is validated.
+
+**Rendering.** Browser Preview and HTML export already carried a MathJax
+CDN `<script>` tag; the actual fix was recognizing that MathJax's default
+`inlineMath` delimiter is `\(...\)`, not bare `$...$` (dollar signs are
+opt-in specifically to avoid colliding with prose), so switching the
+Quillin's own delimiters to MathJax's defaults made both surfaces render
+correctly with **zero template changes**. Verified empirically (headless
+browser screenshot), not assumed.
+
+**Word export and round-trip (`quill/io/docx_math.py`).** The native
+python-docx writer (`quill/io/docx_writer.py`) had no math model; math spans
+in a run's text are now detected and each converted to a real
+`<m:oMath>`/`<m:oMathPara>` fragment via a one-equation Pandoc round-trip
+(write a tiny Markdown file containing just that equation, convert to docx,
+extract the fragment, splice it into the run stream via
+`docx.oxml.parse_xml`). Falls back to the literal delimited text — never
+silently drops the equation — when Pandoc is unavailable or a specific
+conversion fails. `omml_fragment_for_latex` is memoized (`functools.lru_cache`)
+so a document repeating the same formula does not spawn a Pandoc subprocess
+per occurrence. The docx *read* path (both the default MarkItDown engine and
+the Pandoc engine) already round-tripped a native equation back to `\(...\)`
+text correctly; regression tests lock that in.
+
+**AI.** A read-only `math-tutor` agent (`default_scope: selection`,
+`modify_selection: deny`) explains a selected equation in plain language
+without solving anything or touching the document.
+
+**Shipped after all: real MathCAT speech.** An earlier pass through this
+section concluded MathCAT integration meant QUILL building its own
+PyO3/Rust binding against the `libmathcat` crate and standing up a new
+native-build CI pipeline (comparable to `table_uia`) — that conclusion was
+wrong, corrected once `daisy/MathCATForC` (a separate, actively maintained,
+MIT-licensed C-interface project publishing prebuilt Windows DLLs) was
+found. See "Real math speech" above: the binding is a `ctypes` wrapper
+against an already-compiled binary, not a new Rust toolchain. Real Nemeth/
+UEB math **braille** (MathCAT also produces it) is not wired yet — a
+follow-up once the speech path is validated by ear, not a native-build
+blocker.
+
+**Explicitly skipped.** DAISY MathML export: `quill/io/daisy.py` is a
+DAISY 2.02 *text-only* writer (no OPF/NCX/EPUB3), and no DAISY 2.02 player
+has real MathML rendering/speech support, so embedding raw `<math>` there
+would be inert markup, not real accessibility.
+
+**Tutorial:** [07-type-math-like-a-pro.md](../tutorials/07-type-math-like-a-pro.md)
+teaches the whole surface end to end — gallery first, then typed input, the
+structure explorer, Browser Preview, and the Word round trip.
+
+---
+
 ## 6. Spell checking deep dive
 
 ### 6.1 The TinySpell question

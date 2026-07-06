@@ -14,6 +14,7 @@ exists to provide.
 
 from __future__ import annotations
 
+import quill.core.compliance as compliance_module
 import quill.ui.main_frame as main_frame_module
 from quill.ui.main_frame import MainFrame
 
@@ -65,7 +66,7 @@ def test_open_third_party_notices_opens_tab_and_announces(monkeypatch, tmp_path)
     frame._project_root_path = lambda: tmp_path
     frame._pyproject_path = lambda: fake_pyproject
     monkeypatch.setattr(
-        main_frame_module,
+        compliance_module,
         "render_full_third_party_notices",
         lambda pyproject, root: "NOTICES BODY",
     )

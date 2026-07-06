@@ -7,6 +7,8 @@ Covers:
   selection pre-fill and replace, empty cancel, prompt cancel, mode cancel.
 - Sample corpus: every block equation from docs/math/latex_testing.md is
   correctly stripped, wrapped, and round-tripped by the handler.
+- snippet_gallery: the bundled "Common Formulas" entries are well-formed and
+  every body is valid, recognized math text.
 """
 
 from __future__ import annotations
@@ -18,6 +20,8 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
+
+import pytest
 
 from quill.core.quillins.loader import bundled_extensions_root
 from quill.core.quillins.registry import build_registry
@@ -121,26 +125,30 @@ def test_manifest_hotkey_ctrl_shift_e() -> None:
     assert "Ctrl+Shift+E" in bindings
 
 
+def test_manifest_hotkey_explore_equation_structure() -> None:
+    manifest = _load_manifest()
+    by_command = {hk.command: hk.binding for hk in manifest.contributes.hotkeys}
+    assert by_command["ext.math.explore_equation_structure"] == "Ctrl+Shift+Grave, F"
+
+
 # -- handler: LaTeX insertion -------------------------------------------------
 
 
-def test_inline_latex_inserts_dollar_delimiters() -> None:
+def test_inline_latex_inserts_backslash_paren_delimiters() -> None:
     api = _register_extension()
-    ctx = _FakeCtx(prompts=["E=mc^2"], choices=["Inline  ($...$)"])
+    ctx = _FakeCtx(prompts=["E=mc^2"], choices=["Inline  (\\(...\\))"])
     api.handlers["insert_equation"](ctx)
-    assert ctx.inserted == ["$E=mc^2$"]
+    assert ctx.inserted == ["\\(E=mc^2\\)"]
     assert ctx.announced == ["Inserted math equation"]
 
 
-def test_block_latex_inserts_double_dollar_with_newlines() -> None:
+def test_block_latex_inserts_single_line_double_dollar() -> None:
     api = _register_extension()
     ctx = _FakeCtx(prompts=[r"\sum_{n=1}^{\infty} \frac{1}{n^2}"], choices=["Block  ($$...$$)"])
     api.handlers["insert_equation"](ctx)
     assert len(ctx.inserted) == 1
     snippet = ctx.inserted[0]
-    assert snippet.startswith("\n$$\n")
-    assert snippet.endswith("\n$$\n")
-    assert r"\sum" in snippet
+    assert snippet == "\n$$\\sum_{n=1}^{\\infty} \\frac{1}{n^2}$$\n"
 
 
 # -- handler: MathML detection ------------------------------------------------
@@ -179,12 +187,12 @@ def test_mathml_with_selection_replaces_not_inserts() -> None:
 def test_inline_selection_stripped_and_replaced() -> None:
     api = _register_extension()
     ctx = _FakeCtx(
-        selection="$x^2$",
+        selection="\\(x^2\\)",
         prompts=["x^2"],
-        choices=["Inline  ($...$)"],
+        choices=["Inline  (\\(...\\))"],
     )
     api.handlers["insert_equation"](ctx)
-    assert ctx.replaced == ["$x^2$"]
+    assert ctx.replaced == ["\\(x^2\\)"]
     assert ctx.inserted == []
 
 
@@ -252,7 +260,7 @@ def test_strip_delimiters_on_all_samples() -> None:
 
 
 def test_handler_round_trips_all_samples_as_block() -> None:
-    """Each sample equation re-inserted in block mode produces the expected snippet."""
+    """Each sample equation re-inserted in block mode produces a single-line $$...$$."""
     api = _register_extension()
     equations = _extract_block_equations(_SAMPLES_FILE)
     for eq in equations:
@@ -260,21 +268,19 @@ def test_handler_round_trips_all_samples_as_block() -> None:
         api.handlers["insert_equation"](ctx)
         assert ctx.inserted, f"nothing inserted for: {eq!r}"
         snippet = ctx.inserted[-1]
-        assert snippet.startswith("\n$$\n"), f"block prefix missing for: {eq!r}"
-        assert snippet.endswith("\n$$\n"), f"block suffix missing for: {eq!r}"
-        assert eq in snippet, f"equation content missing in: {snippet!r}"
+        assert snippet == f"\n$${eq}$$\n", f"unexpected block snippet for: {eq!r}"
 
 
 def test_handler_round_trips_all_samples_as_inline() -> None:
-    """Each sample equation re-inserted in inline mode produces $...$."""
+    """Each sample equation re-inserted in inline mode produces \\(...\\)."""
     api = _register_extension()
     equations = _extract_block_equations(_SAMPLES_FILE)
     for eq in equations:
-        ctx = _FakeCtx(prompts=[eq], choices=["Inline  ($...$)"])
+        ctx = _FakeCtx(prompts=[eq], choices=["Inline  (\\(...\\))"])
         api.handlers["insert_equation"](ctx)
         assert ctx.inserted, f"nothing inserted for: {eq!r}"
         snippet = ctx.inserted[-1]
-        assert snippet.startswith("$") and snippet.endswith("$"), (
+        assert snippet.startswith("\\(") and snippet.endswith("\\)"), (
             f"inline delimiters missing for: {eq!r}"
         )
         assert eq in snippet
@@ -295,3 +301,166 @@ def test_selection_prefill_preserves_all_sample_content() -> None:
         assert ctx.replaced, f"replace_selection not called for: {eq!r}"
         snippet = ctx.replaced[-1]
         assert eq.strip() in snippet, f"content lost in round-trip for: {eq!r}"
+
+
+# -- snippet gallery: bundled common formulas ---------------------------------
+
+
+def test_snippet_gallery_has_ten_common_formulas() -> None:
+    manifest = _load_manifest()
+    assert len(manifest.contributes.snippet_gallery) == 10
+
+
+def test_snippet_gallery_entries_are_unique_and_named() -> None:
+    manifest = _load_manifest()
+    ids = [entry.id for entry in manifest.contributes.snippet_gallery]
+    assert len(ids) == len(set(ids)), "duplicate snippet_gallery id"
+    for entry in manifest.contributes.snippet_gallery:
+        assert entry.name
+        assert entry.description
+        assert entry.category in {"Algebra", "Geometry"}
+
+
+def test_snippet_gallery_bodies_are_single_display_math_segments() -> None:
+    """Every gallery formula is exactly one $$...$$ block — nothing else."""
+    from quill.io.docx_math import split_math_segments
+
+    manifest = _load_manifest()
+    for entry in manifest.contributes.snippet_gallery:
+        segments = split_math_segments(entry.body)
+        assert len(segments) == 1, f"{entry.id}: expected one segment, got {segments!r}"
+        assert segments[0].is_math and segments[0].display, f"{entry.id}: not display math"
+
+
+def test_snippet_gallery_bodies_have_no_declared_params() -> None:
+    """No gallery formula declares {param} placeholders, so LaTeX's own { } braces
+
+    (e.g. \\frac{a}{b}) are never mistaken for substitution templates."""
+    manifest = _load_manifest()
+    for entry in manifest.contributes.snippet_gallery:
+        assert entry.params == (), f"{entry.id}: unexpected params {entry.params!r}"
+
+
+def test_snippet_gallery_bodies_insert_as_block_equations() -> None:
+    """Selecting a gallery formula and re-editing it detects block mode correctly."""
+    manifest = _load_manifest()
+    api = _register_extension()
+    for entry in manifest.contributes.snippet_gallery:
+        bare = entry.body[2:-2]  # strip the $$ ... $$ this test file adds back
+        ctx = _FakeCtx(selection=entry.body, prompts=[bare], choices=["Block  ($$...$$)"])
+        api.handlers["insert_equation"](ctx)
+        assert ctx.replaced, f"{entry.id}: replace_selection not called"
+        assert bare in ctx.replaced[-1], f"{entry.id}: content lost on round-trip"
+
+
+# -- explore_equation_structure ------------------------------------------------
+
+
+def _latex2mathml_available() -> bool:
+    try:
+        import latex2mathml.converter  # noqa: F401
+    except ImportError:
+        return False
+    return True
+
+
+_needs_latex2mathml = pytest.mark.skipif(
+    not _latex2mathml_available(), reason="latex2mathml not installed"
+)
+
+
+def test_explore_manifest_command_and_menu() -> None:
+    manifest = _load_manifest()
+    ids = {c.id for c in manifest.contributes.commands}
+    assert "ext.math.explore_equation_structure" in ids
+    registry = build_registry([manifest])
+    assert registry.conflicts == ()
+    parents = {
+        m.parent for m in registry.menus if m.command_id == "ext.math.explore_equation_structure"
+    }
+    assert parents == {"Insert"}
+
+
+def test_explore_cancel_at_prompt_does_nothing() -> None:
+    api = _register_extension()
+    ctx = _FakeCtx(prompts=[None])
+    api.handlers["explore_equation_structure"](ctx)
+    assert ctx.announced == []
+
+
+def test_explore_empty_input_announces_cancel() -> None:
+    api = _register_extension()
+    ctx = _FakeCtx(prompts=["   "])
+    api.handlers["explore_equation_structure"](ctx)
+    assert ctx.announced and "cancelled" in ctx.announced[0].lower()
+
+
+def test_explore_malformed_equation_announces_error() -> None:
+    api = _register_extension()
+    ctx = _FakeCtx(prompts=["}{"])
+    api.handlers["explore_equation_structure"](ctx)
+    assert ctx.announced and "could not read" in ctx.announced[0].lower()
+
+
+@_needs_latex2mathml
+def test_explore_walks_into_a_child_and_announces_its_label() -> None:
+    api = _register_extension()
+    ctx = _FakeCtx(
+        prompts=["a^2 + b^2 = c^2"],
+        choices=["1. a squared", "Done exploring"],
+    )
+    api.handlers["explore_equation_structure"](ctx)
+    assert ctx.announced == ["Whole equation", "a squared"]
+
+
+@_needs_latex2mathml
+def test_explore_read_aloud_announces_full_reading() -> None:
+    api = _register_extension()
+    ctx = _FakeCtx(
+        prompts=["a^2 + b^2 = c^2"],
+        choices=["Read this part aloud", "Done exploring"],
+    )
+    api.handlers["explore_equation_structure"](ctx)
+    assert ctx.announced == [
+        "Whole equation",
+        "a squared plus b squared equals c squared",
+        "Whole equation",
+    ]
+
+
+@_needs_latex2mathml
+def test_explore_back_up_returns_to_parent() -> None:
+    api = _register_extension()
+    ctx = _FakeCtx(
+        prompts=["a^2 + b^2 = c^2"],
+        choices=["1. a squared", "Back up one level", "Done exploring"],
+    )
+    api.handlers["explore_equation_structure"](ctx)
+    assert ctx.announced == ["Whole equation", "a squared", "Whole equation"]
+
+
+@_needs_latex2mathml
+def test_explore_none_from_show_choices_ends_the_session() -> None:
+    api = _register_extension()
+    ctx = _FakeCtx(prompts=["a^2 + b^2 = c^2"], choices=[None])
+    api.handlers["explore_equation_structure"](ctx)
+    assert ctx.announced == ["Whole equation"]
+
+
+@_needs_latex2mathml
+def test_explore_descends_into_a_fraction_for_numerator_and_denominator() -> None:
+    api = _register_extension()
+    ctx = _FakeCtx(
+        prompts=[r"x = \frac{-b \pm \sqrt{b^2 - 4ac}}{2a}"],
+        choices=[
+            "3. Fraction",
+            "1. Numerator: Group",
+            "Read this part aloud",
+            "Done exploring",
+        ],
+    )
+    api.handlers["explore_equation_structure"](ctx)
+    assert ctx.announced[0] == "Whole equation"
+    assert ctx.announced[1] == "Fraction"
+    assert ctx.announced[2] == "Group"
+    assert "minus b plus or minus" in ctx.announced[3]

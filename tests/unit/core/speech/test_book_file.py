@@ -81,6 +81,16 @@ def test_m4b_remux_command_is_lossless_copy() -> None:
     assert args[-1] == "out.m4b"
 
 
+def test_m4b_remux_command_maps_audio_and_video_only() -> None:
+    """Never `-map 0`: a stray data/subtitle stream on a real source file
+    breaks the ipod muxer ("Tag text incompatible with output codec id"),
+    found via a real end-to-end save. Only audio + optional video (cover)."""
+    args = build_m4b_remux_command("ffmpeg", Path("in.m4b"), Path("meta.ffmeta"), Path("out.m4b"))
+    map_indices = [i for i, a in enumerate(args) if a == "-map"]
+    mapped = [args[i + 1] for i in map_indices]
+    assert mapped == ["0:a", "0:v?"]
+
+
 def test_save_m4b_refuses_same_path(tmp_path: Path, monkeypatch) -> None:
     from quill.core.speech.book_file import save_m4b_book_as
     from quill.core.speech.ffmpeg import TranscodeError

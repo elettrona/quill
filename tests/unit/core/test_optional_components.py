@@ -6,7 +6,16 @@ from quill.core.optional_components import gather_optional_components
 
 def test_gather_includes_the_core_optional_components() -> None:
     ids = {c.component_id for c in gather_optional_components()}
-    assert {"whispercpp", "vosk", "kokoro", "espeak", "dectalk", "ffmpeg", "libmpv"}.issubset(ids)
+    assert {
+        "whispercpp",
+        "vosk",
+        "kokoro",
+        "espeak",
+        "dectalk",
+        "ffmpeg",
+        "libmpv",
+        "mathcat",
+    }.issubset(ids)
 
 
 def test_status_reflects_detectors(monkeypatch) -> None:
@@ -59,3 +68,13 @@ def test_libmpv_detector_checks_the_engine_pack(tmp_path, monkeypatch) -> None:
     (tmp_path / "mpv").mkdir()
     (tmp_path / "mpv" / "libmpv-2.dll").write_bytes(b"MZ")
     assert oc._libmpv_installed() is True
+
+
+def test_mathcat_detector_checks_the_engine_pack(tmp_path, monkeypatch) -> None:
+    from quill.core.math import mathcat_engine
+
+    monkeypatch.setattr(mathcat_engine, "pack_dir", lambda: tmp_path / "mathcat")
+    assert oc._mathcat_installed() is False
+    (tmp_path / "mathcat" / "Rules").mkdir(parents=True)
+    (tmp_path / "mathcat" / "libmathcat_c.dll").write_bytes(b"MZ")
+    assert oc._mathcat_installed() is True

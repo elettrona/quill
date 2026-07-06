@@ -22,7 +22,10 @@ except ImportError:  # pragma: no cover - non-Windows fallback
     _winsound = None  # type: ignore[assignment]
 
 if TYPE_CHECKING:  # imports kept out of cold-start path
+    from quill.core.accessibility_agent import AgentRunResult
     from quill.core.epub import EpubBook, EpubChapter
+    from quill.core.glow_updates import GlowUpdateCheck
+    from quill.core.updates import GitHubRelease, UpdateManifest
 
 from quill import __version__, build_info
 from quill.branding import APP_SHORT_NAME
@@ -30,7 +33,6 @@ from quill.core import thesaurus as thesaurus_engine
 from quill.core.a11y_regions import (
     RegionTracker,
 )
-from quill.core.accessibility_agent import AgentRunResult, summarize_plan
 from quill.core.ai import Assistant
 from quill.core.ai.agent import allowed_tools
 from quill.core.autoformat import EM_DASH, is_dash_merge, smart_quote_for
@@ -53,52 +55,7 @@ from quill.core.browser_preview import (
     render_preview_body,
     render_preview_html,
 )
-from quill.core.bw_providers import (
-    get_provider as bw_get_provider,
-)
-from quill.core.bw_providers import (
-    list_providers as bw_list_providers,
-)
-from quill.core.bw_providers import (
-    provider_mode_guidance as bw_provider_mode_guidance,
-)
-from quill.core.bw_providers import (
-    provider_readiness as bw_provider_readiness,
-)
-from quill.core.bw_providers import (
-    recommended_provider_id as bw_recommended_provider_id,
-)
-from quill.core.bw_speech import (
-    download_model as bw_download_model,
-)
-from quill.core.bw_speech import (
-    downloaded_model_ids as bw_downloaded_model_ids,
-)
-from quill.core.bw_speech import (
-    faster_whisper_status,
-)
-from quill.core.bw_speech import (
-    get_model as bw_get_model,
-)
-from quill.core.bw_speech import (
-    has_disk_capacity as bw_has_disk_capacity,
-)
-from quill.core.bw_speech import (
-    list_models as bw_list_models,
-)
-from quill.core.bw_speech import (
-    machine_guidance as bw_machine_guidance,
-)
-from quill.core.bw_speech import (
-    recommended_model_id as bw_recommended_model_id,
-)
-from quill.core.bw_speech import (
-    remove_model as bw_remove_model,
-)
 from quill.core.commands import CommandRegistry
-from quill.core.compliance import (
-    render_full_third_party_notices,
-)
 from quill.core.context_menu import (
     CMD_COPY,
     CMD_CUT,
@@ -153,15 +110,6 @@ from quill.core.features import (
     export_feature_profile_file,
     import_feature_profile_file,
 )
-from quill.core.file_search import (
-    FileReplaceReport,
-    FileSearchReport,
-    render_replace_preview,
-    render_replace_report,
-    render_search_report,
-    replace_files,
-    search_files,
-)
 from quill.core.format_ops import (
     continue_markdown_list,
     describe_indent_depth,
@@ -171,11 +119,6 @@ from quill.core.format_ops import (
     toggle_line_comment,
 )
 from quill.core.glow import build_audit_report, build_fix_report, fix_text
-from quill.core.glow_updates import (
-    GlowUpdateCheck,
-    apply_glow_update,
-    check_for_glow_update,
-)
 from quill.core.guides import (
     build_keyboard_shortcut_html,
     build_welcome_guide,
@@ -266,14 +209,6 @@ from quill.core.onboarding import (
 )
 from quill.core.outline import OutlineEntry, extract_outline_entries
 from quill.core.paths import app_data_dir, ensure_app_directories
-from quill.core.publishing import (
-    compare_publishing_remote_item,
-    create_publishing_remote_item,
-    prepare_publishing_remote_content,
-    publishing_comparison_message,
-    publishing_result_message,
-    update_publishing_remote_item,
-)
 from quill.core.publishing_linkage import (
     apply_publishing_linkage_to_source_metadata,
     get_publishing_linkage,
@@ -326,13 +261,6 @@ from quill.core.sessions import (
     load_recent_sessions,
 )
 from quill.core.settings import Settings, load_settings, save_settings
-from quill.core.share_package import (
-    KIND_BACKUP,
-    KIND_PROFILE,
-    PackageError,
-    extension_for_kind,
-    package_summary,
-)
 from quill.core.snippets import (
     ExpansionResult as SnippetExpansionResult,
 )
@@ -395,18 +323,6 @@ from quill.core.token_nav import classify_token, next_token_position, prev_token
 from quill.core.transforms import to_lower, to_sentence_case, to_title, to_toggle_case, to_upper
 from quill.core.trust import is_trusted_location, load_trusted_locations, save_trusted_locations
 from quill.core.undo_store import load_undo_history, save_undo_history
-from quill.core.updates import (
-    GitHubRelease,
-    UpdateManifest,
-    download_release_asset,
-    fetch_latest_release,
-    fetch_releases,
-    fetch_update_manifest,
-    find_release,
-    is_newer_version,
-    running_portable,
-    select_latest,
-)
 from quill.core.url_ops import format_content_length
 from quill.core.watch_actions import WatchActionOutcome
 from quill.core.watch_profiles import (
@@ -468,14 +384,6 @@ from quill.stability.memory_watch import should_trace_memory, start_memory_traci
 from quill.stability.task_manager import TaskManager
 from quill.stability.ui_responsiveness import mark_wx_main_thread
 from quill.stability.wx_heartbeat import HeartbeatState, WxHeartbeatTimer, WxHeartbeatWatchdog
-from quill.ui.ai_model_panel import AIModelDialog
-from quill.ui.assistant_panel import AskQuillChatDialog
-from quill.ui.assistant_tools import (
-    AccessibilityAgentDialog,
-    AssistantConnectionDialog,
-    RunPythonDialog,
-    WritingAssistantDialog,
-)
 from quill.ui.context_help import ContextHelpMixin, warm_help_topics
 from quill.ui.csv_grid import CsvGridSurface
 from quill.ui.dialog_contract import apply_modal_ids, focus_primary_control, show_modal_dialog
@@ -525,24 +433,7 @@ from quill.ui.main_frame_vault import VaultMixin
 from quill.ui.main_frame_verbosity import VerbosityCommandsMixin
 from quill.ui.main_frame_watch_profile import WatchProfileDialogMixin
 from quill.ui.notebook_panel import NotebookEntriesPanel
-from quill.ui.palette import CommandPaletteDialog
-from quill.ui.publishing_tools import (
-    BrowsePublishingContentDialog,
-    PublishingConnectionsDialog,
-    SchedulePublishDialog,
-)
 from quill.ui.rich_text_surface import RichTextSurface
-from quill.ui.session_browser import SessionBrowserDialog
-from quill.ui.share_dialogs import (
-    apply_import,
-    build_export_document,
-    gather_export_offers,
-    importable_sections,
-    read_import,
-    write_export,
-)
-from quill.ui.sticky_notes import StickyNoteEditorDialog, StickyNotesVaultDialog
-from quill.ui.train_style_dialog import TrainStyleDialog
 from quill.ui.word_view import WordDocumentSurface
 
 
@@ -1484,6 +1375,14 @@ class MainFrame(
         except Exception:
             self._report_startup_task_failure("trust-consent onboarding")
         for label, task in (
+            # H-SAFE-1: mirrors the safe_mode gate that used to live in
+            # _register_quillins_commands -- Safe Mode keeps the manager/wizard
+            # commands (registered synchronously in __init__) but never loads
+            # contributed commands/providers.
+            (
+                "quillin contributions",
+                lambda: None if self._safe_mode else self._register_quillin_contributions(),
+            ),
             ("crash recovery", self._offer_crash_recovery),
             ("first-run onboarding", self._maybe_run_first_run_onboarding),
             ("migration notice", self._surface_migration_notice),
@@ -1582,9 +1481,11 @@ class MainFrame(
     def _write_startup_timing(self, times: list[tuple[str, float]]) -> None:
         from quill.core.paths import app_data_dir
 
-        total = sum(e for _, e in times)
+        cold_times: list[tuple[str, float]] = getattr(self, "_cold_start_times", None) or []
+        all_times = [*cold_times, *times]
+        total = sum(e for _, e in all_times)
         lines = [f"Startup task timing  (total {total * 1000:.0f} ms)\n", "=" * 50 + "\n"]
-        for label, elapsed in times:
+        for label, elapsed in all_times:
             pct = elapsed / total * 100 if total > 0 else 0
             lines.append(f"  {label:<45} {elapsed * 1000:7.1f} ms  ({pct:.0f}%)\n")
         out = app_data_dir() / "logs" / "startup_tasks.txt"
@@ -10777,6 +10678,8 @@ class MainFrame(
             self._open_palette_dialog()
 
     def _open_palette_dialog(self) -> None:
+        from quill.ui.palette import CommandPaletteDialog
+
         dialog = CommandPaletteDialog(
             self.frame, self.commands, self.features, announce_fn=self._announce
         )
@@ -10850,6 +10753,8 @@ class MainFrame(
         if self._safe_mode:
             self._set_status("Sticky notes are unavailable in safe mode")
             return
+        from quill.ui.sticky_notes import StickyNoteEditorDialog
+
         editor = StickyNoteEditorDialog(self.frame)
         body = editor.show_modal_and_get_body()
         if body is None:
@@ -10862,6 +10767,8 @@ class MainFrame(
         if self._safe_mode:
             self._set_status("Sticky notes are unavailable in safe mode")
             return
+        from quill.ui.sticky_notes import StickyNotesVaultDialog
+
         StickyNotesVaultDialog(self.frame).show_modal()
         self._set_status("Closed sticky notes vault")
 
@@ -13043,6 +12950,8 @@ class MainFrame(
         self._settings_dialog_apply_refresh("Updated settings")
 
     def open_ai_preferences(self) -> None:
+        from quill.ui.assistant_tools import AssistantConnectionDialog
+
         dialog = AssistantConnectionDialog(self.frame)
         if dialog.show_modal():
             self._set_ai_menu_status_badge(
@@ -13060,6 +12969,8 @@ class MainFrame(
             self._set_status("AI connection settings cancelled")
 
     def _open_publishing_connections(self) -> None:
+        from quill.ui.publishing_tools import PublishingConnectionsDialog
+
         dialog = PublishingConnectionsDialog(self.frame, announce_cb=self._announce)
         if dialog.show_modal():
             self._set_status("Updated publishing connections")
@@ -13089,6 +13000,9 @@ class MainFrame(
         self._set_status(message)
 
     def _browse_publishing_content(self) -> None:
+        from quill.core.publishing import prepare_publishing_remote_content
+        from quill.ui.publishing_tools import BrowsePublishingContentDialog
+
         dialog = BrowsePublishingContentDialog(
             self.frame, self._task_manager, announce_cb=self._announce
         )
@@ -13130,7 +13044,12 @@ class MainFrame(
         self._set_status(f"Opened {content_kind} from publishing.")
 
     def _compare_publishing_remote_item(self) -> None:
-        from quill.core.publishing import current_publishing_connection, load_publishing_secret
+        from quill.core.publishing import (
+            compare_publishing_remote_item,
+            current_publishing_connection,
+            load_publishing_secret,
+            publishing_comparison_message,
+        )
 
         dialog_title = "Compare With Remote"
         metadata = self.document.source_metadata
@@ -13185,7 +13104,12 @@ class MainFrame(
         self._send_publishing_remote_item(status="publish")
 
     def _send_publishing_remote_item(self, *, status: str | None) -> None:
-        from quill.core.publishing import current_publishing_connection, load_publishing_secret
+        from quill.core.publishing import (
+            current_publishing_connection,
+            load_publishing_secret,
+            publishing_result_message,
+            update_publishing_remote_item,
+        )
 
         metadata = self.document.source_metadata
         if metadata.get("source_kind") != "publishing_remote":
@@ -13305,7 +13229,12 @@ class MainFrame(
         self._create_publishing_item("page", status="publish")
 
     def _create_publishing_item(self, content_kind: str, *, status: str) -> None:
-        from quill.core.publishing import current_publishing_connection, load_publishing_secret
+        from quill.core.publishing import (
+            create_publishing_remote_item,
+            current_publishing_connection,
+            load_publishing_secret,
+            publishing_result_message,
+        )
 
         profile = current_publishing_connection()
         if profile is None:
@@ -13409,7 +13338,14 @@ class MainFrame(
         return "markdown"
 
     def _schedule_publishing_publish(self) -> None:
-        from quill.core.publishing import current_publishing_connection, load_publishing_secret
+        from quill.core.publishing import (
+            create_publishing_remote_item,
+            current_publishing_connection,
+            load_publishing_secret,
+            publishing_result_message,
+            update_publishing_remote_item,
+        )
+        from quill.ui.publishing_tools import SchedulePublishDialog
 
         profile = current_publishing_connection()
         if profile is None:
@@ -13761,6 +13697,14 @@ class MainFrame(
         machine-specific paths or secrets; backup mode keeps everything for the
         person's own use.
         """
+        from quill.core.share_package import (
+            KIND_BACKUP,
+            KIND_PROFILE,
+            PackageError,
+            extension_for_kind,
+        )
+        from quill.ui.share_dialogs import build_export_document, gather_export_offers, write_export
+
         wx = self._wx
         offers = gather_export_offers(self.settings, self.features)
         if not offers:
@@ -13887,6 +13831,9 @@ class MainFrame(
         Feature changes are snapshotted and rolled back automatically if any
         section fails to apply, so a bad file never leaves the app half-changed.
         """
+        from quill.core.share_package import PackageError, package_summary
+        from quill.ui.share_dialogs import apply_import, importable_sections, read_import
+
         wx = self._wx
         with wx.FileDialog(
             self.frame,
@@ -14403,6 +14350,8 @@ class MainFrame(
             self._set_status(f"User guide saved to {target_path}")
 
     def open_third_party_notices(self) -> None:
+        from quill.core.compliance import render_full_third_party_notices
+
         project_root = self._project_root_path()
         pyproject_path = self._pyproject_path()
         if not pyproject_path.exists():
@@ -15087,6 +15036,9 @@ class MainFrame(
         self._set_status(f"Applied {len(result.fixes)} GLOW fixes to {scope_label}")
 
     def make_document_accessible(self) -> None:
+        from quill.core.accessibility_agent import summarize_plan
+        from quill.ui.assistant_tools import AccessibilityAgentDialog
+
         markup = self._current_markup_context()
         original = self.editor.GetValue()
 
@@ -18453,6 +18405,22 @@ class MainFrame(
         self._set_status("Windows dictation started. Speak into the editor.")
 
     def show_bw_model_status(self) -> None:
+        from quill.core.bw_speech import (
+            downloaded_model_ids as bw_downloaded_model_ids,
+        )
+        from quill.core.bw_speech import (
+            faster_whisper_status,
+        )
+        from quill.core.bw_speech import (
+            list_models as bw_list_models,
+        )
+        from quill.core.bw_speech import (
+            machine_guidance as bw_machine_guidance,
+        )
+        from quill.core.bw_speech import (
+            recommended_model_id as bw_recommended_model_id,
+        )
+
         models = bw_list_models()
         downloaded = bw_downloaded_model_ids()
         mode = str(getattr(self.settings, "bw_speech_selection_mode", "recommended"))
@@ -18477,6 +18445,8 @@ class MainFrame(
         self._set_status("BITS Whisperer speech model status shown")
 
     def apply_bw_recommended_model(self) -> None:
+        from quill.core.bw_speech import recommended_model_id as bw_recommended_model_id
+
         model_id = bw_recommended_model_id()
         self.settings.bw_speech_selection_mode = "recommended"
         self.settings.bw_speech_model_id = model_id
@@ -18484,6 +18454,8 @@ class MainFrame(
         self._set_status(f"Recommended mode active. Selected speech model: {model_id}")
 
     def check_bw_faster_whisper_engine(self) -> None:
+        from quill.core.bw_speech import faster_whisper_status
+
         ok, detail = faster_whisper_status()
         icon = self._wx.ICON_INFORMATION if ok else self._wx.ICON_WARNING
         self._show_message_box(detail, "faster-whisper Engine", self._wx.OK | icon)
@@ -18526,6 +18498,9 @@ class MainFrame(
         badge_item.Enable(False)
 
     def apply_bw_recommended_provider(self) -> None:
+        from quill.core.bw_providers import get_provider as bw_get_provider
+        from quill.core.bw_providers import recommended_provider_id as bw_recommended_provider_id
+
         provider_id = bw_recommended_provider_id(local_first=self._bw_local_first_mode())
         self.settings.bw_provider_id = provider_id
         save_settings(self.settings)
@@ -18534,6 +18509,8 @@ class MainFrame(
         self._set_status(f"Recommended provider selected: {provider_name}")
 
     def select_bw_provider(self) -> None:
+        from quill.core.bw_providers import list_providers as bw_list_providers
+
         providers = bw_list_providers(include_cloud=self._bw_include_cloud_providers())
         if not providers:
             self._set_status("No providers available for current provider visibility settings")
@@ -18564,6 +18541,11 @@ class MainFrame(
         self._set_status(f"Selected provider: {selected.name}")
 
     def show_bw_provider_status(self) -> None:
+        from quill.core.bw_providers import get_provider as bw_get_provider
+        from quill.core.bw_providers import provider_mode_guidance as bw_provider_mode_guidance
+        from quill.core.bw_providers import provider_readiness as bw_provider_readiness
+        from quill.core.bw_providers import recommended_provider_id as bw_recommended_provider_id
+
         provider_id = str(getattr(self.settings, "bw_provider_id", "local_whisper"))
         local_first = self._bw_local_first_mode()
         include_cloud = self._bw_include_cloud_providers()
@@ -18645,6 +18627,14 @@ class MainFrame(
             return
 
     def _bw_readiness_snapshot(self) -> dict[str, object]:
+        from quill.core.bw_providers import get_provider as bw_get_provider
+        from quill.core.bw_providers import provider_readiness as bw_provider_readiness
+        from quill.core.bw_providers import recommended_provider_id as bw_recommended_provider_id
+        from quill.core.bw_speech import downloaded_model_ids as bw_downloaded_model_ids
+        from quill.core.bw_speech import faster_whisper_status
+        from quill.core.bw_speech import list_models as bw_list_models
+        from quill.core.bw_speech import machine_guidance as bw_machine_guidance
+
         local_first = self._bw_local_first_mode()
         provider_id = str(getattr(self.settings, "bw_provider_id", "local_whisper"))
         provider = bw_get_provider(provider_id, include_cloud=True)
@@ -18759,6 +18749,8 @@ class MainFrame(
         self._set_status("Opened BITS Whisperer capability matrix")
 
     def _start_bw_model_download(self, spec: object) -> None:
+        from quill.core.bw_speech import download_model as bw_download_model
+
         if self._bw_safe_mode_locked():
             self._show_message_box(
                 "BITS Whisperer safe mode lock is enabled. Disable it in Preferences -> General "
@@ -18836,6 +18828,8 @@ class MainFrame(
         self._set_status(f"Started background download for {model_name}")
 
     def manage_bw_download_queue(self) -> None:
+        from quill.core.bw_speech import get_model as bw_get_model
+
         actions = [
             "Open live status page",
             "Retry failed download",
@@ -18919,6 +18913,14 @@ class MainFrame(
             return
 
     def open_bw_model_manager(self) -> None:
+        from quill.core.bw_speech import downloaded_model_ids as bw_downloaded_model_ids
+        from quill.core.bw_speech import get_model as bw_get_model
+        from quill.core.bw_speech import has_disk_capacity as bw_has_disk_capacity
+        from quill.core.bw_speech import list_models as bw_list_models
+        from quill.core.bw_speech import machine_guidance as bw_machine_guidance
+        from quill.core.bw_speech import recommended_model_id as bw_recommended_model_id
+        from quill.core.bw_speech import remove_model as bw_remove_model
+
         models = bw_list_models()
         downloaded = bw_downloaded_model_ids()
         recommended = bw_recommended_model_id()
@@ -19748,6 +19750,13 @@ class MainFrame(
 
     def _build_help_status_data(self) -> dict:
         """Collect runtime status into a structured dict for HelpStatusDialog."""
+        from quill.core.bw_providers import get_provider as bw_get_provider
+        from quill.core.bw_providers import provider_readiness as bw_provider_readiness
+        from quill.core.bw_providers import recommended_provider_id as bw_recommended_provider_id
+        from quill.core.bw_speech import downloaded_model_ids as bw_downloaded_model_ids
+        from quill.core.bw_speech import faster_whisper_status
+        from quill.core.bw_speech import list_models as bw_list_models
+
         settings = self.settings
         notification_count = len(getattr(self, "_notifications", []))
         active_tasks = int(getattr(self, "_background_task_count", 0))
@@ -19872,6 +19881,13 @@ class MainFrame(
         return datetime.now(UTC) - previous >= timedelta(hours=interval_hours)
 
     def check_for_updates(self, silent_no_update: bool = False) -> None:
+        from quill.core.updates import (
+            fetch_releases,
+            fetch_update_manifest,
+            is_newer_version,
+            running_portable,
+        )
+
         if getattr(self, "_update_check_in_progress", False):
             if not silent_no_update:
                 self._set_status("Update check already in progress")
@@ -19964,6 +19980,13 @@ class MainFrame(
         beta: bool,
     ) -> None:
         """UI-thread callback once the background update-network fetch finishes."""
+        from quill.core.updates import (
+            find_release,
+            is_newer_version,
+            running_portable,
+            select_latest,
+        )
+
         self._update_check_in_progress = False
         wx = self._wx
 
@@ -20126,6 +20149,8 @@ class MainFrame(
         install rolls back to the vendored wheels. The new engine loads on
         restart.
         """
+        from quill.core.glow_updates import check_for_glow_update
+
         wx = self._wx
         if not self._ensure_glow_enabled():
             return
@@ -20185,6 +20210,8 @@ class MainFrame(
             return
 
         import tempfile
+
+        from quill.core.glow_updates import apply_glow_update
 
         staging = Path(tempfile.mkdtemp(prefix="quill-glow-update-"))
         self._set_status(f"Downloading GLOW engine {manifest.version}...")
@@ -20383,6 +20410,8 @@ class MainFrame(
             self._offer_latest_beta(current_version)
 
     def _offer_latest_beta(self, current_version: str) -> None:
+        from quill.core.updates import fetch_latest_release
+
         try:
             release = fetch_latest_release(include_prereleases=True)
         except (URLError, ValueError, OSError) as error:
@@ -20439,6 +20468,7 @@ class MainFrame(
         import threading
 
         from quill.core.paths import app_data_dir
+        from quill.core.updates import download_release_asset
 
         url = release.download_url or ""
         if "/releases/download/" not in url:
@@ -21499,6 +21529,8 @@ class MainFrame(
             dialog.Destroy()
 
     def search_in_files(self) -> None:
+        from quill.core.file_search import FileSearchReport, render_search_report, search_files
+
         request = self._prompt_file_search(replace=False)
         if request is None:
             self._set_status("Search in files cancelled")
@@ -21526,6 +21558,8 @@ class MainFrame(
         self._run_background_task("Searching files", work, on_success)
 
     def replace_in_files(self) -> None:
+        from quill.core.file_search import FileSearchReport, render_replace_preview, search_files
+
         request = self._prompt_file_search(replace=True)
         if request is None:
             self._set_status("Replace across files cancelled")
@@ -21567,6 +21601,8 @@ class MainFrame(
         self._run_background_task("Previewing file replacements", preview_work, preview_done)
 
     def _start_replace_files(self, request: _FileSearchRequest, replacement: str) -> None:
+        from quill.core.file_search import FileReplaceReport, render_replace_report, replace_files
+
         def work(progress: Callable[[str, int, int], None]) -> FileReplaceReport:
             return replace_files(
                 request.root,
@@ -22260,6 +22296,8 @@ class MainFrame(
                 "AI is turned off. Enable 'Use Artificial Intelligence' in Tools > AI Assistant."
             )
             return
+        from quill.ui.train_style_dialog import TrainStyleDialog
+
         TrainStyleDialog(
             self.frame,
             self._get_assistant(),
@@ -22392,6 +22430,7 @@ class MainFrame(
     def _open_ask_quill(self, *, voice_mode: bool, initial_prompt: str = "") -> None:
         from quill.core.ai.model_manager import load_ai_enabled
         from quill.core.ai.onboarding import active_connection_consented, ai_connection_ready
+        from quill.ui.assistant_panel import AskQuillChatDialog
 
         # Offer setup not only when AI is off, but also when it's on yet the connection
         # isn't usable (no provider/key) or the active provider has no standing share
@@ -23439,6 +23478,8 @@ class MainFrame(
     def open_ai_model_settings(self) -> None:
         # Combined AI Model & Connection — the model dialog hosts a button to the
         # connection settings, so there's one entry point for all AI setup.
+        from quill.ui.ai_model_panel import AIModelDialog
+
         AIModelDialog(
             self.frame,
             announce=self._set_status,
@@ -23492,6 +23533,8 @@ class MainFrame(
             )
             self._set_status("No saved AI writing sessions yet")
             return
+        from quill.ui.session_browser import SessionBrowserDialog
+
         SessionBrowserDialog(
             self.frame,
             session,
@@ -23538,6 +23581,8 @@ class MainFrame(
         if self._safe_mode:
             self._set_status("Writing assistant is unavailable in safe mode")
             return
+        from quill.ui.assistant_tools import WritingAssistantDialog
+
         dialog = WritingAssistantDialog(
             self.frame,
             self.commands,
@@ -23563,6 +23608,8 @@ class MainFrame(
         self.open_ai_library()
 
     def run_python_tool(self) -> None:
+        from quill.ui.assistant_tools import RunPythonDialog
+
         outline = [
             {"level": entry.level, "title": entry.title, "position": entry.position}
             for entry in self._outline_entries()
@@ -26912,6 +26959,7 @@ def run_app(
     startup_requests: list[object] | None = None,
     safe_mode: bool = False,
     diagnostics_mode: bool = False,
+    cold_import_seconds: float = 0.0,
 ) -> None:
     import wx
 
@@ -26923,7 +26971,9 @@ def run_app(
     mark_wx_main_thread()
     if diagnostics_mode or should_trace_memory():
         start_memory_tracing()
+    _t_construct = time.perf_counter()
     frame = MainFrame(safe_mode=safe_mode)
+    _construct_seconds = time.perf_counter() - _t_construct
     heartbeat_state = HeartbeatState()
     frame._stability_heartbeat_state = heartbeat_state
     frame._stability_heartbeat_timer = WxHeartbeatTimer(frame.frame, heartbeat_state)
@@ -26935,7 +26985,20 @@ def run_app(
         path = getattr(request, "path", None)
         if isinstance(path, Path) and path.exists() and path.is_file():
             frame._handle_shell_request(request)
+    # Cold-start timing (import + construction + the synchronous part of
+    # show()) is recorded on the instance so _write_startup_timing can
+    # prepend it ahead of the deferred-task timings it already collects,
+    # giving one combined picture of the whole launch in startup_tasks.txt.
+    frame._cold_start_times = [
+        ("import quill.ui.main_frame", cold_import_seconds),
+        ("MainFrame.__init__", _construct_seconds),
+    ]
+    _t_show = time.perf_counter()
     frame.show()
+    frame._cold_start_times.append((
+        "frame.show() (synchronous part)",
+        time.perf_counter() - _t_show,
+    ))
     try:
         app.MainLoop()
     finally:

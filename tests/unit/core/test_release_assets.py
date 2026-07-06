@@ -147,3 +147,13 @@ def test_libmpv_asset_is_pinned_pack_on_assets_v1() -> None:
     assert ra.is_pinned(asset) is True
     assert asset.url.endswith("/assets-v1/libmpv-pack.zip")
     assert "GPL" in asset.license and "source offer" in asset.license
+
+
+def test_mathcat_asset_is_pinned_pack_on_assets_v1() -> None:
+    """MathCAT is self-hosted: a pinned zip carrying the DLL plus its Rules data."""
+    asset = ra.ASSETS["mathcat"]
+    assert asset.tag == "assets-v1"
+    assert asset.expect_member == "libmathcat_c.dll"
+    assert ra.is_pinned(asset) is True
+    assert asset.url.endswith("/assets-v1/mathcat-pack.zip")
+    assert "MIT" in asset.license

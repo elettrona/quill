@@ -1116,7 +1116,7 @@ def run_batch_export_to_speech(frame: Any) -> None:
 
     request = show_audio_studio(frame)
     if request is None:
-        frame._set_status("Audio Studio cancelled")
+        frame._set_status_quiet("Audio Studio cancelled")
         return
     _remember_sources(request)  # source MRU writes
     _persist_choices(frame, request)

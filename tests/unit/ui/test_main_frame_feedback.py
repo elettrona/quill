@@ -4,6 +4,7 @@ from pathlib import Path
 
 import pytest
 
+import quill.core.updates as updates_module
 import quill.ui.main_frame as main_frame_module
 from quill.core.document import Document
 from quill.core.notifications import Notification
@@ -21,8 +22,13 @@ def _force_non_portable(monkeypatch: pytest.MonkeyPatch) -> None:
     releases path they do not stub (manifest -> None -> live fetch_releases).
     These unit tests exercise the installer flow, so they must control that
     branch explicitly rather than depend on detection.
+
+    Patched on ``quill.core.updates`` (the source module) rather than
+    ``quill.ui.main_frame``: ``check_for_updates``/``_on_update_fetch_done``
+    import these names locally (perf: lazy-import quill.core.updates), so
+    patching the consumer's namespace no longer has any effect.
     """
-    monkeypatch.setattr(main_frame_module, "running_portable", lambda: False)
+    monkeypatch.setattr(updates_module, "running_portable", lambda: False)
 
 
 class _Frame:
@@ -245,7 +251,7 @@ def test_check_for_updates_can_close_app_before_installer(monkeypatch) -> None:
     frame.exit_app = lambda: exits.append("exit")
     opened: list[str] = []
     monkeypatch.setattr(
-        main_frame_module,
+        updates_module,
         "fetch_update_manifest",
         lambda *_a, **_k: UpdateManifest(
             version="0.1.1",
@@ -255,7 +261,7 @@ def test_check_for_updates_can_close_app_before_installer(monkeypatch) -> None:
             signature="sig",
         ),
     )
-    monkeypatch.setattr(main_frame_module, "is_newer_version", lambda _current, _available: True)
+    monkeypatch.setattr(updates_module, "is_newer_version", lambda _current, _available: True)
     monkeypatch.setattr(
         "quill.ui.main_frame.webbrowser.open",
         lambda url: opened.append(url) or True,
@@ -281,7 +287,7 @@ def test_check_for_updates_allows_download_without_immediate_exit(monkeypatch) -
     frame.exit_app = lambda: (_ for _ in ()).throw(AssertionError("exit_app should not be called"))
     opened: list[str] = []
     monkeypatch.setattr(
-        main_frame_module,
+        updates_module,
         "fetch_update_manifest",
         lambda *_a, **_k: UpdateManifest(
             version="0.1.1",
@@ -291,7 +297,7 @@ def test_check_for_updates_allows_download_without_immediate_exit(monkeypatch) -
             signature="sig",
         ),
     )
-    monkeypatch.setattr(main_frame_module, "is_newer_version", lambda _current, _available: True)
+    monkeypatch.setattr(updates_module, "is_newer_version", lambda _current, _available: True)
     monkeypatch.setattr(
         "quill.ui.main_frame.webbrowser.open",
         lambda url: opened.append(url) or True,
@@ -341,7 +347,7 @@ def test_check_for_updates_silent_honors_skipped_version(monkeypatch) -> None:
     frame.settings.last_update_check = ""
     monkeypatch.setattr(main_frame_module, "save_settings", lambda _settings: None)
     monkeypatch.setattr(
-        main_frame_module,
+        updates_module,
         "fetch_update_manifest",
         lambda *_a, **_k: (_ for _ in ()).throw(main_frame_module.URLError("offline")),
     )
@@ -352,7 +358,7 @@ def test_check_for_updates_silent_honors_skipped_version(monkeypatch) -> None:
         notes="New",
         prerelease=False,
     )
-    monkeypatch.setattr(main_frame_module, "fetch_releases", lambda: [release])
+    monkeypatch.setattr(updates_module, "fetch_releases", lambda: [release])
     frame._download_update_release = lambda _release: (_ for _ in ()).throw(
         AssertionError("a skipped version must not download")
     )

@@ -50,7 +50,7 @@ def main() -> int:
                 f"pagetitle=QUILL Tutorials - {source.stem}",
             ],
             capture_output=True,
-            text=True,
+            encoding="utf-8",
             check=True,
         ).stdout
         # Site chrome: a small landmark nav so every tutorial links home, to
