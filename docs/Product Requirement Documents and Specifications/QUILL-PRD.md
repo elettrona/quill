@@ -4499,6 +4499,97 @@ and services surfaces) so OCR-less profiles stay clean.
 
 ---
 
+### 5.94 Math in QUILL — equation input, rendering, structural exploration, and Word export (shipped)
+
+**Goal.** Close the gap the bundled math-equations Quillin always had: an
+equation could be typed in, but nothing rendered it, nothing let a
+screen-reader user explore its structure, and Word never saw a real
+equation object. Full plan of record: `docs/planning/math.md`.
+
+**Canonical model (`quill/core/math/`, wx-free, unit-tested).**
+`mathml.py` holds the canonical in-memory representation — MathML, the same
+input MathCAT and every screen-reader math engine already expects — with
+the original LaTeX source recoverable via a `semantics`/`annotation` pair
+(the same interop convention MathJax's own `tex2mathml` uses), so no general
+MathML-to-LaTeX parser is needed. `latex_bridge.py` is a `latex2mathml`-backed
+LaTeX-to-MathML bridge (the optional `math` extra; the module degrades to a
+clear `LatexBridgeUnavailable` rather than failing at import time when it is
+absent). `navigator.py` is a lightweight structural navigator — not a
+MathCAT-quality math-speech engine — that steps through an equation's parts
+(numerator/denominator, base/exponent, a root's radicand) and produces a
+plain-English linear reading with a small set of template rules; it is the
+"basic algebra, useful today" alternative to real Nemeth/UEB math speech.
+
+**Input (math-equations Quillin).** `Ctrl+Shift+E` / **Insert → Insert
+Equation...** takes LaTeX or MathML and wraps LaTeX as `\(...\)` (inline) or
+a single-line `$$...$$` (display) — both MathJax's own default-recognized
+delimiters, chosen specifically so no rendering template needs a config
+change and so a bare `$` in ordinary dollar-amount prose is never
+mistaken for math (the earlier `$...$` convention was replaced for exactly
+this reason). **Insert → Snippet Gallery...** carries ten static
+`$$...$$` formulas (quadratic formula, Pythagorean theorem, slope-intercept
+and point-slope forms, slope/distance/midpoint formulas, difference of
+squares, circle area/circumference) contributed via the existing
+`contributes.snippet_gallery` manifest mechanism — no new UI. 88 Math
+AutoCorrect-style abbreviations (seeded from the DAISY-published Word list,
+daisy.org/MSMathCodes) are contributed via the existing Insert Automation
+abbreviation system; `\delta`/`\Delta` and similar case-differentiated pairs
+depend on a fix in `quill/core/abbreviations.py` — `build_contributed_library`
+was silently dropping the manifest's `case_sensitive` field.
+
+**Structural exploration.** **Insert → Explore Equation Structure...**
+(`Ctrl+Shift+Grave, F`) parses the selection (or a fresh prompt) via
+`navigator.py` and drives a sequence of `ui.choices` calls — no new core UI,
+entirely within the existing Quillin capability model — offering the
+current node's children with role labels (Numerator, Denominator, Base,
+Exponent, ...), **Read this part aloud** for a full reading of just that
+piece, **Back up one level**, and **Done exploring**.
+
+**Rendering.** Browser Preview and HTML export already carried a MathJax
+CDN `<script>` tag; the actual fix was recognizing that MathJax's default
+`inlineMath` delimiter is `\(...\)`, not bare `$...$` (dollar signs are
+opt-in specifically to avoid colliding with prose), so switching the
+Quillin's own delimiters to MathJax's defaults made both surfaces render
+correctly with **zero template changes**. Verified empirically (headless
+browser screenshot), not assumed.
+
+**Word export and round-trip (`quill/io/docx_math.py`).** The native
+python-docx writer (`quill/io/docx_writer.py`) had no math model; math spans
+in a run's text are now detected and each converted to a real
+`<m:oMath>`/`<m:oMathPara>` fragment via a one-equation Pandoc round-trip
+(write a tiny Markdown file containing just that equation, convert to docx,
+extract the fragment, splice it into the run stream via
+`docx.oxml.parse_xml`). Falls back to the literal delimited text — never
+silently drops the equation — when Pandoc is unavailable or a specific
+conversion fails. `omml_fragment_for_latex` is memoized (`functools.lru_cache`)
+so a document repeating the same formula does not spawn a Pandoc subprocess
+per occurrence. The docx *read* path (both the default MarkItDown engine and
+the Pandoc engine) already round-tripped a native equation back to `\(...\)`
+text correctly; regression tests lock that in.
+
+**AI.** A read-only `math-tutor` agent (`default_scope: selection`,
+`modify_selection: deny`) explains a selected equation in plain language
+without solving anything or touching the document.
+
+**Explicitly deferred.** Real MathCAT-backed math speech/braille (Nemeth,
+UEB Technical) is **not** part of this shipment: MathCAT has no
+pip-installable Python binding — the only existing "Python interface" is the
+NVDA add-on itself, GPL v2 and pinned to Python 3.11 / wxPython 4.2.2, not
+reusable as a library — so real integration means QUILL building its own
+PyO3/Rust binding against the MIT-licensed `libmathcat` crate and shipping a
+compiled native wheel per platform, a native-build-pipeline decision on par
+with the existing `table_uia` C++ provider. Tracked, not scheduled.
+DAISY MathML export is skipped: `quill/io/daisy.py` is a DAISY 2.02
+*text-only* writer (no OPF/NCX/EPUB3), and no DAISY 2.02 player has real
+MathML rendering/speech support, so embedding raw `<math>` there would be
+inert markup, not real accessibility.
+
+**Tutorial:** [07-type-math-like-a-pro.md](../tutorials/07-type-math-like-a-pro.md)
+teaches the whole surface end to end — gallery first, then typed input, the
+structure explorer, Browser Preview, and the Word round trip.
+
+---
+
 ## 6. Spell checking deep dive
 
 ### 6.1 The TinySpell question

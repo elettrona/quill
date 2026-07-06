@@ -824,6 +824,53 @@ the entire pipeline: narrate, bind, listen, fix the chapters where their
 ear says so, verify honestly, and publish. This one, more than most, was
 built to be judged by listening - so listen hard, and tell us what you hear.
 
+## Math in QUILL - equations that render, sound out, and travel to Word
+
+The bundled Math Equations Quillin has always let you type `\(E=mc^2\)` at
+the caret; what happened to it after that was the gap. Nothing rendered it,
+nothing spoke it structurally, and Word never saw a real equation. That gap
+closes this beta.
+
+### Type it, or just pick it
+
+**Ctrl+Shift+E** (or **Insert > Insert Equation...**) still takes plain
+keyboard math - `a^2 + b^2 = c^2`, `\frac{-b \pm \sqrt{b^2-4ac}}{2a}` - and
+wraps it as inline (`\(...\)`) or display (`$$...$$`). New this release:
+**Insert > Snippet Gallery...** now carries ten ready-made algebra and
+geometry formulas (the quadratic formula, the Pythagorean theorem,
+slope-intercept and point-slope forms, the slope/distance/midpoint
+formulas, difference of squares, and a circle's area and circumference) -
+pick one and it lands correctly typeset, nothing to type at all. And while
+writing ordinary prose, a library of Math AutoCorrect-style shortcuts
+seeded from the DAISY-published Word list - `\alpha `, `\sqrt `, `\ne `,
+`\pi `, and dozens more - expands the moment you type the code and a space,
+muscle-memory compatible with anyone coming from Word.
+
+### See it, or step through it
+
+**View > Browser Preview...** and HTML export now render every equation as
+real typeset math - stacked fractions, drawn radicals, raised exponents -
+instead of literal `$$...$$` text; no setting to find, because both
+delimiters QUILL now uses are MathJax's own defaults. And for a formula
+that is hard to hold in your head all at once, **Insert > Explore Equation
+Structure...** (or **Ctrl+Shift+Grave, F**) steps through it piece by
+piece - into a fraction's numerator and denominator, a power's base and
+exponent, a root's radicand - with a plain-English reading at any point.
+It is a lightweight, dependency-free stand-in for a JAWS-style Math Viewer,
+not Nemeth-quality math speech; real math braille and speech engine
+integration (MathCAT) is tracked separately as future work.
+
+### A real equation in Word, not a picture
+
+**File > Export > Word Document...** now writes a genuine Word equation
+object for every `\(...\)` / `$$...$$` in your document - the same kind
+Word's own equation editor produces, editable there and read as math by
+JAWS, not a picture and not literal text. Reopen that file later and the
+equation comes back exactly as plain, editable `\(...\)` / `$$...$$` text,
+whichever docx reading engine you use. A new [tutorial](../tutorials/07-type-math-like-a-pro.md), *Write math without learning a new
+language*, walks through all of it end to end, gallery first, for anyone
+who has never typed math on a computer before.
+
 ## Table Studio - accessible tables, at last (experimental)
 
 Tables have always been the hardest thing to edit by ear. This release adds

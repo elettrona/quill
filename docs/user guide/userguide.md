@@ -405,7 +405,7 @@ The **Insert** menu adds structured content at the cursor.
   which now opens the Structured List Studio; both keys are remappable.)
 - **Date and Time** submenu inserts a date, time, or both at the cursor. The bundled `com.quill.bundled.insert-tools` Quillin owns this submenu; it is the canonical home for date and time snippets. See [Date and Time submenu](#date-and-time-submenu) below.
 - **File Content...** inserts the contents of another file at the cursor.
-- **Insert Equation...** (`Ctrl+Shift+E`) opens a two-step prompt for inserting a LaTeX or MathML equation. Type the formula in LaTeX notation — for example `E=mc^2` or `\frac{-b \pm \sqrt{b^2 - 4ac}}{2a}` — or paste a MathML fragment. If the input is LaTeX, a second step asks whether to display it inline (`$...$`) or as a block (`$$...$$`). If a LaTeX equation is already selected when you press `Ctrl+Shift+E`, the delimiters are stripped and the bare formula pre-fills the prompt. MathML input (starting with `<math`) is inserted verbatim without a mode step. Browser Preview and HTML export render equations using MathJax 3.
+- **Insert Equation...** (`Ctrl+Shift+E`) opens a two-step prompt for inserting a LaTeX or MathML equation. Type the formula in LaTeX notation — for example `E=mc^2` or `\frac{-b \pm \sqrt{b^2 - 4ac}}{2a}` — or paste a MathML fragment. If the input is LaTeX, a second step asks whether to display it inline (`\(...\)`) or as a block (`$$...$$`). If a LaTeX equation is already selected when you press `Ctrl+Shift+E`, the delimiters are stripped and the bare formula pre-fills the prompt. MathML input (starting with `<math`) is inserted verbatim without a mode step. Browser Preview and HTML export render equations using MathJax 3; see Math Equations later in this guide for the formula gallery, symbol abbreviations, structural exploration, and Word export.
 
 Quill treats Markdown and HTML as working surfaces, not special-purpose export formats, so tag insertion lives here beside the structural inserts.
 
@@ -2431,18 +2431,42 @@ Markdown means different things to different writers: a poet wants every line br
 
 ### Math Equations
 
-**Insert → Insert Equation...** (`Ctrl+Shift+E`) inserts a mathematical formula at the cursor. The command is provided by the bundled `com.quill.bundled.math-equations` Quillin and supports two input formats.
+The bundled `com.quill.bundled.math-equations` Quillin provides equation input, a formula gallery, symbol abbreviations, structural navigation, and round-trip export to Word — everything covered in this section, and also taught end to end in [Tutorial 7: Write math without learning a new language](../tutorials/07-type-math-like-a-pro.md).
+
+**Insert → Insert Equation...** (`Ctrl+Shift+E`) inserts a mathematical formula at the cursor and supports two input formats.
 
 **LaTeX** is the most common format for typeset mathematics. Type the formula using standard LaTeX notation and choose a display mode:
 
-- **Inline** (`$...$`) — the equation appears within surrounding text. Example: `E=mc^2` becomes `$E=mc^2$`.
-- **Block** (`$$...$$`) — the equation gets its own line with a blank line above and below. Example: `\frac{-b \pm \sqrt{b^2 - 4ac}}{2a}` becomes `$$\frac{-b \pm \sqrt{b^2 - 4ac}}{2a}$$`.
+- **Inline** (`\(...\)`) — the equation appears within surrounding text. Example: `E=mc^2` becomes `\(E=mc^2\)`.
+- **Block** (`$$...$$`) — the equation gets its own line with a blank line above and below. Example: `\frac{-b \pm \sqrt{b^2 - 4ac}}{2a}` becomes `$$\frac{-b \pm \sqrt{b^2 - 4ac}}{2a}$$` on a single line.
+
+Both delimiters were chosen because they are MathJax's own default-recognized math delimiters (see Rendering, below) — no configuration is needed for either to render — and `\(...\)` has no ambiguity with an ordinary dollar amount in prose the way a bare `$...$` would.
 
 **MathML** is an XML-based format used in web publishing and accessible documents. If your input starts with `<math`, QUILL inserts it verbatim and skips the display mode step. Screen readers can read MathML directly without a visual rendering engine.
 
-**Selection pre-fill:** If text is selected when you press `Ctrl+Shift+E`, QUILL checks whether the selection is a LaTeX equation. If it is, it strips the delimiters (`$` for inline, `$$` for block), pre-fills the prompt with the bare formula, and surfaces the detected display mode first in the choice list so you can confirm with one keypress.
+**Selection pre-fill:** If text is selected when you press `Ctrl+Shift+E`, QUILL checks whether the selection is a LaTeX equation. If it is, it strips the delimiters, pre-fills the prompt with the bare formula, and surfaces the detected display mode first in the choice list so you can confirm with one keypress.
 
 **Rendering:** Browser Preview (`QUILL Key + V`) and HTML export inject a MathJax 3 script tag so equations render visually in any browser. The document source always contains the raw LaTeX or MathML, which your screen reader reads directly. The MathJax script is loaded from a public CDN by your browser, so the *visual* rendering of equations needs a network connection; the underlying LaTeX/MathML (and everything your screen reader announces) is always present offline. If you are offline, equations show as their raw source rather than typeset math — the content is never lost.
+
+#### Common Formulas gallery — no typing required
+
+**Insert → Snippet Gallery...** lists ten ready-made formulas contributed by the Math Equations Quillin: the Quadratic Formula, Pythagorean Theorem, Slope-Intercept Form, Point-Slope Form, Slope Formula, Distance Formula, Midpoint Formula, Difference of Squares, and the Area and Circumference of a Circle. Choosing one inserts it as a correctly formatted `$$...$$` block with nothing typed at all; select it afterward and press `Ctrl+Shift+E` to edit it like any other equation.
+
+#### Math AutoCorrect-style abbreviations
+
+Typing a backslash code followed by a space or punctuation — matching Word's own Math AutoCorrect behavior — expands it to the corresponding symbol anywhere in ordinary prose (not inside the equation prompt): `\alpha ` becomes `α`, `\sqrt ` becomes `√`, `\ne ` becomes `≠`, and so on. The full table (88 entries covering operators, relations, set and logic notation, number sets, Greek letters, calculus notation, and geometry symbols) is seeded from the DAISY-published Word Math AutoCorrect list (daisy.org/MSMathCodes) and lives under **Preferences → Editing → Insert Automation**, where any entry — or the whole set — can be disabled like any other contributed abbreviation. Case matters where it matters mathematically: `\delta ` gives lowercase δ and `\Delta ` gives uppercase Δ.
+
+#### Explore Equation Structure — step through a formula by ear
+
+Select an equation (or type one fresh) and run **Insert → Explore Equation Structure...**, or press **Ctrl+Shift+Grave, F**, to step through it one piece at a time instead of reading it start to finish in one breath. QUILL announces the current piece (for example "Whole equation" or "Fraction") and offers its children as a choice list — descend into a fraction's **Numerator** and **Denominator**, a power's **Base** and **Exponent**, a root's radicand — with **Read this part aloud** available at any point for a full plain-English reading of just that piece, **Back up one level** to retrace, and **Done exploring** to exit. This is a lightweight, dependency-free structural navigator, not Nemeth-quality math speech; a real math-braille/speech engine (MathCAT) is tracked as future work. If you use JAWS, its own Math Viewer becomes available once an equation is a native Word equation object (see Word export, below), and remains the fuller, braille-aware option.
+
+#### Word export and round-trip
+
+**File → Export → Word Document...** writes a genuine Word equation object — the same kind Word's own equation editor produces — for every `\(...\)`/`$$...$$` equation in the document, via a one-equation round trip through Pandoc. It opens in Word with Word's own equation tools available and is read as math by JAWS, not as a picture and not as literal text. If Pandoc is not available, the equation is kept as literal delimited text rather than silently dropped. Reopening that Word file later (**File → Open...**) restores the equation as the same plain, editable `\(...\)`/`$$...$$` text, whichever docx reading engine (**Preferences → Editing → Word document reading engine**) is configured.
+
+#### Ask about an equation
+
+The AI Hub's **Math Tutor** agent explains a selected equation in plain language — what it means, what each symbol is, and its common name if it is a well-known formula — without solving anything or modifying the document.
 
 A collection of ten worked examples — quadratic formula, binomial theorem, integration by parts, Euler's identity, and more — is in `docs/math/latex_testing.md`.
 
