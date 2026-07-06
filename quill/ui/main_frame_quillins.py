@@ -59,7 +59,6 @@ from quill.core.quillins.smart_triggers import (
     parse_smart_trigger_line,
     resolve_smart_trigger,
 )
-from quill.core.speech.quillin_providers import register_quillin_transcription_providers
 from quill.plugins import THIRD_PARTY_PLUGINS_FEATURE
 from quill.ui.main_frame_quillins_host import _EditorHostServices
 
@@ -227,6 +226,7 @@ class QuillinsMenuMixin:
         the SEC-8 ``core.third_party_plugins`` flag is enabled. Both feed the one
         shared registry so their ids collide-detect uniformly.
         """
+        from quill.core.speech.quillin_providers import register_quillin_transcription_providers
 
         # Stop any timers from a previous load before rebuilding the indices, so
         # a reload/disable never leaves an orphaned wx.Timer firing.

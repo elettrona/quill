@@ -55,48 +55,6 @@ from quill.core.browser_preview import (
     render_preview_body,
     render_preview_html,
 )
-from quill.core.bw_providers import (
-    get_provider as bw_get_provider,
-)
-from quill.core.bw_providers import (
-    list_providers as bw_list_providers,
-)
-from quill.core.bw_providers import (
-    provider_mode_guidance as bw_provider_mode_guidance,
-)
-from quill.core.bw_providers import (
-    provider_readiness as bw_provider_readiness,
-)
-from quill.core.bw_providers import (
-    recommended_provider_id as bw_recommended_provider_id,
-)
-from quill.core.bw_speech import (
-    download_model as bw_download_model,
-)
-from quill.core.bw_speech import (
-    downloaded_model_ids as bw_downloaded_model_ids,
-)
-from quill.core.bw_speech import (
-    faster_whisper_status,
-)
-from quill.core.bw_speech import (
-    get_model as bw_get_model,
-)
-from quill.core.bw_speech import (
-    has_disk_capacity as bw_has_disk_capacity,
-)
-from quill.core.bw_speech import (
-    list_models as bw_list_models,
-)
-from quill.core.bw_speech import (
-    machine_guidance as bw_machine_guidance,
-)
-from quill.core.bw_speech import (
-    recommended_model_id as bw_recommended_model_id,
-)
-from quill.core.bw_speech import (
-    remove_model as bw_remove_model,
-)
 from quill.core.commands import CommandRegistry
 from quill.core.compliance import (
     render_full_third_party_notices,
@@ -18456,6 +18414,22 @@ class MainFrame(
         self._set_status("Windows dictation started. Speak into the editor.")
 
     def show_bw_model_status(self) -> None:
+        from quill.core.bw_speech import (
+            downloaded_model_ids as bw_downloaded_model_ids,
+        )
+        from quill.core.bw_speech import (
+            faster_whisper_status,
+        )
+        from quill.core.bw_speech import (
+            list_models as bw_list_models,
+        )
+        from quill.core.bw_speech import (
+            machine_guidance as bw_machine_guidance,
+        )
+        from quill.core.bw_speech import (
+            recommended_model_id as bw_recommended_model_id,
+        )
+
         models = bw_list_models()
         downloaded = bw_downloaded_model_ids()
         mode = str(getattr(self.settings, "bw_speech_selection_mode", "recommended"))
@@ -18480,6 +18454,8 @@ class MainFrame(
         self._set_status("BITS Whisperer speech model status shown")
 
     def apply_bw_recommended_model(self) -> None:
+        from quill.core.bw_speech import recommended_model_id as bw_recommended_model_id
+
         model_id = bw_recommended_model_id()
         self.settings.bw_speech_selection_mode = "recommended"
         self.settings.bw_speech_model_id = model_id
@@ -18487,6 +18463,8 @@ class MainFrame(
         self._set_status(f"Recommended mode active. Selected speech model: {model_id}")
 
     def check_bw_faster_whisper_engine(self) -> None:
+        from quill.core.bw_speech import faster_whisper_status
+
         ok, detail = faster_whisper_status()
         icon = self._wx.ICON_INFORMATION if ok else self._wx.ICON_WARNING
         self._show_message_box(detail, "faster-whisper Engine", self._wx.OK | icon)
@@ -18529,6 +18507,9 @@ class MainFrame(
         badge_item.Enable(False)
 
     def apply_bw_recommended_provider(self) -> None:
+        from quill.core.bw_providers import get_provider as bw_get_provider
+        from quill.core.bw_providers import recommended_provider_id as bw_recommended_provider_id
+
         provider_id = bw_recommended_provider_id(local_first=self._bw_local_first_mode())
         self.settings.bw_provider_id = provider_id
         save_settings(self.settings)
@@ -18537,6 +18518,8 @@ class MainFrame(
         self._set_status(f"Recommended provider selected: {provider_name}")
 
     def select_bw_provider(self) -> None:
+        from quill.core.bw_providers import list_providers as bw_list_providers
+
         providers = bw_list_providers(include_cloud=self._bw_include_cloud_providers())
         if not providers:
             self._set_status("No providers available for current provider visibility settings")
@@ -18567,6 +18550,11 @@ class MainFrame(
         self._set_status(f"Selected provider: {selected.name}")
 
     def show_bw_provider_status(self) -> None:
+        from quill.core.bw_providers import get_provider as bw_get_provider
+        from quill.core.bw_providers import provider_mode_guidance as bw_provider_mode_guidance
+        from quill.core.bw_providers import provider_readiness as bw_provider_readiness
+        from quill.core.bw_providers import recommended_provider_id as bw_recommended_provider_id
+
         provider_id = str(getattr(self.settings, "bw_provider_id", "local_whisper"))
         local_first = self._bw_local_first_mode()
         include_cloud = self._bw_include_cloud_providers()
@@ -18648,6 +18636,14 @@ class MainFrame(
             return
 
     def _bw_readiness_snapshot(self) -> dict[str, object]:
+        from quill.core.bw_providers import get_provider as bw_get_provider
+        from quill.core.bw_providers import provider_readiness as bw_provider_readiness
+        from quill.core.bw_providers import recommended_provider_id as bw_recommended_provider_id
+        from quill.core.bw_speech import downloaded_model_ids as bw_downloaded_model_ids
+        from quill.core.bw_speech import faster_whisper_status
+        from quill.core.bw_speech import list_models as bw_list_models
+        from quill.core.bw_speech import machine_guidance as bw_machine_guidance
+
         local_first = self._bw_local_first_mode()
         provider_id = str(getattr(self.settings, "bw_provider_id", "local_whisper"))
         provider = bw_get_provider(provider_id, include_cloud=True)
@@ -18762,6 +18758,8 @@ class MainFrame(
         self._set_status("Opened BITS Whisperer capability matrix")
 
     def _start_bw_model_download(self, spec: object) -> None:
+        from quill.core.bw_speech import download_model as bw_download_model
+
         if self._bw_safe_mode_locked():
             self._show_message_box(
                 "BITS Whisperer safe mode lock is enabled. Disable it in Preferences -> General "
@@ -18839,6 +18837,8 @@ class MainFrame(
         self._set_status(f"Started background download for {model_name}")
 
     def manage_bw_download_queue(self) -> None:
+        from quill.core.bw_speech import get_model as bw_get_model
+
         actions = [
             "Open live status page",
             "Retry failed download",
@@ -18922,6 +18922,14 @@ class MainFrame(
             return
 
     def open_bw_model_manager(self) -> None:
+        from quill.core.bw_speech import downloaded_model_ids as bw_downloaded_model_ids
+        from quill.core.bw_speech import get_model as bw_get_model
+        from quill.core.bw_speech import has_disk_capacity as bw_has_disk_capacity
+        from quill.core.bw_speech import list_models as bw_list_models
+        from quill.core.bw_speech import machine_guidance as bw_machine_guidance
+        from quill.core.bw_speech import recommended_model_id as bw_recommended_model_id
+        from quill.core.bw_speech import remove_model as bw_remove_model
+
         models = bw_list_models()
         downloaded = bw_downloaded_model_ids()
         recommended = bw_recommended_model_id()
@@ -19751,6 +19759,13 @@ class MainFrame(
 
     def _build_help_status_data(self) -> dict:
         """Collect runtime status into a structured dict for HelpStatusDialog."""
+        from quill.core.bw_providers import get_provider as bw_get_provider
+        from quill.core.bw_providers import provider_readiness as bw_provider_readiness
+        from quill.core.bw_providers import recommended_provider_id as bw_recommended_provider_id
+        from quill.core.bw_speech import downloaded_model_ids as bw_downloaded_model_ids
+        from quill.core.bw_speech import faster_whisper_status
+        from quill.core.bw_speech import list_models as bw_list_models
+
         settings = self.settings
         notification_count = len(getattr(self, "_notifications", []))
         active_tasks = int(getattr(self, "_background_task_count", 0))
