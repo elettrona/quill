@@ -391,6 +391,7 @@ def _verify_presence(component_id: str) -> VerifyResult:
         "braille": _braille_pack_installed,
         "mathcat": _mathcat_installed,
         "libmpv": _libmpv_installed,
+        "mp3": _mp3_installed,
     }
     detector = detectors.get(component_id)
     if detector is None:
@@ -480,6 +481,12 @@ def _mathcat_installed() -> bool:
     from quill.core.math import mathcat_engine
 
     return mathcat_engine.is_available()
+
+
+def _mp3_installed() -> bool:
+    from quill.core.speech.engine_install import is_mp3_available
+
+    return is_mp3_available()
 
 
 def gather_optional_components() -> list[OptionalComponent]:
@@ -576,6 +583,18 @@ def gather_optional_components() -> list[OptionalComponent]:
             "~90 MB",
             note="Provided by FFmpeg; QUILL helps you fetch the official build.",
             priority=80,
+        ),
+        OptionalComponent(
+            "mp3",
+            "MP3 chapter markers",
+            "Adds chapter markers when you export a document to an MP3 audiobook, so "
+            "players can jump between sections. MP3 export itself works without it; "
+            "this adds the embedded chapter list.",
+            TOOL,
+            _safe(_mp3_installed),
+            "~2 MB",
+            note="Provided by mutagen (GPL-2.0+); installed on demand.",
+            priority=82,
         ),
         OptionalComponent(
             "node",

@@ -56,3 +56,10 @@ def test_speech_menu_consolidated_the_separate_download_items() -> None:
     assert "tools.speech_offline_engine" not in src
     assert "tools.speech_engine_download" not in src
     assert "Download &FFmpeg" not in src
+
+
+def test_hub_offers_mp3_support_download() -> None:
+    src = _src("main_frame_speech.py")
+    assert '"mp3": self.download_mp3_support' in src
+    assert "def download_mp3_support" in src
+    assert "install_mp3_support(" in src  # on-demand mutagen install

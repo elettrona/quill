@@ -349,6 +349,7 @@ class SpeechCommandsMixin:
             "braille": self.download_braille_pack,
             "libmpv": self.download_libmpv,
             "mathcat": self.download_mathcat,
+            "mp3": self.download_mp3_support,
         }
         action = actions.get(chosen)
         if action is not None:
@@ -549,6 +550,100 @@ class SpeechCommandsMixin:
             wx.CallAfter(_done)
 
         threading.Thread(target=_run, daemon=True).start()  # GATE-40-OK: install worker.
+
+    def download_mp3_support(self) -> None:
+        """Install MP3 chapter-marker support (mutagen) on demand from the hub,
+        then return to the Download Optional Components hub."""
+        import threading
+
+        from quill.core.speech.engine_install import (
+            EngineInstallError,
+            activate_engine_packs,
+            install_mp3_support,
+            is_mp3_available,
+            mp3_install_supported,
+        )
+        from quill.ui.ai_transcribe_dialog import AIProgressDialog
+
+        wx = self._wx
+        if is_mp3_available():
+            self._show_message_box(
+                "MP3 chapter-marker support is already installed.",
+                "Download MP3 Support",
+                wx.ICON_INFORMATION | wx.OK,
+            )
+            return
+        if not mp3_install_supported():
+            self._show_message_box(
+                "This build cannot install MP3 support automatically. Install it "
+                "from a command prompt with: pip install mutagen",
+                "Download MP3 Support",
+                wx.ICON_INFORMATION | wx.OK,
+            )
+            return
+        if (
+            self._show_message_box(
+                "Download MP3 chapter-marker support (mutagen, about 2 MB)? It adds a "
+                "chapter list to MP3 audiobook exports so players can jump between "
+                "sections. MP3 export itself works without it.",
+                "Download MP3 Support",
+                wx.ICON_QUESTION | wx.YES_NO,
+            )
+            != wx.YES
+        ):
+            return
+        cancel = threading.Event()
+        progress = AIProgressDialog(
+            self.frame,
+            "Downloading MP3 Support",
+            "Preparing to install MP3 support...",
+            on_cancel=cancel.set,
+            status_fn=self._set_status,
+        )
+        progress.show()
+        self._announce("Downloading MP3 support.")
+        last_percent = {"value": -1}
+
+        def _p(fraction: float, message: str) -> None:
+            if cancel.is_set():
+                raise RuntimeError("MP3 support install cancelled.")
+            percent = int(max(0.0, min(1.0, fraction)) * 100)
+            if percent == last_percent["value"]:
+                return
+            last_percent["value"] = percent
+            progress.set_progress(percent, f"{message} {percent}%")
+
+        def _run() -> None:
+            try:
+                install_mp3_support(_p)
+                activate_engine_packs()
+            except Exception as exc:  # noqa: BLE001 - surface a clean message
+                wx.CallAfter(progress.close)
+                if cancel.is_set():
+                    wx.CallAfter(self._set_status, "MP3 support install cancelled.")
+                    wx.CallAfter(self._announce, "MP3 support install cancelled.")
+                else:
+                    wx.CallAfter(self._set_status, f"MP3 support install failed: {exc}")
+                    detail = str(exc)
+                    if not isinstance(exc, EngineInstallError):
+                        detail = f"Unexpected error: {exc}"
+                    wx.CallAfter(
+                        self._offer_component_bug_report,
+                        "mp3",
+                        "MP3 support install failed.",
+                        detail,
+                    )
+                return
+
+            def _done() -> None:
+                progress.switch_to_ok(
+                    "MP3 chapter-marker support is installed.",
+                    on_ok=self.open_optional_components,
+                )
+
+            wx.CallAfter(_done)
+
+        threading.Thread(target=_run, daemon=True).start()  # GATE-40-OK: mp3 install worker.
 
     def _offer_component_bug_report(self, component_id: str, summary: str, detail: str) -> None:
         """On a failed self-test, offer to send a report with the captured detail."""

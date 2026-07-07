@@ -76,6 +76,12 @@ _KOKORO_ONNX_REQUIREMENTS: tuple[str, ...] = (
     "soundfile>=0.14.0",
 )
 
+#: On-demand MP3 chapter-marker support (the pyproject ``mp3`` extra). Pure-Python
+#: and small; installed into an engine-pack like the speech engines.
+_MP3_PACK = "mp3-support"
+_MP3_MODULE = "mutagen"
+_MP3_REQUIREMENTS: tuple[str, ...] = ("mutagen>=1.48.1",)
+
 _INSTALL_TIMEOUT_S = 1800.0
 
 
@@ -105,8 +111,18 @@ def kokoro_onnx_pack_dir() -> Path:
     return engine_packs_dir() / _KOKORO_ONNX_PACK
 
 
+def mp3_pack_dir() -> Path:
+    """The folder on-demand MP3 support (mutagen) is installed into."""
+    return engine_packs_dir() / _MP3_PACK
+
+
 def _known_pack_dirs() -> tuple[Path, ...]:
-    return (faster_whisper_pack_dir(), vosk_pack_dir(), kokoro_onnx_pack_dir())
+    return (
+        faster_whisper_pack_dir(),
+        vosk_pack_dir(),
+        kokoro_onnx_pack_dir(),
+        mp3_pack_dir(),
+    )
 
 
 def activate_engine_packs() -> None:
@@ -228,6 +244,76 @@ def install_kokoro_onnx(
         _LOG.error("Kokoro ONNX installed into %s but the module is not importable", dest)
         raise EngineInstallError(
             "Kokoro ONNX was installed but could not be imported. Try restarting QUILL."
+        )
+    if progress is not None:
+        progress(1.0, "Done.")
+    return dest
+
+
+def mp3_install_supported() -> bool:
+    """True when QUILL can install MP3 support on demand (pip must be importable)."""
+    return importlib.util.find_spec("pip") is not None
+
+
+def is_mp3_available() -> bool:
+    """True when ``mutagen`` (MP3 chapter markers) is importable (after activation)."""
+    return importlib.util.find_spec(_MP3_MODULE) is not None
+
+
+def install_mp3_support(
+    progress: ProgressCallback | None = None,
+    *,
+    dest_dir: Path | None = None,
+    python_executable: str | None = None,
+    timeout_seconds: float = _INSTALL_TIMEOUT_S,
+    runner: Callable[..., object] | None = None,
+) -> Path:
+    """Install MP3 chapter-marker support (mutagen) wheel-only into an engine-pack.
+
+    Mirrors :func:`install_kokoro_onnx`: pure-Python and small, activated on
+    ``sys.path`` immediately. Raises :class:`EngineInstallError` on Safe Mode,
+    unavailable pip, a non-zero pip exit, or if mutagen still cannot import.
+    """
+    if os.environ.get("QUILL_SAFE_MODE") == "1":
+        raise EngineInstallError("Downloading components is disabled in Safe Mode.")
+    if not mp3_install_supported():
+        raise EngineInstallError(
+            "This build cannot install MP3 support automatically (pip is unavailable). "
+            "Install it from source with: pip install mutagen"
+        )
+    dest = Path(dest_dir) if dest_dir is not None else mp3_pack_dir()
+    dest.mkdir(parents=True, exist_ok=True)
+    python_exe = python_executable or sys.executable
+    if not python_exe:
+        raise EngineInstallError("Could not locate the Python runtime to install into.")
+    if progress is not None:
+        progress(0.05, "Preparing to install MP3 support...")
+    command = _pip_command(dest, _MP3_REQUIREMENTS, python_exe)
+    run = runner if runner is not None else _default_runner
+    _LOG.info("MP3 support install: running %s", " ".join(command))
+    if progress is not None:
+        progress(0.15, "Downloading MP3 support (mutagen)...")
+    try:
+        result = run(command, timeout_seconds=timeout_seconds)
+    except Exception as exc:  # noqa: BLE001
+        _LOG.exception("MP3 support install: pip runner could not start")
+        raise EngineInstallError(f"Could not run the installer: {exc}") from exc
+    returncode = int(getattr(result, "returncode", 1))
+    if returncode != 0:
+        detail = _tail(getattr(result, "stderr", "") or getattr(result, "stdout", ""))
+        _LOG.error("MP3 support install failed (pip exit %s). Output tail: %s", returncode, detail)
+        raise EngineInstallError(
+            f"MP3 support installation failed (pip exit {returncode}). {detail}"
+        )
+    if progress is not None:
+        progress(0.9, "Finishing up...")
+    if str(dest) not in sys.path:
+        sys.path.insert(0, str(dest))
+    importlib.invalidate_caches()
+    if not is_mp3_available():
+        _LOG.error("MP3 support installed into %s but mutagen is not importable", dest)
+        raise EngineInstallError(
+            "MP3 support was installed but could not be imported. Try restarting QUILL."
         )
     if progress is not None:
         progress(1.0, "Done.")

@@ -313,3 +313,9 @@ def test_manage_target_routes_stt_to_models_and_voices_to_voices() -> None:
     assert oc.manage_target("pandoc") is None
     assert oc.manage_target("braille") is None
     assert oc.manage_target("spell-fr_FR") is None
+
+
+def test_gather_includes_mp3_support() -> None:
+    ids = {c.component_id for c in oc.gather_optional_components()}
+    assert "mp3" in ids  # MP3 chapter-marker support is downloadable from the hub
+    assert oc.manage_target("mp3") is None  # a tool, not a models/voices route
