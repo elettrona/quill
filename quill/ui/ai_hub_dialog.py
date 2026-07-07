@@ -215,7 +215,7 @@ class AIHubDialog:
         self.dialog.SetSizer(root)
         ok_btn.Bind(wx.EVT_BUTTON, self._on_ok)
         cancel_btn.Bind(wx.EVT_BUTTON, lambda _e: self.dialog.EndModal(wx.ID_CANCEL))
-        wx.CallAfter(self._notebook.SetFocus)
+        # Initial focus comes from _show_modal_dialog's focus_primary_control seam, not here.
 
     # ------------------------------------------------------------------
     # Tab 1: Provider

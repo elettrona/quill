@@ -24,7 +24,7 @@ def show_about_quill_native(
     Forms mode reads them as distinct elements rather than a flattened blob (#260).
     """
     from quill.core.about_info import AboutInfo
-    from quill.ui.dialog_contract import apply_modal_ids
+    from quill.ui.dialog_contract import apply_modal_ids, focus_primary_control
 
     assert isinstance(about_info, AboutInfo)
     dialog = wx.Dialog(
@@ -170,7 +170,11 @@ def show_about_quill_native(
 
     dialog.SetSizer(sizer)
     apply_modal_ids(dialog, affirmative_id=wx.ID_OK, escape_id=wx.ID_OK)
-    wx.CallAfter(notebook.SetFocus)
+    # Land focus on the first control of the visible tab, not the tab strip or
+    # the default Close button. This dialog is shown through the module-level
+    # show_modal_dialog (no MainFrame focus seam), so it applies the contract's
+    # notebook-aware focus routing itself.
+    focus_primary_control(dialog)
     try:
         result = show_modal_dialog(dialog, f"About {about_info.product_name}")
     finally:

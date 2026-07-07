@@ -93,8 +93,45 @@ def apply_listbox_activation(listbox: object, handler: Callable[[object], None])
     listbox.Bind(wx.EVT_KEY_DOWN, _on_key)
 
 
+def _selected_book_page(control: object) -> object | None:
+    """Return the currently selected page of a *book* control, else ``None``.
+
+    Book controls (``wx.Notebook`` and its ``Listbook`` / ``Treebook`` /
+    ``Choicebook`` / ``Toolbook`` / ``Simplebook`` / ``AuiNotebook`` siblings)
+    show only their selected page; the other pages are hidden. Detected by the
+    ``*book`` class-name suffix so a leaf control that merely exposes
+    ``GetSelection`` (``ListBox``, ``Choice``, ``ComboBox``) is never mistaken
+    for a page container.
+    """
+    if not type(control).__name__.lower().endswith("book"):
+        return None
+    get_selection = getattr(control, "GetSelection", None)
+    get_page = getattr(control, "GetPage", None)
+    if not callable(get_selection) or not callable(get_page):
+        return None
+    try:
+        index = get_selection()
+    except Exception:
+        return None
+    if not isinstance(index, int) or index < 0:
+        return None
+    try:
+        return get_page(index)
+    except Exception:
+        return None
+
+
 def _iter_descendant_controls(widget: object) -> Iterable[object]:
-    """Yield a widget's descendants in creation (tab) order, depth-first."""
+    """Yield a widget's descendants in creation (tab) order, depth-first.
+
+    A book control is confined to its selected page (see
+    :func:`_selected_book_page`): initial-focus routing must land on the first
+    control of the tab the user actually sees, never a hidden page's control and
+    never the tab strip itself (the notebook is not a preferred-focus class, so
+    it is skipped as a focus target regardless). This is what keeps a tabbed
+    dialog from opening with focus parked on the tab control instead of the
+    first field inside the active tab.
+    """
     get_children = getattr(widget, "GetChildren", None)
     if not callable(get_children):
         return
@@ -104,7 +141,11 @@ def _iter_descendant_controls(widget: object) -> Iterable[object]:
         return
     for child in children:
         yield child
-        yield from _iter_descendant_controls(child)
+        page = _selected_book_page(child)
+        if page is not None:
+            yield from _iter_descendant_controls(page)
+        else:
+            yield from _iter_descendant_controls(child)
 
 
 def _is_focusable(control: object) -> bool:

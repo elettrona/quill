@@ -31,6 +31,12 @@ on **Check for Updates**.
   **Tools > Speech > Install Kokoro ONNX**.
 - **Speech dialogs open with the right control focused** - Speech Hub, Manage
   Speech Models, and Manage Voices no longer land on the OK/Cancel button.
+- **Tabbed dialogs land you on the first control, not the tab strip.** The AI
+  Hub (and the About and Quillin-preferences dialogs) used to open with focus on
+  the row of tabs. Your screen reader announced a tab while you heard the first
+  field's name, so arrowing down did nothing. These dialogs now open with focus
+  on the first real control inside the current tab - and because the fix lives in
+  the shared dialog machinery, every tabbed dialog behaves this way.
 - **Read Aloud no longer mispronounces Markdown formatting.** Headings, bold
   text, and links in a Markdown document used to be read aloud as literal
   symbols (sounding garbled, especially with Piper voices); they're now
