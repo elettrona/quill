@@ -210,7 +210,7 @@ class SpeechCommandsMixin:
         self._announce(message)
         self._set_status(message)
 
-    def download_ffmpeg(self) -> None:
+    def download_ffmpeg(self, *, on_done: Callable[[bool], None] | None = None) -> None:
         """Download an official ffmpeg build so any audio/video format transcribes.
 
         ffmpeg is GPL/LGPL and QUILL does not bundle it; this fetches it from the
@@ -288,6 +288,8 @@ class SpeechCommandsMixin:
             done = "ffmpeg installed. You can now transcribe more audio and video formats."
             wx.CallAfter(self._set_status, done)
             wx.CallAfter(self._announce, done)
+            if on_done is not None:
+                wx.CallAfter(on_done, True)
 
         threading.Thread(  # GATE-40-OK: ffmpeg download worker.
             target=_run, daemon=True
@@ -347,13 +349,13 @@ class SpeechCommandsMixin:
             # not the bare engine download -- meet people where they are.
             "whispercpp": self.open_guided_offline_speech,
             "vosk": lambda: self.download_vosk(on_done=_back),
-            "kokoro": self._download_kokoro_models,
+            "kokoro": lambda: self._download_kokoro_models(on_done=_back),
             "piper": lambda: self.download_piper_exe(on_done=_back),
             "espeak": lambda: self.download_espeak_exe(on_done=_back),
             "dectalk": lambda: self.download_dectalk_exe(on_done=_back),
-            "ffmpeg": self.download_ffmpeg,
+            "ffmpeg": lambda: self.download_ffmpeg(on_done=_back),
             "pandoc": lambda: self.download_pandoc(on_done=_back),
-            "node": self.download_node_runtime,
+            "node": lambda: self.download_node_runtime(on_done=_back),
             "braille": lambda: self.download_braille_pack(on_done=_back),
             "libmpv": lambda: self.download_libmpv(on_done=_back),
             "mathcat": lambda: self.download_mathcat(on_done=_back),
@@ -1371,7 +1373,7 @@ class SpeechCommandsMixin:
             target=_run, daemon=True
         ).start()
 
-    def download_node_runtime(self) -> None:
+    def download_node_runtime(self, *, on_done: Callable[[bool], None] | None = None) -> None:
         """Download the portable Node.js LTS runtime (~30 MB) on demand.
 
         For Node (JavaScript/TypeScript) Quillins and the Developer Console's
@@ -1447,6 +1449,8 @@ class SpeechCommandsMixin:
             wx.CallAfter(self._set_status, "Node.js is ready.")
             wx.CallAfter(self._announce, "Node.js is ready.")
             wx.CallAfter(progress.close)
+            if on_done is not None:
+                wx.CallAfter(on_done, True)
 
         threading.Thread(  # GATE-40-OK: Node.js runtime download worker.
             target=_run, daemon=True
