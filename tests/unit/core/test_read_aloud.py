@@ -973,3 +973,28 @@ def test_read_aloud_controller_emits_ssml_on_capable_engine():
     ]
     out = controller._apply_pronunciation("Learn SQL.")
     assert out.startswith("<speak>") and '<sub alias="sequel">SQL</sub>' in out
+
+
+def test_kokoro_onnx_failure_is_logged_before_torch_fallback(monkeypatch, tmp_path, caplog) -> None:
+    """A downloaded Kokoro that fails at onnx synthesis (e.g. onnxruntime cannot
+    load its native DLL) used to fall through to a generic "needs a component"
+    error with the real cause silently swallowed -- the exact shape of the "I
+    downloaded it, it says it worked, but voices still error" report. The true
+    error must now be logged so Help > Save Diagnostics captures it.
+    """
+    import pytest
+
+    monkeypatch.setattr(read_aloud_module, "kokoro_engine_ready", lambda *a, **k: True)
+
+    def _boom(*_a, **_k):
+        raise RuntimeError("onnxruntime DLL load failed")
+
+    monkeypatch.setattr(read_aloud_module, "_get_cached_kokoro_onnx", _boom)
+
+    with caplog.at_level("ERROR", logger="quill.core.read_aloud"):
+        with pytest.raises(ReadAloudUnavailableError):
+            read_aloud_module.synthesize_with_kokoro(
+                "Hello from QUILL.", tmp_path / "out.wav", voice="af_heart"
+            )
+
+    assert any("Kokoro onnx synthesis failed" in r.getMessage() for r in caplog.records)

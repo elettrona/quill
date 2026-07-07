@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 import os
 import shutil
 import subprocess
@@ -492,6 +493,10 @@ def warm_kokoro_onnx() -> bool:
         _get_cached_kokoro_onnx(model_dir)
         return True
     except Exception:  # noqa: BLE001 - prewarm is best-effort
+        # Best-effort, but log why: a prewarm failure here is the same
+        # onnxruntime/model load error that will otherwise surface only as the
+        # generic fallback message at first synthesis (#kokoro-onnx).
+        logging.getLogger(__name__).debug("Kokoro onnx prewarm failed", exc_info=True)
         return False
 
 
@@ -520,7 +525,16 @@ def synthesize_with_kokoro(
             _sf.write(str(output_path), _np.array(samples), sample_rate)
             return
         except Exception:  # noqa: BLE001 - fall through to kokoro + torch
-            pass
+            # The onnx path is the primary route once kokoro_engine_ready() is
+            # True (models present + kokoro_onnx importable). If it still throws
+            # -- e.g. onnxruntime cannot load its native DLL, or the model is
+            # unreadable -- the fallback below raises a generic "needs a
+            # component" error that hides the real cause (a freshly downloaded
+            # Kokoro that will not speak). Log the true error so Help > Save
+            # Diagnostics captures it instead of losing it here (#kokoro-onnx).
+            logging.getLogger(__name__).exception(
+                "Kokoro onnx synthesis failed; falling back to kokoro+torch"
+            )
 
     # Fall back to kokoro + torch.
     try:
