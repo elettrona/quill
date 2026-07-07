@@ -8714,6 +8714,7 @@ class MainFrame(
             self._load_persistent_undo_state(selected_path, loaded.text)
             self._location_ring = LocationRing()
             self._location_ring.record(0)
+        self._announce_encoding_fallback(loaded)
         self._position_editor_at(line=line, column=column)
         if record_recent:
             self._record_recent(selected_path)
@@ -8962,6 +8963,13 @@ class MainFrame(
                 "Flagged for your consent: " + ", ".join(str(item) for item in warnings) + "."
             )
         self._set_status(" ".join(parts))
+
+    def _announce_encoding_fallback(self, document: Document) -> None:
+        """Tell the user when #867's non-UTF-8 fallback decoded this file."""
+        detected = document.source_metadata.get("encoding_detected")
+        if not detected:
+            return
+        self._set_status(f"Opened using {detected} text encoding (not UTF-8).")
 
     def next_document(self) -> None:
         self._switch_document(reverse=False)

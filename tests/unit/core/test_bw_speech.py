@@ -1,13 +1,17 @@
 from __future__ import annotations
 
+import subprocess
 from pathlib import Path
 
 import pytest
 
+from quill.core import bw_speech
 from quill.core.bw_speech import (
+    _reset_gpu_probe_cache_for_tests,
     downloaded_model_ids,
     faster_whisper_status,
     get_model,
+    has_nvidia_gpu,
     list_models,
     machine_guidance,
     model_path,
@@ -15,6 +19,13 @@ from quill.core.bw_speech import (
     remove_model,
     speech_models_dir,
 )
+
+
+@pytest.fixture(autouse=True)
+def _reset_gpu_cache() -> None:
+    _reset_gpu_probe_cache_for_tests()
+    yield
+    _reset_gpu_probe_cache_for_tests()
 
 
 def test_list_models_contains_whisper_defaults() -> None:
@@ -76,3 +87,38 @@ def test_faster_whisper_status_returns_message() -> None:
     assert isinstance(ok, bool)
     assert isinstance(message, str)
     assert message != ""
+
+
+# --- #866/#870: GPU probe must be cached and never hang the caller -----------
+
+
+def test_has_nvidia_gpu_caches_after_first_call(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(bw_speech.shutil, "which", lambda _name: "nvidia-smi")
+    calls = []
+
+    def fake_run_safely(args, *, timeout_seconds=5.0):
+        calls.append(args)
+        return subprocess.CompletedProcess(args, 0, stdout="GPU 0: Fake\n", stderr="")
+
+    monkeypatch.setattr("quill.stability.safe_subprocess.run_subprocess_safely", fake_run_safely)
+
+    assert has_nvidia_gpu() is True
+    assert has_nvidia_gpu() is True
+    assert len(calls) == 1
+
+
+def test_has_nvidia_gpu_treats_timeout_as_no_gpu(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(bw_speech.shutil, "which", lambda _name: "nvidia-smi")
+
+    def fake_run_safely(args, *, timeout_seconds=5.0):
+        raise subprocess.TimeoutExpired(cmd=args, timeout=timeout_seconds)
+
+    monkeypatch.setattr("quill.stability.safe_subprocess.run_subprocess_safely", fake_run_safely)
+
+    assert has_nvidia_gpu() is False
+
+
+def test_has_nvidia_gpu_false_when_binary_missing(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(bw_speech.shutil, "which", lambda _name: None)
+
+    assert has_nvidia_gpu() is False

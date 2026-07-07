@@ -145,12 +145,39 @@ def total_ram_gb() -> float:
     return 8.0
 
 
+_gpu_probe_cache: bool | None = None
+
+
 def has_nvidia_gpu() -> bool:
+    """Detect an NVIDIA GPU via ``nvidia-smi``.
+
+    #866/#870: this used to call bare ``subprocess.run`` with no timeout on
+    every Speech Hub open, which could hang the UI thread indefinitely if
+    ``nvidia-smi`` ever stalled (a stuck driver/service). It now goes through
+    the project's timeout-enforcing ``run_subprocess_safely`` and caches the
+    result for the process lifetime, since GPU presence can't change mid-session.
+    """
+    global _gpu_probe_cache
+    if _gpu_probe_cache is not None:
+        return _gpu_probe_cache
     cmd = shutil.which("nvidia-smi")
     if not cmd:
-        return False
-    result = subprocess.run([cmd, "-L"], check=False, capture_output=True, text=True)
-    return result.returncode == 0 and bool(result.stdout.strip())
+        _gpu_probe_cache = False
+        return _gpu_probe_cache
+    from quill.stability.safe_subprocess import run_subprocess_safely
+
+    try:
+        result = run_subprocess_safely([cmd, "-L"], timeout_seconds=5.0)
+    except (subprocess.TimeoutExpired, OSError):
+        _gpu_probe_cache = False
+        return _gpu_probe_cache
+    _gpu_probe_cache = result.returncode == 0 and bool(result.stdout.strip())
+    return _gpu_probe_cache
+
+
+def _reset_gpu_probe_cache_for_tests() -> None:
+    global _gpu_probe_cache
+    _gpu_probe_cache = None
 
 
 def recommended_model_id() -> str:

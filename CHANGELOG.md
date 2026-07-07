@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.9.0 Beta 2
+
+Bug-fix and polish release, driven by beta 1 user reports. Rolls up on top of 0.9.0 Beta 1 (below).
+
+- **Fixed a crash opening non-UTF-8 text files (#867).** Opening a `.txt`/`.md` file saved in Windows-1252/Latin-1 (a curly quote, en-dash, or other high-byte character without a UTF-8 BOM) used to throw an unhandled `UnicodeDecodeError` straight out of the open flow. Reading now falls back from UTF-8 to cp1252 to latin-1 (the last of which can never fail), and the status bar announces "Opened using {encoding} text encoding (not UTF-8)" when a fallback fires so you know the source wasn't UTF-8.
+- **Removed an unbounded UI freeze source in the speech probing path (#866).** `has_nvidia_gpu()` called `nvidia-smi` with no timeout, once per Speech Hub open, directly on the UI thread — a stalled driver/service could block QUILL indefinitely (matching a crash-recovery report of a 100+ second UI freeze). The probe now runs through QUILL's timeout-enforcing subprocess wrapper and is cached for the process lifetime.
+
 ## 0.9.0 Beta 1
 
 The 0.9.0 beta. Rolls up everything through 0.8.0 (below) plus the features, fixes, and enhancements in this release — headlined by the new AI suite, the **Accessible Vault** (linked notes you can traverse by ear), the **GLOW accessibility suite** (guided document audit and repair, shipping as an experimental opt-in), the **ElevenLabs Read Aloud voice**, and a lighter, smaller install. **This is the final feature release before QUILL 1.0**: from this beta forward, no new features are added — only bug fixes and polish, driven by your reports, until 1.0 ships. This section doubles as the in-app release notes: the same text appears when you **Check for Updates** and any time from **Help > What's New**.
