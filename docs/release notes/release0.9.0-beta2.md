@@ -31,6 +31,14 @@ on **Check for Updates**.
   **Tools > Speech > Install Kokoro ONNX**.
 - **Speech dialogs open with the right control focused** - Speech Hub, Manage
   Speech Models, and Manage Voices no longer land on the OK/Cancel button.
+- **A simpler installer - no more component checkboxes.** Installing Beta 1
+  asked you to pick optional components (Pandoc, Node.js, Piper, Braille pack),
+  several of which did nothing because those parts are downloaded when you need
+  them, not shipped in the installer. The installer now just installs QUILL;
+  everything optional - the neural Piper voices, the braille pack, Pandoc,
+  Node.js, and the offline speech engines - downloads on demand the first time
+  you use it (Piper from Manage Voices; the braille pack and Pandoc from
+  **Help > Download Optional Components**).
 - **Tabbed dialogs land you on the first control, not the tab strip.** The AI
   Hub (and the About and Quillin-preferences dialogs) used to open with focus on
   the row of tabs. Your screen reader announced a tab while you heard the first
