@@ -16,12 +16,14 @@ class _Event:
         ctrl: bool = False,
         shift: bool = False,
         alt: bool = False,
+        raw_ctrl: bool | None = None,
         unicode_key: int | None = None,
     ) -> None:
         self._key_code = key_code
         self._ctrl = ctrl
         self._shift = shift
         self._alt = alt
+        self._raw_ctrl = raw_ctrl
         self._unicode_key = unicode_key if unicode_key is not None else key_code
         self.skipped = False
 
@@ -42,6 +44,18 @@ class _Event:
 
     def Skip(self) -> None:
         self.skipped = True
+
+
+class _MacEvent(_Event):
+    """Mimics wx on macOS: ``RawControlDown()`` is the physical Ctrl key.
+
+    ``ControlDown()`` reflects Cmd on macOS, so a real physical Ctrl press
+    reports ``ctrl=False`` here, with the physical key visible only via
+    ``RawControlDown()``.
+    """
+
+    def RawControlDown(self) -> bool:
+        return bool(self._raw_ctrl)
 
 
 _BACKTICK = ord("`")
@@ -93,6 +107,27 @@ def _build_frame(
 def test_default_prefix_press_sets_pending() -> None:
     frame = _build_frame()
     handled = frame._handle_quill_key_mode_event(_Event(_BACKTICK, ctrl=True, shift=True))
+    assert handled is True
+    assert frame._quill_key_prefix_pending is True
+
+
+def test_physical_ctrl_on_mac_sets_pending() -> None:
+    # #883-follow-up: on macOS, wx's ControlDown() reflects Cmd, not the
+    # physical Ctrl key (only RawControlDown() does). A real physical
+    # Ctrl+Shift+` press must still trigger the QUILL key prefix there.
+    frame = _build_frame()
+    event = _MacEvent(_BACKTICK, ctrl=False, shift=True, raw_ctrl=True)
+    handled = frame._handle_quill_key_mode_event(event)
+    assert handled is True
+    assert frame._quill_key_prefix_pending is True
+
+
+def test_cmd_alone_without_raw_ctrl_still_matches() -> None:
+    # ControlDown()==True (Cmd held) continues to work on its own, e.g. on
+    # platforms/configurations where the OS hasn't reserved the chord.
+    frame = _build_frame()
+    event = _MacEvent(_BACKTICK, ctrl=True, shift=True, raw_ctrl=False)
+    handled = frame._handle_quill_key_mode_event(event)
     assert handled is True
     assert frame._quill_key_prefix_pending is True
 

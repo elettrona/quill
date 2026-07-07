@@ -99,6 +99,14 @@ Components** was rebuilt into one warm, guided place.
   and what it says — for example, "Position, Ln 12, Col 7."
 - **No more doubled ampersands.** "Writing & Language," "Reading & Dictation," and
   friends sometimes read back as "Writing && Language." They spell out "and" now.
+- **AI Hub: choosing a provider stays where you put it.** Arrowing through the
+  Provider list without opening its dropdown could bounce focus over to the Model
+  field the moment its suggestions refreshed. Focus now stays put.
+- **macOS: the QUILL key answers to a real Ctrl+Shift+` press.** macOS reports the
+  Cmd key, not the physical Control key, through the check QUILL was using — so a
+  literal Ctrl+Shift+` press went unrecognized. It's recognized now. (Cmd+Shift+`
+  is macOS's own "cycle windows" shortcut and will keep going to the OS first;
+  reassign it in System Settings > Keyboard Shortcuts if you'd rather use Cmd.)
 
 ## Language, stability, and support
 
@@ -116,6 +124,13 @@ Components** was rebuilt into one warm, guided place.
 - **A stalled graphics-card check can't freeze the app.** The speech options'
   hardware probe ran with no timeout on the main thread every time you opened the
   dialog; it's timeout-guarded and runs once per session now.
+- **The Outline Navigator (Ctrl+Shift+O) opens again.** It — and the EPUB and Quick
+  Nav surfaces that share the same dialog — could crash instead of opening, because
+  of an invalid call on the tree control's hidden root. Fixed.
+- **Crash reports no longer carry your Windows username.** If your portable copy
+  lived inside your home folder, the local crash-report file path was included
+  verbatim in a submitted report's metadata — the one place that path wasn't
+  already being scrubbed. It's redacted the same way as everywhere else now.
 - **Errors carry a short support code** (like `[QUILL-SPEECH-WHISPER-DL-404]`), and
   it rides along in crash reports automatically — so if you paste an error to us,
   we can pinpoint the exact cause. Every one of QUILL's internal error types now

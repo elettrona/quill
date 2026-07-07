@@ -136,6 +136,8 @@ The QUILL key is its own tiny language: every chord is data-driven from the keym
 
 **Detection note.** On some keyboards or drivers, Windows reports the grave/back-tick key differently than expected. QUILL now uses three independent detection strategies (character code, Windows virtual key VK_OEM_3, and physical scan code 0x29) so the key is recognized on any layout.
 
+**macOS note.** Use the physical **Control** key, not Cmd, for the QUILL key on macOS: `Cmd+Shift+` `` is macOS's own reserved "cycle windows" shortcut and never reaches QUILL. If you'd rather use Cmd, reassign that system shortcut in **System Settings → Keyboard → Keyboard Shortcuts → Mission Control** first.
+
 **Reassigning chord commands.** Open **Preferences → Keyboard → Keymap Editor**, find the command you want to move, and type a new chord binding in the form `Ctrl+Shift+Grave, X` (replacing `X` with the key you want). The Keymap Editor stores chords in this `Ctrl+Shift+Grave, X` grammar; menus and the cheat sheet display them as `QUILL Key + X`. Conflict detection prevents accidental double-bindings.
 
 ### The Keyboard Manager: search, record, and diagnose

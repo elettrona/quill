@@ -33,7 +33,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-from quill.stability.redaction import redact_text_for_bundle
+from quill.stability.redaction import redact_command_arg, redact_text_for_bundle
 
 # ---------------------------------------------------------------------------
 # Public surface
@@ -184,7 +184,11 @@ def build_crash_report_payload(
         except Exception:  # noqa: BLE001 - document snapshot is best-effort
             metadata["active_document"] = {"error": "snapshot failed"}
     if local_crash_file is not None:
-        metadata["local_crash_file"] = str(local_crash_file)
+        # Redact the same way the body's "Local crash report" line is:
+        # this metadata dict is serialized verbatim into the public GitHub
+        # issue by feedback_hub, bypassing the body's redaction pass, and
+        # an un-redacted path here leaks the reporter's OS username (#886).
+        metadata["local_crash_file"] = redact_command_arg(str(local_crash_file))
 
     return CrashReportPayload(
         summary=summary,

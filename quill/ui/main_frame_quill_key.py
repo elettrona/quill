@@ -341,6 +341,23 @@ class QuillKeyMixin:
         _flags, key_code = parsed
         return ctrl, shift, alt, key_code
 
+    def _event_ctrl_equivalent_down(self, event: object) -> bool:
+        """True if the binding's "Ctrl" modifier is satisfied on this platform.
+
+        On macOS, wx's ``ControlDown()`` reflects the Cmd key, not the
+        physical Control key — the physical key is exposed separately via
+        ``RawControlDown()`` (a Mac-only method; identical to
+        ``ControlDown()`` on Windows/Linux). Checking only ``ControlDown()``
+        means a literal Ctrl+Shift+` press is invisible to the QUILL key on
+        macOS, and Cmd+Shift+` is macOS's own reserved "cycle windows"
+        shortcut, so it never reaches the app either — leaving the default
+        binding unusable on macOS both ways.
+        """
+        if event.ControlDown():
+            return True
+        raw_ctrl_fn = getattr(event, "RawControlDown", None)
+        return bool(raw_ctrl_fn()) if callable(raw_ctrl_fn) else False
+
     def _quill_key_prefix_matches(self, event: object) -> bool:
         binding = getattr(self.settings, "quill_key_binding", "Ctrl+Shift+Grave")
         parsed = self._parse_quill_key_binding(binding)
@@ -350,7 +367,7 @@ class QuillKeyMixin:
             return False
         need_ctrl, need_shift, need_alt, key_code = parsed
         if (
-            bool(event.ControlDown()) != need_ctrl
+            self._event_ctrl_equivalent_down(event) != need_ctrl
             or bool(event.ShiftDown()) != need_shift
             or bool(event.AltDown()) != need_alt
         ):

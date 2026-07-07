@@ -16500,7 +16500,9 @@ class MainFrame(
             return first_item
 
         first_item = append_nodes(root, nodes)
-        tree.Expand(root)
+        # The root is hidden (TR_HIDE_ROOT), so its children are already
+        # shown at the top level; wx asserts if you try to Expand() it
+        # (#885: "Can't expand/collapse hidden root node!").
         if first_item is not None:
             tree.SelectItem(first_item)
             preview.ChangeValue(nodes[0].preview)
@@ -17718,11 +17720,19 @@ class MainFrame(
                     exe = discover_piper_executable(s.read_aloud_piper_executable)
                     if exe is None:
                         raise ReadAloudUnavailableError("Piper executable not configured")
+                    # voice_id is a catalog id (e.g. "en_GB-alan-medium"), not a
+                    # path; resolve it to the downloaded .onnx like voice selection
+                    # does. Passing the bare id straight through made every Piper
+                    # preview/Test fail with "model file not found". Keep a literal
+                    # path when voice_id already points at an existing file.
+                    piper_model_path = _Path(voice_id)
+                    if not piper_model_path.exists():
+                        piper_model_path = default_piper_model_dir() / f"{voice_id}.onnx"
                     synthesize_with_piper(
                         sample,
                         wav,
                         executable_path=exe,
-                        model_path=_Path(voice_id),
+                        model_path=piper_model_path,
                     )
                 elif engine == "kokoro":
                     synthesize_with_kokoro(

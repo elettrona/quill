@@ -316,7 +316,13 @@ class AIHubDialog:
     def _on_hub_provider_changed(self, _event: object) -> None:
         # A model id is provider-specific, so show the new provider's recommended
         # default (free-first for OpenRouter) rather than carrying the old id over.
+        # #883: repopulating the model combo can steal focus back to it on MSW
+        # when the provider choice was navigated via arrow keys without opening
+        # its dropdown; restore focus to the provider choice if that happened.
+        had_focus = self._provider_choice.HasFocus()
         self._populate_hub_models(self._hub_provider())
+        if had_focus and not self._provider_choice.HasFocus():
+            self._provider_choice.SetFocus()
 
     def _on_hub_list_models(self, _event: object) -> None:
         import threading
