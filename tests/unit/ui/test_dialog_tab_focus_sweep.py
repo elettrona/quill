@@ -30,14 +30,27 @@ def test_ai_hub_does_not_force_focus_onto_the_notebook() -> None:
     )
 
 
-def test_about_dialog_routes_focus_through_the_contract() -> None:
+def test_about_dialogs_route_focus_through_the_contract() -> None:
     src = _src("info_pages.py")
     assert "notebook.SetFocus" not in src, (
-        "The About dialog must not focus the notebook tab strip on open."
+        "The About dialogs must not focus the notebook tab strip on open."
     )
-    assert "focus_primary_control(dialog)" in src, (
-        "The About dialog uses the module-level show_modal_dialog (no MainFrame "
-        "seam), so it must call focus_primary_control itself."
+    # Both tabbed About dialogs (About Quill, About BITS Whisperer) use the
+    # module-level show_modal_dialog (no MainFrame seam), so each must call
+    # focus_primary_control itself.
+    assert src.count("focus_primary_control(dialog)") >= 2, (
+        "Each tabbed About dialog must call focus_primary_control itself."
+    )
+
+
+def test_status_dialog_routes_focus_through_the_contract() -> None:
+    src = _src("status_dialog.py")
+    assert "self.dialog.SetFocus()" not in src, (
+        "The non-modal status dialog must not focus the dialog (which forwards "
+        "to the notebook tab strip); it must route through focus_primary_control."
+    )
+    assert "focus_primary_control(self.dialog)" in src, (
+        "The status dialog is shown non-modally, so it must call focus_primary_control itself."
     )
 
 

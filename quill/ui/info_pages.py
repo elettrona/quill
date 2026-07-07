@@ -359,7 +359,7 @@ def show_whisperer_about_native(
     show_modal_dialog: Callable[[Any, str], int],
 ) -> None:
     """Modal About BITS Whisperer dialog with tabbed native ListCtrls."""
-    from quill.ui.dialog_contract import apply_modal_ids
+    from quill.ui.dialog_contract import apply_modal_ids, focus_primary_control
 
     dialog = wx.Dialog(
         parent,
@@ -441,6 +441,9 @@ def show_whisperer_about_native(
     sizer.Add(btn_sizer, 0, wx.EXPAND | wx.LEFT | wx.RIGHT | wx.BOTTOM, 8)
     dialog.SetSizer(sizer)
     apply_modal_ids(dialog, affirmative_id=wx.ID_OK, escape_id=wx.ID_OK)
+    # Land focus on the first control of the visible tab, not the tab strip or
+    # the default Close button (module-level show_modal_dialog, no MainFrame seam).
+    focus_primary_control(dialog)
     try:
         show_modal_dialog(dialog, "About BITS Whisperer")
     finally:

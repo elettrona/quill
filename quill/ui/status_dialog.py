@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from quill.ui.dialog_contract import apply_modal_ids
+from quill.ui.dialog_contract import apply_modal_ids, focus_primary_control
 
 
 class HelpStatusDialog:
@@ -155,7 +155,10 @@ class HelpStatusDialog:
         if not self.dialog.IsShown():
             self.dialog.Show()
         self.dialog.Raise()
-        self.dialog.SetFocus()
+        # Land on the first control of the visible tab, not the notebook tab
+        # strip (a bare dialog.SetFocus() forwards to the notebook). This is a
+        # non-modal window shown via Show(), so it routes focus itself.
+        focus_primary_control(self.dialog)
 
     def is_alive(self) -> bool:
         try:
