@@ -14,6 +14,7 @@ Bug-fix and polish release, driven by beta 1 user reports. Rolls up on top of 0.
 - **Fixed "Writing && Language" and other doubled ampersands in menu titles (#876).** Several Tools-menu submenu headers ("Writing & Language," "Reading & Dictation," "HTML & Encoding," "Sort & Filter," "Customize & Support") used wx's `&&` escape for a literal ampersand, which some screen readers read back as two ampersands instead of one. Those labels now spell "and" instead of relying on the escape sequence.
 - **Added Danish to the Braille Translation menu (#877).** Danish grade 1 and grade 2 tables ship with liblouis and were on disk, but QUILL's curated language list never included them, so Danish never appeared under Tools > Braille > Translation > More Languages.
 - **Fixed a crash opening Profiles and Features (#878, #879).** Built-in profile names are translatable and use a lazy-loaded string internally; the dialog's list box requires a fully resolved string and raised `TypeError: Item at index 0 has type '_LazyString'...` the moment the list was built, whether opened from the Tools menu or the command palette.
+- **Started adding stable error codes for support triage (#873).** A new `CodedError` base (`quill/core/error_codes.py`) prefixes a stable, greppable code — e.g. `[QUILL-SPEECH-WHISPER-DL-404]` — onto an error's message, and the code now rides along in crash-report metadata automatically. This pass covers only the three new Whisper-download error paths above; the rest of QUILL's ~35 existing error types are a follow-up, not done here.
 
 ## 0.9.0 Beta 1
 

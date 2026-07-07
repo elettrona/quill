@@ -46,5 +46,10 @@ on **Check for Updates**.
 - **Fixed a crash opening Profiles and Features.** A translated profile name
   wasn't being fully resolved before being handed to the list box, so opening
   the dialog - from the Tools menu or the command palette - could crash.
+- **Some errors now carry a short support code** (like
+  `[QUILL-SPEECH-WHISPER-DL-404]`) alongside the message, so if you paste an
+  error into a bug report we can pinpoint the exact cause faster. Only a
+  handful of Whisper-download errors have one so far; more will pick this up
+  over time.
 
 More fixes land in this file as they ship - check back before release day.
