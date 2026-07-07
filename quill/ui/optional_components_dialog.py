@@ -1,50 +1,72 @@
 """Download Optional Components dialog (Help menu).
 
-A single, accessible touch point that lists every optional, downloadable component
-(offline speech engine, neural/classic voices, the audio-export helper, and
-non-English spell-check dictionaries) with what is **Installed** versus **Available
-to download**, so a user never has to hunt through scattered menus to find or fetch
-them (QUILL-PRD.md §5.25f, "The download experience is accessible by contract").
+A single, accessible hub that lists every optional, downloadable component with
+what is **Installed** versus **Available to download**, a rich description of the
+focused component, and — for installed ones — **Test** (prove it works) and
+**Remove** (delete QUILL's downloaded copy). Download keeps each component's
+tested, progress-reporting flow: the dialog returns the chosen id and the caller
+(MainFrame) runs that installer, so there are no stacked download modals. Remove
+and Test happen in place and the dialog stays open, refreshing the row.
 
-The status model is the wx-free :func:`quill.core.optional_components.gather_optional_components`.
-Each component's actual download keeps its own tested, progress-reporting flow; to
-avoid stacking modal dialogs, this picker simply *returns the chosen component id*
-and the caller (MainFrame) runs that component's installer after the picker closes.
+The status model and all logic are wx-free
+(:mod:`quill.core.optional_components`); this module is layout + event routing.
+Actions on the focused component are delegated to a small *controller* the caller
+supplies (see :class:`ComponentsController`).
 """
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Protocol
 
-from quill.core.optional_components import OptionalComponent
+from quill.core.optional_components import OptionalComponent, describe_component
+from quill.ui.dialog_contract import apply_modal_ids, show_message_box
+
+
+class ComponentsController(Protocol):
+    """The host (MainFrame) actions the dialog delegates to for the focused row."""
+
+    def components(self) -> list[OptionalComponent]:
+        """The current component list (re-read after an install/remove)."""
+
+    def removable(self, component_id: str) -> bool:
+        """True when Remove can delete a QUILL-downloaded copy of this component."""
+
+    def remove(self, component_id: str) -> bool:
+        """Remove the component (delete files, reset dependent state). True on success."""
+
+    def test(self, component_id: str) -> None:
+        """Prove the component works (play a voice sample / self-test); announces."""
 
 
 def show_optional_components_picker(
     wx: Any,
     parent: Any,
-    components: list[OptionalComponent],
     show_modal_dialog: Any,
+    controller: ComponentsController,
+    *,
+    preselect: str = "",
 ) -> str:
-    """Show the picker; return the chosen component id to download, or "".
+    """Show the hub; return a component id to **download**, or "".
 
-    Returns the ``component_id`` the user activated (Download / Enter / double
-    click) for a not-yet-installed component, or an empty string if they closed
-    the dialog or chose an already-installed row.
+    Download closes the dialog and returns the id (the caller runs the installer).
+    Remove and Test act in place and keep the dialog open. ``preselect`` focuses
+    that row on open (used by the routed prompts / #874 failure points).
     """
     dialog = wx.Dialog(
         parent,
         title="Download Optional Components",
         style=wx.DEFAULT_DIALOG_STYLE | wx.RESIZE_BORDER,
     )
-    dialog.SetSize((720, 520))
+    dialog.SetSize((760, 560))
     sizer = wx.BoxSizer(wx.VERTICAL)
 
     intro = wx.StaticText(
         dialog,
         label=(
             "Optional components QUILL can download on demand. Everything here is "
-            "optional; the base app works without them. Choose a component and select "
-            "Download to fetch it (checksum-verified, with its own progress)."
+            "optional; the base app works without them. Choose one and select Download "
+            "to fetch it (checksum-verified, with its own progress). For an installed "
+            "component, Test proves it works and Remove deletes QUILL's copy."
         ),
         name="optional_components_intro",
     )
@@ -56,73 +78,116 @@ def show_optional_components_picker(
         name="optional_components_list",
     )
     listing.AppendColumn("Component", width=300)
-    listing.AppendColumn("Status", width=170)
+    listing.AppendColumn("Status", width=150)
     listing.AppendColumn("Size", width=90)
-    listing.AppendColumn("Category", width=140)
-    for i, comp in enumerate(components):
-        listing.InsertItem(i, comp.name)
-        listing.SetItem(i, 1, comp.status_label)
-        listing.SetItem(i, 2, comp.size_hint or "—")
-        listing.SetItem(i, 3, comp.category)
-    if components:
-        listing.Select(0)
-        listing.Focus(0)
+    listing.AppendColumn("Category", width=150)
     sizer.Add(listing, 1, wx.EXPAND | wx.LEFT | wx.RIGHT, 10)
 
-    detail = wx.StaticText(dialog, label="", name="optional_components_detail")
+    # Rich, read-only, multiline description of the focused component.
+    detail = wx.TextCtrl(
+        dialog,
+        style=wx.TE_MULTILINE | wx.TE_READONLY | wx.TE_NO_VSCROLL,
+        size=(-1, 110),
+        name="optional_components_detail",
+    )
     sizer.Add(detail, 0, wx.EXPAND | wx.ALL, 10)
 
     chosen = {"id": ""}
+    rows: list[OptionalComponent] = []
 
     def _selected() -> OptionalComponent | None:
         idx = listing.GetFirstSelected()
-        return components[idx] if 0 <= idx < len(components) else None
+        return rows[idx] if 0 <= idx < len(rows) else None
 
-    def _update_detail() -> None:
+    def _rebuild(select_id: str = "") -> None:
+        """(Re)load the component list and repaint rows; keep a selection."""
+        rows.clear()
+        rows.extend(controller.components())
+        listing.DeleteAllItems()
+        for i, comp in enumerate(rows):
+            listing.InsertItem(i, comp.name)
+            listing.SetItem(i, 1, comp.status_label)
+            listing.SetItem(i, 2, comp.size_hint or "—")
+            listing.SetItem(i, 3, comp.category)
+        target = 0
+        if select_id:
+            target = next((i for i, c in enumerate(rows) if c.component_id == select_id), 0)
+        if rows:
+            listing.Select(target)
+            listing.Focus(target)
+        _sync_controls()
+
+    def _sync_controls() -> None:
         comp = _selected()
         if comp is None:
-            detail.SetLabel("")
+            detail.SetValue("")
+            for btn in (download_btn, test_btn, remove_btn):
+                btn.Enable(False)
             return
-        bits = [comp.description]
-        if comp.note:
-            bits.append(comp.note)
-        bits.append("Already installed." if comp.installed else "Not installed yet.")
-        detail.SetLabel(" ".join(bits))
+        detail.SetValue(describe_component(comp))
+        # Download only when not installed; Test/Remove only when installed.
+        download_btn.Enable(not comp.installed)
+        download_btn.SetLabel("Installed" if comp.installed else "&Download")
+        test_btn.Enable(comp.installed)
+        remove_btn.Enable(comp.installed and controller.removable(comp.component_id))
 
-    def _activate(_evt: Any = None) -> None:
+    def _on_download(_evt: Any = None) -> None:
         comp = _selected()
-        if comp is None:
-            return
-        if comp.installed:
-            detail.SetLabel(f"{comp.name} is already installed.")
+        if comp is None or comp.installed:
             return
         chosen["id"] = comp.component_id
         dialog.EndModal(wx.ID_OK)
 
-    listing.Bind(wx.EVT_LIST_ITEM_SELECTED, lambda _e: _update_detail())
-    listing.Bind(wx.EVT_LIST_ITEM_ACTIVATED, _activate)
-    _update_detail()
+    def _on_test(_evt: Any = None) -> None:
+        comp = _selected()
+        if comp is None or not comp.installed:
+            return
+        controller.test(comp.component_id)  # announces its own result
+
+    def _on_remove(_evt: Any = None) -> None:
+        comp = _selected()
+        if comp is None or not comp.installed:
+            return
+        if (
+            show_message_box(
+                f"Remove {comp.name}? This deletes QUILL's downloaded copy and turns "
+                "its features back off. You can download it again any time.",
+                "Remove Component",
+                wx.ICON_QUESTION | wx.YES_NO,
+                dialog,
+            )
+            != wx.YES
+        ):
+            return
+        controller.remove(comp.component_id)  # announces its own result
+        _rebuild(select_id=comp.component_id)
+        listing.SetFocus()
+
+    listing.Bind(wx.EVT_LIST_ITEM_SELECTED, lambda _e: _sync_controls())
+    listing.Bind(wx.EVT_LIST_ITEM_ACTIVATED, _on_download)
 
     btns = wx.BoxSizer(wx.HORIZONTAL)
-    # The affirmative button carries wx.ID_OK so Enter works for keyboard/blind
-    # users (dialog button-contract). Its bound handler decides whether to close
-    # (download a not-yet-installed component) or stay (already installed); it does
-    # not call event.Skip(), so the default auto-close never fires unexpectedly.
+    # Download carries wx.ID_OK so Enter downloads the focused row for keyboard
+    # users (dialog button-contract). Test/Remove are plain buttons that act in
+    # place. Close carries wx.ID_CANCEL (Escape).
     download_btn = wx.Button(
         dialog, wx.ID_OK, label="&Download", name="optional_components_download"
     )
+    test_btn = wx.Button(dialog, label="&Test", name="optional_components_test")
+    remove_btn = wx.Button(dialog, label="&Remove", name="optional_components_remove")
     close_btn = wx.Button(dialog, wx.ID_CANCEL, label="&Close")
     close_btn.SetDefault()
-    download_btn.Bind(wx.EVT_BUTTON, _activate)
+    download_btn.Bind(wx.EVT_BUTTON, _on_download)
+    test_btn.Bind(wx.EVT_BUTTON, _on_test)
+    remove_btn.Bind(wx.EVT_BUTTON, _on_remove)
     btns.AddStretchSpacer()
-    btns.Add(download_btn, 0, wx.RIGHT, 8)
-    btns.Add(close_btn, 0)
+    for btn in (download_btn, test_btn, remove_btn, close_btn):
+        btns.Add(btn, 0, wx.RIGHT, 8)
     sizer.Add(btns, 0, wx.EXPAND | wx.ALL, 10)
 
     dialog.SetSizer(sizer)
-    from quill.ui.dialog_contract import apply_modal_ids
-
     apply_modal_ids(dialog, affirmative_id=wx.ID_OK, escape_id=wx.ID_CANCEL)
+    _rebuild(select_id=preselect)
     wx.CallAfter(listing.SetFocus)
     try:
         show_modal_dialog(dialog, "Download Optional Components")

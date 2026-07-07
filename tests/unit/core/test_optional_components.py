@@ -264,3 +264,22 @@ def test_verify_component_tool_uses_availability(monkeypatch) -> None:
 
 def verify_via(ocmod, cid):
     return ocmod.verify_component(cid)
+
+
+def test_voice_preview_phrase_prefers_app_root_file(tmp_path, monkeypatch) -> None:
+    from quill.core.optional_components import voice_preview_phrase
+
+    scripts = tmp_path / "scripts"
+    scripts.mkdir()
+    (scripts / "phrase.txt").write_text("Custom preview phrase.", encoding="utf-8")
+    monkeypatch.setenv("QUILL_APP_ROOT", str(tmp_path))
+    assert voice_preview_phrase() == "Custom preview phrase."
+
+
+def test_voice_preview_phrase_is_never_empty(monkeypatch) -> None:
+    # With no app-root override, it reads the repo scripts/phrase.txt or the
+    # built-in default -- either way a non-empty phrase.
+    monkeypatch.delenv("QUILL_APP_ROOT", raising=False)
+    from quill.core.optional_components import voice_preview_phrase
+
+    assert voice_preview_phrase().strip()

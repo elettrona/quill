@@ -167,13 +167,36 @@ def remove_component(component_id: str) -> bool:
     return True
 
 
-# The line a voice engine speaks when the user presses Test (the UI formats
-# {engine} and plays it through the existing voice preview) -- warm, plain
-# confirmation that the install works.
-TEST_BLURB = (
-    "Hello from QUILL. If you can hear this, the {engine} voice is installed "
-    "and ready to read your writing aloud."
+# The phrase a voice speaks on Test in the Download Optional Components hub.
+# It lives in scripts/phrase.txt so it can be tuned without a code change; the
+# built-in default is the same text, used on shipped installs where the file is
+# not alongside the app.
+_DEFAULT_PREVIEW_PHRASE = (
+    "QUILL is where your words come to life, turning quiet thoughts into finished "
+    "pages with a little sprinkle of everyday magic."
 )
+
+
+def voice_preview_phrase() -> str:
+    """Return the Test/preview phrase, read from ``scripts/phrase.txt`` when
+    present (the app root or the source tree), else the built-in default."""
+    import os
+
+    candidates: list[Path] = []
+    app_root = os.environ.get("QUILL_APP_ROOT", "").strip()
+    if app_root:
+        candidates.append(Path(app_root) / "scripts" / "phrase.txt")
+    candidates.append(Path(__file__).resolve().parents[2] / "scripts" / "phrase.txt")
+    for path in candidates:
+        try:
+            if path.is_file():
+                text = path.read_text(encoding="utf-8").strip()
+                if text:
+                    return text
+        except Exception:  # noqa: BLE001 - any read problem falls back to the default
+            continue
+    return _DEFAULT_PREVIEW_PHRASE
+
 
 # A clean, well-recognised phrase QUILL speaks with SAPI 5 and then feeds back
 # through an offline STT engine to prove transcription works (the R2 loop).

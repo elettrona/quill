@@ -17631,7 +17631,9 @@ class MainFrame(
 
         _os.startfile(str(sample_path))
 
-    def _preview_voice(self, engine: str, voice_id: str, *, live: bool = False) -> None:
+    def _preview_voice(
+        self, engine: str, voice_id: str, *, live: bool = False, text: str | None = None
+    ) -> None:
         """Preview *voice_id* through *engine* on a background thread.
 
         ``live`` True means the voice is downloaded and ready, so synthesize the
@@ -17643,7 +17645,7 @@ class MainFrame(
         import tempfile as _tmpfile
         from pathlib import Path as _Path
 
-        sample = self._PREVIEW_TEXT
+        sample = text or self._PREVIEW_TEXT
         s = self.settings
 
         # Not downloaded: play the bundled pre-recorded sample (same phrase the
@@ -26639,13 +26641,11 @@ class MainFrame(
         msg = (
             "QUILL Braille Pack is not installed.\n\n"
             "The Braille Pack adds braille translation, BRF/BRL file export, "
-            "and braille display support. It is an optional component included "
-            "in the installer.\n\n"
-            "Choose 'Install Braille Pack' to run the installer and add it now "
-            "(QUILL will close). Choose 'Not Now' to skip; you can install it "
-            "later by re-running the QUILL installer or from Help > Enable "
-            "Braille Mode. Choose 'Disable Braille Mode' if you do not need "
-            "braille tools."
+            "and braille display support. It is a quick on-demand download.\n\n"
+            "Choose 'Set Up Braille' to open Download Optional Components with the "
+            "Braille Pack ready to fetch. Choose 'Not Now' to skip; you can add it "
+            "any time from Help > Download Optional Components. Choose 'Disable "
+            "Braille Mode' if you do not need braille tools."
         )
         with wx.MessageDialog(
             self.frame,
@@ -26654,7 +26654,7 @@ class MainFrame(
             wx.YES_NO | wx.CANCEL | wx.NO_DEFAULT | wx.ICON_INFORMATION,
         ) as dlg:
             if hasattr(dlg, "SetYesNoCancelLabels"):
-                dlg.SetYesNoCancelLabels("Install Braille Pack", "Not Now", "Disable Braille Mode")
+                dlg.SetYesNoCancelLabels("Set Up Braille", "Not Now", "Disable Braille Mode")
             apply_modal_ids(dlg, affirmative_id=wx.ID_YES, escape_id=wx.ID_NO)
             result = self._show_modal_dialog(dlg, "QUILL Braille Pack")
 
@@ -26666,18 +26666,20 @@ class MainFrame(
             return
         if result != wx.ID_YES:
             self._set_status(
-                "Braille Pack install skipped. Use Help > Enable Braille Mode to install later."
+                "Braille Pack skipped. Help > Download Optional Components has it any time."
             )
             return
 
-        # Look for a cached copy of the installer left in the updates folder.
-        cached = self._find_cached_quill_installer()
-        if cached is not None:
-            self._launch_installer(cached)
-        else:
-            # No cached installer: trigger a fresh download via check-for-updates.
-            self._set_status("Downloading installer to add Braille Pack...")
-            self.check_for_updates(silent_no_update=False)
+        # Braille is an on-demand download now: route the user into the unified
+        # Download Optional Components hub, preselected on the braille pack, with a
+        # one-line popup so a screen-reader user knows exactly what to do there.
+        self._show_message_box(
+            "Opening Download Optional Components. The Braille Pack is selected — "
+            "press Download to set it up, then Close when it finishes.",
+            "Set Up Braille",
+            wx.ICON_INFORMATION | wx.OK,
+        )
+        self.open_optional_components(preselect="braille")
 
     def _find_cached_quill_installer(self):
         """Return the Path of a cached Quill-Setup-*.exe in the updates folder, or None."""
