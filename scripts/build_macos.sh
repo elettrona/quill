@@ -7,6 +7,17 @@ set -euo pipefail
 
 ENTITLEMENTS="scripts/macos_entitlements.plist"
 
+echo "==> Generating build-identity module (quill/_build_info.py)"
+# Best-effort: requires build/version.toml (gitignored, hand-maintained), so a
+# bare CI checkout without one falls through to setup_macos.py's own
+# get_short_version()/__version__ fallback instead of failing the build.
+python tools/generate_build_info.py || echo "!! build/version.toml not found - shipping without a channel-annotated version label"
+
+echo "==> Generating bundled feedback-hub token (quill/_feedback_token.py)"
+# Best-effort: an unset QUILL_FEEDBACK_GITHUB_TOKEN must not fail the build --
+# it just means Report a Bug falls back to the user's own token, if any.
+python tools/generate_feedback_token.py
+
 echo "==> Building .app with py2app"
 python scripts/setup_macos.py py2app
 

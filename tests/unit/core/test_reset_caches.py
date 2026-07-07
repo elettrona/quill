@@ -101,7 +101,14 @@ def test_thesaurus_reset_caches_acquires_load_lock() -> None:
     assert thesaurus._INDEX is None
 
 
+@pytest.mark.timeout(90)
 def test_thesaurus_preload_after_reset_is_idempotent() -> None:
+    # windows-latest CI runners occasionally take much longer than the
+    # global 30s budget to read+parse the 18.5MB th_en_US_v2.dat on first
+    # touch (Windows Defender scanning a freshly checked-out file), the
+    # same flakiness tests/unit/core/test_thesaurus.py is excluded from
+    # Windows CI runs for. A longer timeout keeps this test's real
+    # reset/preload coverage instead of skipping it outright.
     thesaurus.reset_caches()
     thesaurus.preload()
     thesaurus.preload()
