@@ -2,7 +2,7 @@
 <html xmlns="http://www.w3.org/1999/xhtml">
 <head>
   <meta charset="utf-8" />
-  <meta name="generator" content="pandoc 3.10" />
+  <meta name="generator" content="pandoc" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
   <title>userguide</title>
   <style>
@@ -156,12 +156,8 @@
       text-decoration: none;
     }
     span.smallcaps{font-variant: small-caps;}
-    div.columns{display: flex; gap: 1.5em;}
-    div.column{flex: auto;}
-    @media screen {
-    div.columns{gap: min(4vw, 1.5em);}
-    div.column{overflow-x: auto;}
-    }
+    div.columns{display: flex; gap: min(4vw, 1.5em);}
+    div.column{flex: auto; overflow-x: auto;}
     div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
     /* The extra [class] is a hack that increases specificity enough to
        override a similar rule in reveal.js */
@@ -2119,22 +2115,42 @@ fallback when you need it.</li>
 Components (Help menu)</h4>
 <p>To keep the installer small, QUILL fetches several large or optional
 pieces only when you want them. <strong>Help &gt; Download Optional
-Components...</strong> is the single place to see and get them all. It
-lists each component — the <strong>offline speech engine</strong>
-(whisper.cpp), the very-low-resource <strong>Vosk</strong> speech
-engine, <strong>Kokoro</strong> neural voices, <strong>eSpeak
-NG</strong> and <strong>DECtalk</strong> voices, the
-<strong>FFmpeg</strong> audio-export helper, <strong>Pandoc</strong>
-(document conversion for Word, ODT, EPUB, and RTF), the <strong>braille
-translation pack</strong> (liblouis tables and BRF profiles for the
-Translation submenu and BRF/embossing export), and any non-English
-<strong>spell-check dictionaries</strong> — and shows for each whether
-it is <strong>Installed</strong> or <strong>Available to
-download</strong>, along with its approximate size. Select a component
-and choose <strong>Download</strong> to fetch it; each download is
-checksum-verified and shows its own progress. Everything here is
-optional — the base app, and Windows' built-in SAPI 5 voices, work
-without any of it — so download only what you need.</p>
+Components...</strong> is the single place to see, get, test, and remove
+them all. It lists each component — most important first:
+<strong>Pandoc</strong> (document conversion for Word, ODT, EPUB, and
+RTF), the <strong>braille translation pack</strong> (liblouis tables and
+BRF profiles for the Translation submenu and BRF/embossing export), the
+<strong>offline speech engine</strong> (whisper.cpp),
+<strong>Kokoro</strong> and <strong>Piper</strong> neural voices,
+<strong>eSpeak NG</strong> and <strong>DECtalk</strong> voices, the
+<strong>FFmpeg</strong> audio-export helper, the
+<strong>Node.js</strong> runtime (for Node Quillins and the Developer
+Console's TypeScript interface), the <strong>mpv player engine</strong>,
+the <strong>MathCAT</strong> math-speech engine, the very-low-resource
+<strong>Vosk</strong> engine, and any non-English <strong>spell-check
+dictionaries</strong>. Each row shows whether it is
+<strong>Installed</strong> or <strong>Available to download</strong> and
+its size, and selecting a row fills a plain-language description of what
+it enables and its impact.</p>
+<ul>
+<li><strong>Download</strong> fetches a not-yet-installed component —
+checksum-verified, with its own progress.</li>
+<li><strong>Test</strong> proves an installed component works, so you
+can be confident before you rely on it: a voice speaks a short sample so
+you actually hear it; the offline speech engine transcribes a spoken
+phrase and tells you what it heard; tools report their version. If a
+test fails, QUILL offers to send a bug report with the technical
+details.</li>
+<li><strong>Remove</strong> deletes QUILL's downloaded copy of an
+installed component and turns its features back off (removing a voice
+engine you were using, for example, switches Read Aloud back to the
+system voice). It only ever removes copies QUILL downloaded — never a
+system tool or a shared install.</li>
+</ul>
+<p>Everything here is optional — the base app, and Windows' built-in
+SAPI 5 voices, work without any of it — so download only what you need.
+In <strong>portable mode</strong>, components install into your portable
+data folder, so your whole setup travels with you on the drive.</p>
 <p><strong>Pandoc downloads itself when you need it.</strong> You do not
 have to visit this dialog first: the moment you <strong>Import</strong>
 or <strong>Export</strong> a Word, ODT, EPUB, or RTF document (or run

@@ -1,6 +1,6 @@
 # QUILL 0.9.0 Beta 2 - Polish Release 1
 
-### The screen-reader-first writing studio, built by the people who depend on it.
+## The screen-reader-first writing studio, built by the people who depend on it.
 
 *From Community Access. Free. Optional by design. Private by default. Yours to make quiet.*
 
@@ -31,6 +31,17 @@ on **Check for Updates**.
   **Tools > Speech > Install Kokoro ONNX**.
 - **Speech dialogs open with the right control focused** - Speech Hub, Manage
   Speech Models, and Manage Voices no longer land on the OK/Cancel button.
+- **Downloading extras is now a warm, one-stop experience.** **Help > Download
+  Optional Components** was tidied into a proper hub: the things most people want
+  come first (Pandoc, then the braille pack), every row explains what it does and
+  how big it is, and the window opens instantly instead of pausing while it checks
+  what you have. For anything already installed you get two new buttons: **Test**,
+  which *proves it works* - a voice reads you a sample so you hear it, the offline
+  speech engine listens to a spoken phrase and shows you what it heard, and tools
+  report their version - and **Remove**, which deletes QUILL's copy and turns its
+  features back off. Piper voices and the Node.js runtime are now in the list too,
+  everything lands in your portable folder when you run QUILL portably, and if a
+  download or test ever fails, QUILL offers to send a bug report with the details.
 - **A simpler installer - no more component checkboxes.** Installing Beta 1
   asked you to pick optional components (Pandoc, Node.js, Piper, Braille pack),
   several of which did nothing because those parts are downloaded when you need

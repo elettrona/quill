@@ -4343,6 +4343,36 @@ reachable where the user already is (the feature surface, a Help-menu
 Setup-Wizard offer), never block the UI thread, are disabled by Safe
 Mode, and present one consistent surface across OCR, Scribe, speech, and
 voices (the AI Hub Services framework).</p>
+<p><strong>The Download Optional Components hub is a first-class place
+(design spec:
+<code>docs/superpowers/specs/2026-07-07-download-components-experience-design.md</code>).</strong>
+The wx-free status model
+(<code>quill/core/optional_components.py</code>) sorts components by
+importance (Pandoc and the braille pack first) and covers every
+component QUILL can fetch — a completeness guard test asserts each
+hosted <code>release_assets</code> component is catalogued, and Piper
+and Node.js (missing before) are now listed. The dialog
+(<code>quill/ui/optional_components_dialog.py</code>) shows a size on
+every row and a rich, read-only description of the focused component
+(<code>describe_component</code>), and gathers the list on a worker
+thread so it opens instantly rather than stalling on tool version
+probes. For an installed component it offers <strong>Test</strong> — a
+per-component self-test that maintains confidence: voice engines speak a
+sample (the phrase lives in <code>scripts/phrase.txt</code>), offline
+STT engines run a SAPI→transcribe→compare loop and report what they
+heard (<code>verify_component</code>), and tools report their version —
+and <strong>Remove</strong>
+(<code>removable_path</code>/<code>remove_component</code>), which
+deletes only QUILL-downloaded copies <strong>under the active data
+dir</strong> (the portable data folder in portable mode; never a system
+tool, a bundled <code>{app}</code> copy, or anything outside it) and
+closes the loop by resetting the active Read Aloud engine to SAPI 5 when
+the removed engine was in use. Any download or self-test failure is
+captured (<code>DownloadFailure</code>, plus the pip error logged to
+<code>quill.log</code>) and offered as a one-click bug report through
+the diagnostics bundle. The scattered startup braille-pack prompt now
+routes into this hub, preselected on the braille pack with a guiding
+popup, rather than running its own installer.</p>
 <p><strong>Size / RAM reference (current observations, to be
 re-baselined by the footprint report).</strong>
 <code>scripts/footprint_report.py</code> emits the diffable size/machine

@@ -2257,6 +2257,27 @@ entry, and an optional first-run Setup-Wizard offer), never block the UI thread,
 disabled by Safe Mode, and present one consistent surface across OCR, Scribe, speech, and
 voices (the AI Hub Services framework).
 
+**The Download Optional Components hub is a first-class place (design spec:
+`docs/superpowers/specs/2026-07-07-download-components-experience-design.md`).** The wx-free
+status model (`quill/core/optional_components.py`) sorts components by importance (Pandoc and
+the braille pack first) and covers every component QUILL can fetch — a completeness guard test
+asserts each hosted `release_assets` component is catalogued, and Piper and Node.js (missing
+before) are now listed. The dialog (`quill/ui/optional_components_dialog.py`) shows a size on
+every row and a rich, read-only description of the focused component (`describe_component`),
+and gathers the list on a worker thread so it opens instantly rather than stalling on tool
+version probes. For an installed component it offers **Test** — a per-component self-test that
+maintains confidence: voice engines speak a sample (the phrase lives in `scripts/phrase.txt`),
+offline STT engines run a SAPI→transcribe→compare loop and report what they heard
+(`verify_component`), and tools report their version — and **Remove**
+(`removable_path`/`remove_component`), which deletes only QUILL-downloaded copies **under the
+active data dir** (the portable data folder in portable mode; never a system tool, a bundled
+`{app}` copy, or anything outside it) and closes the loop by resetting the active Read Aloud
+engine to SAPI 5 when the removed engine was in use. Any download or self-test failure is
+captured (`DownloadFailure`, plus the pip error logged to `quill.log`) and offered as a
+one-click bug report through the diagnostics bundle. The scattered startup braille-pack prompt
+now routes into this hub, preselected on the braille pack with a guiding popup, rather than
+running its own installer.
+
 **Size / RAM reference (current observations, to be re-baselined by the footprint report).**
 `scripts/footprint_report.py` emits the diffable size/machine baseline under
 `docs/planning/footprint/`. Offline speech models (download size; Faster Whisper's on-disk
