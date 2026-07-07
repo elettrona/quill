@@ -1361,12 +1361,11 @@ def _prune_embedded_runtime(site_packages: Path) -> None:
     imported by ``quill/ui`` and ``quill/core`` at runtime, so they must ship
     even though most of ``quill/tools`` is otherwise CI-only.
 
-    Babel is pruned as build-only (AI footprint plan, Phase 1). It is used solely
-    to *compile* translations (``pybabel`` / ``quill/tools/compile_translations.py``)
-    at build time; the shipped app loads the resulting ``.mo`` files through the
-    standard-library ``gettext`` (``quill/core/i18n.py``) and never imports ``babel``
-    at runtime. Translation compilation runs as its own step against ``.po`` sources
-    before bundling, not from the embedded runtime, so removing Babel here is safe.
+    Babel is intentionally NOT pruned. QUILL's own i18n uses stdlib ``gettext``
+    and never imports ``babel`` at runtime, so it looks build-only -- but
+    ``kokoro-onnx`` pulls it in transitively (``kokoro_onnx -> phonemizer ->
+    segments -> csvw -> babel.numbers``). Pruning it broke Kokoro's onnx path on
+    a clean build (#881), so babel stays bundled.
     """
     removable = [
         # Build tools - used during pip install, not at runtime. pip stays (it
@@ -1381,12 +1380,12 @@ def _prune_embedded_runtime(site_packages: Path) -> None:
         "PyWin32.chm",
         "adodbapi",
         "isapi",
-        # Babel: build-only (compiles translations); runtime i18n uses stdlib
-        # gettext and never imports babel. ~29 MB of package + CLDR locale data.
-        "babel",
-        "Babel",
-        "babel-*",
-        "Babel-*",
+        # NOTE: babel is NOT pruned. It looks build-only (we compile translations
+        # with it and runtime i18n uses stdlib gettext), but kokoro-onnx pulls it
+        # in transitively at runtime -- kokoro_onnx -> phonemizer -> segments ->
+        # csvw -> `import babel.numbers`. Pruning it made Kokoro's onnx path fail
+        # to import on a clean build, silently falling back to the torch path and
+        # showing "Kokoro needs one more component" (#881). Keep babel bundled.
     ]
     total_removed = 0
     for pattern in removable:
