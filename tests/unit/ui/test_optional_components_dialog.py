@@ -48,14 +48,24 @@ def test_dialog_delegates_to_controller_and_uses_the_seam() -> None:
 
 def test_open_optional_components_routes_and_covers_all_downloads() -> None:
     src = _src("main_frame_speech.py")
-    # Stay-open hub via a controller, preselect support, and the two newly
-    # catalogued downloads wired into the dispatch.
+    # Stay-open hub via a controller, preselect support, and the downloads wired
+    # into the dispatch.
     assert "preselect" in src
-    assert '"piper": self.download_piper_exe' in src
     assert '"node": self.download_node_runtime' in src
     assert "def download_node_runtime" in src
     assert "def _test_optional_component" in src
     assert "def _remove_optional_component" in src
+
+
+def test_hub_downloads_reopen_the_hub_when_done() -> None:
+    """After a download the hub reopens, so the user is never dropped out of it
+    (the hub closes itself to dispatch)."""
+    src = _src("main_frame_speech.py")
+    assert "def _back(" in src and "self.open_optional_components()" in src
+    # Voice/model handlers get the reopen callback and honour it in switch_to_ok.
+    assert "self.download_piper_exe(on_done=_back)" in src
+    assert "self.download_espeak_exe(on_done=_back)" in src
+    assert "on_ok=(lambda: on_done(True)) if on_done else" in src
 
 
 def test_startup_braille_prompt_routes_into_the_hub() -> None:

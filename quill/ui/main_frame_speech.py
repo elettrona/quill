@@ -334,21 +334,29 @@ class SpeechCommandsMixin:
 
             _download_then_apply(wx, self, chosen[len("spell-") :])
             return
+
+        # The hub closes itself to dispatch a download, so every handler reopens it
+        # on completion -- the user is never dropped out into the editor or another
+        # tab. Handlers take an on_done(success) callback for this; the guided
+        # picker and MP3 support already return to the hub themselves.
+        def _back(_ok: bool = True) -> None:
+            self.open_optional_components()
+
         actions = {
             # The offline-speech row opens the guided picker (engine + model),
             # not the bare engine download -- meet people where they are.
             "whispercpp": self.open_guided_offline_speech,
-            "vosk": self.download_vosk,
+            "vosk": lambda: self.download_vosk(on_done=_back),
             "kokoro": self._download_kokoro_models,
-            "piper": self.download_piper_exe,
-            "espeak": self.download_espeak_exe,
-            "dectalk": self.download_dectalk_exe,
+            "piper": lambda: self.download_piper_exe(on_done=_back),
+            "espeak": lambda: self.download_espeak_exe(on_done=_back),
+            "dectalk": lambda: self.download_dectalk_exe(on_done=_back),
             "ffmpeg": self.download_ffmpeg,
-            "pandoc": self.download_pandoc,
+            "pandoc": lambda: self.download_pandoc(on_done=_back),
             "node": self.download_node_runtime,
-            "braille": self.download_braille_pack,
-            "libmpv": self.download_libmpv,
-            "mathcat": self.download_mathcat,
+            "braille": lambda: self.download_braille_pack(on_done=_back),
+            "libmpv": lambda: self.download_libmpv(on_done=_back),
+            "mathcat": lambda: self.download_mathcat(on_done=_back),
             "mp3": self.download_mp3_support,
         }
         action = actions.get(chosen)
@@ -1123,7 +1131,7 @@ class SpeechCommandsMixin:
             target=_run, daemon=True
         ).start()
 
-    def download_vosk(self) -> None:
+    def download_vosk(self, *, on_done: Callable[[bool], None] | None = None) -> None:
         """Install the optional Vosk engine on demand (#669 follow-up).
 
         Vosk (Kaldi-based, ~50 MB) runs on very low RAM hardware with no GPU.
@@ -1201,13 +1209,15 @@ class SpeechCommandsMixin:
             )
             wx.CallAfter(self._set_status, "Vosk installed.")
             wx.CallAfter(self._announce, "Vosk installed.")
-            progress.switch_to_ok(done, on_ok=self.open_speech_models)
+            progress.switch_to_ok(
+                done, on_ok=(lambda: on_done(True)) if on_done else self.open_speech_models
+            )
 
         threading.Thread(  # GATE-40-OK: Vosk install worker.
             target=_run, daemon=True
         ).start()
 
-    def download_dectalk_exe(self) -> None:
+    def download_dectalk_exe(self, *, on_done: Callable[[bool], None] | None = None) -> None:
         """Download the DECtalk runtime (~30 MB) on demand.
 
         DECtalk is a classic American English synthesizer with 9 distinct voices.
@@ -1266,13 +1276,16 @@ class SpeechCommandsMixin:
             done = "DECtalk is ready. Click OK to open Manage Voices and choose a voice."
             wx.CallAfter(self._set_status, "DECtalk ready.")
             wx.CallAfter(self._announce, "DECtalk ready.")
-            progress.switch_to_ok(done, on_ok=self.choose_read_aloud_configuration)
+            progress.switch_to_ok(
+                done,
+                on_ok=(lambda: on_done(True)) if on_done else self.choose_read_aloud_configuration,
+            )
 
         threading.Thread(  # GATE-40-OK: DECtalk runtime download worker.
             target=_run, daemon=True
         ).start()
 
-    def download_piper_exe(self) -> None:
+    def download_piper_exe(self, *, on_done: Callable[[bool], None] | None = None) -> None:
         """Download the Piper TTS engine (~22 MB) on demand.
 
         Piper is a fast, local, high-quality neural TTS engine. The Windows AMD64
@@ -1349,7 +1362,10 @@ class SpeechCommandsMixin:
             done = "Piper is ready. Click OK to open Manage Voices and download a voice model."
             wx.CallAfter(self._set_status, "Piper ready.")
             wx.CallAfter(self._announce, "Piper ready.")
-            progress.switch_to_ok(done, on_ok=self.choose_read_aloud_configuration)
+            progress.switch_to_ok(
+                done,
+                on_ok=(lambda: on_done(True)) if on_done else self.choose_read_aloud_configuration,
+            )
 
         threading.Thread(  # GATE-40-OK: Piper engine download worker.
             target=_run, daemon=True
@@ -1436,7 +1452,7 @@ class SpeechCommandsMixin:
             target=_run, daemon=True
         ).start()
 
-    def download_espeak_exe(self) -> None:
+    def download_espeak_exe(self, *, on_done: Callable[[bool], None] | None = None) -> None:
         """Download and extract eSpeak-NG (~50 MB) on demand.
 
         Downloads the official eSpeak-NG Windows x64 MSI from GitHub and
@@ -1519,7 +1535,10 @@ class SpeechCommandsMixin:
             done = "eSpeak-NG is ready. Click OK to open Manage Voices and choose an accent."
             wx.CallAfter(self._set_status, "eSpeak-NG ready.")
             wx.CallAfter(self._announce, "eSpeak-NG ready.")
-            progress.switch_to_ok(done, on_ok=self.choose_read_aloud_configuration)
+            progress.switch_to_ok(
+                done,
+                on_ok=(lambda: on_done(True)) if on_done else self.choose_read_aloud_configuration,
+            )
 
         threading.Thread(  # GATE-40-OK: eSpeak-NG download worker.
             target=_run, daemon=True
