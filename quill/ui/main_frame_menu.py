@@ -1149,7 +1149,7 @@ class MenuBuilderMixin:
             self._id_remove_duplicate_lines,
             self._menu_label(_("Remove &Duplicate Lines"), "edit.remove_duplicate_lines"),
         )
-        format_menu.AppendSubMenu(sort_menu, _("Sort && &Filter"))
+        format_menu.AppendSubMenu(sort_menu, _("Sort and &Filter"))
 
         # --- Whitespace submenu ---
         ws_menu = wx.Menu()
@@ -1183,7 +1183,7 @@ class MenuBuilderMixin:
         # --- HTML & Encoding submenu ---
         html_menu = wx.Menu()
         self._append_power_tools_html_encoding_items(html_menu)
-        format_menu.AppendSubMenu(html_menu, _("&HTML && Encoding"))
+        format_menu.AppendSubMenu(html_menu, _("&HTML and Encoding"))
 
         # --- Markdown submenu (#257: profiles, table of contents, line breaks) ---
         markdown_menu = wx.Menu()
@@ -1791,7 +1791,7 @@ class MenuBuilderMixin:
             self._id_quill_eraser_selection,
             self._menu_label(_("Quill Eraser on &Selection..."), "tools.quill_eraser_selection"),
         )
-        tools_menu.AppendSubMenu(writing_menu, _("&Writing && Language"))
+        tools_menu.AppendSubMenu(writing_menu, _("&Writing and Language"))
 
         # Reading & Dictation (merges Read Aloud, Dictation, OCR) ------------
         read_aloud_menu = wx.Menu()
@@ -1905,7 +1905,7 @@ class MenuBuilderMixin:
             self._menu_label(_("&Delete OCR Temporary Files"), "tools.delete_ocr_temp"),
         )
         reading_menu.AppendSubMenu(conversion_menu, _("&OCR and Document Conversion"))
-        tools_menu.AppendSubMenu(reading_menu, _("R&eading && Dictation"))
+        tools_menu.AppendSubMenu(reading_menu, _("R&eading and Dictation"))
         # Tools > Speech: flat menu consolidating offline speech, Windows dictation,
         # and model management (#669). Previously split across Reading & Dictation >
         # Dictation (Windows) and Speech > Whisperer (offline). One menu is simpler.
@@ -2544,7 +2544,7 @@ class MenuBuilderMixin:
             _("Open &Diagnostics Folder"),
         )
         customize_support_menu.Append(self._id_check_updates, _("Check for &Updates"))
-        tools_menu.AppendSubMenu(customize_support_menu, _("&Customize && Support"))
+        tools_menu.AppendSubMenu(customize_support_menu, _("&Customize and Support"))
 
         # The former top-level "Settings" menu is gone. All configuration now
         # lives together under Tools > Customize (Preferences, Customize Menus,

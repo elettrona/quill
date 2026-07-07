@@ -176,20 +176,20 @@
   </style>
 </head>
 <body>
-<h1 id="quill-090-beta-2---polish-release-1">QUILL 0.9.0 Beta 2 - Polish
-Release 1</h1>
+<h1 id="quill-0.9.0-beta-2---polish-release-1">QUILL 0.9.0 Beta 2 -
+Polish Release 1</h1>
 <h3
-id="the-screen-reader-first-writing-studio-built-by-the-people-who-depend-on-it">The
+id="the-screen-reader-first-writing-studio-built-by-the-people-who-depend-on-it.">The
 screen-reader-first writing studio, built by the people who depend on
 it.</h3>
 <p><em>From Community Access. Free. Optional by design. Private by
 default. Yours to make quiet.</em></p>
-<p>This is the narrative companion to the <strong>"0.9.0 Beta
-2"</strong> section of <code>CHANGELOG.md</code> (the canonical,
+<p>This is the narrative companion to the <strong>“0.9.0 Beta
+2”</strong> section of <code>CHANGELOG.md</code> (the canonical,
 append-as-you-go log). Per the commitment made at Beta 1, <strong>no new
 features land in this release</strong> - only bug fixes and polish,
 driven directly by beta tester reports. The same text appears in-app
-under <strong>Help &gt; What's New</strong> and on <strong>Check for
+under <strong>Help &gt; What’s New</strong> and on <strong>Check for
 Updates</strong>.</p>
 <hr />
 <h2 id="fixed-in-this-beta">Fixed in this beta</h2>
@@ -201,9 +201,40 @@ BOM - used to throw an unhandled error the moment you opened it. QUILL
 now falls back automatically and tells you when it did, in the status
 bar.</li>
 <li><strong>A stalled GPU check could freeze the whole app.</strong> The
-Speech and Dictation options' hardware probe ran with no timeout,
-directly on the UI thread, every time the dialog opened. It's now
+Speech and Dictation options’ hardware probe ran with no timeout,
+directly on the UI thread, every time the dialog opened. It’s now
 timeout-guarded and only ever runs once per session.</li>
+<li><strong>Whisper model downloads are more resilient.</strong> They
+now go through the same well-tested download library Faster Whisper
+already uses, so a future hiccup on Hugging Face’s side surfaces a
+clear, specific message instead of a generic failure.</li>
+<li><strong>Kokoro voices give you the real fix when something’s
+missing</strong>, instead of two confusing, mostly-unrelated options:
+the message now points straight at <strong>Tools &gt; Speech &gt;
+Install Kokoro ONNX</strong>.</li>
+<li><strong>Speech dialogs open with the right control focused</strong>
+- Speech Hub, Manage Speech Models, and Manage Voices no longer land on
+the OK/Cancel button.</li>
+<li><strong>Read Aloud no longer mispronounces Markdown
+formatting.</strong> Headings, bold text, and links in a Markdown
+document used to be read aloud as literal symbols (sounding garbled,
+especially with Piper voices); they’re now converted to plain, speakable
+text first, live and on export.</li>
+<li><strong>macOS: Pandoc installed from the pandoc.org installer is now
+found.</strong> A QUILL window opened from Finder doesn’t see the same
+folders a Terminal window does; QUILL now checks the common install
+locations directly.</li>
+<li><strong>Fixed doubled ampersands in a few menu titles</strong> -
+“Writing &amp; Language,” “Reading &amp; Dictation,” and others
+sometimes read back as “Writing &amp;&amp; Language.” They now spell out
+“and” instead.</li>
+<li><strong>Added Danish to the Braille Translation menu.</strong> It
+shipped with the underlying engine all along but never made it into
+QUILL’s language list.</li>
+<li><strong>Fixed a crash opening Profiles and Features.</strong> A
+translated profile name wasn’t being fully resolved before being handed
+to the list box, so opening the dialog - from the Tools menu or the
+command palette - could crash.</li>
 </ul>
 <p>More fixes land in this file as they ship - check back before release
 day.</p>

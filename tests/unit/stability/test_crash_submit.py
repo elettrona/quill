@@ -335,6 +335,31 @@ def test_payload_metadata_has_platform_and_portable_flag() -> None:
     assert "boom from a test" in payload.metadata["exception_value"]
     assert payload.metadata["recent_commands"] == ["open_file", "save_file"]
     assert payload.metadata["local_crash_file"] == str(Path("/tmp/crash.txt"))
+    assert "error_code" not in payload.metadata
+
+
+def test_payload_metadata_includes_error_code_for_coded_errors() -> None:
+    from quill.core.error_codes import CodedError
+
+    class _SampleCodedError(CodedError):
+        code = "QUILL-TEST-SAMPLE-CODE"
+
+    try:
+        raise _SampleCodedError("something broke")
+    except _SampleCodedError as exc:
+        exc_type, exc_value, exc_tb = type(exc), exc, exc.__traceback__
+    payload = build_crash_report_payload(
+        exc_type=exc_type,
+        exc_value=exc_value,
+        exc_tb=exc_tb,
+        local_crash_file=None,
+        app_version="0.9.0",
+        portable=False,
+        screen_reader_name=None,
+        recent_commands=(),
+        active_document=None,
+    )
+    assert payload.metadata["error_code"] == "QUILL-TEST-SAMPLE-CODE"
 
 
 def test_payload_metadata_omits_recent_commands_when_empty() -> None:

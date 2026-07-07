@@ -86,6 +86,21 @@ def test_read_aloud_controller_applies_punctuation_level(monkeypatch) -> None:
     assert "dot" in text.split()
 
 
+def test_read_aloud_controller_strips_markdown_before_synthesis(monkeypatch) -> None:
+    """Live Read Aloud must not hand raw markdown syntax to a synthesis engine
+    (fix.md #4) -- espeak-ng-based engines like Piper badly mis-tokenize
+    literal '#'/'**'/'[text](url)' characters, sounding garbled or like the
+    wrong language."""
+    spoken = _record_sapi5_synth(monkeypatch)
+
+    controller = ReadAloudController()
+    controller.start("Read [this](https://example.com) **now**.", 0, "voice-1")
+    assert controller._thread is not None
+    controller._thread.join(timeout=2)
+
+    assert [text for text, _voice in spoken] == ["Read this now."]
+
+
 def test_inter_sentence_pause_zero_returns_immediately() -> None:
     import time
 
@@ -442,9 +457,29 @@ def test_synthesize_with_kokoro_raises_when_package_missing(monkeypatch, tmp_pat
     try:
         synthesize_with_kokoro("Hello", tmp_path / "out.wav")
     except ReadAloudUnavailableError as exc:
-        assert "kokoro" in str(exc).lower()
+        message = str(exc)
+        # Names the actual fix first (#2 beta-2 fix pass), not just the
+        # alternative pip+torch path.
+        assert "Tools > Speech > Install Kokoro ONNX" in message
     else:
         raise AssertionError("Expected ReadAloudUnavailableError")
+
+
+def test_kokoro_engine_ready_requires_package_not_just_models(monkeypatch) -> None:
+    """kokoro_onnx_ready() alone only checks model files on disk; a UI wired to
+    it alone can claim Kokoro is ready when the pip package was never
+    installed (or its install failed) -- the actual bug behind #2."""
+    from quill.core.speech import engine_install
+
+    monkeypatch.setattr(read_aloud_module, "kokoro_onnx_ready", lambda *a, **k: True)
+    monkeypatch.setattr(engine_install, "is_kokoro_onnx_available", lambda: False)
+    assert read_aloud_module.kokoro_engine_ready() is False
+
+    monkeypatch.setattr(engine_install, "is_kokoro_onnx_available", lambda: True)
+    assert read_aloud_module.kokoro_engine_ready() is True
+
+    monkeypatch.setattr(read_aloud_module, "kokoro_onnx_ready", lambda *a, **k: False)
+    assert read_aloud_module.kokoro_engine_ready() is False
 
 
 _CANONICAL_KOKORO_IDS: set[str] = {

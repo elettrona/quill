@@ -90,15 +90,15 @@ _CTRL_ALT_DOCUMENTED: frozenset[str] = frozenset({
 # (see _check_required_clusters) so a comment mentioning a cluster name
 # cannot satisfy the gate.
 _REQUIRED_CLUSTER_LABELS: tuple[tuple[str, str], ...] = (
-    ("Reading & Dictation", "R&eading && Dictation"),
+    ("Reading & Dictation", "R&eading and Dictation"),
     ("Comparison", "C&omparison"),
     ("Watch Folder", "&Watch Folder"),
     # AI was promoted from a Tools cluster to a top-level "&AI" menu (2026-06-27;
     # see PRD section 5.84a), so it is no longer a required Tools-menu cluster.
     ("Advanced", "&Advanced"),
     ("Quillins", "&Quillins"),
-    ("Customize & Support", "&Customize && Support"),
-    ("Writing & Language", "&Writing && Language"),
+    ("Customize & Support", "&Customize and Support"),
+    ("Writing & Language", "&Writing and Language"),
 )
 
 
@@ -224,6 +224,39 @@ def _check_required_clusters(menu_source: str) -> list[str]:
     return errors
 
 
+def _check_no_literal_double_ampersand(menu_source: str) -> list[str]:
+    """Return error strings for AppendSubMenu labels containing a literal "&&".
+
+    #876: NVDA read submenu headers such as "Writing & Language" as literal
+    "Writing && Language" -- wx's usual "&&" -> "&" escape did not collapse
+    for these submenu-header labels the way it does for leaf menu items with
+    a single "&" mnemonic. Rather than depend on an escape sequence whose
+    behavior isn't reliable for this call site, submenu headers must spell a
+    literal ampersand out as "and" instead of "&&".
+    """
+    errors: list[str] = []
+    try:
+        tree = ast.parse(menu_source, filename=str(_MENU_PATH))
+    except SyntaxError as exc:
+        return [f"  SyntaxError parsing main_frame_menu.py: {exc}"]
+
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.Call):
+            continue
+        func = node.func
+        if not (isinstance(func, ast.Attribute) and func.attr == "AppendSubMenu"):
+            continue
+        if len(node.args) < 2:
+            continue
+        label = _label_text(node.args[1])
+        if label is not None and "&&" in label:
+            errors.append(
+                f"  AppendSubMenu label {label!r} contains a literal '&&' "
+                "(#876) -- spell it as 'and' instead."
+            )
+    return errors
+
+
 def _check_depth(menu_source: str) -> list[str]:
     """Return error strings for menus that create three or more submenu levels.
 
@@ -325,6 +358,11 @@ def run_checks() -> list[str]:
     if depth:
         errors.append("Three-level nesting violations (§10.4 two-level cap):")
         errors.extend(depth)
+
+    double_ampersand = _check_no_literal_double_ampersand(menu_source)
+    if double_ampersand:
+        errors.append("Submenu labels with a literal '&&' (#876):")
+        errors.extend(double_ampersand)
 
     # Delegate the binding/label consistency check (4th invariant) so the
     # gate catches label/binding drift between main_frame_menu.py and

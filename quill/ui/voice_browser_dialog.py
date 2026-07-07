@@ -19,7 +19,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
-from quill.ui.dialog_contract import apply_modal_ids
+from quill.ui.dialog_contract import apply_modal_ids, focus_primary_control
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -627,6 +627,7 @@ class VoiceBrowserDialog:
         """Open the dialog. Returns what the user chose, or None on cancel."""
         if self._embed_mode:
             raise RuntimeError("VoiceBrowserDialog.show() cannot be called in embed mode")
+        focus_primary_control(self.dialog)
         result_code = show_modal_dialog(self.dialog, "Manage Voices & Reading Aloud")
         if result_code == self._wx.ID_OK and self._result is None:
             # User clicked OK without using a special action button.

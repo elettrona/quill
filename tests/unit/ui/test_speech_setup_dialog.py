@@ -8,7 +8,16 @@ the wx dialog.
 
 from __future__ import annotations
 
+from pathlib import Path
+
 from quill.ui.speech_setup_dialog import SpeechSetupDialog, build_engine_descriptors
+
+_MODULE_PATH = Path(__file__).resolve().parents[3] / "quill" / "ui" / "speech_setup_dialog.py"
+
+
+def test_module_calls_focus_primary_control() -> None:
+    src = _MODULE_PATH.read_text(encoding="utf-8")
+    assert "focus_primary_control" in src
 
 
 class _IdProvider:

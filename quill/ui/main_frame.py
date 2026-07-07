@@ -17762,7 +17762,7 @@ class MainFrame(
             discover_dectalk_executable,
             discover_espeak_executable,
             discover_piper_executable,
-            kokoro_onnx_ready,
+            kokoro_engine_ready,
         )
         from quill.core.speech.engine_install import (
             is_faster_whisper_available,
@@ -17794,7 +17794,7 @@ class MainFrame(
             "dectalk": discover_dectalk_executable(self.settings.read_aloud_dectalk_executable)
             is not None,
             "piper": discover_piper_executable() is not None,
-            "kokoro": kokoro_onnx_ready(),
+            "kokoro": kokoro_engine_ready(),
             "espeak": discover_espeak_executable(self.settings.read_aloud_espeak_executable)
             is not None,
             "elevenlabs": elevenlabs_ready,
@@ -18165,6 +18165,15 @@ class MainFrame(
         text = ""
         if editor is not None:
             text = editor.GetStringSelection().strip() or editor.GetValue().strip()
+        if text:
+            from quill.core.speech.text_polish import clean_markdown_text, polish_for_tts
+
+            # Raw markdown syntax ('#', '**', '[label](url)') reaching a
+            # synthesis engine directly -- Piper's espeak-ng phonemizer badly
+            # mis-tokenizes it, sounding garbled or like the wrong language
+            # (fix.md #4). Batch export and document-to-speech already clean
+            # it; this shares the same sanitizer.
+            text = polish_for_tts(clean_markdown_text(text))
         if not text:
             self._show_message_box(
                 "There is nothing to export. Open or type a document first, then "
@@ -18270,12 +18279,12 @@ class MainFrame(
             espeak_exe_snap = exe
 
         elif engine == "kokoro":
-            from quill.core.read_aloud import kokoro_onnx_ready
+            from quill.core.read_aloud import kokoro_engine_ready
 
-            if not kokoro_onnx_ready():
+            if not kokoro_engine_ready():
                 self._show_message_box(
-                    "Kokoro (neural, offline) is not installed. Open the Speech Hub "
-                    "(Read Aloud settings) to download it before exporting.",
+                    "Kokoro voices need one more component. Tools > Speech > "
+                    "Install Kokoro ONNX will fetch it before exporting.",
                     _TITLE,
                     wx.ICON_ERROR | wx.OK,
                 )
@@ -25926,7 +25935,7 @@ class MainFrame(
             nonlocal entries
             entries = self._combined_profile_entries()
             labels = [
-                name if kind == "built_in" else f"{name} (Custom)"
+                str(name) if kind == "built_in" else f"{name} (Custom)"
                 for kind, _profile_id, name in entries
             ]
             chooser.Set(labels)

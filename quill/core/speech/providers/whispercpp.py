@@ -27,12 +27,11 @@ import hashlib
 import json
 import os
 import shutil
-import ssl
 import tempfile
-import urllib.request
 from datetime import UTC, datetime
 from pathlib import Path
 
+from quill.core.error_codes import CodedError
 from quill.core.speech import catalog, models
 from quill.core.speech.provider import (
     InstalledSpeechModel,
@@ -59,7 +58,6 @@ _ALLOWED_BASENAMES = frozenset({
     "main.exe",
 })
 
-_VERIFIED_TLS = ssl.create_default_context()
 _DOWNLOAD_TIMEOUT_S = 30.0
 _TRANSCRIBE_TIMEOUT_S = 1800.0  # 30 min ceiling for a long file
 
@@ -359,59 +357,128 @@ class WhisperCppProvider:
         return None
 
 
+# Both #1 and the checksum-mismatch case mean the same thing to a user: the
+# pin QUILL shipped with no longer matches what's published, and retrying
+# won't help -- only a QUILL update will. The error code differs so support
+# can tell which check caught it.
+_STALE_MODEL_MESSAGE = "This QUILL build's model reference is out of date. Please update QUILL."
+
+
+class WhisperModelReferenceStaleError(SpeechError, CodedError):
+    """The pinned Hugging Face revision/file for a whisper.cpp model is gone."""
+
+    code = "QUILL-SPEECH-WHISPER-DL-404"
+
+
+class WhisperModelChecksumError(SpeechError, CodedError):
+    """The downloaded whisper.cpp model file did not match its pinned sha256."""
+
+    code = "QUILL-SPEECH-WHISPER-DL-CHK"
+
+
+class WhisperModelDownloadNetworkError(SpeechError, CodedError):
+    """A whisper.cpp model download failed for a network/connectivity reason."""
+
+    code = "QUILL-SPEECH-WHISPER-DL-NET"
+
+
 def _download_to_file(
     info: SpeechModelInfo, target: Path, progress: ProgressCallback | None
 ) -> None:
-    """Stream a model file from the Hugging Face Hub over verified HTTPS.
+    """Fetch a whisper.cpp GGML file from the Hugging Face Hub.
 
     GATE-9 / network-egress: this is the only outbound call here; it runs only on
-    an explicit user "download model" action, uses a verified TLS context, and is
-    blocked in Safe Mode by the caller. The file is written to a temp path and
-    atomically moved into place, then sha256-verified when a hash is known.
+    an explicit user "download model" action and is blocked in Safe Mode by the
+    caller. Uses ``huggingface_hub.hf_hub_download`` (already a QUILL dependency
+    via the Faster Whisper path) instead of a hand-rolled urllib request, so a
+    stale pin surfaces as a typed, distinguishable error instead of a generic
+    "download failed" -- and so retries/redirects/etag caching are the Hub's
+    battle-tested implementation, not ours. The file is sha256-verified when a
+    hash is known, as defense in depth alongside the Hub's own integrity checks.
     """
-    url = info.download_url or ""
-    if not url.lower().startswith("https://"):
-        raise SpeechError("Model downloads must use a secure (HTTPS) address.")
-    headers = {"User-Agent": "QUILL"}
+    repo_id = info.download_url or ""
+    filename = info.hf_filename or target.name
+    if not repo_id:
+        raise SpeechError(f"No download is available for the '{info.id}' model.")
+
+    try:
+        from huggingface_hub import hf_hub_download
+        from huggingface_hub.errors import (
+            EntryNotFoundError,
+            HfHubHTTPError,
+            RepositoryNotFoundError,
+            RevisionNotFoundError,
+        )
+    except ImportError as exc:
+        raise SpeechError(
+            "Downloading whisper.cpp models needs the 'huggingface_hub' package."
+        ) from exc
+
     from quill.core.speech.hf_auth import load_hf_token
 
     token = load_hf_token()
-    if token:
-        headers["Authorization"] = f"Bearer {token}"
-    request = urllib.request.Request(url, headers=headers)
-    digest = hashlib.sha256()
-    fd, raw_temp = tempfile.mkstemp(
-        prefix=f".{target.name}.", suffix=".part", dir=str(target.parent)
-    )
-    temp_path = Path(raw_temp)
+    tqdm_cls = _make_progress_tqdm(info, progress) if progress is not None else None
     try:
-        with (
-            urllib.request.urlopen(  # noqa: S310 - HTTPS enforced above
-                request, timeout=_DOWNLOAD_TIMEOUT_S, context=_VERIFIED_TLS
-            ) as response,
-            os.fdopen(fd, "wb") as out,
-        ):
-            total = int(response.headers.get("Content-Length", 0) or 0)
-            read = 0
-            while True:
-                chunk = response.read(1 << 16)
-                if not chunk:
-                    break
-                out.write(chunk)
-                digest.update(chunk)
-                read += len(chunk)
-                if progress is not None and total > 0:
-                    progress(min(read / total, 0.99), f"Downloading {info.display_name}...")
-        if info.sha256 and digest.hexdigest().lower() != info.sha256.lower():
-            raise SpeechError("The downloaded model failed its integrity check. Try again.")
-        os.replace(temp_path, target)
-    except SpeechError:
-        temp_path.unlink(missing_ok=True)
-        raise
-    except Exception as exc:  # noqa: BLE001 - surface a clean message, clean up the partial file
-        temp_path.unlink(missing_ok=True)
+        downloaded_path = hf_hub_download(
+            repo_id=repo_id,
+            filename=filename,
+            revision=info.revision or None,
+            local_dir=str(target.parent),
+            token=token or None,
+            etag_timeout=_DOWNLOAD_TIMEOUT_S,
+            tqdm_class=tqdm_cls,
+        )
+    except (RepositoryNotFoundError, RevisionNotFoundError, EntryNotFoundError) as exc:
+        raise WhisperModelReferenceStaleError(_STALE_MODEL_MESSAGE) from exc
+    except HfHubHTTPError as exc:
         from quill.core.speech.hf_auth import RATE_LIMIT_HELP, looks_rate_limited
 
+        status = getattr(exc.response, "status_code", None)
+        if status in (404, 410):
+            raise WhisperModelReferenceStaleError(_STALE_MODEL_MESSAGE) from exc
         if looks_rate_limited(exc):
             raise SpeechError(RATE_LIMIT_HELP) from exc
-        raise SpeechError(f"The model download failed: {exc}") from exc
+        raise WhisperModelDownloadNetworkError(
+            f"The model download failed: check your connection and retry. ({exc})"
+        ) from exc
+    except Exception as exc:  # noqa: BLE001 - connection/timeout/etc.
+        raise WhisperModelDownloadNetworkError(
+            f"The model download failed: check your connection and retry. ({exc})"
+        ) from exc
+
+    downloaded = Path(downloaded_path)
+    if info.sha256:
+        digest = hashlib.sha256()
+        with downloaded.open("rb") as fh:
+            for chunk in iter(lambda: fh.read(1 << 20), b""):
+                digest.update(chunk)
+        if digest.hexdigest().lower() != info.sha256.lower():
+            downloaded.unlink(missing_ok=True)
+            raise WhisperModelChecksumError(_STALE_MODEL_MESSAGE)
+    if downloaded != target:
+        target.parent.mkdir(parents=True, exist_ok=True)
+        os.replace(downloaded, target)
+
+
+def _make_progress_tqdm(info: SpeechModelInfo, progress: ProgressCallback) -> type | None:
+    """Build a tqdm subclass forwarding Hugging Face byte progress to *progress*.
+
+    Mirrors :func:`quill.core.speech.providers.fasterwhisper._make_progress_tqdm`
+    for this provider's single-file downloads.
+    """
+    try:
+        from tqdm.auto import tqdm as _BaseTqdm  # type: ignore[import-untyped]
+    except Exception:  # noqa: BLE001 - no tqdm means we simply skip byte progress
+        return None
+
+    total_bytes = max(1, int(info.approximate_size_mb) * 1024 * 1024)
+    shared = {"done": 0}
+
+    class _ProgressTqdm(_BaseTqdm):  # type: ignore[misc, valid-type]
+        def update(self, n: float | None = 1) -> bool | None:
+            shared["done"] += int(n or 0)
+            fraction = 0.02 + 0.95 * min(shared["done"] / total_bytes, 1.0)
+            progress(min(fraction, 0.99), f"Downloading {info.display_name}...")
+            return super().update(n)  # type: ignore[no-any-return]
+
+    return _ProgressTqdm

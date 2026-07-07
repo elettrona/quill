@@ -161,6 +161,9 @@ def build_crash_report_payload(
         "exception_class": exc_type.__name__,
         "exception_value": str(exc_value)[:_MAX_VALUE_CHARS],
     }
+    error_code = getattr(exc_value, "code", None)
+    if error_code:
+        metadata["error_code"] = error_code
     if screen_reader_name:
         metadata["screen_reader"] = screen_reader_name
     if recent_commands:

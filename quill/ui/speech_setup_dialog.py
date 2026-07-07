@@ -14,7 +14,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
-from quill.ui.dialog_contract import apply_modal_ids
+from quill.ui.dialog_contract import apply_modal_ids, focus_primary_control
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -441,6 +441,7 @@ class SpeechSetupDialog:
         """Open the dialog. Returns what the user chose, or None on cancel/close."""
         if self._embed_mode:
             raise RuntimeError("SpeechSetupDialog.show() cannot be called in embed mode")
+        focus_primary_control(self.dialog)
         show_modal_dialog(self.dialog, "Manage Speech Models")
         self.dialog.Destroy()  # type: ignore[union-attr]
         return self._result

@@ -64,10 +64,9 @@ def _vosk_installed() -> bool:
 
 
 def _kokoro_installed() -> bool:
-    from quill.core.read_aloud import kokoro_onnx_ready
-    from quill.core.speech.engine_install import is_kokoro_onnx_available
+    from quill.core.read_aloud import kokoro_engine_ready
 
-    return kokoro_onnx_ready() and is_kokoro_onnx_available()
+    return kokoro_engine_ready()
 
 
 def _espeak_installed() -> bool:

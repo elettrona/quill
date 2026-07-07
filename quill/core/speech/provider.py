@@ -47,9 +47,12 @@ class SpeechModelInfo:
     # publish MD5 rather than SHA-256; providers verify whichever they pin.
     md5: str | None = None
     license_name: str | None = None
-    # Pinned Hugging Face commit SHA (Faster Whisper repos). whisper.cpp pins the
-    # revision in download_url instead. Empty = follow the default branch.
+    # Pinned Hugging Face commit SHA. Empty = follow the default branch.
     revision: str = ""
+    # Filename within the Hub repo (``download_url``) for single-file models
+    # fetched via ``huggingface_hub.hf_hub_download`` (whisper.cpp GGML models).
+    # Repo-snapshot models (Faster Whisper) leave this empty.
+    hf_filename: str = ""
 
 
 @dataclass(frozen=True, slots=True)
