@@ -151,12 +151,45 @@ def test_removable_path_returns_none_for_uncatalogued_or_absent(tmp_path, monkey
     from quill.core.optional_components import removable_path
 
     monkeypatch.setattr(paths, "app_data_dir", lambda: tmp_path)
-    # No managed-dir helper -> never removable.
+    # Unknown component id -> never removable.
+    assert removable_path("nonsense") is None
+    # Known components with nothing downloaded yet -> None (nothing to remove).
     assert removable_path("dectalk") is None
     assert removable_path("spell-fr_FR") is None
-    assert removable_path("nonsense") is None
-    # Known component but nothing downloaded yet -> None (nothing to remove).
     assert removable_path("kokoro") is None
+
+
+def test_removable_path_and_remove_cover_dectalk(tmp_path, monkeypatch) -> None:
+    import quill.core.paths as paths
+    from quill.core.optional_components import removable_path, remove_component
+
+    monkeypatch.setattr(paths, "app_data_dir", lambda: tmp_path)
+    dectalk = tmp_path / "speech" / "dectalk"
+    dectalk.mkdir(parents=True)
+    (dectalk / "say.exe").write_text("x", encoding="utf-8")
+
+    assert removable_path("dectalk") == dectalk
+    assert remove_component("dectalk") is True
+    assert not dectalk.exists()
+
+
+def test_remove_component_deletes_the_spell_dic_aff_pair(tmp_path, monkeypatch) -> None:
+    import quill.core.optional_components as ocmod
+    from quill.core.optional_components import remove_component
+
+    hunspell = tmp_path / "spell" / "hunspell"
+    hunspell.mkdir(parents=True)
+    dic = hunspell / "fr_FR.dic"
+    aff = hunspell / "fr_FR.aff"
+    other = hunspell / "es_ES.dic"
+    for f in (dic, aff, other):
+        f.write_text("x", encoding="utf-8")
+    # removable_path resolves the .dic; remove deletes the .dic/.aff pair only.
+    monkeypatch.setattr(ocmod, "removable_path", lambda _cid: dic)
+
+    assert remove_component("spell-fr_FR") is True
+    assert not dic.exists() and not aff.exists()
+    assert other.exists()  # other languages untouched
 
 
 def test_removable_path_and_remove_delete_the_app_data_copy(tmp_path, monkeypatch) -> None:
@@ -283,3 +316,15 @@ def test_voice_preview_phrase_is_never_empty(monkeypatch) -> None:
     from quill.core.optional_components import voice_preview_phrase
 
     assert voice_preview_phrase().strip()
+
+
+def test_piper_is_self_hosted_and_pinned() -> None:
+    """Piper is published on QUILL's assets-v1 release, so its entry must be a
+    real pinned asset (piper_install prefers it, falling back to rhasspy)."""
+    from quill.core.release_assets import ASSETS, is_pinned
+
+    assert "piper" in ASSETS
+    assert is_pinned(ASSETS["piper"])
+    assert ASSETS["piper"].sha256 == (
+        "f3c58906402b24f3a96d92145f58acba6d86c9b5db896d207f78dc80811efcea"
+    )

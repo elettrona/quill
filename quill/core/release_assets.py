@@ -184,22 +184,20 @@ ASSETS: dict[str, ReleaseAsset] = {
         version="v0.7.6-beta.5",
     ),
     # Piper (rhasspy/piper 2023.11.14-2 Windows AMD64): the neural Read Aloud
-    # engine, unbundled from the installer (PRD 10.2.x). QUILL currently fetches
-    # it directly from the upstream rhasspy release with a pinned SHA-256
-    # (quill.core.speech.piper_install). To self-host -- so an upstream outage or
-    # removal can't break Piper -- upload the byte-identical piper_windows_amd64.zip
-    # (22,477,236 bytes) to the assets-v1 release and UNCOMMENT the entry below;
-    # piper_install._maybe_fetch_hosted_piper then prefers this copy automatically,
-    # with the rhasspy asset as the fallback. The SHA-256 is already verified.
-    # "piper": ReleaseAsset(
-    #     component="piper",
-    #     tag="assets-v1",
-    #     filename="piper_windows_amd64.zip",
-    #     sha256="f3c58906402b24f3a96d92145f58acba6d86c9b5db896d207f78dc80811efcea",
-    #     expect_member="piper/piper.exe",
-    #     license="MIT (rhasspy/piper); byte-identical re-publish of the upstream release",
-    #     version="2023.11.14-2",
-    # ),
+    # engine, unbundled from the installer (PRD 10.2.x). A byte-identical
+    # re-publish (22,477,236 bytes) of the upstream release, self-hosted here so an
+    # upstream outage or removal can't break Piper; piper_install prefers this copy
+    # (_maybe_fetch_hosted_piper) and falls back to the rhasspy asset. SHA-256
+    # pinned and verified.
+    "piper": ReleaseAsset(
+        component="piper",
+        tag="assets-v1",
+        filename="piper_windows_amd64.zip",
+        sha256="f3c58906402b24f3a96d92145f58acba6d86c9b5db896d207f78dc80811efcea",
+        expect_member="piper/piper.exe",
+        license="MIT (rhasspy/piper); byte-identical re-publish of the upstream release",
+        version="2023.11.14-2",
+    ),
 }
 
 

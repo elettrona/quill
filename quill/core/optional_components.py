@@ -71,13 +71,18 @@ def _app_data_root() -> Path:
 
 def _candidate_removable_path(component_id: str) -> Path | None:
     """The on-disk copy Remove would delete for *component_id*, before safety
-    checks. None when QUILL has no managed-dir helper for it (e.g. dectalk,
-    mathcat, spell dictionaries — no Remove offered there yet)."""
+    checks. None when QUILL has no managed location for it.
+
+    For a spell dictionary this is the ``<lang>.dic`` file; :func:`remove_component`
+    deletes its ``.aff`` sibling alongside it.
+    """
     try:
         if component_id == "kokoro":
             return _app_data_root() / "kokoro-models"
         if component_id == "whispercpp":
             return _app_data_root() / "speech-engine"
+        if component_id == "dectalk":
+            return _app_data_root() / "speech" / "dectalk"
         if component_id == "piper":
             from quill.core.speech.piper_install import managed_piper_dir
 
@@ -110,6 +115,15 @@ def _candidate_removable_path(component_id: str) -> Path | None:
             from quill.core.speech.engine_install import engine_packs_dir
 
             return engine_packs_dir() / "mpv"
+        if component_id == "mathcat":
+            from quill.core.math.mathcat_engine import pack_dir
+
+            return pack_dir()
+        if component_id.startswith("spell-"):
+            from quill.core.spellcheck import managed_hunspell_dir
+
+            lang = component_id[len("spell-") :]
+            return managed_hunspell_dir() / f"{lang}.dic"
     except Exception:  # noqa: BLE001 - a missing helper just means "not removable"
         return None
     return None
@@ -150,6 +164,18 @@ def remove_component(component_id: str) -> bool:
     path = removable_path(component_id)
     if path is None:
         return False
+    # A spell dictionary is a .dic/.aff pair in a shared dir: remove both, not
+    # the whole hunspell folder (which holds other languages).
+    if component_id.startswith("spell-"):
+        removed_any = False
+        for sibling in (path, path.with_suffix(".aff")):
+            try:
+                if sibling.is_file():
+                    sibling.unlink()
+                    removed_any = True
+            except OSError:
+                continue
+        return removed_any
     try:
         if path.is_dir():
             shutil.rmtree(path)
