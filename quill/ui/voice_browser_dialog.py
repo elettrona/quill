@@ -434,7 +434,7 @@ class VoiceBrowserDialog:
             self._download_btn.SetLabel("&Download DECtalk Engine (~30 MB)...")
             self._download_btn.Show(True)
         elif eng == "piper" and not eng_ok:
-            self._download_btn.SetLabel("&Download Piper Engine (~10 MB)...")
+            self._download_btn.SetLabel("&Download Piper Engine (~22 MB)...")
             self._download_btn.Show(True)
         elif eng == "piper":
             self._download_btn.SetLabel("&Download Piper Voice...")

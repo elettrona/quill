@@ -1,15 +1,16 @@
 """Optional in-app Piper TTS engine download (#669).
 
 Piper (https://github.com/rhasspy/piper) is a fast, local, high-quality neural
-TTS engine. QUILL does not bundle the Piper binary because it is ~10 MB and adds
-little value to users who already have a system TTS. For users who want Piper,
-this downloads the official Windows AMD64 release on demand and extracts
-piper.exe + its supporting files into a QUILL-managed folder the discover
-function searches (``<app data>/speech/piper``).
+TTS engine. QUILL no longer bundles the Piper binary (PRD 10.2.x footprint
+unbundle); users who want Piper download the official Windows AMD64 release
+(~22 MB) on demand, and this extracts piper.exe + its supporting files into a
+QUILL-managed folder the discover function searches (``<app data>/speech/piper``).
 
-Safety mirrors the ffmpeg download path: HTTPS-only with a verified TLS context,
-blocked in Safe Mode, on an explicit user action only. Windows-only — on macOS and
-Linux install Piper from https://github.com/rhasspy/piper/releases. wx-free.
+Safety mirrors QUILL's other verified downloads: HTTPS-only with a verified TLS
+context, the downloaded archive is checked against a pinned SHA-256 before it is
+extracted, blocked in Safe Mode, and only on an explicit user action. Windows-only
+— on macOS and Linux install Piper from https://github.com/rhasspy/piper/releases.
+wx-free.
 """
 
 from __future__ import annotations
@@ -37,6 +38,10 @@ PIPER_DOWNLOAD_URL = (
     "https://github.com/rhasspy/piper/releases/download/"
     f"{PIPER_RELEASE_TAG}/piper_windows_amd64.zip"
 )
+# SHA-256 of piper_windows_amd64.zip for PIPER_RELEASE_TAG (22,477,236 bytes),
+# verified against the live GitHub asset. The download is rejected if it does
+# not match, matching the integrity guarantee of QUILL's other verified fetches.
+PIPER_DOWNLOAD_SHA256 = "f3c58906402b24f3a96d92145f58acba6d86c9b5db896d207f78dc80811efcea"
 _DOWNLOAD_TIMEOUT_S = 1800.0
 _PIPER_EXE = "piper.exe"
 
@@ -84,6 +89,9 @@ def install_piper(
     try:
         _download_zip(PIPER_DOWNLOAD_URL, tmp_zip, progress, timeout_seconds)
         if progress is not None:
+            progress(0.9, "Verifying download...")
+        _verify_sha256(tmp_zip, PIPER_DOWNLOAD_SHA256)
+        if progress is not None:
             progress(0.92, "Extracting Piper...")
         piper_path = _extract_piper_from_zip(tmp_zip, dest)
     finally:
@@ -127,6 +135,28 @@ def _download_zip(
         raise
     except Exception as exc:  # noqa: BLE001
         raise PiperInstallError(f"Could not download Piper: {exc}") from exc
+
+
+def _verify_sha256(path: Path, expected: str) -> None:
+    """Reject the download unless its SHA-256 matches the pinned value.
+
+    A mismatch means a corrupted or substituted archive; without this check a
+    bare stream would extract and run whatever it received. Mirrors the
+    integrity guarantee of QUILL's other verified downloads (release_assets).
+    """
+    import hashlib
+
+    digest = hashlib.sha256()
+    with path.open("rb") as fh:
+        for chunk in iter(lambda: fh.read(1 << 20), b""):
+            digest.update(chunk)
+    actual = digest.hexdigest()
+    if actual.lower() != expected.lower():
+        raise PiperInstallError(
+            f"The downloaded Piper archive failed its integrity check "
+            f"(expected {expected[:12]}..., got {actual[:12]}...). "
+            "The download may be corrupted or blocked; please try again."
+        )
 
 
 def _extract_piper_from_zip(zip_path: Path, dest_dir: Path) -> Path:

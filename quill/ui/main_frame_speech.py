@@ -920,7 +920,7 @@ class SpeechCommandsMixin:
         ).start()
 
     def download_piper_exe(self) -> None:
-        """Download the Piper TTS engine (~10 MB) on demand.
+        """Download the Piper TTS engine (~22 MB) on demand.
 
         Piper is a fast, local, high-quality neural TTS engine. The Windows AMD64
         binary is downloaded from the pinned GitHub release, extracted to the
@@ -955,7 +955,7 @@ class SpeechCommandsMixin:
             )
             return
         confirm = self._show_message_box(
-            "Download the Piper TTS engine (~10 MB) from GitHub?\n\n"
+            "Download the Piper TTS engine (~22 MB) from GitHub?\n\n"
             "Piper is a fast, local, neural text-to-speech engine with dozens "
             "of high-quality English voices. After downloading, open Manage "
             "Voices again to download a Piper voice model.",
