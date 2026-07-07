@@ -103,3 +103,65 @@ def recommended_engine_id(options: list[OfflineSpeechEngineOption] | None = None
         if opt.installed:
             return opt.engine_id
     return RECOMMENDED_ENGINE_ID
+
+
+@dataclass(frozen=True, slots=True)
+class ModelChoice:
+    """One downloadable model for the guided model step."""
+
+    model_id: str
+    display_name: str
+    size_text: str
+    summary: str  # what it's good for (recommended_use), for the picker
+    recommended: bool  # best fit for this computer (recommend_model_id)
+
+
+def _size_text(megabytes: int) -> str:
+    if megabytes >= 1024:
+        return f"~{megabytes / 1024:.1f} GB"
+    return f"~{megabytes} MB"
+
+
+def _catalog_models(engine_id: str) -> tuple:  # type: ignore[type-arg]
+    from quill.core.speech import catalog
+
+    if engine_id == "faster-whisper":
+        return catalog.FASTER_WHISPER_MODELS
+    return catalog.WHISPER_CPP_MODELS
+
+
+def models_for_engine(engine_id: str) -> list[ModelChoice]:
+    """Downloadable models for *engine_id*, smallest first, with the best fit for
+    this computer marked recommended.
+
+    Built from the static catalog so the picker works *before* the engine is
+    installed (the guided flow installs the engine and the chosen model together).
+    """
+    from quill.core.speech.service import detect_has_gpu, detect_total_ram_gb, recommend_model_id
+
+    models = _catalog_models(engine_id)
+    ids = [m.id for m in models]
+    if not ids:
+        return []
+    try:
+        best_fit = recommend_model_id(ids, detect_total_ram_gb(), detect_has_gpu())
+    except Exception:  # noqa: BLE001 - detection must never break the picker
+        best_fit = ids[0]
+    return [
+        ModelChoice(
+            model_id=m.id,
+            display_name=m.display_name,
+            size_text=_size_text(m.approximate_size_mb),
+            summary=m.recommended_use,
+            recommended=m.id == best_fit,
+        )
+        for m in models
+    ]
+
+
+def default_model_id(engine_id: str) -> str:
+    """The model to preselect: the smallest, so the user is transcribing within a
+    minute (meet-people-where-they-are). The best-fit model is still marked
+    'recommended' in the list for those who want more accuracy."""
+    ids = [m.id for m in _catalog_models(engine_id)]
+    return ids[0] if ids else ""

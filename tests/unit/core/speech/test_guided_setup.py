@@ -36,3 +36,31 @@ def test_recommended_engine_prefers_an_installed_one_else_whispercpp(monkeypatch
     # Faster Whisper already installed -> keep the user on what they have.
     monkeypatch.setattr(gs, "_faster_whisper_installed", lambda: True)
     assert gs.recommended_engine_id() == "faster-whisper"
+
+
+def test_models_for_engine_lists_catalog_with_a_recommendation() -> None:
+    cpp = gs.models_for_engine("whispercpp")
+    fw = gs.models_for_engine("faster-whisper")
+    assert cpp and fw
+    # Smallest first, and exactly one best-fit recommendation each.
+    assert cpp[0].model_id == gs.default_model_id("whispercpp")
+    assert sum(1 for m in cpp if m.recommended) == 1
+    for m in cpp:
+        assert m.display_name and m.size_text and m.summary
+    # The two engines have distinct catalogs.
+    assert {m.model_id for m in cpp} != {m.model_id for m in fw}
+
+
+def test_default_model_is_the_smallest_for_a_fast_start() -> None:
+    # "default to tiny so they're going immediately" -- the first (smallest) model.
+    assert gs.default_model_id("whispercpp") == "tiny"
+
+
+def test_models_for_engine_never_crashes_on_detection_failure(monkeypatch) -> None:
+    from quill.core.speech import service
+
+    monkeypatch.setattr(
+        service, "detect_total_ram_gb", lambda: (_ for _ in ()).throw(RuntimeError())
+    )
+    models = gs.models_for_engine("whispercpp")  # must not raise
+    assert models and sum(1 for m in models if m.recommended) == 1
