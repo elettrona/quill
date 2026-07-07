@@ -19,7 +19,7 @@ from __future__ import annotations
 import threading
 from typing import Any, Protocol
 
-from quill.core.optional_components import OptionalComponent, describe_component
+from quill.core.optional_components import OptionalComponent, describe_component, manage_target
 from quill.ui.dialog_contract import apply_modal_ids, show_message_box
 
 
@@ -37,6 +37,9 @@ class ComponentsController(Protocol):
 
     def test(self, component_id: str) -> None:
         """Prove the component works (play a voice sample / self-test); announces."""
+
+    def manage(self, component_id: str) -> None:
+        """Open the component's own management dialog (models / voices)."""
 
 
 def show_optional_components_picker(
@@ -145,15 +148,23 @@ def show_optional_components_picker(
         comp = _selected()
         if comp is None:
             detail.SetValue("")
-            for btn in (download_btn, test_btn, remove_btn):
+            for btn in (download_btn, test_btn, manage_btn, remove_btn):
                 btn.Enable(False)
             return
         detail.SetValue(describe_component(comp))
-        # Download only when not installed; Test/Remove only when installed.
+        # Download only when not installed; Test/Remove/Manage only when installed.
         download_btn.Enable(not comp.installed)
         download_btn.SetLabel("Installed" if comp.installed else "&Download")
         test_btn.Enable(comp.installed)
         remove_btn.Enable(comp.installed and controller.removable(comp.component_id))
+        # Manage routes to the component's own models/voices dialog when relevant.
+        target = manage_target(comp.component_id)
+        manage_btn.SetLabel(
+            "&Manage models…"
+            if target == "models"
+            else ("&Manage voices…" if target == "voices" else "&Manage…")
+        )
+        manage_btn.Enable(comp.installed and target is not None)
 
     def _on_download(_evt: Any = None) -> None:
         comp = _selected()
@@ -187,6 +198,12 @@ def show_optional_components_picker(
         _load_async(select_id=comp.component_id)
         listing.SetFocus()
 
+    def _on_manage(_evt: Any = None) -> None:
+        comp = _selected()
+        if comp is None or not comp.installed or manage_target(comp.component_id) is None:
+            return
+        controller.manage(comp.component_id)  # opens the models/voices dialog
+
     listing.Bind(wx.EVT_LIST_ITEM_SELECTED, lambda _e: _sync_controls())
     listing.Bind(wx.EVT_LIST_ITEM_ACTIVATED, _on_download)
 
@@ -198,14 +215,16 @@ def show_optional_components_picker(
         dialog, wx.ID_OK, label="&Download", name="optional_components_download"
     )
     test_btn = wx.Button(dialog, label="&Test", name="optional_components_test")
+    manage_btn = wx.Button(dialog, label="&Manage…", name="optional_components_manage")
     remove_btn = wx.Button(dialog, label="&Remove", name="optional_components_remove")
     close_btn = wx.Button(dialog, wx.ID_CANCEL, label="&Close")
     close_btn.SetDefault()
     download_btn.Bind(wx.EVT_BUTTON, _on_download)
     test_btn.Bind(wx.EVT_BUTTON, _on_test)
+    manage_btn.Bind(wx.EVT_BUTTON, _on_manage)
     remove_btn.Bind(wx.EVT_BUTTON, _on_remove)
     btns.AddStretchSpacer()
-    for btn in (download_btn, test_btn, remove_btn, close_btn):
+    for btn in (download_btn, test_btn, manage_btn, remove_btn, close_btn):
         btns.Add(btn, 0, wx.RIGHT, 8)
     sizer.Add(btns, 0, wx.EXPAND | wx.ALL, 10)
 

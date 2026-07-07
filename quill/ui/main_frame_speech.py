@@ -321,6 +321,9 @@ class SpeechCommandsMixin:
             def test(self, component_id: str) -> None:
                 frame._test_optional_component(component_id)
 
+            def manage(self, component_id: str) -> None:
+                frame._manage_component_models_or_voices(component_id)
+
         chosen = show_optional_components_picker(
             wx, self.frame, self._show_modal_dialog, _Controller(), preselect=preselect
         )
@@ -398,6 +401,18 @@ class SpeechCommandsMixin:
                 )
 
         self._run_background_task(f"Testing {component_id}", _work, _done)
+
+    def _manage_component_models_or_voices(self, component_id: str) -> None:
+        """Route the hub's Manage button to the component's own dialog: offline
+        STT engines open Manage Speech Models; Read Aloud voice engines open
+        Manage Voices. The rich per-item screens live there, not in the hub."""
+        from quill.core.optional_components import manage_target
+
+        target = manage_target(component_id)
+        if target == "models":
+            self.open_speech_models()
+        elif target == "voices":
+            self.choose_read_aloud_configuration()
 
     def _offer_component_bug_report(self, component_id: str, summary: str, detail: str) -> None:
         """On a failed self-test, offer to send a report with the captured detail."""

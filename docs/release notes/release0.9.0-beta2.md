@@ -52,6 +52,10 @@ on **Check for Updates**.
   features back off. Piper voices and the Node.js runtime are now in the list too,
   everything lands in your portable folder when you run QUILL portably, and if a
   download or test ever fails, QUILL offers to send a bug report with the details.
+  For components that have their own picker - the speech engines (whisper.cpp,
+  Vosk) and the Read Aloud voices - a **Manage** button jumps you straight to
+  Manage Speech Models or Manage Voices to choose sizes and voices, so the hub is
+  the one place you start no matter which extra you're after.
 - **A simpler installer - no more component checkboxes.** Installing Beta 1
   asked you to pick optional components (Pandoc, Node.js, Piper, Braille pack),
   several of which did nothing because those parts are downloaded when you need

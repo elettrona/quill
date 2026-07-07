@@ -63,6 +63,25 @@ def read_aloud_engine_for_component(component_id: str) -> str | None:
     return _ENGINE_BY_COMPONENT.get(component_id)
 
 
+# Offline STT engines whose downloadable *models* live in Manage Speech Models.
+_STT_ENGINES = frozenset({"whispercpp", "vosk"})
+
+
+def manage_target(component_id: str) -> str | None:
+    """Where the hub should route "Manage…" for this component, or None.
+
+    Models and voices are multi-item spaces with their own tested dialogs; the
+    hub links to them rather than absorbing them (meet-people-where-they-are).
+    Returns "models" for offline STT engines (Manage Speech Models), "voices"
+    for Read Aloud voice engines (Manage Voices), else None (no Manage action).
+    """
+    if component_id in _STT_ENGINES:
+        return "models"
+    if read_aloud_engine_for_component(component_id) is not None:
+        return "voices"
+    return None
+
+
 def _app_data_root() -> Path:
     from quill.core.paths import app_data_dir
 

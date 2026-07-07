@@ -71,3 +71,17 @@ def test_dialog_loads_component_list_off_the_ui_thread() -> None:
     assert "threading.Thread(" in src
     assert "wx.CallAfter(_populate" in src
     assert "Loading components" in src
+
+
+def test_dialog_has_manage_routing_button() -> None:
+    src = _src("optional_components_dialog.py")
+    assert 'name="optional_components_manage"' in src
+    assert "controller.manage(" in src
+    assert "manage_target(" in src  # label/enable driven by the component's route
+
+
+def test_manage_routes_to_speech_models_and_voices() -> None:
+    src = _src("main_frame_speech.py")
+    assert "def _manage_component_models_or_voices" in src
+    assert "self.open_speech_models()" in src  # STT engines -> Manage Speech Models
+    assert "self.choose_read_aloud_configuration()" in src  # voice engines -> Manage Voices

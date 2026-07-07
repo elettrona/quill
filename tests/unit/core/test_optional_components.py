@@ -298,3 +298,14 @@ def test_piper_is_self_hosted_and_pinned() -> None:
     assert ASSETS["piper"].sha256 == (
         "f3c58906402b24f3a96d92145f58acba6d86c9b5db896d207f78dc80811efcea"
     )
+
+
+def test_manage_target_routes_stt_to_models_and_voices_to_voices() -> None:
+    assert oc.manage_target("whispercpp") == "models"
+    assert oc.manage_target("vosk") == "models"
+    assert oc.manage_target("kokoro") == "voices"
+    assert oc.manage_target("piper") == "voices"
+    # Tools and dictionaries have no per-item manage dialog.
+    assert oc.manage_target("pandoc") is None
+    assert oc.manage_target("braille") is None
+    assert oc.manage_target("spell-fr_FR") is None
