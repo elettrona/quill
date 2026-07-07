@@ -134,3 +134,59 @@ def test_every_hosted_release_asset_is_catalogued() -> None:
         if key.startswith("spell-"):
             continue
         assert key in ids, f"release_assets component {key!r} is not in the download dialog"
+
+
+def test_read_aloud_engine_for_component_maps_voice_engines() -> None:
+    from quill.core.optional_components import read_aloud_engine_for_component
+
+    assert read_aloud_engine_for_component("kokoro") == "kokoro"
+    assert read_aloud_engine_for_component("piper") == "piper"
+    # Non-voice components have no engine to reset.
+    assert read_aloud_engine_for_component("pandoc") is None
+    assert read_aloud_engine_for_component("braille") is None
+
+
+def test_removable_path_returns_none_for_uncatalogued_or_absent(tmp_path, monkeypatch) -> None:
+    import quill.core.paths as paths
+    from quill.core.optional_components import removable_path
+
+    monkeypatch.setattr(paths, "app_data_dir", lambda: tmp_path)
+    # No managed-dir helper -> never removable.
+    assert removable_path("dectalk") is None
+    assert removable_path("spell-fr_FR") is None
+    assert removable_path("nonsense") is None
+    # Known component but nothing downloaded yet -> None (nothing to remove).
+    assert removable_path("kokoro") is None
+
+
+def test_removable_path_and_remove_delete_the_app_data_copy(tmp_path, monkeypatch) -> None:
+    import quill.core.paths as paths
+    from quill.core.optional_components import removable_path, remove_component
+
+    monkeypatch.setattr(paths, "app_data_dir", lambda: tmp_path)
+    models = tmp_path / "kokoro-models"
+    models.mkdir()
+    (models / "kokoro-v1.0.int8.onnx").write_text("model", encoding="utf-8")
+
+    assert removable_path("kokoro") == models
+    assert remove_component("kokoro") is True
+    assert not models.exists()
+    # Second remove is a no-op (nothing left).
+    assert remove_component("kokoro") is False
+
+
+def test_removable_path_refuses_paths_outside_the_data_dir(tmp_path, monkeypatch) -> None:
+    """Safety: never return a copy that lives outside the active data dir (a
+    system tool or a bundled {app} copy)."""
+    import quill.core.optional_components as ocmod
+    import quill.core.paths as paths
+
+    data_dir = tmp_path / "data"
+    data_dir.mkdir()
+    outside = tmp_path / "elsewhere" / "kokoro-models"
+    outside.mkdir(parents=True)
+    monkeypatch.setattr(paths, "app_data_dir", lambda: data_dir)
+    monkeypatch.setattr(ocmod, "_candidate_removable_path", lambda _cid: outside)
+    from quill.core.optional_components import removable_path
+
+    assert removable_path("kokoro") is None  # outside data_dir -> refused

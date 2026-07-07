@@ -16,6 +16,7 @@ consent), keyed by :attr:`OptionalComponent.component_id`.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from pathlib import Path
 
 # Categories (also the dialog's grouping labels).
 SPEECH_ENGINE = "Speech engine"
@@ -44,6 +45,126 @@ class OptionalComponent:
     @property
     def status_label(self) -> str:
         return "Installed" if self.installed else "Available to download"
+
+
+# Read Aloud engine id a voice component provides, so removing it can reset the
+# active engine to the always-present SAPI 5 floor (the UI does the reset +
+# menu refresh; see the design's "remove closes the loop" decision).
+_ENGINE_BY_COMPONENT: dict[str, str] = {
+    "kokoro": "kokoro",
+    "piper": "piper",
+    "espeak": "espeak",
+    "dectalk": "dectalk",
+}
+
+
+def read_aloud_engine_for_component(component_id: str) -> str | None:
+    """The ``settings.read_aloud_engine`` value this component provides, or None."""
+    return _ENGINE_BY_COMPONENT.get(component_id)
+
+
+def _app_data_root() -> Path:
+    from quill.core.paths import app_data_dir
+
+    return app_data_dir()
+
+
+def _candidate_removable_path(component_id: str) -> Path | None:
+    """The on-disk copy Remove would delete for *component_id*, before safety
+    checks. None when QUILL has no managed-dir helper for it (e.g. dectalk,
+    mathcat, spell dictionaries — no Remove offered there yet)."""
+    try:
+        if component_id == "kokoro":
+            return _app_data_root() / "kokoro-models"
+        if component_id == "whispercpp":
+            return _app_data_root() / "speech-engine"
+        if component_id == "piper":
+            from quill.core.speech.piper_install import managed_piper_dir
+
+            return managed_piper_dir()
+        if component_id == "espeak":
+            from quill.core.speech.espeak_install import managed_espeak_dir
+
+            return managed_espeak_dir()
+        if component_id == "node":
+            from quill.core.node_install import managed_node_dir
+
+            return managed_node_dir()
+        if component_id == "ffmpeg":
+            from quill.core.speech.ffmpeg_install import managed_ffmpeg_dir
+
+            return managed_ffmpeg_dir()
+        if component_id == "braille":
+            from quill.core.braille_pack import managed_braille_dir
+
+            return managed_braille_dir()
+        if component_id == "pandoc":
+            from quill.core.pandoc_install import managed_pandoc_dir
+
+            return managed_pandoc_dir()
+        if component_id == "vosk":
+            from quill.core.speech.engine_install import vosk_pack_dir
+
+            return vosk_pack_dir()
+        if component_id == "libmpv":
+            from quill.core.speech.engine_install import engine_packs_dir
+
+            return engine_packs_dir() / "mpv"
+    except Exception:  # noqa: BLE001 - a missing helper just means "not removable"
+        return None
+    return None
+
+
+def removable_path(component_id: str) -> Path | None:
+    """Return the QUILL-downloaded copy Remove may delete, or None.
+
+    Returns a path only when it exists **and** lives under the active data dir
+    (``app_data_dir()``, which is the portable data folder in portable mode). A
+    system tool on PATH, an upgrader's ``{app}`` copy, or a component with no
+    managed-dir helper returns None, so no Remove is offered for those.
+    """
+    path = _candidate_removable_path(component_id)
+    if path is None:
+        return None
+    try:
+        root = _app_data_root().resolve()
+        resolved = path.resolve()
+    except Exception:  # noqa: BLE001
+        return None
+    if not path.exists():
+        return None
+    # Safety: only ever delete inside the active (portable-aware) data dir.
+    if resolved != root and root not in resolved.parents:
+        return None
+    return path
+
+
+def remove_component(component_id: str) -> bool:
+    """Delete QUILL's downloaded copy of *component_id* and clear caches.
+
+    Returns True when something was removed, False when there was nothing QUILL
+    can safely remove (see :func:`removable_path`). Never raises.
+    """
+    import shutil
+
+    path = removable_path(component_id)
+    if path is None:
+        return False
+    try:
+        if path.is_dir():
+            shutil.rmtree(path)
+        else:
+            path.unlink()
+    except OSError:
+        return False
+    if component_id == "kokoro":
+        try:
+            from quill.core.read_aloud import clear_kokoro_cache
+
+            clear_kokoro_cache()
+        except Exception:  # noqa: BLE001 - cache clear is best-effort
+            pass
+    return True
 
 
 def _safe(predicate) -> bool:  # type: ignore[no-untyped-def]
