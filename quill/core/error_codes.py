@@ -8,9 +8,16 @@ back-and-forth with the user. :class:`CodedError` carries a class-level
 Code format: ``QUILL-<DOMAIN>-<SUBSYSTEM>-<SHORT-REASON>`` -- stable and
 greppable, with no incrementing numbers to keep in sync by hand.
 
-This is deliberately not a repo-wide sweep: only exception classes touched by
-a given fix are migrated to carry a code; everything else keeps plain
-``Exception``/``SpeechError``-style messages.
+Every custom top-level exception class in ``quill/core``, ``quill/io``, and
+``quill/stability`` mixes this in (enforced by
+:mod:`quill.tools.error_code_audit`, GATE-EC). A new exception class must
+inherit ``CodedError`` (or an already-coded parent) and declare its own
+``code`` or the gate fails.
+
+The migrated shape is ``class FooError(CodedError):`` -- NOT
+``class FooError(Exception, CodedError):``. ``CodedError`` already inherits
+``Exception``, so explicitly listing both, in that order, is an
+unresolvable MRO and raises ``TypeError`` at class-definition time.
 """
 
 from __future__ import annotations

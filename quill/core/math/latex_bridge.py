@@ -13,6 +13,8 @@ from LaTeX (e.g. an imported docx equation) has no LaTeX form to recover, so
 
 from __future__ import annotations
 
+from quill.core.error_codes import CodedError
+
 from .mathml import extract_tex_annotation, wrap_with_tex_annotation
 
 try:
@@ -21,12 +23,16 @@ except ImportError:  # pragma: no cover - exercised only when the math extra is 
     _converter = None  # type: ignore[assignment]
 
 
-class LatexConversionError(Exception):
+class LatexConversionError(CodedError):
     """Raised when *latex* cannot be converted to MathML."""
 
+    code = "QUILL-MATH-LATEX-CONVERT"
 
-class LatexBridgeUnavailable(Exception):
+
+class LatexBridgeUnavailable(CodedError):
     """Raised when the optional ``latex2mathml`` dependency is not installed."""
+
+    code = "QUILL-MATH-LATEX-UNAVAILABLE"
 
 
 def latex_to_mathml(latex: str, *, display: str = "inline") -> str:

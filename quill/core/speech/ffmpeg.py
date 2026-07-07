@@ -30,6 +30,7 @@ from dataclasses import dataclass
 from functools import lru_cache
 from pathlib import Path
 
+from quill.core.error_codes import CodedError
 from quill.core.speech import models
 
 # (fraction 0.0-1.0, human message) — same shape as the speech ProgressCallback.
@@ -46,8 +47,10 @@ _ALLOWED_FFPROBE = frozenset({"ffprobe", "ffprobe.exe"})
 INSTALL_HINT = "Install ffmpeg (for example: winget install Gyan.FFmpeg) and try again."
 
 
-class TranscodeError(Exception):
+class TranscodeError(CodedError):
     """Raised when audio could not be prepared for transcription."""
+
+    code = "QUILL-SPEECH-TRANSCODE-FAILED"
 
 
 def ffmpeg_search_dirs() -> list[Path]:

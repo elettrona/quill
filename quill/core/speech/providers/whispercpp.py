@@ -31,7 +31,6 @@ import tempfile
 from datetime import UTC, datetime
 from pathlib import Path
 
-from quill.core.error_codes import CodedError
 from quill.core.speech import catalog, models
 from quill.core.speech.provider import (
     InstalledSpeechModel,
@@ -364,19 +363,19 @@ class WhisperCppProvider:
 _STALE_MODEL_MESSAGE = "This QUILL build's model reference is out of date. Please update QUILL."
 
 
-class WhisperModelReferenceStaleError(SpeechError, CodedError):
+class WhisperModelReferenceStaleError(SpeechError):
     """The pinned Hugging Face revision/file for a whisper.cpp model is gone."""
 
     code = "QUILL-SPEECH-WHISPER-DL-404"
 
 
-class WhisperModelChecksumError(SpeechError, CodedError):
+class WhisperModelChecksumError(SpeechError):
     """The downloaded whisper.cpp model file did not match its pinned sha256."""
 
     code = "QUILL-SPEECH-WHISPER-DL-CHK"
 
 
-class WhisperModelDownloadNetworkError(SpeechError, CodedError):
+class WhisperModelDownloadNetworkError(SpeechError):
     """A whisper.cpp model download failed for a network/connectivity reason."""
 
     code = "QUILL-SPEECH-WHISPER-DL-NET"

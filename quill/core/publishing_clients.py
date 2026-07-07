@@ -13,6 +13,7 @@ from urllib.error import HTTPError, URLError
 from urllib.parse import urlencode, urlparse
 from urllib.request import Request, urlopen
 
+from quill.core.error_codes import CodedError
 from quill.core.net import verified_ssl_context
 from quill.core.publishing_providers import (
     WORDPRESS_PROVIDER_ID,
@@ -396,7 +397,8 @@ def publishing_provider_client(provider_id: str) -> PublishingProviderClient | N
 
 
 @dataclass(frozen=True, slots=True)
-class _PublishingRequestError(Exception):
+class _PublishingRequestError(CodedError):
+    code = "QUILL-PUBLISH-CLIENT-REQUEST"
     message: str
 
 

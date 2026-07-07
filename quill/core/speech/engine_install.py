@@ -30,6 +30,7 @@ import sys
 from collections.abc import Callable, Sequence
 from pathlib import Path
 
+from quill.core.error_codes import CodedError
 from quill.core.speech import models
 
 ProgressCallback = Callable[[float, str], None]
@@ -71,8 +72,10 @@ _KOKORO_ONNX_REQUIREMENTS: tuple[str, ...] = (
 _INSTALL_TIMEOUT_S = 1800.0
 
 
-class EngineInstallError(Exception):
+class EngineInstallError(CodedError):
     """Raised when the optional speech-engine download/install fails."""
+
+    code = "QUILL-SPEECH-ENGINE-INSTALL"
 
 
 def engine_packs_dir() -> Path:

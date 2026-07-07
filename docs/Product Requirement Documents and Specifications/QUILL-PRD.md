@@ -8485,8 +8485,9 @@ is only valid against a single, named build.
 Entry criteria (all must hold before a final-QA pass begins):
 
 - All required CI gates are green on `main`: PR CI, Security CI, Accessibility
-  CI, GATE-6 (public surface), GATE-11 (module size), A11Y-4 (banned patterns
-  and dialog registry), and the DLG-3 `dialog_inventory.json` snapshot.
+  CI, GATE-6 (public surface), GATE-11 (module size), GATE-EC (error-code
+  completeness), A11Y-4 (banned patterns and dialog registry), and the DLG-3
+  `dialog_inventory.json` snapshot.
 - `dialogs.md` and the `dialog_inventory.json` snapshot agree with the source
   (run `python -m quill.tools.dialog_inventory` and confirm no diff).
 - The build installs cleanly on the clean-install environment.

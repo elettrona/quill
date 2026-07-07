@@ -26,6 +26,7 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
 
+from quill.core.error_codes import CodedError
 from quill.core.speech.chapters import (
     Chapter,
     ChapterSection,
@@ -80,8 +81,10 @@ class ChapterAssembleResult:
     notes: list[str] = field(default_factory=list)
 
 
-class AssembleError(Exception):
+class AssembleError(CodedError):
     """Raised when sections cannot be assembled (e.g. inconsistent audio formats)."""
+
+    code = "QUILL-SPEECH-CHAPTER-ASSEMBLE"
 
 
 def _wav_duration_ms(path: Path) -> int:

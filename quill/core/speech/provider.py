@@ -13,6 +13,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Protocol, runtime_checkable
 
+from quill.core.error_codes import CodedError
+
 # A progress callback receives a fraction in [0.0, 1.0] and a short, speakable
 # status message. Providers should call it sparingly (no per-token chatter).
 ProgressCallback = Callable[[float, str], None]
@@ -134,8 +136,10 @@ class TranscriptionResult:
     warnings: tuple[str, ...] = field(default_factory=tuple)
 
 
-class SpeechError(Exception):
+class SpeechError(CodedError):
     """Base class for speech-provider failures (clear, user-facing messages)."""
+
+    code = "QUILL-SPEECH-PROVIDER-FAILED"
 
 
 class SpeechCancelledError(SpeechError):

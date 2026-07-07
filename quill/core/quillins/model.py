@@ -14,6 +14,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
+from quill.core.error_codes import CodedError
+
 # The manifest schema discriminator and the host API version. The schema string
 # is a stable wire identifier; the integer version tracks the Python
 # ``QuillExtensionApi`` surface and is bumped only on a breaking change.
@@ -176,8 +178,10 @@ ANNOUNCEMENT_PRIORITIES: frozenset[str] = frozenset({
 COMMAND_ID_PREFIX = "ext."
 
 
-class QuillinError(Exception):
+class QuillinError(CodedError):
     """Base class for every Quillins framework error."""
+
+    code = "QUILL-QUILLIN-FRAMEWORK-FAILED"
 
 
 class ManifestError(QuillinError):

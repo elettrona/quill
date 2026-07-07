@@ -11,6 +11,7 @@ from dataclasses import dataclass
 
 from quill.core.ai.custom_instructions import split_instruction
 from quill.core.assistant_ai import AssistantConnectionSettings, generate_assistant_response
+from quill.core.error_codes import CodedError
 
 _GRAMMAR_PROMPT_PREFIX = (
     "You are a professional editor. Analyze the text below for grammar, punctuation, "
@@ -38,8 +39,8 @@ CATEGORIES: dict[str, str] = {
 }
 
 
-class GrammarCheckError(Exception):
-    pass
+class GrammarCheckError(CodedError):
+    code = "QUILL-AI-GRAMMAR-FAILED"
 
 
 class GrammarCheckParseError(GrammarCheckError):

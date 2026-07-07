@@ -31,13 +31,19 @@ import ctypes
 import threading
 from pathlib import Path
 
+from quill.core.error_codes import CodedError
 
-class MathCatUnavailable(Exception):
+
+class MathCatUnavailable(CodedError):
     """Raised when the MathCAT engine pack is not installed."""
 
+    code = "QUILL-MATH-MATHCAT-UNAVAILABLE"
 
-class MathCatError(Exception):
+
+class MathCatError(CodedError):
     """Raised when MathCAT itself reports an error via ``GetError()``."""
+
+    code = "QUILL-MATH-MATHCAT-FAILED"
 
 
 _lock = threading.Lock()

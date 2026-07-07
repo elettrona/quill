@@ -17,6 +17,7 @@ from typing import TYPE_CHECKING
 
 from quill.core.ai.custom_instructions import split_instruction
 from quill.core.assistant_ai import generate_assistant_response
+from quill.core.error_codes import CodedError
 
 if TYPE_CHECKING:
     from quill.core.assistant_agents import AgentPlan
@@ -56,8 +57,8 @@ class AgentResult:
 # ---------------------------------------------------------------------------
 
 
-class AgentSessionError(Exception):
-    pass
+class AgentSessionError(CodedError):
+    code = "QUILL-AI-AGENT-SESSION"
 
 
 class AgentSessionAuthError(AgentSessionError):

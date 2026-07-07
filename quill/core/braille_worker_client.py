@@ -16,11 +16,15 @@ import sys
 import time
 from dataclasses import dataclass
 
+from quill.core.error_codes import CodedError
+
 DEFAULT_TABLE = "en-ueb-g2"
 
 
-class WorkerError(Exception):
+class WorkerError(CodedError):
     """A translation request failed (worker crash, bad output, or liblouis error)."""
+
+    code = "QUILL-BRAILLE-WORKER-FAILED"
 
 
 class WorkerTimeoutError(WorkerError):

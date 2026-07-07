@@ -24,6 +24,7 @@ import zipfile
 from collections.abc import Callable
 from pathlib import Path
 
+from quill.core.error_codes import CodedError
 from quill.core.speech import models
 
 ProgressCallback = Callable[[float, str], None]
@@ -35,8 +36,10 @@ _DOWNLOAD_TIMEOUT_S = 1800.0
 _WANTED = ("ffmpeg.exe", "ffprobe.exe")
 
 
-class FFmpegInstallError(Exception):
+class FFmpegInstallError(CodedError):
     """Raised when the optional ffmpeg download or extraction fails."""
+
+    code = "QUILL-SPEECH-FFMPEG-INSTALL"
 
 
 def ffmpeg_install_supported() -> bool:

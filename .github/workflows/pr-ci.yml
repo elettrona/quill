@@ -110,6 +110,8 @@ jobs:
         run: python -m quill.tools.check_banned_patterns
       - name: Module-size budget (GATE-11)
         run: python -m quill.tools.module_size_budget
+      - name: Error-code completeness gate (GATE-EC)
+        run: python -m quill.tools.error_code_audit
       - name: Publishing provider registry gate
         run: python -m quill.tools.check_publishing_providers
       - name: Feature-tag gate
@@ -125,7 +127,8 @@ jobs:
             tests\unit\tools\test_check_publishing_providers.py `
             tests\unit\tools\test_feature_tags.py `
             tests\unit\tools\test_translation.py `
-            tests\unit\tools\test_help_coverage.py
+            tests\unit\tools\test_help_coverage.py `
+            tests\unit\tools\test_error_code_audit.py
 
   performance-budgets:
     # PERF-9: enforce hard ceilings on the startup-critical paths (startup

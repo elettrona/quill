@@ -606,16 +606,23 @@ class StatusBarMixin:
     def _on_statusbar_cell_focus(self, event: object, item: str) -> None:
         index = self._statusbar_cell_index(item)
         self._active_statusbar_cell_index = index
-        self._announce_statusbar_item(item)
+        # The "Status bar" region name is announced only on the F6 landing into
+        # the bar (flagged by _focus_region). Arrowing between cells is
+        # intra-region navigation and clears the flag, so the region name is not
+        # repeated on every keystroke -- the user already heard it on landing.
+        entering = getattr(self, "_statusbar_entry_pending", False)
+        self._statusbar_entry_pending = False
+        self._announce_statusbar_item(item, with_region_prefix=entering)
         event.Skip()
 
-    def _announce_statusbar_item(self, item: str) -> None:
+    def _announce_statusbar_item(self, item: str, *, with_region_prefix: bool = True) -> None:
         label = self._STATUS_BAR_LABELS.get(item, item)
         value = self._statusbar_text_for_item(item)
+        prefix = "Status bar, " if with_region_prefix else ""
         if value:
-            announce(f"Status bar, {label}, {value}")
+            announce(f"{prefix}{label}, {value}")
         else:
-            announce(f"Status bar, {label}")
+            announce(f"{prefix}{label}")
 
     def _on_statusbar_key_down(self, event: object, item: str) -> None:
         wx = self._wx

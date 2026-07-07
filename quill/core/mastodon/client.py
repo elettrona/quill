@@ -28,6 +28,7 @@ import urllib.request
 from dataclasses import dataclass
 
 from quill import __version__
+from quill.core.error_codes import CodedError
 
 #: The app QUILL registers on the user's instance; shown as the post's source.
 CLIENT_NAME = "QUILL"
@@ -56,8 +57,10 @@ _USER_AGENT = f"{CLIENT_NAME}/{__version__}"
 _TIMEOUT_SECONDS = 30
 
 
-class MastodonError(Exception):
+class MastodonError(CodedError):
     """A Mastodon request failed (network, auth, or API error)."""
+
+    code = "QUILL-PUBLISH-MASTODON-REQUEST"
 
 
 @dataclass(frozen=True, slots=True)

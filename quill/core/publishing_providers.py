@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass, replace
 
+from quill.core.error_codes import CodedError
+
 WORDPRESS_PROVIDER_ID = "wordpress"
 
 PUBLISHING_OPERATION_VERIFY = "verify"
@@ -22,8 +24,10 @@ PUBLISHING_OPERATIONS = (
 )
 
 
-class PublishingOperationCancelled(Exception):
+class PublishingOperationCancelled(CodedError):
     """Raised when a caller-supplied cancellation check stops an in-flight operation."""
+
+    code = "QUILL-PUBLISH-OPERATION-CANCELLED"
 
 
 AUTH_METHOD_APP_PASSWORD = "app_password"

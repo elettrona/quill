@@ -29,6 +29,8 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 
+from quill.core.error_codes import CodedError
+
 # (fraction 0.0-1.0, human message) — same shape as the speech ProgressCallback.
 ProgressCallback = Callable[[float, str], None]
 
@@ -39,8 +41,10 @@ _RELEASE_BASE = "https://github.com/Community-Access/quill/releases/download"
 _CHUNK = 1024 * 1024
 
 
-class ReleaseAssetError(Exception):
+class ReleaseAssetError(CodedError):
     """A redistributable component could not be fetched/verified/installed."""
+
+    code = "QUILL-RELEASE-ASSET-FAILED"
 
 
 class DownloadCancelled(ReleaseAssetError):

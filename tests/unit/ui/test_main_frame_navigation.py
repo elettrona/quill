@@ -221,6 +221,62 @@ def test_navigate_next_region_focuses_status_bar() -> None:
     assert frame.statusbar.focused is True
 
 
+def test_navigate_to_status_bar_does_not_announce_generic_region_message(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Entering the status bar via F6 must not emit the generic 'Focused Status
+    Bar region' message. The cell-focus announcement already names the region,
+    so emitting both makes a screen reader say 'Status Bar' twice on entry."""
+    import quill.ui.main_frame_statusbar as statusbar_module
+
+    spoken: list[str] = []
+    monkeypatch.setattr(statusbar_module, "announce", lambda message: spoken.append(message))
+
+    frame = _build_frame("hello")
+    frame.navigate_next_region()
+
+    assert frame._active_region == "Status Bar"
+    # The F6 landing arms the one-shot region-name flag consumed by the first
+    # cell focus (real cell focus is a wx event not fired in this fake harness).
+    assert frame._statusbar_entry_pending is True
+    assert not any("Focused Status Bar region" in message for message in spoken)
+
+
+def test_statusbar_speaks_region_name_on_entry_but_not_on_arrow(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The F6 landing speaks 'Status bar, <cell>, <value>'; arrowing to the next
+    cell speaks only that cell, so 'Status bar' is not repeated on every arrow
+    keystroke (#status-bar-region-repeat)."""
+    import quill.ui.main_frame_statusbar as statusbar_module
+
+    spoken: list[str] = []
+    monkeypatch.setattr(statusbar_module, "announce", lambda message: spoken.append(message))
+
+    frame = _build_frame("hello")
+    frame._statusbar_cells = [
+        statusbar_module._StatusBarCell(item="message", button=object()),
+        statusbar_module._StatusBarCell(item="line_column", button=object()),
+    ]
+    frame._active_statusbar_cell_index = 0
+
+    class _Event:
+        def Skip(self) -> None:
+            return None
+
+    # F6 landing: the entry flag is armed, so the first cell carries the region.
+    frame._statusbar_entry_pending = True
+    frame._on_statusbar_cell_focus(_Event(), "message")
+    assert spoken[-1].startswith("Status bar, ")
+    # The flag is one-shot: it is consumed by the landing announcement.
+    assert frame._statusbar_entry_pending is False
+
+    # Arrowing to the next cell speaks only the cell -- no "Status bar" prefix.
+    frame._on_statusbar_cell_focus(_Event(), "line_column")
+    assert not spoken[-1].startswith("Status bar")
+    assert "Position" in spoken[-1]
+
+
 def _attach_split_preview(frame: MainFrame) -> object:
     """Give the active tab a visible side-preview pane (split open)."""
 

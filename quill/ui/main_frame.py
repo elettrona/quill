@@ -1198,6 +1198,10 @@ class MainFrame(
         self._active_tab_index = -1
         self._statusbar_cells: list[_StatusBarCell] = []
         self._active_statusbar_cell_index = 0
+        # True only between the F6 landing into the status bar and the first
+        # cell-focus announcement, so "Status bar" is spoken once on entry and
+        # never again on intra-bar arrow navigation (see _on_statusbar_cell_focus).
+        self._statusbar_entry_pending = False
         # EdSharp port: per-document arming flag for numbered-list auto-fill.
         # Set to time.monotonic() + _LIST_AUTO_FILL_ARM_SECONDS the first time
         # the user toggles a numbered list on the active document; cleared on
@@ -16066,6 +16070,10 @@ class MainFrame(
 
     def _focus_region(self, label: str) -> None:
         if label == "Status Bar":
+            # Flag the F6 landing so the status-bar cell focus announces the
+            # "Status bar" region name once on entry; arrow moves within the bar
+            # clear the flag and speak only the cell (see _on_statusbar_cell_focus).
+            self._statusbar_entry_pending = True
             self.statusbar.SetFocus()
             return
         if label == "Reveal Codes":
@@ -16109,7 +16117,11 @@ class MainFrame(
             return
         self._set_active_region(next_label)
         self._focus_region(next_label)
-        self._set_status(f"Focused {next_label} region")
+        # The status bar announces its own region name + focused cell on the
+        # landing (_on_statusbar_cell_focus), so skip the generic region
+        # announcement here to avoid saying "Status Bar" twice on entry.
+        if next_label != "Status Bar":
+            self._set_status(f"Focused {next_label} region")
 
     def _outline_entries(self) -> list[OutlineEntry]:
         markup_kind = self._effective_markup_kind()

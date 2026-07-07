@@ -46,10 +46,15 @@ on **Check for Updates**.
 - **Fixed a crash opening Profiles and Features.** A translated profile name
   wasn't being fully resolved before being handed to the list box, so opening
   the dialog - from the Tools menu or the command palette - could crash.
-- **Some errors now carry a short support code** (like
+- **The status bar stopped saying "Status Bar" over and over.** Pressing F6 to
+  jump to the status bar and then arrowing across it made your screen reader
+  announce "Status Bar" before every cell. Now you hear it once, when you land
+  there; after that each cell just tells you what it is and what it says (for
+  example, "Position, Ln 12, Col 7"). Quieter, and the way it was meant to work.
+- **Errors now carry a short support code** (like
   `[QUILL-SPEECH-WHISPER-DL-404]`) alongside the message, so if you paste an
-  error into a bug report we can pinpoint the exact cause faster. Only a
-  handful of Whisper-download errors have one so far; more will pick this up
-  over time.
+  error into a bug report we can pinpoint the exact cause faster. This now
+  covers every one of QUILL's internal error types, not just a handful, and the
+  code travels with the crash report automatically.
 
 More fixes land in this file as they ship - check back before release day.

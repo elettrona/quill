@@ -24,6 +24,7 @@ import zipfile
 from collections.abc import Callable
 from pathlib import Path
 
+from quill.core.error_codes import CodedError
 from quill.core.speech import models
 
 ProgressCallback = Callable[[float, str], None]
@@ -40,8 +41,10 @@ _DOWNLOAD_TIMEOUT_S = 1800.0
 _PIPER_EXE = "piper.exe"
 
 
-class PiperInstallError(Exception):
+class PiperInstallError(CodedError):
     """Raised when the Piper download or extraction fails."""
+
+    code = "QUILL-SPEECH-PIPER-INSTALL"
 
 
 def piper_install_supported() -> bool:

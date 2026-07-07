@@ -16,6 +16,7 @@ from __future__ import annotations
 import xml.etree.ElementTree as ET
 from dataclasses import dataclass
 
+from quill.core.error_codes import CodedError
 from quill.core.math.latex_bridge import (
     LatexBridgeUnavailable,
     LatexConversionError,
@@ -63,8 +64,10 @@ _SYMBOL_WORDS: dict[str, str] = {
 _EXPONENT_WORDS: dict[str, str] = {"2": "squared", "3": "cubed"}
 
 
-class MathNavigatorError(Exception):
+class MathNavigatorError(CodedError):
     """Raised when *text* cannot be parsed as LaTeX or MathML."""
+
+    code = "QUILL-MATH-NAVIGATOR-PARSE"
 
 
 def _local_tag(element: ET.Element) -> str:

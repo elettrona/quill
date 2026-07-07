@@ -14,6 +14,7 @@ from typing import TYPE_CHECKING
 
 from quill.core.ai.custom_instructions import split_instruction
 from quill.core.assistant_ai import generate_assistant_response
+from quill.core.error_codes import CodedError
 
 if TYPE_CHECKING:
     from quill.core.assistant_ai import AssistantConnectionSettings
@@ -40,8 +41,8 @@ class ThesaurusEntry:
     note: str
 
 
-class ThesaurusError(Exception):
-    pass
+class ThesaurusError(CodedError):
+    code = "QUILL-AI-THESAURUS-FAILED"
 
 
 class ThesaurusAuthError(ThesaurusError):

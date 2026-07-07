@@ -26,6 +26,7 @@ from pathlib import Path
 from typing import Literal
 
 from quill.core import convert_profiles, pandoc_formats
+from quill.core.error_codes import CodedError
 from quill.io.pandoc import (
     PandocCancelledError,
     PandocConversionError,
@@ -93,7 +94,8 @@ class BatchReport:
     cancelled: bool = False
 
 
-class OverwriteRequired(Exception):
+class OverwriteRequired(CodedError):
+    code = "QUILL-CONVERT-BATCH-OVERWRITE"
     """Raised by :func:`run_batch` when the policy is ``"ask"`` and the output exists.
 
     The UI catches this once at the batch level (or per file in the future)

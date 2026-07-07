@@ -31,6 +31,7 @@ import zipfile
 from collections.abc import Callable
 from pathlib import Path
 
+from quill.core.error_codes import CodedError
 from quill.core.paths import app_data_dir
 
 ProgressCallback = Callable[[float, str], None]
@@ -44,8 +45,10 @@ _SHASUMS_URL = f"https://nodejs.org/dist/latest-v{NODE_LTS_MAJOR}.x/SHASUMS256.t
 _DOWNLOAD_TIMEOUT_S = 1800.0
 
 
-class NodeInstallError(Exception):
+class NodeInstallError(CodedError):
     """Raised when the optional Node.js runtime download or extraction fails."""
+
+    code = "QUILL-QUILLIN-NODE-INSTALL"
 
 
 def node_install_supported() -> bool:

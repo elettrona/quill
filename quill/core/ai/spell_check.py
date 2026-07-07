@@ -12,6 +12,7 @@ from dataclasses import dataclass
 
 from quill.core.ai.custom_instructions import split_instruction
 from quill.core.assistant_ai import AssistantConnectionSettings, generate_assistant_response
+from quill.core.error_codes import CodedError
 
 _SPELL_CHECK_PROMPT_PREFIX = (
     "You are a professional copy editor. Find all spelling errors in the text below. "
@@ -29,8 +30,8 @@ _SPELL_CHECK_PROMPT_PREFIX = (
 _MAX_CHUNK_CHARS = 60_000  # safe under most model context windows
 
 
-class SpellCheckError(Exception):
-    pass
+class SpellCheckError(CodedError):
+    code = "QUILL-AI-SPELLCHECK-FAILED"
 
 
 class SpellCheckParseError(SpellCheckError):

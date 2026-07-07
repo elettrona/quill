@@ -43,6 +43,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+from quill.core.error_codes import CodedError
+
 logger = logging.getLogger(__name__)
 
 DATALAB_DEFAULT_ENDPOINT = "https://www.datalab.to"
@@ -73,8 +75,10 @@ CancelFn = Callable[[], bool]
 Opener = Callable[[urllib.request.Request, float], Any]
 
 
-class DatalabError(Exception):
+class DatalabError(CodedError):
     """A cloud conversion failed, with a user-ready, secret-free message."""
+
+    code = "QUILL-OCR-DATALAB-FAILED"
 
 
 class DatalabCancelled(DatalabError):
