@@ -26,7 +26,7 @@ logger = logging.getLogger(__name__)
 def _bundled_token() -> str:
     """Return the token baked in at build time, or "" in an unbuilt checkout."""
     try:
-        from quill._feedback_token import BUNDLED_TOKEN
+        from quill._feedback_token import BUNDLED_TOKEN  # type: ignore[import-untyped]
     except ImportError:
         return ""
     return (BUNDLED_TOKEN or "").strip()
