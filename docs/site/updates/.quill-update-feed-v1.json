@@ -1,7 +1,7 @@
 {
-  "version": "0.8.0 Beta 1",
-  "download_url": "https://github.com/Community-Access/quill/releases/download/v0.8.0-beta.1/Quill-for-All-Setup-0.8.0.Beta.1.exe",
-  "published_at": "2026-06-28T00:37:10Z",
-  "notes": "0.8.0 Beta 1: first run no longer shows a second setup wizard; release notes now appear when you check for updates; new Help > What's New; faster update prompt. Includes the 0.8.0 rollup (Python 3.13 runtime, bundled Kokoro voices, Mastodon posting, voice previews, consolidated batch speech/audiobook, upgrade hardening).",
-  "signature": "f6d6decf6a732d5aab4ea9e0730547fa0319473d55446544c17ad5ac1cf70051"
+  "version": "0.9.0 Beta 1",
+  "download_url": "https://github.com/Community-Access/quill/releases/download/v0.9.0-beta.1/Quill-for-All-Setup-0.9.0.Beta.1.exe",
+  "published_at": "2026-07-07T01:52:07Z",
+  "notes": "The 0.9.0 beta. Rolls up everything through 0.8.0 (below) plus the features, fixes, and enhancements in this release — headlined by the new AI suite, the **Accessible Vault** (linked notes you can traverse by ear), the **GLOW accessibility suite** (guided document audit and repair, shipping as an experimental opt-in), the **ElevenLabs Read Aloud voice**, and a lighter, smaller install. **This is the final feature release before QUILL 1.0**: from this beta forward, no new features are added — only bug fixes and polish, driven by your reports, until 1.0 ships. This section doubles as the in-app release notes: the same text appears when you **Check for Updates** and any time from **Help > What's New**.\n\n### QUILL parla italiano - the first community translation\n\n- **Italian interface translat",
+  "signature": "9f6418b077b180a08951ab10d52ca007bc9c88b3e231eb62660236ab44c86f73"
 }

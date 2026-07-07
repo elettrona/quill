@@ -76,12 +76,9 @@ ESPEAK_PINNED_VERSION = "1.52.0"
 ESPEAK_PINNED_URL = "https://github.com/espeak-ng/espeak-ng/releases/download/1.52.0/espeak-ng.msi"
 ESPEAK_PINNED_SHA256 = "7f673c709ea5dd579d3b5ebb98688cc575328a6ab7438d2bc405b88cedaeafb9"
 
-# Pinned Piper TTS Windows release. _download_and_stage_piper() tries the
-# latest GitHub release first and falls back to these if the API is unreachable.
-PIPER_PINNED_URL = (
-    "https://github.com/rhasspy/piper/releases/download/2023.11.14-2/piper_windows_amd64.zip"
-)
-PIPER_PINNED_SHA256 = "f3c58906402b24f3a96d92145f58acba6d86c9b5db896d207f78dc80811efcea"
+# Piper is no longer bundled by the installer (PRD 10.2.x footprint unbundle):
+# fresh installs download the engine + voice on demand from the Voice Picker, so
+# there is no build-time Piper staging and no pinned Piper release to track here.
 
 # Pinned whisper.cpp Windows release. _download_and_stage_whisper() tries the
 # latest GitHub release first and falls back to these if the API is unreachable.
@@ -304,15 +301,17 @@ def build_windows_distribution(
 
     staged_docs = _stage_distribution_docs(portable_dir, resolved_source_root)
     effective_bundled_tools = dict(bundled_tool_dirs or {})
-    # Pandoc is NO LONGER bundled by default (footprint unbundle, PRD 10.2.x):
-    # at ~220 MB it was the largest component, yet core plain-text/Markdown
-    # editing never uses it. Fresh installs fetch the official pinned build on
-    # demand (quill/core/pandoc_install.py) the first time a conversion needs it,
-    # preferring the app-data copy. A build may still stage a local copy with
-    # --pandoc-dir (populates effective_bundled_tools above). Piper stays bundled
-    # -- it is the small default on-device Read Aloud voice.
-    if "speech/piper" not in effective_bundled_tools:
-        effective_bundled_tools["speech/piper"] = _download_and_stage_piper(portable_dir)
+    # Pandoc, Piper, Node.js, and the braille pack are NO LONGER bundled, and the
+    # installer no longer ships or prompts for any of them (footprint unbundle,
+    # PRD 10.2.x -- completing the 10.2.4 sweep that already dropped whisper.cpp,
+    # Kokoro, DECtalk, and eSpeak-NG). Fresh installs fetch each on demand from
+    # its verified source: Pandoc via quill/core/pandoc_install.py on the first
+    # conversion, Piper via the Voice Picker (quill.core.read_aloud /
+    # download_piper_exe), Node.js via quill/core/node_install.py, and the braille
+    # pack via download_braille_pack (Help > Download Optional Components). A dev
+    # build may still stage a local Pandoc/DECtalk/eSpeak/whisper copy with the
+    # matching --*-dir flag, but that only populates the portable bundle -- the
+    # installer ships none of them.
     # whisper.cpp, DECtalk, and eSpeak-NG are NO LONGER bundled by default
     # (PRD 10.2.4 unbundle): fresh installs download them on demand from QUILL's
     # pinned, SHA-256-verified "assets-v1" release, and offline speech offers the
@@ -771,37 +770,13 @@ def build_inno_setup_script(
         ' (OCR, Open, Read aloud) to the file right-click menu";'
         ' GroupDescription: "File associations:"; Flags: unchecked',
         "",
-        "[Types]",
-        "; Full installs everything and skips the component and voice pages.",
-        "; Full is the recommended choice for most users.",
-        'Name: "full"; Description: "Full installation (recommended)"',
-        'Name: "custom"; Description: "Custom installation"; Flags: iscustom',
-        "",
-        "[Components]",
-        "; Every component below gates real [Files] payload. The Writing",
-        "; Assistant and the rest of Quill's core ship unconditionally with the",
-        "; main bundle, so there is no separate AI component to toggle here.",
-        'Name: "pandoc"; Description: "Install bundled Pandoc for document conversion";'
-        " Types: full custom; Flags: checkablealone",
-        'Name: "speechpiper"; Description: "Install bundled Piper neural TTS runtime";'
-        " Types: full custom; Flags: checkablealone",
-        # whisper.cpp, DECtalk, and eSpeak-NG are unbundled (PRD 10.2.4): no
-        # installer component. QUILL downloads each on demand from its verified
-        # "assets-v1" release asset (Tools > Speech > Download Offline Speech
-        # Engine; Manage Voices for DECtalk/eSpeak), and offline speech offers it
-        # at point of use. SAPI 5 remains the always-present offline floor and
-        # upgraders keep their existing copies.
-        'Name: "nodejs"; Description: "Install portable Node.js runtime for Node Quillins'
-        " and the Developer Console TypeScript interface (~30 MB);"
-        ' not required for Python Quillins";'
-        " Flags: checkablealone",
-        'Name: "braillepack"; Description: "Install QUILL Braille Pack'
-        " (liblouis translation engine, UEB, Standard American English,"
-        ' and international braille profiles, ~15 MB)";'
-        " Types: full custom; Flags: checkablealone",
-        # Kokoro is unbundled (PRD 10.2.4): no installer component. QUILL downloads
-        # the ~120 MB model on demand from its verified release asset (Manage Voices
-        # / Speech Hub). Upgraders keep their existing {app}\kokoro-models copy.
+        "; No [Types] or [Components] section: every optional component is fetched",
+        "; on demand from its verified source, so the installer shows no setup-type",
+        "; or component-selection page at all. Pandoc, Piper, Node.js, the braille",
+        "; pack, whisper.cpp, Kokoro, DECtalk, and eSpeak-NG all download at point",
+        "; of use (PRD 10.2.x footprint unbundle). Quill's core -- the Writing",
+        "; Assistant and everything else -- ships unconditionally in the main",
+        "; bundle below.",
         "",
         "[InstallDelete]",
         "; Upgrade hygiene -- the single most important fix for reliable upgrades.",
@@ -845,44 +820,13 @@ def build_inno_setup_script(
         'Source: "..\\portable\\*"; DestDir: "{app}";'
         " Flags: ignoreversion recursesubdirs createallsubdirs;"
         ' Excludes: "docs\\QUILL-PRD.md,tools\\pandoc\\*,tools\\speech\\dectalk\\*,tools\\speech\\espeak-ng\\*,tools\\speech\\piper\\*,tools\\speech\\whispercpp\\*,tools\\nodejs\\*,vendor\\braille-pack\\*,kokoro-models\\*,_tool-download\\*,_speech-download\\*,*\\__pycache__\\*"',
-        "; QUILL Braille Pack: liblouis runtime, translation tables, and BRF profiles.",
-        "; Installed to vendor\\braille-pack so QUILL detects it automatically via QUILL_APP_ROOT.",
-        'Source: "..\\portable\\vendor\\braille-pack\\*"; DestDir: "{app}\\vendor\\braille-pack";'
-        " Flags: ignoreversion recursesubdirs createallsubdirs skipifsourcedoesntexist;"
-        " Components: braillepack",
-        "; Kokoro neural TTS models are NOT bundled (PRD 10.2.4 unbundle): QUILL",
-        "; downloads them on demand to %APPDATA%\\Quill\\kokoro-models (verified",
-        "; release asset), which the runtime prefers. Upgraders keep any existing",
-        "; {app}\\kokoro-models copy -- Inno never removes it and [InstallDelete]",
-        "; does not touch it. A --kokoro-dir build still stages it into the portable",
-        "; bundle; the installer no longer ships it.",
-        'Source: "..\\portable\\tools\\pandoc\\*"; DestDir: "{app}\\tools\\pandoc";'
-        " Flags: ignoreversion recursesubdirs createallsubdirs skipifsourcedoesntexist;"
-        " Components: pandoc",
-        "; DECtalk and eSpeak-NG are NOT bundled (PRD 10.2.4 unbundle): QUILL",
-        "; downloads each on demand (verified assets-v1 release) to",
-        "; %APPDATA%\\Quill\\speech\\dectalk and %APPDATA%\\Quill\\speech\\espeak-ng,",
-        "; which the resolver searches. Upgraders keep any existing",
-        "; {app}\\tools\\speech\\dectalk / espeak-ng copy -- Inno never removes it",
-        "; and [InstallDelete] does not touch it. A --dectalk-dir / --espeak-dir",
-        "; build still stages it into the portable bundle; the installer no longer",
-        "; ships it.",
-        'Source: "..\\portable\\tools\\speech\\piper\\*"; DestDir: "{app}\\tools\\speech\\piper";'
-        " Flags: ignoreversion recursesubdirs createallsubdirs skipifsourcedoesntexist;"
-        " Components: speechpiper",
-        "; whisper.cpp offline speech engine is NOT bundled (PRD 10.2.4 unbundle):",
-        "; QUILL downloads the ~8 MB engine on demand to %APPDATA%\\Quill\\speech-engine",
-        "; (verified release asset), and offline speech offers it at point of use.",
-        "; Upgraders keep any existing {app}\\tools\\speech\\whispercpp copy -- Inno",
-        "; never removes it and [InstallDelete] does not touch it. A --whisper-dir",
-        "; build still stages it; the installer no longer ships it.",
-        "; Node.js portable runtime (optional). The build script copies a portable",
-        "; node.exe distribution into portable\\tools\\nodejs when building with",
-        "; --bundle-nodejs. skipifsourcedoesntexist means a build without bundled",
-        "; Node still works; users are offered WinGet installation in [Code] below.",
-        'Source: "..\\portable\\tools\\nodejs\\*"; DestDir: "{app}\\tools\\nodejs";'
-        " Flags: ignoreversion recursesubdirs createallsubdirs skipifsourcedoesntexist;"
-        " Components: nodejs",
+        "; Only Quill's core bundle is installed. Every optional component --",
+        "; Pandoc, Piper, Node.js, the braille pack, whisper.cpp, Kokoro, DECtalk,",
+        "; and eSpeak-NG -- is fetched on demand to %APPDATA%\\Quill (verified,",
+        "; pinned release assets or official builds), which the app's resolvers",
+        "; prefer. The Excludes above keep any locally staged copy (from a --*-dir",
+        "; dev build) out of the shipped installer; [InstallDelete] never touches",
+        "; an upgrader's existing {app} copies.",
         "",
         "[Icons]",
         'Name: "{group}\\{#AppName}"; Filename: "{code:BundledLauncherPath}"; Parameters: "-m quill"; WorkingDir: "{app}"; Check: HasBundledLauncher',
@@ -972,24 +916,13 @@ def build_inno_setup_script(
         "  Result := BundledLauncherPath('') <> '';",
         "end;",
         "",
-        "// -- Skip component page for full installs ------------------------------------",
-        "// Full install: skip component selection (everything is pre-selected).",
-        "function ShouldSkipPage(PageID: Integer): Boolean;",
-        "begin",
-        "  Result := False;",
-        "  if PageID = wpSelectComponents then",
-        "    Result := (WizardSetupType(False) = 'full');",
-        "end;",
-        "",
-        "// -- Post-install: write new-install marker + optional Node.js bootstrap --",
+        "// -- Post-install: write the new-install marker -----------------------------",
         "// The new-install marker tells the app to re-run the setup wizard on first",
         "// launch even when %APPDATA% settings from a prior install say it completed.",
-        "// The Node.js check is opt-in (unchecked by default): fires only when the",
-        "// user explicitly selected it and the portable node.exe was not bundled.",
+        "// Node.js is no longer bundled or offered here; the app installs it on",
+        "// demand (quill/core/node_install.py) if a Node Quillin needs it.",
         "procedure CurStepChanged(CurStep: TSetupStep);",
         "var",
-        "  NodePath: String;",
-        "  WingetResult: Integer;",
         "  StaleShortcut: String;",
         "begin",
         "  if CurStep = ssInstall then",
@@ -1009,34 +942,6 @@ def build_inno_setup_script(
         "  if CurStep = ssPostInstall then",
         "  begin",
         "    SaveStringToFile(ExpandConstant('{app}\\quill-new-install.txt'), 'new-install', False);",
-        "    if WizardIsComponentSelected('nodejs') then",
-        "    begin",
-        "      NodePath := ExpandConstant('{app}\\tools\\nodejs\\node.exe');",
-        "      if not FileExists(NodePath) then",
-        "      begin",
-        "        if MsgBox(",
-        "          'Node.js was not found in the bundled tools.' + #13#10 + #13#10 +",
-        "          'Node.js is needed for Node Quillins and the Developer Console ' +",
-        "          'TypeScript interface. Would you like Quill to install Node.js ' +",
-        "          'LTS via Windows Package Manager (winget)?' + #13#10 + #13#10 +",
-        "          'This requires an internet connection. Choose No to install Node.js ' +",
-        "          'manually later from nodejs.org.',",
-        "          mbConfirmation, MB_YESNO or MB_DEFBUTTON2) = IDYES then",
-        "        begin",
-        "          Exec(",
-        "            ExpandConstant('{cmd}'),",
-        "            '/C winget install --id OpenJS.NodeJS.LTS"
-        " --accept-source-agreements --accept-package-agreements --silent',",
-        "            '', SW_SHOW, ewWaitUntilTerminated, WingetResult);",
-        "          if WingetResult <> 0 then",
-        "            MsgBox(",
-        "              'Node.js installation did not complete.' + #13#10 +",
-        "              'You can install it manually from https://nodejs.org/ and Quill' +",
-        "              ' will find it automatically.',",
-        "              mbInformation, MB_OK);",
-        "        end;",
-        "      end;",
-        "    end;",
         "  end;",
         "end;",
         "",
@@ -1758,47 +1663,6 @@ def _download_and_stage_pandoc(portable_dir: Path) -> Path:
     if not (stage_dir / "pandoc.exe").exists():
         raise RuntimeError("Pandoc zip did not contain pandoc.exe")
     print(f"Pandoc staged to {stage_dir}")
-    return stage_dir
-
-
-def _download_and_stage_piper(portable_dir: Path) -> Path:
-    """Download Piper TTS for Windows and return a staging directory for _stage_bundled_tools.
-
-    Tries the latest GitHub release first; falls back to the pinned version.
-    Stages to portable/_tool-download/piper/stage/ so _stage_bundled_tools()
-    copies from there to tools/speech/piper/. Re-uses a prior download.
-    """
-    stage_dir = portable_dir / "_tool-download" / "piper" / "stage"
-    if (stage_dir / "piper.exe").exists():
-        print("Piper already downloaded; skipping.")
-        return stage_dir
-
-    url = (
-        _fetch_latest_github_asset_url("rhasspy", "piper", "_windows_amd64.zip") or PIPER_PINNED_URL
-    )
-    sha256 = PIPER_PINNED_SHA256 if url == PIPER_PINNED_URL else None
-
-    tmp_dir = portable_dir / "_tool-download" / "piper"
-    tmp_dir.mkdir(parents=True, exist_ok=True)
-    archive = tmp_dir / "piper_windows_amd64.zip"
-    print(f"Downloading Piper from {url}...")
-    _download_with_verification(url, archive, expected_sha256=sha256)
-
-    extract_dir = tmp_dir / "extracted"
-    if extract_dir.exists():
-        shutil.rmtree(extract_dir)
-    extract_dir.mkdir(parents=True, exist_ok=True)
-    with zipfile.ZipFile(archive) as zf:
-        zf.extractall(extract_dir)
-
-    exe_candidates = list(extract_dir.rglob("piper.exe"))
-    if not exe_candidates:
-        raise RuntimeError("Piper zip did not contain piper.exe")
-    piper_root = exe_candidates[0].parent
-    stage_dir.mkdir(parents=True, exist_ok=True)
-    shutil.copytree(piper_root, stage_dir, dirs_exist_ok=True)
-    archive.unlink(missing_ok=True)
-    print(f"Piper staged to {stage_dir}")
     return stage_dir
 
 

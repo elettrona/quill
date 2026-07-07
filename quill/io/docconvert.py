@@ -32,6 +32,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
+from quill.core.error_codes import CodedError
 from quill.io.ocr import OcrResult
 from quill.io.tesseract_ocr import (
     DEFAULT_LANGUAGE,
@@ -44,8 +45,10 @@ ProgressCallback = Callable[[float, str], None]
 CancelFn = Callable[[], bool]
 
 
-class DocConvertError(Exception):
+class DocConvertError(CodedError):
     """A conversion tier could not run (missing dependency, unreadable file)."""
+
+    code = "QUILL-IO-DOCCONVERT-FAILED"
 
 
 class DocConvertCancelled(DocConvertError):

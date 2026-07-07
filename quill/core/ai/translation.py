@@ -13,6 +13,7 @@ from urllib.request import Request, urlopen
 
 from quill.core.ai.custom_instructions import split_instruction
 from quill.core.assistant_ai import AssistantConnectionSettings, generate_assistant_response
+from quill.core.error_codes import CodedError
 
 SUPPORTED_LANGUAGES: dict[str, str] = {
     "Afrikaans": "af",
@@ -68,8 +69,8 @@ _TRANSLATE_PROMPT_TEMPLATE = (
 )
 
 
-class TranslationError(Exception):
-    pass
+class TranslationError(CodedError):
+    code = "QUILL-AI-TRANSLATE-FAILED"
 
 
 class TranslationAuthError(TranslationError):

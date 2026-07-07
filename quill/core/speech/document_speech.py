@@ -24,6 +24,7 @@ from pathlib import Path
 from typing import Any
 
 from quill.core import read_aloud
+from quill.core.error_codes import CodedError
 from quill.core.speech.chapter_assemble import (
     ChapterAssembleOptions,
     ChapterAssembleResult,
@@ -43,8 +44,10 @@ SUPPORTED_ENGINES = ("sapi5", "kokoro", "piper", "dectalk", "espeak")
 CLOUD_ENGINES = ("openai", "gemini", "elevenlabs")
 
 
-class DocumentSpeechError(Exception):
+class DocumentSpeechError(CodedError):
     """Raised when an engine cannot be resolved into a usable synthesizer."""
+
+    code = "QUILL-SPEECH-DOCUMENT-ENGINE"
 
 
 @dataclass(frozen=True, slots=True)

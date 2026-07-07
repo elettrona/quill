@@ -25,6 +25,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from quill import __version__
+from quill.core.error_codes import CodedError
 
 _USER_AGENT = f"QUILL/{__version__} (https://github.com/Community-Access/quill)"
 _MB_BASE = "https://musicbrainz.org/ws/2"
@@ -37,8 +38,10 @@ _MIN_COVER_BYTES = 1000
 _last_musicbrainz_request: float = 0.0
 
 
-class LookupError_(Exception):
+class LookupError_(CodedError):
     """A lookup failed in a way worth telling the user about (network down)."""
+
+    code = "QUILL-AUDIO-METADATA-LOOKUP"
 
 
 @dataclass(slots=True)

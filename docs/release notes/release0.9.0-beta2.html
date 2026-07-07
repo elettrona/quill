@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+  <meta charset="utf-8" />
+  <meta name="generator" content="pandoc" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+  <title>release0.9.0-beta2</title>
+  <style>
+    /* Default styles provided by pandoc.
+    ** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
+    */
+    html {
+      color: #1a1a1a;
+      background-color: #fdfdfd;
+    }
+    body {
+      margin: 0 auto;
+      max-width: 36em;
+      padding-left: 50px;
+      padding-right: 50px;
+      padding-top: 50px;
+      padding-bottom: 50px;
+      hyphens: auto;
+      overflow-wrap: break-word;
+      text-rendering: optimizeLegibility;
+      font-kerning: normal;
+    }
+    @media (max-width: 600px) {
+      body {
+        font-size: 0.9em;
+        padding: 12px;
+      }
+      h1 {
+        font-size: 1.8em;
+      }
+    }
+    @media print {
+      html {
+        background-color: white;
+      }
+      body {
+        background-color: transparent;
+        color: black;
+        font-size: 12pt;
+      }
+      p, h2, h3 {
+        orphans: 3;
+        widows: 3;
+      }
+      h2, h3, h4 {
+        page-break-after: avoid;
+      }
+    }
+    p {
+      margin: 1em 0;
+    }
+    a {
+      color: #1a1a1a;
+    }
+    a:visited {
+      color: #1a1a1a;
+    }
+    img {
+      max-width: 100%;
+    }
+    svg {
+      height: auto;
+      max-width: 100%;
+    }
+    h1, h2, h3, h4, h5, h6 {
+      margin-top: 1.4em;
+    }
+    h5, h6 {
+      font-size: 1em;
+      font-style: italic;
+    }
+    h6 {
+      font-weight: normal;
+    }
+    ol, ul {
+      padding-left: 1.7em;
+      margin-top: 1em;
+    }
+    li > ol, li > ul {
+      margin-top: 0;
+    }
+    blockquote {
+      margin: 1em 0 1em 1.7em;
+      padding-left: 1em;
+      border-left: 2px solid #e6e6e6;
+      color: #606060;
+    }
+    code {
+      white-space: pre-wrap;
+      font-family: Menlo, Monaco, Consolas, 'Lucida Console', monospace;
+      font-size: 85%;
+      margin: 0;
+      hyphens: manual;
+    }
+    pre {
+      margin: 1em 0;
+      overflow: auto;
+    }
+    pre code {
+      padding: 0;
+      overflow: visible;
+      overflow-wrap: normal;
+    }
+    .sourceCode {
+     background-color: transparent;
+     overflow: visible;
+    }
+    hr {
+      border: none;
+      border-top: 1px solid #1a1a1a;
+      height: 1px;
+      margin: 1em 0;
+    }
+    table {
+      margin: 1em 0;
+      border-collapse: collapse;
+      width: 100%;
+      overflow-x: auto;
+      display: block;
+      font-variant-numeric: lining-nums tabular-nums;
+    }
+    table caption {
+      margin-bottom: 0.75em;
+    }
+    tbody {
+      margin-top: 0.5em;
+      border-top: 1px solid #1a1a1a;
+      border-bottom: 1px solid #1a1a1a;
+    }
+    th {
+      border-top: 1px solid #1a1a1a;
+      padding: 0.25em 0.5em 0.25em 0.5em;
+    }
+    td {
+      padding: 0.125em 0.5em 0.25em 0.5em;
+    }
+    header {
+      margin-bottom: 4em;
+      text-align: center;
+    }
+    #TOC li {
+      list-style: none;
+    }
+    #TOC ul {
+      padding-left: 1.3em;
+    }
+    #TOC > ul {
+      padding-left: 0;
+    }
+    #TOC a:not(:hover) {
+      text-decoration: none;
+    }
+    span.smallcaps{font-variant: small-caps;}
+    div.columns{display: flex; gap: min(4vw, 1.5em);}
+    div.column{flex: auto; overflow-x: auto;}
+    div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+    /* The extra [class] is a hack that increases specificity enough to
+       override a similar rule in reveal.js */
+    ul.task-list[class]{list-style: none;}
+    ul.task-list li input[type="checkbox"] {
+      font-size: inherit;
+      width: 0.8em;
+      margin: 0 0.8em 0.2em -1.6em;
+      vertical-align: middle;
+    }
+    .display.math{display: block; text-align: center; margin: 0.5rem auto;}
+  </style>
+</head>
+<body>
+<h1 id="quill-090-beta-2---polish-release-1">QUILL 0.9.0 Beta 2 - Polish
+Release 1</h1>
+<h2
+id="the-screen-reader-first-writing-studio-built-by-the-people-who-depend-on-it">The
+screen-reader-first writing studio, built by the people who depend on
+it.</h2>
+<p><em>From Community Access. Free. Optional by design. Private by
+default. Yours to make quiet.</em></p>
+<p>This is the narrative companion to the <strong>"0.9.0 Beta
+2"</strong> section of <code>CHANGELOG.md</code> (the canonical,
+append-as-you-go log). Per the commitment made at Beta 1, <strong>no new
+features land in this release</strong> - only bug fixes and polish,
+driven directly by beta tester reports. The same text appears in-app
+under <strong>Help &gt; What's New</strong> and on <strong>Check for
+Updates</strong>.</p>
+<hr />
+<h2 id="fixed-in-this-beta">Fixed in this beta</h2>
+<ul>
+<li><strong>Non-UTF-8 text files no longer crash QUILL on open.</strong>
+A <code>.txt</code>/<code>.md</code> file saved in Windows-1252/Latin-1
+- a curly quote, en-dash, or other high-byte character without a UTF-8
+BOM - used to throw an unhandled error the moment you opened it. QUILL
+now falls back automatically and tells you when it did, in the status
+bar.</li>
+<li><strong>A stalled GPU check could freeze the whole app.</strong> The
+Speech and Dictation options' hardware probe ran with no timeout,
+directly on the UI thread, every time the dialog opened. It's now
+timeout-guarded and only ever runs once per session.</li>
+<li><strong>Whisper model downloads are more resilient.</strong> They
+now go through the same well-tested download library Faster Whisper
+already uses, so a future hiccup on Hugging Face's side surfaces a
+clear, specific message instead of a generic failure.</li>
+<li><strong>Kokoro voices give you the real fix when something's
+missing</strong>, instead of two confusing, mostly-unrelated options:
+the message now points straight at <strong>Tools &gt; Speech &gt;
+Install Kokoro ONNX</strong>.</li>
+<li><strong>Previewing a downloaded Piper voice no longer
+errors.</strong> After downloading a Piper voice, previewing it failed
+with an internal "Settings object has no attribute" message; the missing
+setting is now in place, so previewing and saving audio with Piper
+work.</li>
+<li><strong>Kokoro previews are more reliable - and honest when
+something is wrong.</strong> If a freshly downloaded Kokoro voice could
+not actually speak, QUILL used to fall back to a confusing "requires
+either... or..." message that hid the real reason. Now the download sets
+up everything Kokoro needs, and if synthesis ever still fails the true
+cause is written to the diagnostics log (<strong>Help &gt; Save
+Diagnostics</strong>) instead of being swallowed - so we can pinpoint
+and fix it.</li>
+<li><strong>Speech dialogs open with the right control focused</strong>
+- Speech Hub, Manage Speech Models, and Manage Voices no longer land on
+the OK/Cancel button.</li>
+<li><strong>Downloading extras is now a warm, one-stop
+experience.</strong> <strong>Help &gt; Download Optional
+Components</strong> was tidied into a proper hub: the things most people
+want come first (Pandoc, then the braille pack), every row explains what
+it does and how big it is, and the window opens instantly instead of
+pausing while it checks what you have. For anything already installed
+you get two new buttons: <strong>Test</strong>, which <em>proves it
+works</em> - a voice reads you a sample so you hear it, the offline
+speech engine listens to a spoken phrase and shows you what it heard,
+and tools report their version - and <strong>Remove</strong>, which
+deletes QUILL's copy and turns its features back off. Piper voices and
+the Node.js runtime are now in the list too, everything lands in your
+portable folder when you run QUILL portably, and if a download or test
+ever fails, QUILL offers to send a bug report with the details. For
+components that have their own picker - the speech engines (whisper.cpp,
+Vosk) and the Read Aloud voices - a <strong>Manage</strong> button jumps
+you straight to Manage Speech Models or Manage Voices to choose sizes
+and voices, so the hub is the one place you start no matter which extra
+you're after.</li>
+<li><strong>A simpler installer - no more component checkboxes.</strong>
+Installing Beta 1 asked you to pick optional components (Pandoc,
+Node.js, Piper, Braille pack), several of which did nothing because
+those parts are downloaded when you need them, not shipped in the
+installer. The installer now just installs QUILL; everything optional -
+the neural Piper voices, the braille pack, Pandoc, Node.js, and the
+offline speech engines - downloads on demand the first time you use it
+(Piper from Manage Voices; the braille pack and Pandoc from <strong>Help
+&gt; Download Optional Components</strong>).</li>
+<li><strong>Tabbed dialogs land you on the first control, not the tab
+strip.</strong> The AI Hub (and the About and Quillin-preferences
+dialogs) used to open with focus on the row of tabs. Your screen reader
+announced a tab while you heard the first field's name, so arrowing down
+did nothing. These dialogs now open with focus on the first real control
+inside the current tab - and because the fix lives in the shared dialog
+machinery, every tabbed dialog behaves this way.</li>
+<li><strong>Read Aloud no longer mispronounces Markdown
+formatting.</strong> Headings, bold text, and links in a Markdown
+document used to be read aloud as literal symbols (sounding garbled,
+especially with Piper voices); they're now converted to plain, speakable
+text first, live and on export.</li>
+<li><strong>macOS: Pandoc installed from the pandoc.org installer is now
+found.</strong> A QUILL window opened from Finder doesn't see the same
+folders a Terminal window does; QUILL now checks the common install
+locations directly.</li>
+<li><strong>Fixed doubled ampersands in a few menu titles</strong> -
+"Writing &amp; Language," "Reading &amp; Dictation," and others
+sometimes read back as "Writing &amp;&amp; Language." They now spell out
+"and" instead.</li>
+<li><strong>Added Danish to the Braille Translation menu.</strong> It
+shipped with the underlying engine all along but never made it into
+QUILL's language list.</li>
+<li><strong>Fixed a crash opening Profiles and Features.</strong> A
+translated profile name wasn't being fully resolved before being handed
+to the list box, so opening the dialog - from the Tools menu or the
+command palette - could crash.</li>
+<li><strong>The status bar stopped saying "Status Bar" over and
+over.</strong> Pressing F6 to jump to the status bar and then arrowing
+across it made your screen reader announce "Status Bar" before every
+cell. Now you hear it once, when you land there; after that each cell
+just tells you what it is and what it says (for example, "Position, Ln
+12, Col 7"). Quieter, and the way it was meant to work.</li>
+<li><strong>Errors now carry a short support code</strong> (like
+<code>[QUILL-SPEECH-WHISPER-DL-404]</code>) alongside the message, so if
+you paste an error into a bug report we can pinpoint the exact cause
+faster. This now covers every one of QUILL's internal error types, not
+just a handful, and the code travels with the crash report
+automatically.</li>
+</ul>
+<p>More fixes land in this file as they ship - check back before release
+day.</p>
+</body>
+</html>

@@ -1198,6 +1198,10 @@ class MainFrame(
         self._active_tab_index = -1
         self._statusbar_cells: list[_StatusBarCell] = []
         self._active_statusbar_cell_index = 0
+        # True only between the F6 landing into the status bar and the first
+        # cell-focus announcement, so "Status bar" is spoken once on entry and
+        # never again on intra-bar arrow navigation (see _on_statusbar_cell_focus).
+        self._statusbar_entry_pending = False
         # EdSharp port: per-document arming flag for numbered-list auto-fill.
         # Set to time.monotonic() + _LIST_AUTO_FILL_ARM_SECONDS the first time
         # the user toggles a numbered list on the active document; cleared on
@@ -8714,6 +8718,7 @@ class MainFrame(
             self._load_persistent_undo_state(selected_path, loaded.text)
             self._location_ring = LocationRing()
             self._location_ring.record(0)
+        self._announce_encoding_fallback(loaded)
         self._position_editor_at(line=line, column=column)
         if record_recent:
             self._record_recent(selected_path)
@@ -8962,6 +8967,13 @@ class MainFrame(
                 "Flagged for your consent: " + ", ".join(str(item) for item in warnings) + "."
             )
         self._set_status(" ".join(parts))
+
+    def _announce_encoding_fallback(self, document: Document) -> None:
+        """Tell the user when #867's non-UTF-8 fallback decoded this file."""
+        detected = document.source_metadata.get("encoding_detected")
+        if not detected:
+            return
+        self._set_status(f"Opened using {detected} text encoding (not UTF-8).")
 
     def next_document(self) -> None:
         self._switch_document(reverse=False)
@@ -16058,6 +16070,10 @@ class MainFrame(
 
     def _focus_region(self, label: str) -> None:
         if label == "Status Bar":
+            # Flag the F6 landing so the status-bar cell focus announces the
+            # "Status bar" region name once on entry; arrow moves within the bar
+            # clear the flag and speak only the cell (see _on_statusbar_cell_focus).
+            self._statusbar_entry_pending = True
             self.statusbar.SetFocus()
             return
         if label == "Reveal Codes":
@@ -16101,7 +16117,11 @@ class MainFrame(
             return
         self._set_active_region(next_label)
         self._focus_region(next_label)
-        self._set_status(f"Focused {next_label} region")
+        # The status bar announces its own region name + focused cell on the
+        # landing (_on_statusbar_cell_focus), so skip the generic region
+        # announcement here to avoid saying "Status Bar" twice on entry.
+        if next_label != "Status Bar":
+            self._set_status(f"Focused {next_label} region")
 
     def _outline_entries(self) -> list[OutlineEntry]:
         markup_kind = self._effective_markup_kind()
@@ -17611,7 +17631,9 @@ class MainFrame(
 
         _os.startfile(str(sample_path))
 
-    def _preview_voice(self, engine: str, voice_id: str, *, live: bool = False) -> None:
+    def _preview_voice(
+        self, engine: str, voice_id: str, *, live: bool = False, text: str | None = None
+    ) -> None:
         """Preview *voice_id* through *engine* on a background thread.
 
         ``live`` True means the voice is downloaded and ready, so synthesize the
@@ -17623,7 +17645,7 @@ class MainFrame(
         import tempfile as _tmpfile
         from pathlib import Path as _Path
 
-        sample = self._PREVIEW_TEXT
+        sample = text or self._PREVIEW_TEXT
         s = self.settings
 
         # Not downloaded: play the bundled pre-recorded sample (same phrase the
@@ -17754,7 +17776,7 @@ class MainFrame(
             discover_dectalk_executable,
             discover_espeak_executable,
             discover_piper_executable,
-            kokoro_onnx_ready,
+            kokoro_engine_ready,
         )
         from quill.core.speech.engine_install import (
             is_faster_whisper_available,
@@ -17786,7 +17808,7 @@ class MainFrame(
             "dectalk": discover_dectalk_executable(self.settings.read_aloud_dectalk_executable)
             is not None,
             "piper": discover_piper_executable() is not None,
-            "kokoro": kokoro_onnx_ready(),
+            "kokoro": kokoro_engine_ready(),
             "espeak": discover_espeak_executable(self.settings.read_aloud_espeak_executable)
             is not None,
             "elevenlabs": elevenlabs_ready,
@@ -18157,6 +18179,15 @@ class MainFrame(
         text = ""
         if editor is not None:
             text = editor.GetStringSelection().strip() or editor.GetValue().strip()
+        if text:
+            from quill.core.speech.text_polish import clean_markdown_text, polish_for_tts
+
+            # Raw markdown syntax ('#', '**', '[label](url)') reaching a
+            # synthesis engine directly -- Piper's espeak-ng phonemizer badly
+            # mis-tokenizes it, sounding garbled or like the wrong language
+            # (fix.md #4). Batch export and document-to-speech already clean
+            # it; this shares the same sanitizer.
+            text = polish_for_tts(clean_markdown_text(text))
         if not text:
             self._show_message_box(
                 "There is nothing to export. Open or type a document first, then "
@@ -18262,12 +18293,12 @@ class MainFrame(
             espeak_exe_snap = exe
 
         elif engine == "kokoro":
-            from quill.core.read_aloud import kokoro_onnx_ready
+            from quill.core.read_aloud import kokoro_engine_ready
 
-            if not kokoro_onnx_ready():
+            if not kokoro_engine_ready():
                 self._show_message_box(
-                    "Kokoro (neural, offline) is not installed. Open the Speech Hub "
-                    "(Read Aloud settings) to download it before exporting.",
+                    "Kokoro voices need one more component. Tools > Speech > "
+                    "Install Kokoro ONNX will fetch it before exporting.",
                     _TITLE,
                     wx.ICON_ERROR | wx.OK,
                 )
@@ -25918,7 +25949,7 @@ class MainFrame(
             nonlocal entries
             entries = self._combined_profile_entries()
             labels = [
-                name if kind == "built_in" else f"{name} (Custom)"
+                str(name) if kind == "built_in" else f"{name} (Custom)"
                 for kind, _profile_id, name in entries
             ]
             chooser.Set(labels)
@@ -26610,13 +26641,11 @@ class MainFrame(
         msg = (
             "QUILL Braille Pack is not installed.\n\n"
             "The Braille Pack adds braille translation, BRF/BRL file export, "
-            "and braille display support. It is an optional component included "
-            "in the installer.\n\n"
-            "Choose 'Install Braille Pack' to run the installer and add it now "
-            "(QUILL will close). Choose 'Not Now' to skip; you can install it "
-            "later by re-running the QUILL installer or from Help > Enable "
-            "Braille Mode. Choose 'Disable Braille Mode' if you do not need "
-            "braille tools."
+            "and braille display support. It is a quick on-demand download.\n\n"
+            "Choose 'Set Up Braille' to open Download Optional Components with the "
+            "Braille Pack ready to fetch. Choose 'Not Now' to skip; you can add it "
+            "any time from Help > Download Optional Components. Choose 'Disable "
+            "Braille Mode' if you do not need braille tools."
         )
         with wx.MessageDialog(
             self.frame,
@@ -26625,7 +26654,7 @@ class MainFrame(
             wx.YES_NO | wx.CANCEL | wx.NO_DEFAULT | wx.ICON_INFORMATION,
         ) as dlg:
             if hasattr(dlg, "SetYesNoCancelLabels"):
-                dlg.SetYesNoCancelLabels("Install Braille Pack", "Not Now", "Disable Braille Mode")
+                dlg.SetYesNoCancelLabels("Set Up Braille", "Not Now", "Disable Braille Mode")
             apply_modal_ids(dlg, affirmative_id=wx.ID_YES, escape_id=wx.ID_NO)
             result = self._show_modal_dialog(dlg, "QUILL Braille Pack")
 
@@ -26637,18 +26666,20 @@ class MainFrame(
             return
         if result != wx.ID_YES:
             self._set_status(
-                "Braille Pack install skipped. Use Help > Enable Braille Mode to install later."
+                "Braille Pack skipped. Help > Download Optional Components has it any time."
             )
             return
 
-        # Look for a cached copy of the installer left in the updates folder.
-        cached = self._find_cached_quill_installer()
-        if cached is not None:
-            self._launch_installer(cached)
-        else:
-            # No cached installer: trigger a fresh download via check-for-updates.
-            self._set_status("Downloading installer to add Braille Pack...")
-            self.check_for_updates(silent_no_update=False)
+        # Braille is an on-demand download now: route the user into the unified
+        # Download Optional Components hub, preselected on the braille pack, with a
+        # one-line popup so a screen-reader user knows exactly what to do there.
+        self._show_message_box(
+            "Opening Download Optional Components. The Braille Pack is selected — "
+            "press Download to set it up, then Close when it finishes.",
+            "Set Up Braille",
+            wx.ICON_INFORMATION | wx.OK,
+        )
+        self.open_optional_components(preselect="braille")
 
     def _find_cached_quill_installer(self):
         """Return the Path of a cached Quill-Setup-*.exe in the updates folder, or None."""

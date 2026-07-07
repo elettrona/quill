@@ -26,12 +26,16 @@ from urllib.error import HTTPError
 from urllib.parse import urlencode
 from urllib.request import Request, urlopen
 
+from quill.core.error_codes import CodedError
+
 _VERIFIED_TLS = ssl.create_default_context()
 _TIMEOUT_S = 300.0
 
 
-class CloudTranscribeError(Exception):
+class CloudTranscribeError(CodedError):
     """A cloud transcription call failed (clear, user-facing message)."""
+
+    code = "QUILL-SPEECH-CLOUD-TRANSCRIBE"
 
 
 @dataclass(frozen=True, slots=True)

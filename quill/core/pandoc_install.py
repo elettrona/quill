@@ -25,6 +25,7 @@ import zipfile
 from collections.abc import Callable
 from pathlib import Path
 
+from quill.core.error_codes import CodedError
 from quill.core.paths import app_data_dir
 
 ProgressCallback = Callable[[float, str], None]
@@ -42,8 +43,10 @@ PANDOC_DOWNLOAD_BYTES = 45_000_000
 _DOWNLOAD_TIMEOUT_S = 1800.0
 
 
-class PandocInstallError(Exception):
+class PandocInstallError(CodedError):
     """Raised when the Pandoc download, verification, or extraction fails."""
+
+    code = "QUILL-CONVERT-PANDOC-INSTALL"
 
 
 def managed_pandoc_dir() -> Path:

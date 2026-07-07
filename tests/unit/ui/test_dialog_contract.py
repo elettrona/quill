@@ -265,3 +265,60 @@ def test_focus_primary_control_skips_disabled_or_hidden_controls() -> None:
     dialog = _FakeDialog([disabled, hidden, usable])
 
     assert focus_primary_control(dialog) is usable
+
+
+class _FakeNotebook(_FakeControl):
+    """A book control exposing GetSelection/GetPage over its page children."""
+
+    def __init__(self, pages: list[_FakeControl], *, selection: int = 0) -> None:
+        super().__init__(children=pages)
+        self._selection = selection
+
+    def GetSelection(self) -> int:
+        return self._selection
+
+    def GetPage(self, index: int) -> _FakeControl:
+        return self._children[index]
+
+
+def _make_notebook(pages: list[_FakeControl], *, selection: int = 0) -> _FakeNotebook:
+    # The class name must end in "book" so the contract recognises it as a book
+    # control (mirroring wx.Notebook / wx.Listbook / ...).
+    cls = type("Notebook", (_FakeNotebook,), {})
+    return cls(pages, selection=selection)  # type: ignore[arg-type]
+
+
+def test_find_primary_focus_target_confines_to_selected_notebook_page() -> None:
+    """Focus must land on the first control of the SELECTED tab, never a hidden
+    earlier tab's control (the AI Hub / About / Quillin-prefs tab-focus fix)."""
+    hidden_page = _make_control("Panel", children=[_make_control("ListBox")])
+    visible_text = _make_control("TextCtrl")
+    visible_page = _make_control("Panel", children=[visible_text])
+    notebook = _make_notebook([hidden_page, visible_page], selection=1)
+    dialog = _FakeDialog([notebook])
+
+    assert find_primary_focus_target(dialog) is visible_text
+
+
+def test_find_primary_focus_target_uses_first_page_when_it_is_selected() -> None:
+    first_text = _make_control("TextCtrl")
+    first_page = _make_control("Panel", children=[first_text])
+    later_page = _make_control("Panel", children=[_make_control("ListBox")])
+    notebook = _make_notebook([first_page, later_page], selection=0)
+    dialog = _FakeDialog([notebook])
+
+    assert find_primary_focus_target(dialog) is first_text
+
+
+def test_focus_primary_control_targets_tab_content_not_the_tab_strip() -> None:
+    """The notebook (tab strip) is never the focus target -- the selected page's
+    first content control is, so a screen reader lands on a real control."""
+    combo = _make_control("ComboBox")
+    page = _make_control("Panel", children=[combo])
+    notebook = _make_notebook([page], selection=0)
+    dialog = _FakeDialog([notebook])
+
+    target = focus_primary_control(dialog)
+
+    assert target is combo
+    assert combo.HasFocus() is True

@@ -24,6 +24,7 @@ import urllib.request
 from collections.abc import Callable
 from pathlib import Path
 
+from quill.core.error_codes import CodedError
 from quill.core.speech import models
 
 ProgressCallback = Callable[[float, str], None]
@@ -46,8 +47,10 @@ ESPEAK_DOWNLOAD_SHA256 = "7f673c709ea5dd579d3b5ebb98688cc575328a6ab7438d2bc405b8
 _DOWNLOAD_TIMEOUT_S = 1800.0
 
 
-class EspeakInstallError(Exception):
+class EspeakInstallError(CodedError):
     """Raised when the eSpeak-NG download or extraction fails."""
+
+    code = "QUILL-SPEECH-ESPEAK-INSTALL"
 
 
 def espeak_install_supported() -> bool:

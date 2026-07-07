@@ -131,6 +131,7 @@ class Settings:
     read_aloud_dectalk_voice: str = "paul"
     read_aloud_dectalk_rate: int = 180
     read_aloud_dectalk_dictionary: str = ""
+    read_aloud_piper_executable: str = ""
     read_aloud_piper_model: str = ""
     announcement_backend: str = "auto"
     read_aloud_piper_model_dir: str = ""
@@ -695,6 +696,7 @@ class Settings:
         if read_aloud_dectalk_rate > 650:
             read_aloud_dectalk_rate = 650
         read_aloud_dectalk_dictionary = str(data.get("read_aloud_dectalk_dictionary", "")).strip()
+        read_aloud_piper_executable = str(data.get("read_aloud_piper_executable", "")).strip()
         read_aloud_piper_model = str(data.get("read_aloud_piper_model", "")).strip()
         announcement_backend = str(data.get("announcement_backend", "auto")).strip().lower()
         read_aloud_piper_model_dir = str(data.get("read_aloud_piper_model_dir", "")).strip()
@@ -1256,6 +1258,7 @@ class Settings:
             read_aloud_dectalk_voice=read_aloud_dectalk_voice,
             read_aloud_dectalk_rate=read_aloud_dectalk_rate,
             read_aloud_dectalk_dictionary=read_aloud_dectalk_dictionary,
+            read_aloud_piper_executable=read_aloud_piper_executable,
             read_aloud_piper_model=read_aloud_piper_model,
             announcement_backend=announcement_backend,
             read_aloud_piper_model_dir=read_aloud_piper_model_dir,

@@ -29,6 +29,8 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 
+from quill.core.error_codes import CodedError
+
 # (fraction 0.0-1.0, human message) — same shape as the speech ProgressCallback.
 ProgressCallback = Callable[[float, str], None]
 
@@ -39,8 +41,10 @@ _RELEASE_BASE = "https://github.com/Community-Access/quill/releases/download"
 _CHUNK = 1024 * 1024
 
 
-class ReleaseAssetError(Exception):
+class ReleaseAssetError(CodedError):
     """A redistributable component could not be fetched/verified/installed."""
+
+    code = "QUILL-RELEASE-ASSET-FAILED"
 
 
 class DownloadCancelled(ReleaseAssetError):
@@ -178,6 +182,21 @@ ASSETS: dict[str, ReleaseAsset] = {
         expect_member="libmathcat_c.dll",
         license="MIT (daisy/MathCATForC); byte-identical re-publish",
         version="v0.7.6-beta.5",
+    ),
+    # Piper (rhasspy/piper 2023.11.14-2 Windows AMD64): the neural Read Aloud
+    # engine, unbundled from the installer (PRD 10.2.x). A byte-identical
+    # re-publish (22,477,236 bytes) of the upstream release, self-hosted here so an
+    # upstream outage or removal can't break Piper; piper_install prefers this copy
+    # (_maybe_fetch_hosted_piper) and falls back to the rhasspy asset. SHA-256
+    # pinned and verified.
+    "piper": ReleaseAsset(
+        component="piper",
+        tag="assets-v1",
+        filename="piper_windows_amd64.zip",
+        sha256="f3c58906402b24f3a96d92145f58acba6d86c9b5db896d207f78dc80811efcea",
+        expect_member="piper/piper.exe",
+        license="MIT (rhasspy/piper); byte-identical re-publish of the upstream release",
+        version="2023.11.14-2",
     ),
 }
 

@@ -34,6 +34,12 @@ def _emit_save_warning(message: str) -> None:
 
 _UTF8_BOM = b"\xef\xbb\xbf"
 
+# #867: a plain-text open must never crash on a non-UTF-8 file. cp1252 covers
+# the common case (Windows "smart quotes"/dashes saved without a BOM); latin-1
+# is the terminal fallback because it maps every byte 0x00-0xFF to a codepoint
+# and therefore can never itself raise UnicodeDecodeError.
+_FALLBACK_ENCODINGS: tuple[str, ...] = ("cp1252", "latin-1")
+
 
 def read_text_document(path: Path, encoding: str = "utf-8") -> Document:
     # Read raw bytes so we can (a) detect the original line ending before
@@ -54,7 +60,22 @@ def read_text_document(path: Path, encoding: str = "utf-8") -> Document:
     else:
         decode_encoding = encoding
         stored_encoding = encoding
-    text = raw.decode(decode_encoding)
+    detected_encoding: str | None = None
+    try:
+        text = raw.decode(decode_encoding)
+    except UnicodeDecodeError:
+        if not is_utf8:
+            raise
+        for fallback in _FALLBACK_ENCODINGS:
+            try:
+                text = raw.decode(fallback)
+            except UnicodeDecodeError:
+                continue
+            stored_encoding = fallback
+            detected_encoding = fallback
+            break
+        else:
+            raise
 
     # Detect the original line ending from the raw bytes, then hand the editor
     # LF-only text (wx normalises to LF anyway); the writer converts back to the
@@ -62,13 +83,17 @@ def read_text_document(path: Path, encoding: str = "utf-8") -> Document:
     line_ending = "\r\n" if b"\r\n" in raw else "\n"
     text = text.replace("\r\n", "\n").replace("\r", "\n")
 
+    source_metadata = {"source_kind": "text", "engine": "plain text", "quality_score": 100}
+    if detected_encoding is not None:
+        source_metadata["encoding_detected"] = detected_encoding
+
     return Document(
         text=text,
         path=path,
         modified=False,
         encoding=stored_encoding,
         line_ending=line_ending,
-        source_metadata={"source_kind": "text", "engine": "plain text", "quality_score": 100},
+        source_metadata=source_metadata,
     )
 
 

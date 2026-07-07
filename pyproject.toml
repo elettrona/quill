@@ -350,6 +350,7 @@ module = [
     "mutagen",
     "mutagen.*",
     "huggingface_hub",
+    "huggingface_hub.*",
     "sounddevice",
     "kokoro",
     "openpyxl",

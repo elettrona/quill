@@ -16,14 +16,18 @@ from typing import cast
 
 from defusedxml import ElementTree as DET
 
+from quill.core.error_codes import CodedError
+
 MATHML_NS = "http://www.w3.org/1998/Math/MathML"
 TEX_ANNOTATION_ENCODING = "application/x-tex"
 
 ET.register_namespace("", MATHML_NS)
 
 
-class MathMLError(Exception):
+class MathMLError(CodedError):
     """Raised when a string is not well-formed MathML."""
+
+    code = "QUILL-MATH-MATHML-FAILED"
 
 
 @dataclass(frozen=True, slots=True)

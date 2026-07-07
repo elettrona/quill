@@ -133,3 +133,38 @@ def test_crlf_file_round_trips_byte_for_byte(tmp_path: Path) -> None:
     # Open-then-save must reproduce the original bytes, including CRLF endings
     # and runs of more than two consecutive blank lines (#649).
     assert destination.read_bytes() == original
+
+
+# --- #867: non-UTF-8 text must fall back instead of crashing ------------------
+
+
+def test_read_falls_back_to_cp1252_on_invalid_utf8(tmp_path: Path) -> None:
+    target = tmp_path / "windows1252.txt"
+    # 0x92 is a right single quote in cp1252 and an invalid UTF-8 start byte,
+    # matching issue #867's UnicodeDecodeError.
+    target.write_bytes(b"it\x92s a test\n")
+
+    document = read_text_document(target)
+
+    assert document.text == "it’s a test\n"
+    assert document.encoding == "cp1252"
+    assert document.source_metadata["encoding_detected"] == "cp1252"
+
+
+def test_read_falls_back_to_latin1_when_not_valid_cp1252(tmp_path: Path) -> None:
+    target = tmp_path / "latin1.txt"
+    # 0x81 is unassigned in cp1252 but valid in latin-1.
+    target.write_bytes(b"bad\x81byte\n")
+
+    document = read_text_document(target)
+
+    assert document.encoding == "latin-1"
+    assert document.source_metadata["encoding_detected"] == "latin-1"
+
+
+def test_read_does_not_fall_back_for_explicit_non_utf8_encoding(tmp_path: Path) -> None:
+    target = tmp_path / "explicit.txt"
+    target.write_bytes(b"\xff\xfe")
+
+    with pytest.raises(UnicodeDecodeError):
+        read_text_document(target, encoding="ascii")

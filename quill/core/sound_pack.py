@@ -27,6 +27,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Protocol
 
+from quill.core.error_codes import CodedError
+
 logger = logging.getLogger(__name__)
 
 _FORMAT = "qsp"
@@ -64,8 +66,10 @@ class SoundPack:
     events: dict[str, bytes] = field(default_factory=dict)
 
 
-class SoundPackError(Exception):
+class SoundPackError(CodedError):
     """Raised when a QSP pack cannot be loaded or its manifest is invalid."""
+
+    code = "QUILL-AUDIO-SOUND-PACK"
 
 
 # ---------------------------------------------------------------------------

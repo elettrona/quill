@@ -13,7 +13,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from quill.ui.dialog_contract import apply_modal_ids
+from quill.ui.dialog_contract import apply_modal_ids, focus_primary_control
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -133,6 +133,7 @@ class SpeechHubDialog:
         OK button without triggering a specific action, the current Read Aloud
         selection is collected and returned as a ``'select'`` result.
         """
+        focus_primary_control(self.dialog)
         result_code = show_modal_dialog(self.dialog, "Speech Settings")
         ra_result = self._ra_action
         dict_result = self._dict_action

@@ -20,14 +20,17 @@ from __future__ import annotations
 import time
 from collections.abc import Callable
 
+from quill.core.error_codes import CodedError
 from quill.core.speech.text_polish import DocumentSection
 
 #: A translator: ``translate(text) -> translated_text``; may raise on failure.
 Translator = Callable[[str], str]
 
 
-class SectionTranslationError(Exception):
+class SectionTranslationError(CodedError):
     """A section could not be translated after all retries (halt this language)."""
+
+    code = "QUILL-SPEECH-SECTION-TRANSLATE"
 
 
 def _translate_one(

@@ -9,7 +9,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: QUILL 0.9.0\n"
 "Report-Msgid-Bugs-To: https://github.com/Community-Access/quill/issues\n"
-"POT-Creation-Date: 2026-07-05 11:32-0700\n"
+"POT-Creation-Date: 2026-07-07 05:10-0700\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -1196,30 +1196,30 @@ msgstr ""
 msgid "Fix Not Applied"
 msgstr ""
 
-#: quill/ui/main_frame.py:15933
+#: quill/ui/main_frame.py:15893
 msgid ""
 "QUILL is currently available in English only. When community translations"
 " are installed, they will appear here so you can switch the display "
 "language."
 msgstr ""
 
-#: quill/ui/main_frame.py:15937
+#: quill/ui/main_frame.py:15897
 msgid "No translations installed yet"
 msgstr ""
 
-#: quill/ui/main_frame.py:15942 quill/ui/main_frame.py:15963
+#: quill/ui/main_frame.py:15902 quill/ui/main_frame.py:15923
 msgid "System default"
 msgstr ""
 
-#: quill/ui/main_frame.py:15945
+#: quill/ui/main_frame.py:15905
 msgid "Choose the language for menus, dialogs, and messages:"
 msgstr ""
 
-#: quill/ui/main_frame.py:15946
+#: quill/ui/main_frame.py:15906
 msgid "Change Display Language"
 msgstr ""
 
-#: quill/ui/main_frame.py:15965
+#: quill/ui/main_frame.py:15925
 #, python-brace-format
 msgid ""
 "Display language set to {name}. Restart QUILL to update all menus and "
@@ -2017,7 +2017,7 @@ msgid "Remove &Duplicate Lines"
 msgstr ""
 
 #: quill/ui/main_frame_menu.py:1152
-msgid "Sort && &Filter"
+msgid "Sort and &Filter"
 msgstr ""
 
 #: quill/ui/main_frame_menu.py:1158
@@ -2041,7 +2041,7 @@ msgid "&Whitespace"
 msgstr ""
 
 #: quill/ui/main_frame_menu.py:1186
-msgid "&HTML && Encoding"
+msgid "&HTML and Encoding"
 msgstr ""
 
 #: quill/ui/main_frame_menu.py:1191
@@ -2389,7 +2389,7 @@ msgid "Quill Eraser on &Selection..."
 msgstr ""
 
 #: quill/ui/main_frame_menu.py:1794
-msgid "&Writing && Language"
+msgid "&Writing and Language"
 msgstr ""
 
 #: quill/ui/main_frame_menu.py:1800
@@ -2489,7 +2489,7 @@ msgid "&OCR and Document Conversion"
 msgstr ""
 
 #: quill/ui/main_frame_menu.py:1908
-msgid "R&eading && Dictation"
+msgid "R&eading and Dictation"
 msgstr ""
 
 #: quill/ui/main_frame_menu.py:1917
@@ -3033,7 +3033,7 @@ msgid "Check for &Updates"
 msgstr ""
 
 #: quill/ui/main_frame_menu.py:2547
-msgid "&Customize && Support"
+msgid "&Customize and Support"
 msgstr ""
 
 #: quill/ui/main_frame_menu.py:2558

@@ -28,6 +28,8 @@ import urllib.request
 from collections.abc import Callable
 from pathlib import Path
 
+from quill.core.error_codes import CodedError
+
 ProgressCallback = Callable[[float, str], None]
 
 # Pinned to the UB-Mannheim 5.4.0 Windows build (Apache-2.0). The installer
@@ -45,8 +47,10 @@ TESSERACT_DOWNLOAD_BYTES = 50_175_248
 _DOWNLOAD_TIMEOUT_S = 1800.0
 
 
-class TesseractInstallError(Exception):
+class TesseractInstallError(CodedError):
     """Raised when the Tesseract download or launch fails."""
+
+    code = "QUILL-OCR-TESSERACT-INSTALL"
 
 
 def tesseract_install_supported() -> bool:

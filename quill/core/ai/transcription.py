@@ -13,6 +13,8 @@ from pathlib import Path
 from urllib.error import HTTPError
 from urllib.request import Request, urlopen
 
+from quill.core.error_codes import CodedError
+
 TRANSCRIPTION_ENDPOINT = "https://api.openai.com/v1/audio/transcriptions"
 TRANSLATION_ENDPOINT = "https://api.openai.com/v1/audio/translations"
 MAX_FILE_SIZE_BYTES = 25 * 1024 * 1024  # 25 MB
@@ -71,8 +73,8 @@ SUPPORTED_LANGUAGES: dict[str, str] = {
 }
 
 
-class TranscriptionError(Exception):
-    pass
+class TranscriptionError(CodedError):
+    code = "QUILL-AI-TRANSCRIBE-FAILED"
 
 
 class TranscriptionFileTooLargeError(TranscriptionError):

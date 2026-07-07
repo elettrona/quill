@@ -95,13 +95,10 @@ version = "2.4.6"
     # legacy run-quill.cmd launcher.
     assert manifest["portableEntry"].endswith("quill.exe")
     assert manifest.get("portableLauncher") is None
-    # DECtalk, eSpeak-NG, and whisper.cpp are unbundled (PRD 10.2.4): only Pandoc
-    # and Piper auto-stage by default; the rest download on demand.
-    # Pandoc is NO LONGER bundled by default (footprint unbundle): fetched on
-    # demand the first time a conversion needs it. Only Piper stays bundled.
-    assert sorted(manifest["bundledTools"]) == [
-        "speech/piper",
-    ]
+    # Nothing auto-stages any more (PRD 10.2.x footprint unbundle): Pandoc, Piper,
+    # Node.js, the braille pack, whisper.cpp, Kokoro, DECtalk, and eSpeak-NG all
+    # download on demand, so a default build bundles no optional tools.
+    assert sorted(manifest["bundledTools"]) == []
     assert manifest["docs"] == [r"docs\userguide.md"]
     assert manifest["speechAssets"]["dectalk"]["downloadable"] is True
     assert manifest["speechAssets"]["espeak"]["downloadable"] is True
@@ -154,53 +151,55 @@ def test_build_inno_setup_script_mentions_portable_bundle() -> None:
     # The dead "aiassistant" component (no [Files] payload) was removed; the
     # Writing Assistant ships with the core bundle, not as a toggle.
     assert "aiassistant" not in script
-    assert (
-        'Name: "pandoc"; Description: "Install bundled Pandoc for document conversion";' in script
-    )
-    # DECtalk and eSpeak-NG are unbundled (PRD 10.2.4): no installer components
-    # and no [Files] entries. QUILL downloads each on demand from its verified
-    # assets-v1 release; upgraders keep any existing copy.
-    assert "speechdectalk" not in script
-    assert "speechespeak" not in script
-    assert 'DestDir: "{app}\\tools\\speech\\dectalk"' not in script
-    assert 'DestDir: "{app}\\tools\\speech\\espeak-ng"' not in script
+    # PRD 10.2.x footprint unbundle: NO optional components remain. Pandoc,
+    # Piper, Node.js, the braille pack, whisper.cpp, Kokoro, DECtalk, and
+    # eSpeak-NG all download on demand, so the installer has no [Types] or
+    # [Components] section and no component/setup-type selection page at all.
+    assert "\n[Types]\n" not in script
+    assert "\n[Components]\n" not in script
+    assert "WizardIsComponentSelected" not in script
+    assert "wpSelectComponents" not in script
+    assert "ShouldSkipPage" not in script
+    # No component definitions or [Files] gates for any optional tool.
+    for _name in (
+        "pandoc",
+        "speechpiper",
+        "nodejs",
+        "braillepack",
+        "speechdectalk",
+        "speechespeak",
+        "speechwhisper",
+        "speechkokoro",
+        "speechopenvoice",
+    ):
+        assert f'Name: "{_name}";' not in script
+        assert f"Components: {_name}" not in script
     # No per-voice DECtalk sub-components or voice-selection wizard page ever.
     assert "DecTalkVoicePage" not in script
     assert "ShouldInstallAllVoices" not in script
     assert "ShouldInstallPaulVoice" not in script
-    assert 'Name: "speechpiper"; Description: "Install bundled Piper neural TTS runtime";' in script
-    # whisper.cpp is unbundled (PRD 10.2.4): no installer component and no
-    # tools\speech\whispercpp [Files] entry. QUILL downloads the engine on demand
-    # from its verified release asset; upgraders keep any existing copy.
-    assert "speechwhisper" not in script
-    assert 'DestDir: "{app}\\tools\\speech\\whispercpp"' not in script
-    # Kokoro is unbundled (PRD 10.2.4): no installer component and no kokoro-models
-    # [Files] entry. QUILL downloads it on demand from its verified release asset;
-    # upgraders keep any existing {app}\kokoro-models copy (Inno never removes it).
-    assert "speechkokoro" not in script
-    assert 'DestDir: "{app}\\kokoro-models"' not in script
-    assert "speechopenvoice" not in script
+    # No [Files] Source/DestDir entries for any unbundled component.
+    for _dest in (
+        "{app}\\tools\\pandoc",
+        "{app}\\tools\\speech\\piper",
+        "{app}\\tools\\speech\\dectalk",
+        "{app}\\tools\\speech\\espeak-ng",
+        "{app}\\tools\\speech\\whispercpp",
+        "{app}\\tools\\nodejs",
+        "{app}\\vendor\\braille-pack",
+        "{app}\\kokoro-models",
+    ):
+        assert f'DestDir: "{_dest}"' not in script
+    # Node.js is no longer offered via winget at install time; the app installs
+    # it on demand (quill/core/node_install.py) if a Node Quillin needs it.
+    assert "OpenJS.NodeJS" not in script
+    assert "winget install --id OpenJS" not in script
+    # The core bundle still ships, with the optional tools excluded from it so a
+    # locally staged dev copy never leaks into the installer.
     assert (
         'Excludes: "docs\\QUILL-PRD.md,tools\\pandoc\\*,tools\\speech\\dectalk\\*,tools\\speech\\espeak-ng\\*,tools\\speech\\piper\\*,tools\\speech\\whispercpp\\*,tools\\nodejs\\*,vendor\\braille-pack\\*,kokoro-models\\*,_tool-download\\*,_speech-download\\*,*\\__pycache__\\*"'
         in script
     )
-    assert 'Source: "..\\portable\\tools\\pandoc\\*"; DestDir: "{app}\\tools\\pandoc";' in script
-    assert "Components: pandoc" in script
-    # DECtalk and eSpeak-NG are unbundled (PRD 10.2.4): no [Files] Source entries.
-    assert 'Source: "..\\portable\\tools\\speech\\dectalk\\*";' not in script
-    assert 'Source: "..\\portable\\tools\\speech\\espeak-ng\\*";' not in script
-    assert "Check: ShouldInstallAllVoices()" not in script
-    assert "Check: ShouldInstallPaulVoice()" not in script
-    assert (
-        'Source: "..\\portable\\tools\\speech\\piper\\*"; DestDir: "{app}\\tools\\speech\\piper";'
-        in script
-    )
-    # whisper.cpp is unbundled (PRD 10.2.4): no [Files] entry for it.
-    assert 'Source: "..\\portable\\tools\\speech\\whispercpp\\*";' not in script
-    assert "Components: speechdectalk" not in script  # unbundled (PRD 10.2.4)
-    assert "Components: speechespeak" not in script  # unbundled (PRD 10.2.4)
-    assert "Components: speechpiper" in script
-    assert "Components: speechwhisper" not in script  # unbundled (PRD 10.2.4)
     assert "User Guide" in script
     assert "userguide.html" in script
     assert 'Parameters: "-m quill"' in script
@@ -245,8 +244,7 @@ def test_installer_clean_replaces_first_party_package_for_safe_upgrades() -> Non
     # the proven cause of version-skew ImportError/AttributeError crashes) plus
     # stray __pycache__, so every install is a self-consistent copy of our code.
     script = build_inno_setup_script("9.9.9")
-    # Anchor on the section headers (the [Components] comments also mention the
-    # word "[Files]"), so we locate real sections, not prose.
+    # Anchor on the real section headers, not prose that mentions them.
     assert "\n[InstallDelete]\n" in script
     files_at = script.index("\n[Files]\n")
     install_delete_at = script.index("\n[InstallDelete]\n")
@@ -573,7 +571,9 @@ version = "3.0.0"
         (tmp_path / "dist" / "portable" / "manifest.json").read_text(encoding="utf-8")
     )
     assert "pandoc" in manifest["bundledTools"]
-    assert "speech/piper" in manifest["bundledTools"]
+    # Piper is no longer auto-staged (PRD 10.2.x unbundle): only explicitly
+    # passed tool dirs are bundled, so a pandoc-only build bundles pandoc alone.
+    assert "speech/piper" not in manifest["bundledTools"]
     # DECtalk and eSpeak-NG are unbundled (PRD 10.2.4): not staged by default, so
     # not marked bundled, but still flagged downloadable for on-demand acquisition.
     assert manifest["speechAssets"]["dectalk"]["bundled"] is False

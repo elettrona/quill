@@ -29,6 +29,8 @@ from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 
+from quill.core.error_codes import CodedError
+
 __all__ = [
     "PackInstall",
     "PACK_INSTALLS",
@@ -186,8 +188,10 @@ _AI_PACKS_SUBDIR = "ai-packs"
 _INSTALL_TIMEOUT_S = 1800.0
 
 
-class PackInstallError(Exception):
+class PackInstallError(CodedError):
     """Raised when an optional SDK pack install fails or is unavailable."""
+
+    code = "QUILL-AI-SDK-PACK-INSTALL"
 
 
 def ai_packs_dir() -> Path:

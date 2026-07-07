@@ -192,3 +192,36 @@ def test_activate_engine_packs_skips_missing_or_empty(monkeypatch, tmp_path: Pat
     monkeypatch.setattr(ei, "faster_whisper_pack_dir", lambda: missing)
     ei.activate_engine_packs()
     assert str(missing) not in sys.path
+
+
+def test_kokoro_install_logs_pip_failure(tmp_path: Path, caplog) -> None:
+    """A failed pip exit is logged with the stderr tail, so Help > Save
+    Diagnostics captures the real cause instead of only a transient status-bar
+    line (the gap behind Richard's "Kokoro download does nothing" report)."""
+    runner = _make_runner(
+        {}, _FakeResult(returncode=1, stderr="No matching distribution found for kokoro-onnx")
+    )
+    with caplog.at_level("ERROR", logger="quill.core.speech.engine_install"):
+        with pytest.raises(ei.EngineInstallError):
+            ei.install_kokoro_onnx(
+                dest_dir=tmp_path / "kok", python_executable="py.exe", runner=runner
+            )
+    assert any(
+        "Kokoro ONNX install failed" in r.getMessage()
+        and "No matching distribution" in r.getMessage()
+        for r in caplog.records
+    )
+
+
+def test_kokoro_install_logs_runner_launch_failure(tmp_path: Path, caplog) -> None:
+    """When pip cannot even be launched, the traceback is logged too."""
+
+    def boom(command, *, timeout_seconds):
+        raise OSError("launch failed")
+
+    with caplog.at_level("ERROR", logger="quill.core.speech.engine_install"):
+        with pytest.raises(ei.EngineInstallError, match="Could not run the installer"):
+            ei.install_kokoro_onnx(
+                dest_dir=tmp_path / "kok", python_executable="py.exe", runner=boom
+            )
+    assert any("pip runner could not start" in r.getMessage() for r in caplog.records)

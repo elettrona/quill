@@ -1153,17 +1153,34 @@ not need to enable Artificial Intelligence to use these features. They live unde
 
 To keep the installer small, QUILL fetches several large or optional pieces only
 when you want them. **Help > Download Optional Components...** is the single place
-to see and get them all. It lists each component — the **offline speech engine**
-(whisper.cpp), the very-low-resource **Vosk** speech engine, **Kokoro** neural
-voices, **eSpeak NG** and **DECtalk** voices, the **FFmpeg** audio-export helper,
-**Pandoc** (document conversion for Word, ODT, EPUB, and RTF), the **braille
-translation pack** (liblouis tables and BRF profiles for the Translation submenu
-and BRF/embossing export), and any non-English **spell-check dictionaries** —
-and shows for each whether it is **Installed** or **Available to download**, along
-with its approximate size. Select a component and choose **Download** to fetch it;
-each download is checksum-verified and shows its own progress. Everything here is
-optional — the base app, and Windows' built-in SAPI 5 voices, work without any of
-it — so download only what you need.
+to see, get, test, and remove them all. It lists each component — most important
+first: **Pandoc** (document conversion for Word, ODT, EPUB, and RTF), the
+**braille translation pack** (liblouis tables and BRF profiles for the Translation
+submenu and BRF/embossing export), the **offline speech engine** (whisper.cpp),
+**Kokoro** and **Piper** neural voices, **eSpeak NG** and **DECtalk** voices, the
+**FFmpeg** audio-export helper, the **Node.js** runtime (for Node Quillins and the
+Developer Console's TypeScript interface), the **mpv player engine**, the
+**MathCAT** math-speech engine, the very-low-resource **Vosk** engine, and any
+non-English **spell-check dictionaries**. Each row shows whether it is
+**Installed** or **Available to download** and its size, and selecting a row fills
+a plain-language description of what it enables and its impact.
+
+- **Download** fetches a not-yet-installed component — checksum-verified, with its
+  own progress.
+- **Test** proves an installed component works, so you can be confident before you
+  rely on it: a voice speaks a short sample so you actually hear it; the offline
+  speech engine transcribes a spoken phrase and tells you what it heard; tools
+  report their version. If a test fails, QUILL offers to send a bug report with
+  the technical details.
+- **Remove** deletes QUILL's downloaded copy of an installed component and turns
+  its features back off (removing a voice engine you were using, for example,
+  switches Read Aloud back to the system voice). It only ever removes copies QUILL
+  downloaded — never a system tool or a shared install.
+
+Everything here is optional — the base app, and Windows' built-in SAPI 5 voices,
+work without any of it — so download only what you need. In **portable mode**,
+components install into your portable data folder, so your whole setup travels
+with you on the drive.
 
 **Pandoc downloads itself when you need it.** You do not have to visit this
 dialog first: the moment you **Import** or **Export** a Word, ODT, EPUB, or RTF

@@ -12,6 +12,7 @@ from pathlib import Path
 
 from quill.core.ai.custom_instructions import split_instruction
 from quill.core.assistant_ai import AssistantConnectionSettings, generate_assistant_response
+from quill.core.error_codes import CodedError
 
 _QA_PROMPT_TEMPLATE = (
     "You are a precise document assistant. Answer questions using ONLY the information "
@@ -26,8 +27,8 @@ _MAX_DOC_CHARS = 80_000
 _CONTEXT_WINDOW_CHARS = 200
 
 
-class DocumentQAError(Exception):
-    pass
+class DocumentQAError(CodedError):
+    code = "QUILL-AI-DOCQA-FAILED"
 
 
 class DocumentQAAuthError(DocumentQAError):

@@ -124,6 +124,19 @@ def _extract_markdown(path: Path) -> str:
     return _clean_markdown(path.read_text(encoding="utf-8", errors="replace"))
 
 
+def clean_markdown_text(raw: str) -> str:
+    """Strip Markdown syntax from *raw*, keeping only its readable text.
+
+    Public entry point to the same sanitizer :func:`_extract_markdown` applies
+    to ``.md`` files, for callers that already hold text in memory (a live
+    editor buffer, a single sentence) rather than a file path. Synthesis
+    engines that phonemize input character-by-character (Piper's espeak-ng
+    backend) badly mis-tokenize literal ``#``/``**``/``[text](url)`` syntax,
+    so every text-to-speech path should route through this before synthesis.
+    """
+    return _clean_markdown(raw)
+
+
 def _extract_html(path: Path) -> str:
     raw = path.read_text(encoding="utf-8", errors="replace")
     parser = _TextCollector()

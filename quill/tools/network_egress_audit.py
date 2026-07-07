@@ -126,12 +126,6 @@ _REVIEWED_EGRESS: dict[str, str] = {
         "an explicit assistant action, with HTTPS enforced for cloud endpoints by "
         "_validate_endpoint_security and a verified TLS context."
     ),
-    "core/speech/providers/whispercpp.py::_download_to_file": (
-        "User-initiated offline speech-model download (#617) from the Hugging Face "
-        "Hub whisper.cpp repo; HTTPS enforced (refuses non-https URLs), verified TLS "
-        "context, visible progress, blocked in Safe Mode, sha256-verified when a hash "
-        "is known. No silent background downloads."
-    ),
     "core/release_assets.py::_download_resumable": (
         "User-initiated on-demand fetch of a redistributable runtime component "
         "(currently the MIT whisper.cpp engine) from QUILL's own pinned, "
@@ -430,6 +424,16 @@ _REVIEWED_EGRESS: dict[str, str] = {
 #   (the AI engine switcher / Copilot onboarding dialog), visible progress,
 #   blocked in Safe Mode, no admin, no silent path. The SDKs are deliberately not
 #   bundled in the installer (large, fast-moving, one-of-three).
+#
+# quill/core/speech/providers/whispercpp.py::_download_to_file
+#   whisper.cpp GGML model download (#617), fetched via
+#   huggingface_hub.hf_hub_download (repo_id/filename/revision), same library
+#   quill/core/speech/providers/fasterwhisper.py::_download_repo already uses
+#   via snapshot_download. Neither call is an urlopen/urlretrieve, so the AST
+#   scanner cannot see them; documented here for auditability. Both are
+#   user-initiated (Manage Speech Models > Download), blocked in Safe Mode,
+#   HTTPS-only (the Hub SDK never falls back to plaintext), and sha256-verified
+#   when a hash is known.
 
 
 def _enclosing_function_name(tree: ast.AST, target: ast.AST) -> str:

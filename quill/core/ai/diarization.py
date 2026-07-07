@@ -14,12 +14,14 @@ from pathlib import Path
 from urllib.error import HTTPError
 from urllib.request import Request, urlopen
 
+from quill.core.error_codes import CodedError
+
 DEEPGRAM_ENDPOINT = "https://api.deepgram.com/v1/listen"
 MAX_FILE_SIZE_BYTES = 2 * 1024 * 1024 * 1024  # 2 GB (Deepgram limit)
 
 
-class DiarizationError(Exception):
-    pass
+class DiarizationError(CodedError):
+    code = "QUILL-AI-DIARIZATION-FAILED"
 
 
 class DiarizationAuthError(DiarizationError):

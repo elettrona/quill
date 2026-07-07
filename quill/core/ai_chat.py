@@ -15,6 +15,7 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 from quill.core.assistant_ai import provider_credential_target
+from quill.core.error_codes import CodedError
 
 if TYPE_CHECKING:
     pass
@@ -25,8 +26,8 @@ TIMEOUT_MODELS_S = 10
 _VERIFIED_CTX = ssl.create_default_context()
 
 
-class AIChatError(Exception):
-    pass
+class AIChatError(CodedError):
+    code = "QUILL-AI-CHAT-FAILED"
 
 
 class AIChatCredentialError(AIChatError):

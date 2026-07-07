@@ -293,20 +293,39 @@ class SpeechCommandsMixin:
             target=_run, daemon=True
         ).start()
 
-    def open_optional_components(self) -> None:
-        """Help > Download Optional Components: one place to see what is installed
-        versus available, and fetch any of it.
+    def open_optional_components(self, *, preselect: str = "") -> None:
+        """Help > Download Optional Components: the one hub to see what is
+        installed versus available, download it, prove it works (Test), or remove
+        it. ``preselect`` focuses a given row on open (used by the routed startup
+        prompt and the #874 point-of-failure routes).
 
-        The picker (quill/ui/optional_components_dialog) returns the chosen
-        component id; we then run that component's existing, tested download flow
-        (each shows its own progress), so there are no stacked modals."""
-        from quill.core.optional_components import gather_optional_components
+        Test and Remove act in place; Download returns the chosen id and we run
+        that component's existing, tested, progress-reporting installer (so there
+        are no stacked download modals)."""
+        from quill.core import optional_components as oc
         from quill.ui.optional_components_dialog import show_optional_components_picker
 
         wx = self._wx
-        components = gather_optional_components()
+        frame = self
+
+        class _Controller:
+            def components(self) -> list:
+                return oc.gather_optional_components()
+
+            def removable(self, component_id: str) -> bool:
+                return oc.removable_path(component_id) is not None
+
+            def remove(self, component_id: str) -> bool:
+                return frame._remove_optional_component(component_id)
+
+            def test(self, component_id: str) -> None:
+                frame._test_optional_component(component_id)
+
+            def manage(self, component_id: str) -> None:
+                frame._manage_component_models_or_voices(component_id)
+
         chosen = show_optional_components_picker(
-            wx, self.frame, components, self._show_modal_dialog
+            wx, self.frame, self._show_modal_dialog, _Controller(), preselect=preselect
         )
         if not chosen:
             return
@@ -319,10 +338,12 @@ class SpeechCommandsMixin:
             "whispercpp": self.download_offline_speech_engine,
             "vosk": self.download_vosk,
             "kokoro": self._download_kokoro_models,
+            "piper": self.download_piper_exe,
             "espeak": self.download_espeak_exe,
             "dectalk": self.download_dectalk_exe,
             "ffmpeg": self.download_ffmpeg,
             "pandoc": self.download_pandoc,
+            "node": self.download_node_runtime,
             "braille": self.download_braille_pack,
             "libmpv": self.download_libmpv,
             "mathcat": self.download_mathcat,
@@ -330,6 +351,107 @@ class SpeechCommandsMixin:
         action = actions.get(chosen)
         if action is not None:
             action()
+
+    def _remove_optional_component(self, component_id: str) -> bool:
+        """Delete QUILL's downloaded copy of *component_id* and close the loop.
+
+        Resets the active Read Aloud engine to the always-present SAPI 5 when the
+        removed engine was the active one (dependent features are dynamic, so they
+        degrade on their own). Announces the outcome. Returns True on success."""
+        from quill.core import optional_components as oc
+
+        if not oc.remove_component(component_id):
+            self._set_status("There is nothing for QUILL to remove for this component.")
+            return False
+        engine = oc.read_aloud_engine_for_component(component_id)
+        if engine and getattr(self.settings, "read_aloud_engine", "") == engine:
+            from quill.core.settings import save_settings
+
+            self.settings.read_aloud_engine = "sapi5"
+            save_settings(self.settings)
+            self._announce("Read Aloud switched back to the system voice.")
+        # _set_status already speaks; a following _announce would double-speak (#728).
+        self._set_status(f"Removed {component_id}.")
+        return True
+
+    def _test_optional_component(self, component_id: str) -> None:
+        """Prove *component_id* works: voices play a spoken sample; other
+        components run their wx-free self-test on a worker and announce the
+        result, offering a bug report with the details on failure."""
+        from quill.core import optional_components as oc
+
+        engine = oc.read_aloud_engine_for_component(component_id)
+        if engine is not None:
+            voices = self._voice_preview_voice_ids(engine)
+            voice = voices[0] if voices else ""
+            self._announce(f"Playing a sample of the {engine} voice.")
+            self._preview_voice(engine, voice, live=True, text=oc.voice_preview_phrase())
+            return
+
+        def _work(_progress: Callable[[str, int, int], None]) -> object:
+            return oc.verify_component(component_id)
+
+        def _done(result: object) -> None:
+            # _set_status speaks the summary; a second _announce would double it (#728).
+            summary = getattr(result, "summary", "")
+            self._set_status(summary)
+            if not getattr(result, "ok", True):
+                self._offer_component_bug_report(
+                    component_id, summary, getattr(result, "detail", "")
+                )
+
+        self._run_background_task(f"Testing {component_id}", _work, _done)
+
+    def _manage_component_models_or_voices(self, component_id: str) -> None:
+        """Route the hub's Manage button to the component's own dialog: offline
+        STT engines open Manage Speech Models; Read Aloud voice engines open
+        Manage Voices. The rich per-item screens live there, not in the hub."""
+        from quill.core.optional_components import manage_target
+
+        target = manage_target(component_id)
+        if target == "models":
+            self.open_speech_models()
+        elif target == "voices":
+            self.choose_read_aloud_configuration()
+
+    def _offer_component_bug_report(self, component_id: str, summary: str, detail: str) -> None:
+        """On a failed self-test, offer to send a report with the captured detail."""
+        from quill.core.optional_components import DownloadFailure
+
+        wx = self._wx
+        if not detail:
+            return
+        if (
+            self._show_message_box(
+                f"{summary}\n\nSend a bug report with the technical details so the "
+                "QUILL team can help?",
+                "Component Test",
+                wx.ICON_ERROR | wx.YES_NO,
+            )
+            == wx.YES
+        ):
+            self._report_component_failure(DownloadFailure(component_id, summary, detail=detail))
+
+    def _report_component_failure(self, failure: object) -> None:
+        """Route a captured component failure into the diagnostics/bug-report flow.
+
+        Copies the failure detail to the clipboard and opens Save Diagnostics so
+        the user can attach the redacted bundle (which carries the logged install
+        error) to a report."""
+        text = failure.as_report_text() if hasattr(failure, "as_report_text") else str(failure)
+        try:
+            wx = self._wx
+            if wx.TheClipboard.Open():
+                try:
+                    wx.TheClipboard.SetData(wx.TextDataObject(text))
+                finally:
+                    wx.TheClipboard.Close()
+        except Exception:  # noqa: BLE001 - clipboard is best-effort
+            pass
+        try:
+            self.save_diagnostics_bundle()
+        except Exception:  # noqa: BLE001 - never let the report path crash
+            self._set_status("Could not open diagnostics; the details are on your clipboard.")
 
     def download_braille_pack(self, *, on_done: Callable[[bool], None] | None = None) -> None:
         """Fetch the braille pack on demand (footprint unbundle).
@@ -920,7 +1042,7 @@ class SpeechCommandsMixin:
         ).start()
 
     def download_piper_exe(self) -> None:
-        """Download the Piper TTS engine (~10 MB) on demand.
+        """Download the Piper TTS engine (~22 MB) on demand.
 
         Piper is a fast, local, high-quality neural TTS engine. The Windows AMD64
         binary is downloaded from the pinned GitHub release, extracted to the
@@ -955,7 +1077,7 @@ class SpeechCommandsMixin:
             )
             return
         confirm = self._show_message_box(
-            "Download the Piper TTS engine (~10 MB) from GitHub?\n\n"
+            "Download the Piper TTS engine (~22 MB) from GitHub?\n\n"
             "Piper is a fast, local, neural text-to-speech engine with dozens "
             "of high-quality English voices. After downloading, open Manage "
             "Voices again to download a Piper voice model.",
@@ -999,6 +1121,87 @@ class SpeechCommandsMixin:
             progress.switch_to_ok(done, on_ok=self.choose_read_aloud_configuration)
 
         threading.Thread(  # GATE-40-OK: Piper engine download worker.
+            target=_run, daemon=True
+        ).start()
+
+    def download_node_runtime(self) -> None:
+        """Download the portable Node.js LTS runtime (~30 MB) on demand.
+
+        For Node (JavaScript/TypeScript) Quillins and the Developer Console's
+        TypeScript interface. Extracted to the managed tools folder and
+        immediately discoverable. Runs on a worker thread behind a progress
+        dialog. Windows-only (elsewhere install Node from nodejs.org / a package
+        manager)."""
+        import threading
+
+        from quill.core.node_install import (
+            NodeInstallError,
+            install_node_runtime,
+            is_node_available,
+            node_install_supported,
+        )
+        from quill.ui.ai_transcribe_dialog import AIProgressDialog
+
+        wx = self._wx
+        if not node_install_supported():
+            self._show_message_box(
+                "Automatic Node.js download is Windows-only. On macOS install it with "
+                "Homebrew (brew install node); on Linux use your package manager.",
+                "Download Node.js",
+                wx.ICON_INFORMATION | wx.OK,
+            )
+            return
+        if is_node_available():
+            self._show_message_box(
+                "Node.js is already available.",
+                "Download Node.js",
+                wx.ICON_INFORMATION | wx.OK,
+            )
+            return
+        confirm = self._show_message_box(
+            "Download the Node.js LTS runtime (about 30 MB)?\n\n"
+            "It powers Node (JavaScript/TypeScript) Quillins and the Developer "
+            "Console's TypeScript interface. Python Quillins and the rest of QUILL "
+            "work without it.",
+            "Download Node.js",
+            wx.ICON_QUESTION | wx.YES_NO,
+        )
+        if confirm != wx.YES:
+            return
+        cancel = threading.Event()
+        progress = AIProgressDialog(
+            self.frame,
+            "Downloading Node.js",
+            "Preparing download...",
+            on_cancel=cancel.set,
+            status_fn=self._set_status,
+        )
+        progress.show()
+        self._announce("Downloading the Node.js runtime.")
+
+        def _on_progress(fraction: float, message: str) -> None:
+            if cancel.is_set():
+                raise NodeInstallError("Download cancelled.")
+            percent = int(max(0.0, min(1.0, fraction)) * 100)
+            progress.set_progress(percent, f"{message} {percent}%")
+
+        def _run() -> None:
+            try:
+                install_node_runtime(progress=_on_progress)
+            except Exception as exc:  # noqa: BLE001
+                wx.CallAfter(progress.close)
+                if cancel.is_set():
+                    wx.CallAfter(self._set_status, "Node.js download cancelled.")
+                    wx.CallAfter(self._announce, "Node.js download cancelled.")
+                else:
+                    wx.CallAfter(self._set_status, f"Node.js download failed: {exc}")
+                    wx.CallAfter(self._announce, f"Node.js download failed. {exc}")
+                return
+            wx.CallAfter(self._set_status, "Node.js is ready.")
+            wx.CallAfter(self._announce, "Node.js is ready.")
+            wx.CallAfter(progress.close)
+
+        threading.Thread(  # GATE-40-OK: Node.js runtime download worker.
             target=_run, daemon=True
         ).start()
 

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 import os
 import shutil
 import subprocess
@@ -14,6 +15,7 @@ from typing import Any
 
 from quill.core.punctuation_speech import normalize_punctuation_level, verbalize_punctuation
 from quill.core.sentence_split import SentenceSpan, sentence_spans
+from quill.core.speech.text_polish import clean_markdown_text
 from quill.core.tts_cache import cached_sentence_generator
 
 # The static voice tables live in voice_catalog (GATE-11 extract). Only the
@@ -421,6 +423,23 @@ def kokoro_onnx_ready(model_dir: Path | None = None) -> bool:
     return _kokoro_dir_has_models(model_dir or default_kokoro_model_dir())
 
 
+def kokoro_engine_ready(model_dir: Path | None = None) -> bool:
+    """True when Kokoro can actually synthesize right now.
+
+    ``kokoro_onnx_ready`` alone only checks that model *files* exist on disk --
+    it says nothing about whether the ``kokoro_onnx`` pip package actually
+    imports. A caller (a UI availability flag, or the synthesis path below)
+    that trusts it alone can claim Kokoro is ready when the package install
+    was skipped or failed, discovering the gap only at synthesis time (#2,
+    beta-2 fix pass).
+    """
+    if not kokoro_onnx_ready(model_dir):
+        return False
+    from quill.core.speech.engine_install import is_kokoro_onnx_available
+
+    return is_kokoro_onnx_available()
+
+
 # Cache the loaded kokoro-onnx model so repeated synthesis (every section and,
 # with a sentence pause, every sentence of a batch) reuses one ~88 MB model load
 # instead of reloading it per call. The instance is stateless across calls
@@ -474,6 +493,10 @@ def warm_kokoro_onnx() -> bool:
         _get_cached_kokoro_onnx(model_dir)
         return True
     except Exception:  # noqa: BLE001 - prewarm is best-effort
+        # Best-effort, but log why: a prewarm failure here is the same
+        # onnxruntime/model load error that will otherwise surface only as the
+        # generic fallback message at first synthesis (#kokoro-onnx).
+        logging.getLogger(__name__).debug("Kokoro onnx prewarm failed", exc_info=True)
         return False
 
 
@@ -490,7 +513,7 @@ def synthesize_with_kokoro(
     # Try kokoro-onnx first — no torch required, just onnxruntime (~20 MB).
     # Uses the int8 quantized model downloaded to the default model directory.
     model_dir = default_kokoro_model_dir()
-    if kokoro_onnx_ready(model_dir):
+    if kokoro_engine_ready(model_dir):
         try:
             import numpy as _np  # type: ignore[import]
             import soundfile as _sf  # type: ignore[import]
@@ -502,16 +525,26 @@ def synthesize_with_kokoro(
             _sf.write(str(output_path), _np.array(samples), sample_rate)
             return
         except Exception:  # noqa: BLE001 - fall through to kokoro + torch
-            pass
+            # The onnx path is the primary route once kokoro_engine_ready() is
+            # True (models present + kokoro_onnx importable). If it still throws
+            # -- e.g. onnxruntime cannot load its native DLL, or the model is
+            # unreadable -- the fallback below raises a generic "needs a
+            # component" error that hides the real cause (a freshly downloaded
+            # Kokoro that will not speak). Log the true error so Help > Save
+            # Diagnostics captures it instead of losing it here (#kokoro-onnx).
+            logging.getLogger(__name__).exception(
+                "Kokoro onnx synthesis failed; falling back to kokoro+torch"
+            )
 
     # Fall back to kokoro + torch.
     try:
         from kokoro import KPipeline  # type: ignore[attr-defined]
     except ImportError as exc:
         raise ReadAloudUnavailableError(
-            "Kokoro TTS requires either:\n"
-            "  - kokoro-onnx models via Voice Picker > Download Kokoro (~114 MB)\n"
-            "  - the 'kokoro' package with torch (pip install kokoro, ~2 GB)"
+            "Kokoro voices need one more component. "
+            "Tools > Speech > Install Kokoro ONNX will fetch it (~114 MB).\n"
+            "(Advanced: the 'kokoro' package with torch also works, but needs "
+            "~2 GB: pip install kokoro)"
         ) from exc
     try:
         import numpy as np  # type: ignore[import]
@@ -1085,6 +1118,9 @@ class ReadAloudController:
             sentence = text[span.start : span.end].strip()
             if not sentence:
                 continue
+            sentence = clean_markdown_text(sentence).strip()
+            if not sentence:
+                continue
             sentence = self._apply_pronunciation(sentence)
             if not sentence.lstrip().startswith("<speak"):
                 # SSML utterances must reach the engine intact; verbalizing their
@@ -1213,6 +1249,9 @@ class ReadAloudController:
             if self._stop_event.is_set() or self._pause_event.is_set():
                 break
             sentence = text[span.start : span.end].strip()
+            if not sentence:
+                continue
+            sentence = clean_markdown_text(sentence).strip()
             if not sentence:
                 continue
             sentence = self._apply_pronunciation(sentence)

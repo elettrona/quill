@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import json
 import subprocess
 from pathlib import Path
@@ -7,7 +8,7 @@ from pathlib import Path
 import pytest
 
 from quill.core.speech import models
-from quill.core.speech.provider import SpeechError, TranscriptionRequest
+from quill.core.speech.provider import SpeechError, SpeechModelInfo, TranscriptionRequest
 from quill.core.speech.providers import whispercpp
 
 _SAMPLE_JSON = json.dumps({
@@ -134,6 +135,102 @@ def test_download_records_model(monkeypatch: pytest.MonkeyPatch, tmp_path: Path)
     assert provider.list_installed_models()[0].id == "small"
 
 
+def _sample_model_info(sha256: str) -> SpeechModelInfo:
+    return SpeechModelInfo(
+        id="small",
+        display_name="Small",
+        language_mode="multilingual",
+        approximate_size_mb=465,
+        accuracy_tier="medium",
+        speed_tier="medium",
+        recommended_use="test",
+        download_url="ggerganov/whisper.cpp",
+        hf_filename="ggml-small.bin",
+        revision="5359861c739e955e79d9a303bcbc70fb988958b1",
+        sha256=hashlib.sha256(b"hello model bytes").hexdigest(),
+    )
+
+
+def test_download_to_file_uses_hf_hub_download(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    huggingface_hub = pytest.importorskip("huggingface_hub")
+
+    payload = b"hello model bytes"
+    calls: dict[str, object] = {}
+
+    def _fake_hf_hub_download(**kwargs):
+        calls.update(kwargs)
+        cached = tmp_path / "cached" / kwargs["filename"]
+        cached.parent.mkdir(parents=True, exist_ok=True)
+        cached.write_bytes(payload)
+        return str(cached)
+
+    monkeypatch.setattr(huggingface_hub, "hf_hub_download", _fake_hf_hub_download)
+    info = _sample_model_info(hashlib.sha256(payload).hexdigest())
+    target = tmp_path / "ggml-small.bin"
+
+    whispercpp._download_to_file(info, target, None)
+
+    assert target.read_bytes() == payload
+    assert calls["repo_id"] == "ggerganov/whisper.cpp"
+    assert calls["filename"] == "ggml-small.bin"
+    assert calls["revision"] == "5359861c739e955e79d9a303bcbc70fb988958b1"
+
+
+def test_download_to_file_stale_pin_raises_coded_error(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    huggingface_hub = pytest.importorskip("huggingface_hub")
+    from huggingface_hub.errors import EntryNotFoundError
+
+    def _fake_hf_hub_download(**kwargs):
+        raise EntryNotFoundError("404 for ggml-small.bin")
+
+    monkeypatch.setattr(huggingface_hub, "hf_hub_download", _fake_hf_hub_download)
+    info = _sample_model_info("0" * 64)
+    target = tmp_path / "ggml-small.bin"
+
+    with pytest.raises(SpeechError, match=r"\[QUILL-SPEECH-WHISPER-DL-404\]"):
+        whispercpp._download_to_file(info, target, None)
+
+
+def test_download_to_file_checksum_mismatch_raises_coded_error(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    huggingface_hub = pytest.importorskip("huggingface_hub")
+
+    def _fake_hf_hub_download(**kwargs):
+        cached = tmp_path / "cached" / kwargs["filename"]
+        cached.parent.mkdir(parents=True, exist_ok=True)
+        cached.write_bytes(b"wrong bytes")
+        return str(cached)
+
+    monkeypatch.setattr(huggingface_hub, "hf_hub_download", _fake_hf_hub_download)
+    info = _sample_model_info(hashlib.sha256(b"expected bytes").hexdigest())
+    target = tmp_path / "ggml-small.bin"
+
+    with pytest.raises(SpeechError, match=r"\[QUILL-SPEECH-WHISPER-DL-CHK\]"):
+        whispercpp._download_to_file(info, target, None)
+    assert not target.exists()
+
+
+def test_download_to_file_network_error_raises_coded_error(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    huggingface_hub = pytest.importorskip("huggingface_hub")
+
+    def _fake_hf_hub_download(**kwargs):
+        raise TimeoutError("timed out")
+
+    monkeypatch.setattr(huggingface_hub, "hf_hub_download", _fake_hf_hub_download)
+    info = _sample_model_info("0" * 64)
+    target = tmp_path / "ggml-small.bin"
+
+    with pytest.raises(SpeechError, match=r"\[QUILL-SPEECH-WHISPER-DL-NET\]"):
+        whispercpp._download_to_file(info, target, None)
+
+
 def test_transcribe_requires_installed_model(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
@@ -249,6 +346,8 @@ def test_whisper_cpp_catalog_is_pinned_to_a_revision_with_hashes() -> None:
     for model in catalog.WHISPER_CPP_MODELS:
         assert model.download_url and "/resolve/main/" not in model.download_url, model.id
         assert model.sha256 and len(model.sha256) == 64, model.id
+        assert model.hf_filename, model.id
+        assert model.revision and model.revision != "main", model.id
     # The tinydiarize model lives in its own repo, not ggerganov/whisper.cpp.
     tdrz = catalog.model_by_id("small.en-tdrz")
     assert tdrz is not None and "tinydiarize-whisper.cpp" in (tdrz.download_url or "")
