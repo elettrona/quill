@@ -190,3 +190,77 @@ def test_removable_path_refuses_paths_outside_the_data_dir(tmp_path, monkeypatch
     from quill.core.optional_components import removable_path
 
     assert removable_path("kokoro") is None  # outside data_dir -> refused
+
+
+def test_fuzzy_match_tolerates_stt_variance() -> None:
+    from quill.core.optional_components import _fuzzy_match
+
+    assert _fuzzy_match("the quick brown fox", "the quick brown fox") is True
+    assert _fuzzy_match("the quick brown fox", "the quick fox jumped") is True  # >=40%
+    assert _fuzzy_match("the quick brown fox", "") is False
+    assert _fuzzy_match("the quick brown fox", "completely different words here") is False
+
+
+def test_download_failure_report_text() -> None:
+    from quill.core.optional_components import DownloadFailure
+
+    text = DownloadFailure(
+        "kokoro", "pip exit 1", detail="No matching distribution", target=r"C:\data\kok"
+    ).as_report_text()
+    assert "Component: kokoro" in text
+    assert "pip exit 1" in text
+    assert "No matching distribution" in text
+    assert r"C:\data\kok" in text
+
+
+def test_verify_component_voice_defers_to_preview() -> None:
+    from quill.core.optional_components import verify_component
+
+    result = verify_component("kokoro")
+    assert result.ok is True
+    assert "Test" in result.summary  # UI plays the sample
+
+
+def test_verify_component_stt_reports_what_it_heard(monkeypatch) -> None:
+    import types
+
+    from quill.core import read_aloud
+    from quill.core.optional_components import verify_component
+    from quill.core.speech import transcribe as tr
+
+    monkeypatch.setattr(tr, "has_installed_offline_model", lambda *a, **k: True)
+    monkeypatch.setattr(read_aloud, "synthesize_to_file_with_sapi5", lambda *a, **k: None)
+    monkeypatch.setattr(
+        tr,
+        "transcribe_audio_file",
+        lambda *a, **k: types.SimpleNamespace(
+            full_text="The quick brown fox jumps over the lazy dog."
+        ),
+    )
+    result = verify_component("whispercpp")
+    assert result.ok is True
+    assert "heard" in result.summary.lower()
+
+
+def test_verify_component_stt_flags_no_model(monkeypatch) -> None:
+    from quill.core.optional_components import verify_component
+    from quill.core.speech import transcribe as tr
+
+    monkeypatch.setattr(tr, "has_installed_offline_model", lambda *a, **k: False)
+    result = verify_component("vosk")
+    assert result.ok is False
+    assert "model" in result.summary.lower()
+
+
+def test_verify_component_tool_uses_availability(monkeypatch) -> None:
+    import quill.core.optional_components as ocmod
+    from quill.core.speech import ffmpeg as ff
+
+    monkeypatch.setattr(ff, "ffmpeg_available", lambda: True)
+    assert verify_via(ocmod, "ffmpeg").ok is True
+    monkeypatch.setattr(ff, "ffmpeg_available", lambda: False)
+    assert verify_via(ocmod, "ffmpeg").ok is False
+
+
+def verify_via(ocmod, cid):
+    return ocmod.verify_component(cid)

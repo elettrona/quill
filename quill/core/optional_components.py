@@ -167,6 +167,166 @@ def remove_component(component_id: str) -> bool:
     return True
 
 
+# The line a voice engine speaks when the user presses Test (the UI formats
+# {engine} and plays it through the existing voice preview) -- warm, plain
+# confirmation that the install works.
+TEST_BLURB = (
+    "Hello from QUILL. If you can hear this, the {engine} voice is installed "
+    "and ready to read your writing aloud."
+)
+
+# A clean, well-recognised phrase QUILL speaks with SAPI 5 and then feeds back
+# through an offline STT engine to prove transcription works (the R2 loop).
+_STT_TEST_PHRASE = "The quick brown fox jumps over the lazy dog."
+
+
+@dataclass(frozen=True, slots=True)
+class VerifyResult:
+    """Outcome of a component self-test: an ok flag plus human-readable text."""
+
+    ok: bool
+    summary: str
+    detail: str = ""
+
+
+@dataclass(frozen=True, slots=True)
+class DownloadFailure:
+    """Captured detail of a failed download/install, for the rich error dialog
+    and a one-click bug report."""
+
+    component_id: str
+    message: str
+    detail: str = ""
+    target: str = ""
+
+    def as_report_text(self) -> str:
+        lines = [f"Component: {self.component_id}", f"Error: {self.message}"]
+        if self.target:
+            lines.append(f"Target: {self.target}")
+        if self.detail:
+            lines.extend(["", "Detail:", self.detail])
+        return "\n".join(lines)
+
+
+def _fuzzy_match(expected: str, heard: str, *, threshold: float = 0.4) -> bool:
+    """True when *heard* covers enough of *expected*'s words (STT is imperfect)."""
+    import re
+
+    def toks(text: str) -> set[str]:
+        return set(re.findall(r"[a-z0-9']+", text.lower()))
+
+    want = toks(expected)
+    if not want:
+        return False
+    return len(want & toks(heard)) / len(want) >= threshold
+
+
+def verify_component(component_id: str) -> VerifyResult:
+    """Self-test *component_id* and return a human-readable result.
+
+    Voice engines are handled by the dialog (it plays a spoken sample via the
+    existing voice preview); here they just confirm readiness. STT engines run
+    the SAPI->transcribe loop; tools report their version/response; the rest do a
+    presence/load check. Never raises -- any failure becomes ``ok=False``.
+    """
+    try:
+        if component_id in ("whispercpp", "vosk"):
+            return _verify_stt(component_id)
+        if component_id in ("pandoc", "ffmpeg", "node"):
+            return _verify_tool(component_id)
+        if read_aloud_engine_for_component(component_id) is not None:
+            return VerifyResult(True, "Installed — press Test to hear a sample of this voice.")
+        return _verify_presence(component_id)
+    except Exception as exc:  # noqa: BLE001 - a verify must never crash the dialog
+        return VerifyResult(False, "The self-test could not run.", str(exc))
+
+
+def _verify_stt(component_id: str) -> VerifyResult:
+    import tempfile
+
+    from quill.core.read_aloud import synthesize_to_file_with_sapi5
+    from quill.core.speech.transcribe import has_installed_offline_model, transcribe_audio_file
+
+    if not _safe(has_installed_offline_model):
+        return VerifyResult(
+            False,
+            "No offline speech model is installed yet.",
+            "Download a model in Manage Speech Models, then run Test again.",
+        )
+    wav = Path(tempfile.mkstemp(prefix="quill_stt_test_", suffix=".wav")[1])
+    try:
+        synthesize_to_file_with_sapi5(_STT_TEST_PHRASE, wav)
+        result = transcribe_audio_file(wav)
+        heard = (getattr(result, "full_text", "") or "").strip()
+    except Exception as exc:  # noqa: BLE001
+        return VerifyResult(False, "The speech engine could not transcribe a test clip.", str(exc))
+    finally:
+        try:
+            wav.unlink(missing_ok=True)
+        except OSError:
+            pass
+    if _fuzzy_match(_STT_TEST_PHRASE, heard):
+        return VerifyResult(True, f"It works — the engine heard: “{heard}”")
+    return VerifyResult(
+        False,
+        f"The engine ran but the result looked off: “{heard}”",
+        "This can happen transcribing the system voice; try dictating a real phrase.",
+    )
+
+
+def _verify_tool(component_id: str) -> VerifyResult:
+    if component_id == "node":
+        ok = _safe(_node_installed)
+        return VerifyResult(
+            ok,
+            "Node.js is installed and on QUILL's path." if ok else "Node.js was not found.",
+        )
+    if component_id == "ffmpeg":
+        from quill.core.speech.ffmpeg import ffmpeg_available
+
+        ok = _safe(ffmpeg_available)
+        return VerifyResult(
+            ok, "FFmpeg is installed and responding." if ok else "FFmpeg was not found."
+        )
+    from quill.core.external_tools import get_external_tool_status
+
+    status = get_external_tool_status("pandoc")
+    if getattr(status, "installed", False):
+        version = getattr(status, "version", "") or ""
+        suffix = f" (version {version})" if version else ""
+        return VerifyResult(True, f"Pandoc is installed and responding{suffix}.")
+    return VerifyResult(False, "Pandoc was not found.")
+
+
+def _verify_presence(component_id: str) -> VerifyResult:
+    if component_id.startswith("spell-"):
+        lang = component_id[len("spell-") :]
+        try:
+            from quill.core import spellcheck
+
+            ok = lang in set(_safe_list(spellcheck.installed_languages))
+        except Exception:  # noqa: BLE001
+            ok = False
+        return VerifyResult(
+            ok,
+            f"The {lang} dictionary is installed."
+            if ok
+            else f"The {lang} dictionary was not detected.",
+        )
+    detectors = {
+        "braille": _braille_pack_installed,
+        "mathcat": _mathcat_installed,
+        "libmpv": _libmpv_installed,
+    }
+    detector = detectors.get(component_id)
+    if detector is None:
+        return VerifyResult(True, "Installed.")
+    ok = _safe(detector)
+    return VerifyResult(
+        ok, "Installed and detected." if ok else "Installed files were not detected."
+    )
+
+
 def _safe(predicate) -> bool:  # type: ignore[no-untyped-def]
     """Run a detector, treating any failure as 'not installed'."""
     try:
