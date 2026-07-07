@@ -711,6 +711,26 @@ def synthesize_to_file_with_dectalk(
     _run_dectalk_say(executable_path, payload, output_path)
 
 
+def _worker_python_executable() -> str:
+    """A real Python interpreter for running helper scripts (e.g. dectalk_say.py).
+
+    In a bundled build ``sys.executable`` is the QUILL launcher (``quill.exe``),
+    not a Python interpreter -- launching it with a bare script path makes QUILL
+    *open the script as a document* instead of running it (the "DECtalk opens a
+    Python file" bug). The embedded runtime ships ``pythonw.exe``/``python.exe``
+    beside the launcher, so prefer one of those when the launcher isn't itself
+    Python.
+    """
+    exe = Path(sys.executable)
+    if exe.stem.lower() in ("python", "pythonw"):
+        return str(exe)
+    for name in ("pythonw.exe", "python.exe"):
+        candidate = exe.with_name(name)
+        if candidate.is_file():
+            return str(candidate)
+    return sys.executable
+
+
 def _run_dectalk_say(dll_path: Path, payload: str, output_path: Path) -> None:
     """Drive the DECtalk console worker; raise with a rich diagnostic on failure.
 
@@ -724,7 +744,7 @@ def _run_dectalk_say(dll_path: Path, payload: str, output_path: Path) -> None:
     try:
         completed = subprocess.run(
             [
-                sys.executable,
+                _worker_python_executable(),
                 str(_DECTALK_SAY_WORKER),
                 "--dll",
                 str(dll_path),
