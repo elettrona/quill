@@ -1,11 +1,10 @@
 from __future__ import annotations
 
 import quill.core.optional_components as oc
-from quill.core.optional_components import gather_optional_components
 
 
 def test_gather_includes_the_core_optional_components() -> None:
-    ids = {c.component_id for c in gather_optional_components()}
+    ids = {c.component_id for c in oc.gather_optional_components()}
     assert {
         "whispercpp",
         "vosk",
@@ -24,7 +23,7 @@ def test_status_reflects_detectors(monkeypatch) -> None:
     monkeypatch.setattr(oc, "_espeak_installed", lambda: False)
     monkeypatch.setattr(oc, "_dectalk_installed", lambda: False)
     monkeypatch.setattr(oc, "_ffmpeg_installed", lambda: False)
-    by_id = {c.component_id: c for c in gather_optional_components()}
+    by_id = {c.component_id: c for c in oc.gather_optional_components()}
     assert by_id["whispercpp"].installed is True
     assert by_id["whispercpp"].status_label == "Installed"
     assert by_id["kokoro"].installed is False
@@ -36,7 +35,7 @@ def test_a_broken_detector_never_crashes_the_list(monkeypatch) -> None:
         raise RuntimeError("detector exploded")
 
     monkeypatch.setattr(oc, "_whisper_installed", boom)
-    comps = gather_optional_components()  # must not raise
+    comps = oc.gather_optional_components()  # must not raise
     whisper = next(c for c in comps if c.component_id == "whispercpp")
     assert whisper.installed is False
 
@@ -46,7 +45,7 @@ def test_dictionary_components_use_spellcheck_state(monkeypatch) -> None:
 
     monkeypatch.setattr(spellcheck, "installed_languages", lambda: ["en_US", "fr_FR"])
     monkeypatch.setattr(spellcheck, "installable_languages", lambda: ["es_ES"])
-    by_id = {c.component_id: c for c in gather_optional_components()}
+    by_id = {c.component_id: c for c in oc.gather_optional_components()}
     # en_US is bundled in pyenchant, so it is never listed as a separate download.
     assert "spell-en_US" not in by_id
     assert by_id["spell-fr_FR"].installed is True
@@ -55,7 +54,7 @@ def test_dictionary_components_use_spellcheck_state(monkeypatch) -> None:
 
 
 def test_size_hints_present_for_large_components() -> None:
-    by_id = {c.component_id: c for c in gather_optional_components()}
+    by_id = {c.component_id: c for c in oc.gather_optional_components()}
     assert by_id["kokoro"].size_hint  # non-empty
     assert by_id["whispercpp"].size_hint
 
@@ -83,13 +82,13 @@ def test_mathcat_detector_checks_the_engine_pack(tmp_path, monkeypatch) -> None:
 def test_gather_includes_piper_and_node() -> None:
     """Piper and Node.js are downloadable, so they must have a touch point in the
     dialog (they were missing before the catalog-completeness pass)."""
-    ids = {c.component_id for c in gather_optional_components()}
+    ids = {c.component_id for c in oc.gather_optional_components()}
     assert "piper" in ids
     assert "node" in ids
 
 
 def test_components_are_ordered_by_importance() -> None:
-    comps = gather_optional_components()
+    comps = oc.gather_optional_components()
     ids = [c.component_id for c in comps]
     # Pandoc leads, braille second (the user-facing importance order).
     assert ids[0] == "pandoc"
@@ -103,23 +102,21 @@ def test_components_are_ordered_by_importance() -> None:
 
 def test_every_component_row_states_a_size() -> None:
     # Every row (dictionaries included, which were blank before) shows a size.
-    for c in gather_optional_components():
+    for c in oc.gather_optional_components():
         assert c.size_hint, f"{c.component_id} has no size_hint"
 
 
 def test_describe_component_reports_state_and_size() -> None:
-    from quill.core.optional_components import OptionalComponent, describe_component
-
-    installed = OptionalComponent(
+    installed = oc.OptionalComponent(
         "pandoc", "Pandoc", "Converts documents.", oc.TOOL, True, "~45 MB"
     )
-    text = describe_component(installed)
+    text = oc.describe_component(installed)
     assert "Pandoc" in text and "~45 MB" in text and "Installed" in text and "Remove" in text
 
-    missing = OptionalComponent(
+    missing = oc.OptionalComponent(
         "kokoro", "Kokoro neural voices", "Neural voices.", oc.VOICES, False, "~120 MB"
     )
-    text2 = describe_component(missing)
+    text2 = oc.describe_component(missing)
     assert "Not installed" in text2 and "~120 MB" in text2 and "Download" in text2
 
 
@@ -129,7 +126,7 @@ def test_every_hosted_release_asset_is_catalogued() -> None:
     map to the dynamic spell-<lang> rows and are checked separately."""
     from quill.core.release_assets import ASSETS
 
-    ids = {c.component_id for c in gather_optional_components()}
+    ids = {c.component_id for c in oc.gather_optional_components()}
     for key in ASSETS:
         if key.startswith("spell-"):
             continue
@@ -137,46 +134,39 @@ def test_every_hosted_release_asset_is_catalogued() -> None:
 
 
 def test_read_aloud_engine_for_component_maps_voice_engines() -> None:
-    from quill.core.optional_components import read_aloud_engine_for_component
-
-    assert read_aloud_engine_for_component("kokoro") == "kokoro"
-    assert read_aloud_engine_for_component("piper") == "piper"
+    assert oc.read_aloud_engine_for_component("kokoro") == "kokoro"
+    assert oc.read_aloud_engine_for_component("piper") == "piper"
     # Non-voice components have no engine to reset.
-    assert read_aloud_engine_for_component("pandoc") is None
-    assert read_aloud_engine_for_component("braille") is None
+    assert oc.read_aloud_engine_for_component("pandoc") is None
+    assert oc.read_aloud_engine_for_component("braille") is None
 
 
 def test_removable_path_returns_none_for_uncatalogued_or_absent(tmp_path, monkeypatch) -> None:
     import quill.core.paths as paths
-    from quill.core.optional_components import removable_path
 
     monkeypatch.setattr(paths, "app_data_dir", lambda: tmp_path)
     # Unknown component id -> never removable.
-    assert removable_path("nonsense") is None
+    assert oc.removable_path("nonsense") is None
     # Known components with nothing downloaded yet -> None (nothing to remove).
-    assert removable_path("dectalk") is None
-    assert removable_path("spell-fr_FR") is None
-    assert removable_path("kokoro") is None
+    assert oc.removable_path("dectalk") is None
+    assert oc.removable_path("spell-fr_FR") is None
+    assert oc.removable_path("kokoro") is None
 
 
 def test_removable_path_and_remove_cover_dectalk(tmp_path, monkeypatch) -> None:
     import quill.core.paths as paths
-    from quill.core.optional_components import removable_path, remove_component
 
     monkeypatch.setattr(paths, "app_data_dir", lambda: tmp_path)
     dectalk = tmp_path / "speech" / "dectalk"
     dectalk.mkdir(parents=True)
     (dectalk / "say.exe").write_text("x", encoding="utf-8")
 
-    assert removable_path("dectalk") == dectalk
-    assert remove_component("dectalk") is True
+    assert oc.removable_path("dectalk") == dectalk
+    assert oc.remove_component("dectalk") is True
     assert not dectalk.exists()
 
 
 def test_remove_component_deletes_the_spell_dic_aff_pair(tmp_path, monkeypatch) -> None:
-    import quill.core.optional_components as ocmod
-    from quill.core.optional_components import remove_component
-
     hunspell = tmp_path / "spell" / "hunspell"
     hunspell.mkdir(parents=True)
     dic = hunspell / "fr_FR.dic"
@@ -185,33 +175,31 @@ def test_remove_component_deletes_the_spell_dic_aff_pair(tmp_path, monkeypatch) 
     for f in (dic, aff, other):
         f.write_text("x", encoding="utf-8")
     # removable_path resolves the .dic; remove deletes the .dic/.aff pair only.
-    monkeypatch.setattr(ocmod, "removable_path", lambda _cid: dic)
+    monkeypatch.setattr(oc, "removable_path", lambda _cid: dic)
 
-    assert remove_component("spell-fr_FR") is True
+    assert oc.remove_component("spell-fr_FR") is True
     assert not dic.exists() and not aff.exists()
     assert other.exists()  # other languages untouched
 
 
 def test_removable_path_and_remove_delete_the_app_data_copy(tmp_path, monkeypatch) -> None:
     import quill.core.paths as paths
-    from quill.core.optional_components import removable_path, remove_component
 
     monkeypatch.setattr(paths, "app_data_dir", lambda: tmp_path)
     models = tmp_path / "kokoro-models"
     models.mkdir()
     (models / "kokoro-v1.0.int8.onnx").write_text("model", encoding="utf-8")
 
-    assert removable_path("kokoro") == models
-    assert remove_component("kokoro") is True
+    assert oc.removable_path("kokoro") == models
+    assert oc.remove_component("kokoro") is True
     assert not models.exists()
     # Second remove is a no-op (nothing left).
-    assert remove_component("kokoro") is False
+    assert oc.remove_component("kokoro") is False
 
 
 def test_removable_path_refuses_paths_outside_the_data_dir(tmp_path, monkeypatch) -> None:
     """Safety: never return a copy that lives outside the active data dir (a
     system tool or a bundled {app} copy)."""
-    import quill.core.optional_components as ocmod
     import quill.core.paths as paths
 
     data_dir = tmp_path / "data"
@@ -219,25 +207,20 @@ def test_removable_path_refuses_paths_outside_the_data_dir(tmp_path, monkeypatch
     outside = tmp_path / "elsewhere" / "kokoro-models"
     outside.mkdir(parents=True)
     monkeypatch.setattr(paths, "app_data_dir", lambda: data_dir)
-    monkeypatch.setattr(ocmod, "_candidate_removable_path", lambda _cid: outside)
-    from quill.core.optional_components import removable_path
+    monkeypatch.setattr(oc, "_candidate_removable_path", lambda _cid: outside)
 
-    assert removable_path("kokoro") is None  # outside data_dir -> refused
+    assert oc.removable_path("kokoro") is None  # outside data_dir -> refused
 
 
 def test_fuzzy_match_tolerates_stt_variance() -> None:
-    from quill.core.optional_components import _fuzzy_match
-
-    assert _fuzzy_match("the quick brown fox", "the quick brown fox") is True
-    assert _fuzzy_match("the quick brown fox", "the quick fox jumped") is True  # >=40%
-    assert _fuzzy_match("the quick brown fox", "") is False
-    assert _fuzzy_match("the quick brown fox", "completely different words here") is False
+    assert oc._fuzzy_match("the quick brown fox", "the quick brown fox") is True
+    assert oc._fuzzy_match("the quick brown fox", "the quick fox jumped") is True  # >=40%
+    assert oc._fuzzy_match("the quick brown fox", "") is False
+    assert oc._fuzzy_match("the quick brown fox", "completely different words here") is False
 
 
 def test_download_failure_report_text() -> None:
-    from quill.core.optional_components import DownloadFailure
-
-    text = DownloadFailure(
+    text = oc.DownloadFailure(
         "kokoro", "pip exit 1", detail="No matching distribution", target=r"C:\data\kok"
     ).as_report_text()
     assert "Component: kokoro" in text
@@ -247,9 +230,7 @@ def test_download_failure_report_text() -> None:
 
 
 def test_verify_component_voice_defers_to_preview() -> None:
-    from quill.core.optional_components import verify_component
-
-    result = verify_component("kokoro")
+    result = oc.verify_component("kokoro")
     assert result.ok is True
     assert "Test" in result.summary  # UI plays the sample
 
@@ -258,7 +239,6 @@ def test_verify_component_stt_reports_what_it_heard(monkeypatch) -> None:
     import types
 
     from quill.core import read_aloud
-    from quill.core.optional_components import verify_component
     from quill.core.speech import transcribe as tr
 
     monkeypatch.setattr(tr, "has_installed_offline_model", lambda *a, **k: True)
@@ -270,52 +250,42 @@ def test_verify_component_stt_reports_what_it_heard(monkeypatch) -> None:
             full_text="The quick brown fox jumps over the lazy dog."
         ),
     )
-    result = verify_component("whispercpp")
+    result = oc.verify_component("whispercpp")
     assert result.ok is True
     assert "heard" in result.summary.lower()
 
 
 def test_verify_component_stt_flags_no_model(monkeypatch) -> None:
-    from quill.core.optional_components import verify_component
     from quill.core.speech import transcribe as tr
 
     monkeypatch.setattr(tr, "has_installed_offline_model", lambda *a, **k: False)
-    result = verify_component("vosk")
+    result = oc.verify_component("vosk")
     assert result.ok is False
     assert "model" in result.summary.lower()
 
 
 def test_verify_component_tool_uses_availability(monkeypatch) -> None:
-    import quill.core.optional_components as ocmod
     from quill.core.speech import ffmpeg as ff
 
     monkeypatch.setattr(ff, "ffmpeg_available", lambda: True)
-    assert verify_via(ocmod, "ffmpeg").ok is True
+    assert oc.verify_component("ffmpeg").ok is True
     monkeypatch.setattr(ff, "ffmpeg_available", lambda: False)
-    assert verify_via(ocmod, "ffmpeg").ok is False
-
-
-def verify_via(ocmod, cid):
-    return ocmod.verify_component(cid)
+    assert oc.verify_component("ffmpeg").ok is False
 
 
 def test_voice_preview_phrase_prefers_app_root_file(tmp_path, monkeypatch) -> None:
-    from quill.core.optional_components import voice_preview_phrase
-
     scripts = tmp_path / "scripts"
     scripts.mkdir()
     (scripts / "phrase.txt").write_text("Custom preview phrase.", encoding="utf-8")
     monkeypatch.setenv("QUILL_APP_ROOT", str(tmp_path))
-    assert voice_preview_phrase() == "Custom preview phrase."
+    assert oc.voice_preview_phrase() == "Custom preview phrase."
 
 
 def test_voice_preview_phrase_is_never_empty(monkeypatch) -> None:
     # With no app-root override, it reads the repo scripts/phrase.txt or the
     # built-in default -- either way a non-empty phrase.
     monkeypatch.delenv("QUILL_APP_ROOT", raising=False)
-    from quill.core.optional_components import voice_preview_phrase
-
-    assert voice_preview_phrase().strip()
+    assert oc.voice_preview_phrase().strip()
 
 
 def test_piper_is_self_hosted_and_pinned() -> None:

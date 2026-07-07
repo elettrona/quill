@@ -313,6 +313,8 @@ def _verify_stt(component_id: str) -> VerifyResult:
         try:
             wav.unlink(missing_ok=True)
         except OSError:
+            # Best-effort cleanup of the temp WAV; a leftover temp file is
+            # harmless and must never mask the transcription result above.
             pass
     if _fuzzy_match(_STT_TEST_PHRASE, heard):
         return VerifyResult(True, f"It works — the engine heard: “{heard}”")
