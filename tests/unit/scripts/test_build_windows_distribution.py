@@ -802,3 +802,16 @@ def test_file_association_launches_root_quill_exe_next_to_python_dll() -> None:
     assert r"{app}\python\{#AppExeName}" not in script
     assert r"{app}\python\quill.exe" not in script
     assert r"{app}\python\pythonw.exe" not in script
+
+
+def test_kokoro_is_not_bundled_and_installs_on_demand() -> None:
+    """Kokoro (kokoro-onnx + onnxruntime + phonemizer + babel) is large and
+    optional. It installs on demand via install_kokoro_onnx() into an engine-pack;
+    bundling it re-bloats the installer. Guard that it stays out of the bundled
+    dependency groups (the footprint fix behind #881)."""
+    from scripts.build_windows_distribution import DEFAULT_BUNDLED_DEPENDENCY_GROUPS
+
+    assert "kokoro" not in DEFAULT_BUNDLED_DEPENDENCY_GROUPS
+    # The engines users actually need offline stay bundled.
+    assert "speech" in DEFAULT_BUNDLED_DEPENDENCY_GROUPS
+    assert "ui" in DEFAULT_BUNDLED_DEPENDENCY_GROUPS

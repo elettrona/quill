@@ -135,7 +135,13 @@ KOKORO_VOICES_SHA256 = "bca610b8308e8d99f32e6fe4197e7ec01679264efed0cac9140fe9c2
 # the tiny default in-flow.
 # "feedback" bundles feedback_hub (direct GitHub issue submission) so Report a
 # Bug offers the accessible Submit flow instead of the browser support form.
-DEFAULT_BUNDLED_DEPENDENCY_GROUPS = ("ui", "spellcheck", "ocr", "kokoro", "speech", "feedback")
+# "kokoro" is intentionally NOT bundled: kokoro-onnx pulls in onnxruntime (large),
+# phonemizer, espeakng-loader and babel. Kokoro is an on-demand feature -- its
+# models already download on first use, and install_kokoro_onnx() pip-installs the
+# package tree into an engine-pack (activated on sys.path), so bundling it just
+# bloated the installer. Keeping it out trims the installer substantially and lets
+# babel arrive with the on-demand install (#881). See the guided-installer spec.
+DEFAULT_BUNDLED_DEPENDENCY_GROUPS = ("ui", "spellcheck", "ocr", "speech", "feedback")
 
 # Pinned rcedit release (electron/rcedit). Build-tool only -- never copied into
 # the portable bundle or the installer payload. Used to stamp the bundled
