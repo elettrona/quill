@@ -427,5 +427,98 @@ footprint text must name the active data dir ("frees ~X in your QUILL
 data folder"), never a hardcoded <code>%APPDATA%</code>. Implementation
 must add a test that in portable mode the resolved download/remove path
 is under the portable root, not <code>%APPDATA%</code>.</p>
+<h2 id="round-2-requirements-2026-07-07">Round 2 requirements
+(2026-07-07)</h2>
+<h3 id="r1-every-component-has-a-verify-touch-point-prove-it-works">R1.
+Every component has a verify touch point ("prove it works")</h3>
+<p>The Test button generalises from voices to <strong>a per-type verify
+action on every component</strong>, so a user can always confirm what
+they installed actually works:</p>
+<ul>
+<li><strong>Voice engines</strong> (kokoro, piper, espeak, dectalk):
+speak <code>TEST_BLURB</code> in a default voice (as in §6).</li>
+<li><strong>STT engines</strong> (whispercpp, vosk): the self-test in R2
+below.</li>
+<li><strong>Tools</strong> (pandoc, ffmpeg, node): run the tool's
+version probe (<code>pandoc --version</code>,
+<code>ffmpeg -version</code>, <code>node --version</code> via the
+existing safe-subprocess wrapper) and show the reported version.</li>
+<li><strong>braille</strong>: translate a short sample with
+<code>lou_translate</code> and show the cells.</li>
+<li><strong>mathcat</strong>: load and speak a sample expression (falls
+back to "loaded OK").</li>
+<li><strong>libmpv</strong>: confirm the DLL loads via the existing
+loader.</li>
+<li><strong>spell dicts</strong>: check a known word validates in that
+language.</li>
+</ul>
+<p>Wx-free
+<code>verify_component(component_id) -&gt; VerifyResult</code> in
+<code>optional_components.py</code> (result = ok flag + a human line +
+optional detail), so the dialog just renders/announces it. Disabled
+until the component is installed.</p>
+<h3
+id="r2-whisper-and-vosk-stt-self-test--closing-the-confidence-loop">R2.
+Whisper (and Vosk) STT self-test — closing the confidence loop</h3>
+<p>To prove an offline STT engine works with no bundled audio asset,
+close the loop through TTS: synthesize a fixed known phrase with the
+always-present SAPI 5 voice to a temp WAV, transcribe it with the
+installed engine, and show the user what it heard — "Whisper heard:
+'<text>'". Pass when the transcription fuzzy-matches the known phrase
+(token overlap over a threshold), so normal recognition variance doesn't
+read as failure. Reuses the existing transcription path; announced for
+screen-reader users. This is the STT arm of R1's
+<code>verify_component</code>.</p>
+<h3 id="r3-rich-failure-info--one-click-bug-report">R3. Rich failure
+info + one-click bug report</h3>
+<p>Every download/install/verify failure must surface the <em>real</em>
+cause and offer to send it, not just flash a status line:</p>
+<ul>
+<li>Capture the full error: the exception message, the pip/stderr tail
+already logged to <code>quill.log</code> (Kokoro/Piper/engine installs
+write it), the component_id, and the resolved target path
+(portable-aware).</li>
+<li>Show it in a dialog with the detail in a read-only multiline box
+<strong>and a "Send bug report" button</strong> that routes into the
+existing feedback/diagnostics bundle flow (<code>feedback_hub</code> /
+Help &gt; Save Diagnostics), pre-seeded with the captured error and the
+diagnostics bundle (which now carries the logged pip error). The bundle
+stays redacted (no document content).</li>
+<li>A wx-free <code>DownloadFailure</code> record (component_id,
+message, detail, log_excerpt, target) carries the info from the core
+installers up to the dialog.</li>
+</ul>
+<h3 id="r4-catalog-completeness--add-the-missing-components">R4. Catalog
+completeness — add the missing components</h3>
+<p><code>gather_optional_components()</code> is missing two downloadable
+components; add both so the dialog has a touch point for everything
+QUILL can fetch:</p>
+<ul>
+<li><strong>piper</strong> — detector
+<code>discover_piper_executable() is not None</code>; installer
+<code>piper_install.install_piper</code>; category VOICES.</li>
+<li><strong>node</strong> — detector
+<code>node_install.is_node_available()</code>; installer
+<code>node_install.install_node_runtime</code>; category TOOL; "for Node
+Quillins and the Developer Console TypeScript interface".</li>
+</ul>
+<p>A guard test asserts every component QUILL can install (each
+<code>release_assets</code> asset + each <code>*_install</code> module +
+piper/node) appears in <code>gather_optional_components()</code>, so a
+future downloadable component can't silently miss the dialog again.</p>
+<h2 id="phasing">Phasing</h2>
+<ul>
+<li><strong>Phase 1</strong> — wx-free core: add piper + node (R4),
+<code>priority</code> ordering, dictionary sizes,
+<code>describe_component</code>, and the completeness guard test.</li>
+<li><strong>Phase 2</strong> — Remove:
+<code>removable_path</code>/<code>remove_component</code>
+(portable-aware), installed-state gating, engine-reset loop;
+portable-path test.</li>
+<li><strong>Phase 3</strong> — verify touch points (R1) incl. voice Test
+and Whisper/Vosk self-test (R2), rich failure + bug report (R3).</li>
+<li><strong>Phase 4</strong> — stay-open focus flow, reroute the startup
+braille prompt with the guiding popup, and the #874 failure routes.</li>
+</ul>
 </body>
 </html>

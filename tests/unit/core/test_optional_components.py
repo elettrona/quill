@@ -78,3 +78,59 @@ def test_mathcat_detector_checks_the_engine_pack(tmp_path, monkeypatch) -> None:
     (tmp_path / "mathcat" / "Rules").mkdir(parents=True)
     (tmp_path / "mathcat" / "libmathcat_c.dll").write_bytes(b"MZ")
     assert oc._mathcat_installed() is True
+
+
+def test_gather_includes_piper_and_node() -> None:
+    """Piper and Node.js are downloadable, so they must have a touch point in the
+    dialog (they were missing before the catalog-completeness pass)."""
+    ids = {c.component_id for c in gather_optional_components()}
+    assert "piper" in ids
+    assert "node" in ids
+
+
+def test_components_are_ordered_by_importance() -> None:
+    comps = gather_optional_components()
+    ids = [c.component_id for c in comps]
+    # Pandoc leads, braille second (the user-facing importance order).
+    assert ids[0] == "pandoc"
+    assert ids[1] == "braille"
+    # Spell-check dictionaries are grouped last.
+    spell_positions = [i for i, cid in enumerate(ids) if cid.startswith("spell-")]
+    non_spell_positions = [i for i, cid in enumerate(ids) if not cid.startswith("spell-")]
+    if spell_positions and non_spell_positions:
+        assert min(spell_positions) > max(non_spell_positions)
+
+
+def test_every_component_row_states_a_size() -> None:
+    # Every row (dictionaries included, which were blank before) shows a size.
+    for c in gather_optional_components():
+        assert c.size_hint, f"{c.component_id} has no size_hint"
+
+
+def test_describe_component_reports_state_and_size() -> None:
+    from quill.core.optional_components import OptionalComponent, describe_component
+
+    installed = OptionalComponent(
+        "pandoc", "Pandoc", "Converts documents.", oc.TOOL, True, "~45 MB"
+    )
+    text = describe_component(installed)
+    assert "Pandoc" in text and "~45 MB" in text and "Installed" in text and "Remove" in text
+
+    missing = OptionalComponent(
+        "kokoro", "Kokoro neural voices", "Neural voices.", oc.VOICES, False, "~120 MB"
+    )
+    text2 = describe_component(missing)
+    assert "Not installed" in text2 and "~120 MB" in text2 and "Download" in text2
+
+
+def test_every_hosted_release_asset_is_catalogued() -> None:
+    """A component QUILL can fetch from its own release must appear in the dialog,
+    so a future downloadable component can't silently miss it. Spell-check assets
+    map to the dynamic spell-<lang> rows and are checked separately."""
+    from quill.core.release_assets import ASSETS
+
+    ids = {c.component_id for c in gather_optional_components()}
+    for key in ASSETS:
+        if key.startswith("spell-"):
+            continue
+        assert key in ids, f"release_assets component {key!r} is not in the download dialog"

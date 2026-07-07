@@ -208,3 +208,80 @@ mode. The description box's footprint text must name the active data dir ("frees
 ~X in your QUILL data folder"), never a hardcoded `%APPDATA%`. Implementation
 must add a test that in portable mode the resolved download/remove path is under
 the portable root, not `%APPDATA%`.
+
+## Round 2 requirements (2026-07-07)
+
+### R1. Every component has a verify touch point ("prove it works")
+
+The Test button generalises from voices to **a per-type verify action on every
+component**, so a user can always confirm what they installed actually works:
+
+- **Voice engines** (kokoro, piper, espeak, dectalk): speak `TEST_BLURB` in a
+  default voice (as in §6).
+- **STT engines** (whispercpp, vosk): the self-test in R2 below.
+- **Tools** (pandoc, ffmpeg, node): run the tool's version probe
+  (`pandoc --version`, `ffmpeg -version`, `node --version` via the existing
+  safe-subprocess wrapper) and show the reported version.
+- **braille**: translate a short sample with `lou_translate` and show the cells.
+- **mathcat**: load and speak a sample expression (falls back to "loaded OK").
+- **libmpv**: confirm the DLL loads via the existing loader.
+- **spell dicts**: check a known word validates in that language.
+
+Wx-free `verify_component(component_id) -> VerifyResult` in
+`optional_components.py` (result = ok flag + a human line + optional detail),
+so the dialog just renders/announces it. Disabled until the component is
+installed.
+
+### R2. Whisper (and Vosk) STT self-test — closing the confidence loop
+
+To prove an offline STT engine works with no bundled audio asset, close the
+loop through TTS: synthesize a fixed known phrase with the always-present SAPI 5
+voice to a temp WAV, transcribe it with the installed engine, and show the user
+what it heard — "Whisper heard: '<text>'". Pass when the transcription
+fuzzy-matches the known phrase (token overlap over a threshold), so normal
+recognition variance doesn't read as failure. Reuses the existing transcription
+path; announced for screen-reader users. This is the STT arm of R1's
+`verify_component`.
+
+### R3. Rich failure info + one-click bug report
+
+Every download/install/verify failure must surface the *real* cause and offer to
+send it, not just flash a status line:
+
+- Capture the full error: the exception message, the pip/stderr tail already
+  logged to `quill.log` (Kokoro/Piper/engine installs write it), the
+  component_id, and the resolved target path (portable-aware).
+- Show it in a dialog with the detail in a read-only multiline box **and a
+  "Send bug report" button** that routes into the existing feedback/diagnostics
+  bundle flow (`feedback_hub` / Help > Save Diagnostics), pre-seeded with the
+  captured error and the diagnostics bundle (which now carries the logged pip
+  error). The bundle stays redacted (no document content).
+- A wx-free `DownloadFailure` record (component_id, message, detail, log_excerpt,
+  target) carries the info from the core installers up to the dialog.
+
+### R4. Catalog completeness — add the missing components
+
+`gather_optional_components()` is missing two downloadable components; add both
+so the dialog has a touch point for everything QUILL can fetch:
+
+- **piper** — detector `discover_piper_executable() is not None`; installer
+  `piper_install.install_piper`; category VOICES.
+- **node** — detector `node_install.is_node_available()`; installer
+  `node_install.install_node_runtime`; category TOOL; "for Node Quillins and the
+  Developer Console TypeScript interface".
+
+A guard test asserts every component QUILL can install (each `release_assets`
+asset + each `*_install` module + piper/node) appears in
+`gather_optional_components()`, so a future downloadable component can't silently
+miss the dialog again.
+
+## Phasing
+
+- **Phase 1** — wx-free core: add piper + node (R4), `priority` ordering,
+  dictionary sizes, `describe_component`, and the completeness guard test.
+- **Phase 2** — Remove: `removable_path`/`remove_component` (portable-aware),
+  installed-state gating, engine-reset loop; portable-path test.
+- **Phase 3** — verify touch points (R1) incl. voice Test and Whisper/Vosk
+  self-test (R2), rich failure + bug report (R3).
+- **Phase 4** — stay-open focus flow, reroute the startup braille prompt with the
+  guiding popup, and the #874 failure routes.

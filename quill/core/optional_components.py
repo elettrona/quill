@@ -37,6 +37,9 @@ class OptionalComponent:
     # A note shown when a component is present for a reason other than a download
     # (e.g. an upgrader's bundled copy, or a system-provided tool).
     note: str = ""
+    # Display priority: lower sorts higher in the dialog (importance order).
+    # Left at the default for dictionaries, which are grouped and sorted by name.
+    priority: int = 500
 
     @property
     def status_label(self) -> str:
@@ -67,6 +70,18 @@ def _kokoro_installed() -> bool:
     from quill.core.read_aloud import kokoro_engine_ready
 
     return kokoro_engine_ready()
+
+
+def _piper_installed() -> bool:
+    from quill.core.read_aloud import discover_piper_executable
+
+    return discover_piper_executable() is not None
+
+
+def _node_installed() -> bool:
+    from quill.core.node_install import is_node_available
+
+    return is_node_available()
 
 
 def _espeak_installed() -> bool:
@@ -115,63 +130,11 @@ def _mathcat_installed() -> bool:
 def gather_optional_components() -> list[OptionalComponent]:
     """Return every optional component with its current installed status.
 
-    Ordered engine -> voices -> tool -> dictionaries, then alphabetically within
-    the dictionary group, so the dialog reads predictably.
+    Sorted by ``priority`` (importance order: Pandoc and the braille pack first,
+    then engines/voices/tools), with the spell-check dictionaries last, grouped
+    and alphabetical, so the dialog reads predictably.
     """
     out: list[OptionalComponent] = [
-        OptionalComponent(
-            "whispercpp",
-            "Offline speech engine (whisper.cpp)",
-            "Powers private, on-device dictation and transcription. SAPI 5 dictation "
-            "works without it; this adds the offline Whisper engine.",
-            SPEECH_ENGINE,
-            _safe(_whisper_installed),
-            "~8 MB",
-        ),
-        OptionalComponent(
-            "vosk",
-            "Vosk speech engine (very low resource)",
-            "A tiny offline dictation/transcription engine for old or low-memory "
-            "machines with no GPU. whisper.cpp is the default; this is the lightweight "
-            "fallback.",
-            SPEECH_ENGINE,
-            _safe(_vosk_installed),
-            "~51 MB",
-        ),
-        OptionalComponent(
-            "kokoro",
-            "Kokoro neural voices",
-            "High-quality offline neural Read Aloud voices.",
-            VOICES,
-            _safe(_kokoro_installed),
-            "~120 MB",
-        ),
-        OptionalComponent(
-            "espeak",
-            "eSpeak NG voices",
-            "Compact offline Read Aloud engine covering many languages.",
-            VOICES,
-            _safe(_espeak_installed),
-            "~40 MB",
-        ),
-        OptionalComponent(
-            "dectalk",
-            "DECtalk voices",
-            "The classic DECtalk Read Aloud voices.",
-            VOICES,
-            _safe(_dectalk_installed),
-            "~2 MB",
-        ),
-        OptionalComponent(
-            "ffmpeg",
-            "FFmpeg (audio export helper)",
-            "Lets QUILL export speech audio as MP3, M4A/M4B, OGG, Opus, or FLAC. "
-            "WAV export works without it.",
-            TOOL,
-            _safe(_ffmpeg_installed),
-            "",
-            note="Provided by FFmpeg; QUILL helps you fetch the official build.",
-        ),
         OptionalComponent(
             "pandoc",
             "Pandoc (document conversion)",
@@ -184,6 +147,7 @@ def gather_optional_components() -> list[OptionalComponent]:
             _safe(_pandoc_installed),
             "~45 MB",
             note="Provided by Pandoc (jgm/pandoc); QUILL fetches the official, pinned build.",
+            priority=10,
         ),
         OptionalComponent(
             "braille",
@@ -197,6 +161,77 @@ def gather_optional_components() -> list[OptionalComponent]:
             "~9 MB",
             note="QUILL braille pack (liblouis, LGPL-3.0/GPL-3.0); fetched from QUILL's "
             "pinned release.",
+            priority=20,
+        ),
+        OptionalComponent(
+            "whispercpp",
+            "Offline speech engine (whisper.cpp)",
+            "Powers private, on-device dictation and transcription. SAPI 5 dictation "
+            "works without it; this adds the offline Whisper engine.",
+            SPEECH_ENGINE,
+            _safe(_whisper_installed),
+            "~8 MB",
+            priority=30,
+        ),
+        OptionalComponent(
+            "kokoro",
+            "Kokoro neural voices",
+            "High-quality offline neural Read Aloud voices.",
+            VOICES,
+            _safe(_kokoro_installed),
+            "~120 MB",
+            priority=40,
+        ),
+        OptionalComponent(
+            "piper",
+            "Piper neural voices",
+            "Fast, local, high-quality neural Read Aloud voices (dozens of English "
+            "voices). A small engine download, then pick voices in Manage Voices.",
+            VOICES,
+            _safe(_piper_installed),
+            "~22 MB",
+            note="Piper (MIT, rhasspy/piper); downloaded on demand and SHA-256 verified.",
+            priority=50,
+        ),
+        OptionalComponent(
+            "espeak",
+            "eSpeak NG voices",
+            "Compact offline Read Aloud engine covering many languages.",
+            VOICES,
+            _safe(_espeak_installed),
+            "~40 MB",
+            priority=60,
+        ),
+        OptionalComponent(
+            "dectalk",
+            "DECtalk voices",
+            "The classic DECtalk Read Aloud voices.",
+            VOICES,
+            _safe(_dectalk_installed),
+            "~2 MB",
+            priority=70,
+        ),
+        OptionalComponent(
+            "ffmpeg",
+            "FFmpeg (audio export helper)",
+            "Lets QUILL export speech audio as MP3, M4A/M4B, OGG, Opus, or FLAC. "
+            "WAV export works without it.",
+            TOOL,
+            _safe(_ffmpeg_installed),
+            "~90 MB",
+            note="Provided by FFmpeg; QUILL helps you fetch the official build.",
+            priority=80,
+        ),
+        OptionalComponent(
+            "node",
+            "Node.js runtime",
+            "Runs Node (JavaScript/TypeScript) Quillins and the Developer Console's "
+            "TypeScript interface. Python Quillins and the rest of QUILL work without it.",
+            TOOL,
+            _safe(_node_installed),
+            "~30 MB",
+            note="Provided by the OpenJS Foundation; QUILL fetches the official build.",
+            priority=85,
         ),
         OptionalComponent(
             "libmpv",
@@ -209,6 +244,7 @@ def gather_optional_components() -> list[OptionalComponent]:
             "~44 MB",
             note="mpv playback library (GPL; the download carries its licenses and a "
             "source offer); fetched from QUILL's pinned release.",
+            priority=90,
         ),
         OptionalComponent(
             "mathcat",
@@ -220,9 +256,22 @@ def gather_optional_components() -> list[OptionalComponent]:
             _safe(_mathcat_installed),
             "~3 MB",
             note="MathCAT (MIT, daisy/MathCATForC); fetched from QUILL's pinned release.",
+            priority=100,
+        ),
+        OptionalComponent(
+            "vosk",
+            "Vosk speech engine (very low resource)",
+            "A tiny offline dictation/transcription engine for old or low-memory "
+            "machines with no GPU. whisper.cpp is the default; this is the lightweight "
+            "fallback.",
+            SPEECH_ENGINE,
+            _safe(_vosk_installed),
+            "~51 MB",
+            priority=110,
         ),
     ]
     out.extend(_dictionary_components())
+    out.sort(key=lambda c: (c.priority, c.name))
     return out
 
 
@@ -250,10 +299,39 @@ def _dictionary_components() -> list[OptionalComponent]:
                 "A Hunspell dictionary so the spell checker can validate this language.",
                 DICTIONARY,
                 lang in installed,
-                "",
+                # A representative estimate: Hunspell language packs are a few MB.
+                # (Exact per-language sizes are a future refinement, see the design.)
+                "~4 MB",
             )
         )
     return rows
+
+
+def describe_component(component: OptionalComponent) -> str:
+    """A rich, human description of *component* for the dialog's detail box.
+
+    Combines what it enables, its size, its license/source note, and its current
+    state with a next-step hint. Wx-free and pure so it can be unit-tested.
+    """
+    lines: list[str] = [component.name, ""]
+    if component.description:
+        lines.append(component.description)
+    if component.note:
+        lines.append(component.note)
+    size = component.size_hint or "size varies"
+    if component.installed:
+        lines.append("")
+        lines.append(
+            f"Status: Installed ({size}). Use Test to confirm it works, or Remove "
+            "to delete QUILL's downloaded copy and turn its features back off."
+        )
+    else:
+        lines.append("")
+        lines.append(
+            f"Status: Not installed. Download ({size}) to enable it — everything "
+            "here is optional and the base app works without it."
+        )
+    return "\n".join(lines)
 
 
 def _safe_list(getter) -> list:  # type: ignore[no-untyped-def]
