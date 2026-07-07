@@ -41,8 +41,9 @@ be, and several rough edges are user-visible:
 - Not per-voice rows. Voice *engines* are one row each (Kokoro, Piper, eSpeak,
   DECtalk); individual voice-model downloads stay in the Voice Browser.
 - Not removing bundled/system components. Remove targets only QUILL-downloaded
-  copies under the app-data dir; it never deletes a system Pandoc, an upgrader's
-  `{app}` copy, or anything QUILL did not fetch.
+  copies under the **active data dir** (the portable data folder in portable
+  mode, `%APPDATA%\Quill` otherwise — see Portable mode below); it never deletes
+  a system Pandoc, an upgrader's `{app}` copy, or anything QUILL did not fetch.
 
 ## Design
 
@@ -175,13 +176,35 @@ Remove dispatch), `quill/ui/main_frame.py`
 new/updated tests in `tests/unit/core/test_optional_components.py` and
 `tests/unit/ui/`.
 
-## Open questions to settle in the implementation plan
+## Decisions (settled 2026-07-07)
 
-1. Remove → feature-disable depth (§5): active-engine reset + menu refresh only,
-   or also `features.json` toggles?
-2. Test blurb wording (§6).
-3. Dictionary sizes: static estimates (§2a) or add a size field to
-   `release_assets` and read it (§2b)?
-4. Should Remove also be offered for a system-provided Pandoc (no — out of
-   scope), and for the braille pack when it came from an upgrader's `{app}` copy
-   (no — `removable_path` returns None there)?
+1. **Remove → disable depth (§5):** reset the active Read Aloud engine to the
+   always-present SAPI 5 when the removed engine was the active one, and refresh
+   the braille/menus; do **not** flip `features.json`. Engine availability is
+   already dynamic (`discover_*` / `*_ready`), so features self-degrade and
+   restore cleanly when the user re-downloads.
+2. **Test blurb (§6):** a reassuring, engine-named line —
+   *"Hello from QUILL. If you can hear this, the {engine} voice is installed and
+   ready to read your writing aloud."* The Test button covers every voice engine,
+   **Kokoro included** (Kokoro, Piper, eSpeak, DECtalk).
+3. **Dictionary sizes (§2):** static per-dictionary estimates now (they are all a
+   few MB); revisit exact sizes later.
+4. **Remove scope (§4):** app-data copies only. `removable_path` returns None for
+   a system Pandoc, an upgrader's `{app}` copy, or anything QUILL did not fetch.
+
+## Portable mode (must-hold invariant)
+
+Optional components already download into the **active data dir** resolved by
+`quill.core.paths.app_data_dir()`, which returns the portable data folder when
+the install is in portable mode (`mode == "portable"` + a portable root) and
+`%APPDATA%\Quill` otherwise (custom-path installs likewise). Every downloader
+routes through it — `default_kokoro_model_dir()`, `managed_piper_dir()`,
+`engine_packs_dir()`, the braille pack, and the spell-check dicts — so a portable
+install keeps its assets beside the executable and never writes to `%APPDATA%`.
+
+Because `removable_path` / `remove_component` resolve that same
+`app_data_dir()`, Remove automatically targets the portable copy in portable
+mode. The description box's footprint text must name the active data dir ("frees
+~X in your QUILL data folder"), never a hardcoded `%APPDATA%`. Implementation
+must add a test that in portable mode the resolved download/remove path is under
+the portable root, not `%APPDATA%`.
