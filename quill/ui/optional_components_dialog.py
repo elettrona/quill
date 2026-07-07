@@ -16,6 +16,7 @@ supplies (see :class:`ComponentsController`).
 
 from __future__ import annotations
 
+import threading
 from typing import Any, Protocol
 
 from quill.core.optional_components import OptionalComponent, describe_component
@@ -99,23 +100,46 @@ def show_optional_components_picker(
         idx = listing.GetFirstSelected()
         return rows[idx] if 0 <= idx < len(rows) else None
 
-    def _rebuild(select_id: str = "") -> None:
-        """(Re)load the component list and repaint rows; keep a selection."""
-        rows.clear()
-        rows.extend(controller.components())
-        listing.DeleteAllItems()
-        for i, comp in enumerate(rows):
-            listing.InsertItem(i, comp.name)
-            listing.SetItem(i, 1, comp.status_label)
-            listing.SetItem(i, 2, comp.size_hint or "—")
-            listing.SetItem(i, 3, comp.category)
-        target = 0
-        if select_id:
-            target = next((i for i, c in enumerate(rows) if c.component_id == select_id), 0)
-        if rows:
-            listing.Select(target)
-            listing.Focus(target)
-        _sync_controls()
+    def _populate(comps: list[OptionalComponent], select_id: str = "") -> None:
+        """Fill the list from a worker-gathered component list (UI thread)."""
+        try:
+            rows.clear()
+            rows.extend(comps)
+            listing.DeleteAllItems()
+            for i, comp in enumerate(rows):
+                listing.InsertItem(i, comp.name)
+                listing.SetItem(i, 1, comp.status_label)
+                listing.SetItem(i, 2, comp.size_hint or "—")
+                listing.SetItem(i, 3, comp.category)
+            target = 0
+            if select_id:
+                target = next((i for i, c in enumerate(rows) if c.component_id == select_id), 0)
+            if rows:
+                listing.Select(target)
+                listing.Focus(target)
+            _sync_controls()
+        except RuntimeError:
+            # The dialog was closed before the load finished; nothing to fill.
+            return
+
+    def _load_async(select_id: str = "") -> None:
+        """Gather the component list off the UI thread and then populate.
+
+        The detectors run tool version probes (pandoc/ffmpeg/node) and filesystem
+        scans, which stall the dialog if done on open; doing them on a worker lets
+        the window appear immediately with a brief "Loading…" state."""
+        detail.SetValue("Loading components…")
+        for btn in (download_btn, test_btn, remove_btn):
+            btn.Enable(False)
+
+        def _work() -> None:
+            try:
+                comps = controller.components()
+            except Exception:  # noqa: BLE001 - never let the worker crash the app
+                comps = []
+            wx.CallAfter(_populate, comps, select_id)
+
+        threading.Thread(target=_work, daemon=True).start()
 
     def _sync_controls() -> None:
         comp = _selected()
@@ -160,7 +184,7 @@ def show_optional_components_picker(
         ):
             return
         controller.remove(comp.component_id)  # announces its own result
-        _rebuild(select_id=comp.component_id)
+        _load_async(select_id=comp.component_id)
         listing.SetFocus()
 
     listing.Bind(wx.EVT_LIST_ITEM_SELECTED, lambda _e: _sync_controls())
@@ -187,7 +211,7 @@ def show_optional_components_picker(
 
     dialog.SetSizer(sizer)
     apply_modal_ids(dialog, affirmative_id=wx.ID_OK, escape_id=wx.ID_CANCEL)
-    _rebuild(select_id=preselect)
+    _load_async(select_id=preselect)
     wx.CallAfter(listing.SetFocus)
     try:
         show_modal_dialog(dialog, "Download Optional Components")

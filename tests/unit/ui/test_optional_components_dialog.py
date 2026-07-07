@@ -61,3 +61,13 @@ def test_open_optional_components_routes_and_covers_all_downloads() -> None:
 def test_startup_braille_prompt_routes_into_the_hub() -> None:
     src = _src("main_frame.py")
     assert 'open_optional_components(preselect="braille")' in src
+
+
+def test_dialog_loads_component_list_off_the_ui_thread() -> None:
+    """gather runs tool version probes + filesystem scans; the dialog must build
+    the list on a worker so it opens instantly, not stall on those probes."""
+    src = _src("optional_components_dialog.py")
+    assert "import threading" in src
+    assert "threading.Thread(" in src
+    assert "wx.CallAfter(_populate" in src
+    assert "Loading components" in src
