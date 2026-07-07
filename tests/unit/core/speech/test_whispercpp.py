@@ -154,7 +154,7 @@ def _sample_model_info(sha256: str) -> SpeechModelInfo:
 def test_download_to_file_uses_hf_hub_download(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
-    import huggingface_hub
+    huggingface_hub = pytest.importorskip("huggingface_hub")
 
     payload = b"hello model bytes"
     calls: dict[str, object] = {}
@@ -181,7 +181,7 @@ def test_download_to_file_uses_hf_hub_download(
 def test_download_to_file_stale_pin_raises_coded_error(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
-    import huggingface_hub
+    huggingface_hub = pytest.importorskip("huggingface_hub")
     from huggingface_hub.errors import EntryNotFoundError
 
     def _fake_hf_hub_download(**kwargs):
@@ -198,7 +198,7 @@ def test_download_to_file_stale_pin_raises_coded_error(
 def test_download_to_file_checksum_mismatch_raises_coded_error(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
-    import huggingface_hub
+    huggingface_hub = pytest.importorskip("huggingface_hub")
 
     def _fake_hf_hub_download(**kwargs):
         cached = tmp_path / "cached" / kwargs["filename"]
@@ -218,7 +218,7 @@ def test_download_to_file_checksum_mismatch_raises_coded_error(
 def test_download_to_file_network_error_raises_coded_error(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
-    import huggingface_hub
+    huggingface_hub = pytest.importorskip("huggingface_hub")
 
     def _fake_hf_hub_download(**kwargs):
         raise TimeoutError("timed out")

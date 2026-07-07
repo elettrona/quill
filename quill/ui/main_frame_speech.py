@@ -367,8 +367,8 @@ class SpeechCommandsMixin:
             self.settings.read_aloud_engine = "sapi5"
             save_settings(self.settings)
             self._announce("Read Aloud switched back to the system voice.")
+        # _set_status already speaks; a following _announce would double-speak (#728).
         self._set_status(f"Removed {component_id}.")
-        self._announce(f"{component_id} removed.")
         return True
 
     def _test_optional_component(self, component_id: str) -> None:
@@ -389,9 +389,9 @@ class SpeechCommandsMixin:
             return oc.verify_component(component_id)
 
         def _done(result: object) -> None:
+            # _set_status speaks the summary; a second _announce would double it (#728).
             summary = getattr(result, "summary", "")
             self._set_status(summary)
-            self._announce(summary)
             if not getattr(result, "ok", True):
                 self._offer_component_bug_report(
                     component_id, summary, getattr(result, "detail", "")

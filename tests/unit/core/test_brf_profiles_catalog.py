@@ -14,8 +14,19 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+import pytest
+
 _PACK_DIR = Path(__file__).resolve().parents[3] / "liblouis" / "vendor" / "braille" / "pack"
 _PROFILES_PATH = _PACK_DIR / "brf_profiles.json"
+
+# brf_profiles.json is a vendored/generated braille-pack artifact (built by
+# scripts/build_braille_pack.py); it is not committed, so a plain CI checkout
+# does not have it. Skip when absent -- the profiles are still verified wherever
+# the pack has been built (local dev / packaging).
+pytestmark = pytest.mark.skipif(
+    not _PROFILES_PATH.exists(),
+    reason="vendored braille pack (brf_profiles.json) is not present in this checkout",
+)
 
 
 def _load_profiles() -> list[dict]:
