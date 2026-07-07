@@ -1,4 +1,4 @@
-# QUILL 0.9.0 Beta 2 - Polish Release
+# QUILL 0.9.0 Beta 2 - Polish Release 1
 
 ### The screen-reader-first writing studio, built by the people who depend on it.
 
