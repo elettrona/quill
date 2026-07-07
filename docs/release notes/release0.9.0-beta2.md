@@ -29,6 +29,16 @@ on **Check for Updates**.
 - **Kokoro voices give you the real fix when something's missing**, instead of
   two confusing, mostly-unrelated options: the message now points straight at
   **Tools > Speech > Install Kokoro ONNX**.
+- **Previewing a downloaded Piper voice no longer errors.** After downloading a
+  Piper voice, previewing it failed with an internal "Settings object has no
+  attribute" message; the missing setting is now in place, so previewing and
+  saving audio with Piper work.
+- **Kokoro previews are more reliable - and honest when something is wrong.** If
+  a freshly downloaded Kokoro voice could not actually speak, QUILL used to fall
+  back to a confusing "requires either... or..." message that hid the real
+  reason. Now the download sets up everything Kokoro needs, and if synthesis ever
+  still fails the true cause is written to the diagnostics log (**Help > Save
+  Diagnostics**) instead of being swallowed - so we can pinpoint and fix it.
 - **Speech dialogs open with the right control focused** - Speech Hub, Manage
   Speech Models, and Manage Voices no longer land on the OK/Cancel button.
 - **Downloading extras is now a warm, one-stop experience.** **Help > Download
