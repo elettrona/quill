@@ -83,22 +83,54 @@ def install_piper(
         )
     dest = Path(dest_dir) if dest_dir is not None else managed_piper_dir()
     dest.mkdir(parents=True, exist_ok=True)
-    fd, raw = tempfile.mkstemp(prefix="quill_piper_", suffix=".zip")
-    os.close(fd)
-    tmp_zip = Path(raw)
+    staging = Path(tempfile.mkdtemp(prefix="quill_piper_dl_"))
     try:
-        _download_zip(PIPER_DOWNLOAD_URL, tmp_zip, progress, timeout_seconds)
-        if progress is not None:
-            progress(0.9, "Verifying download...")
-        _verify_sha256(tmp_zip, PIPER_DOWNLOAD_SHA256)
+        # Asset-first: prefer QUILL's own hosted, SHA-verified copy so a rhasspy
+        # outage or removal can't break Piper; fall back to the upstream release.
+        zip_path = _maybe_fetch_hosted_piper(staging, progress)
+        if zip_path is None:
+            zip_path = staging / "piper_windows_amd64.zip"
+            _download_zip(PIPER_DOWNLOAD_URL, zip_path, progress, timeout_seconds)
+            if progress is not None:
+                progress(0.9, "Verifying download...")
+            _verify_sha256(zip_path, PIPER_DOWNLOAD_SHA256)
+        # (a hosted copy is already SHA-verified by fetch_file against the pinned asset)
         if progress is not None:
             progress(0.92, "Extracting Piper...")
-        piper_path = _extract_piper_from_zip(tmp_zip, dest)
+        piper_path = _extract_piper_from_zip(zip_path, dest)
     finally:
-        tmp_zip.unlink(missing_ok=True)
+        shutil.rmtree(staging, ignore_errors=True)
     if progress is not None:
         progress(1.0, "Done.")
     return piper_path
+
+
+def _maybe_fetch_hosted_piper(dest_dir: Path, progress: ProgressCallback | None) -> Path | None:
+    """Return QUILL's own hosted, SHA-verified Piper zip if published, else None.
+
+    QUILL prefers a byte-identical copy on its ``assets-v1`` release over the
+    upstream rhasspy asset, so an upstream outage or removal cannot break Piper.
+    Returns None -- so :func:`install_piper` falls back to ``PIPER_DOWNLOAD_URL``
+    -- whenever no pinned ``piper`` asset is published yet, or any fetch step
+    fails. This mirrors the Vosk self-hosting fallback
+    (:func:`quill.core.speech.engine_install._maybe_fetch_vosk_wheel`).
+
+    To activate it: upload ``piper_windows_amd64.zip`` to the ``assets-v1``
+    release and add a pinned ``piper`` entry to ``release_assets.ASSETS`` (its
+    SHA-256 is :data:`PIPER_DOWNLOAD_SHA256`). Until then this is inert -- no
+    hosted request is attempted -- so there is no wasted round trip.
+    """
+    try:
+        from quill.core.release_assets import ASSETS, fetch_file, is_pinned
+    except Exception:  # noqa: BLE001 - release_assets should import; be defensive
+        return None
+    asset = ASSETS.get("piper")
+    if asset is None or not is_pinned(asset):
+        return None
+    try:
+        return fetch_file("piper", dest_dir, progress=progress, label="Downloading Piper...")
+    except Exception:  # noqa: BLE001 - any hosted-fetch failure -> upstream fallback
+        return None
 
 
 def _download_zip(
