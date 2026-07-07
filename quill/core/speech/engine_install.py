@@ -25,6 +25,7 @@ from __future__ import annotations
 
 import importlib
 import importlib.util
+import logging
 import os
 import sys
 from collections.abc import Callable, Sequence
@@ -34,6 +35,12 @@ from quill.core.error_codes import CodedError
 from quill.core.speech import models
 
 ProgressCallback = Callable[[float, str], None]
+
+# On-demand engine installs run pip in a subprocess; when one fails the only
+# signal a user sees is a transient status-bar line, so the actual pip error
+# (the piece needed to tell a blocked network apart from a dependency problem)
+# is lost. Logging it to quill.log means Help > Save Diagnostics captures it.
+_LOG = logging.getLogger(__name__)
 
 #: Subdirectory under the app-data dir that holds downloadable engine packs.
 ENGINE_PACKS_SUBDIR = "engine-packs"
@@ -194,17 +201,20 @@ def install_kokoro_onnx(
         progress(0.05, "Preparing to install Kokoro ONNX...")
     command = _pip_command(dest, reqs, python_exe)
     run = runner if runner is not None else _default_runner
+    _LOG.info("Kokoro ONNX install: running %s", " ".join(command))
     if progress is not None:
         progress(0.15, "Downloading Kokoro ONNX packages (this may take a few minutes)...")
 
     try:
         result = run(command, timeout_seconds=timeout_seconds)
     except Exception as exc:  # noqa: BLE001
+        _LOG.exception("Kokoro ONNX install: pip runner could not start")
         raise EngineInstallError(f"Could not run the installer: {exc}") from exc
 
     returncode = int(getattr(result, "returncode", 1))
     if returncode != 0:
         detail = _tail(getattr(result, "stderr", "") or getattr(result, "stdout", ""))
+        _LOG.error("Kokoro ONNX install failed (pip exit %s). Output tail: %s", returncode, detail)
         raise EngineInstallError(
             f"Kokoro ONNX installation failed (pip exit {returncode}). {detail}"
         )
@@ -215,6 +225,7 @@ def install_kokoro_onnx(
         sys.path.insert(0, str(dest))
     importlib.invalidate_caches()
     if not is_kokoro_onnx_available():
+        _LOG.error("Kokoro ONNX installed into %s but the module is not importable", dest)
         raise EngineInstallError(
             "Kokoro ONNX was installed but could not be imported. Try restarting QUILL."
         )
