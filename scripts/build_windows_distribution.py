@@ -1301,6 +1301,12 @@ def bundle_embedded_python(
         check=True,
     )
 
+    print("Generating bundled feedback-hub token (quill/_feedback_token.py)...")
+    subprocess.run(
+        [str(python_exe), str(source_root / "tools" / "generate_feedback_token.py")],
+        check=False,  # best-effort: an unset QUILL_FEEDBACK_GITHUB_TOKEN must not fail the build
+    )
+
     # Copy the Quill package source into site-packages so `python -m quill`
     # works without requiring a separate wheel build.
     site_packages = target_dir / "Lib" / "site-packages"
