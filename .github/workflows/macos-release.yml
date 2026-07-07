@@ -99,6 +99,7 @@ jobs:
         env:
           IDENTITY: ${{ secrets.MACOS_CODESIGN_IDENTITY }}
           NOTARY_PROFILE: ${{ env.NOTARY_PROFILE }}
+          QUILL_FEEDBACK_GITHUB_TOKEN: ${{ secrets.QUILL_FEEDBACK_GITHUB_TOKEN }}
         run: |
           chmod +x scripts/build_macos.sh
           ./scripts/build_macos.sh
