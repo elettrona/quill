@@ -86,7 +86,9 @@ def test_ui_wiring_present() -> None:
     root = Path(__file__).resolve().parents[3]
     speech = (root / "quill" / "ui" / "main_frame_speech.py").read_text(encoding="utf-8")
     assert "def download_braille_pack" in speech
-    assert '"braille": self.download_braille_pack' in speech
+    # The hub dispatches braille to the download handler, passing the reopen-hub
+    # callback so the user lands back in the hub afterwards (stay-in-hub).
+    assert '"braille": lambda: self.download_braille_pack(on_done=_back)' in speech
     braille = (root / "quill" / "ui" / "main_frame_braille.py").read_text(encoding="utf-8")
     # When the pack is absent, the Braille menu offers the on-demand download.
     assert "download_braille_pack" in braille
