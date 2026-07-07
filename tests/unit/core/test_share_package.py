@@ -160,3 +160,19 @@ def test_file_round_trip(tmp_path) -> None:
     package = read_package_file(path)
     assert package.name == "File"
     assert package.is_profile
+
+
+def test_private_settings_fields_are_all_real_settings_fields() -> None:
+    """Every per-device name scrubbed from a shared profile must be a real
+    Settings field. A name here with no matching field means some code path
+    reads settings.<name> and crashes with AttributeError -- the shape of the
+    "'Settings' object has no attribute 'read_aloud_piper_executable'" bug hit
+    when previewing a Piper voice.
+    """
+    from dataclasses import fields
+
+    from quill.core.share_package import PRIVATE_SETTINGS_FIELDS
+
+    field_names = {f.name for f in fields(Settings)}
+    missing = sorted(name for name in PRIVATE_SETTINGS_FIELDS if name not in field_names)
+    assert not missing, f"PRIVATE_SETTINGS_FIELDS names with no Settings field: {missing}"
