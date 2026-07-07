@@ -14,9 +14,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-_PACK_DIR = (
-    Path(__file__).resolve().parents[3] / "liblouis" / "vendor" / "braille" / "pack"
-)
+_PACK_DIR = Path(__file__).resolve().parents[3] / "liblouis" / "vendor" / "braille" / "pack"
 _PROFILES_PATH = _PACK_DIR / "brf_profiles.json"
 
 

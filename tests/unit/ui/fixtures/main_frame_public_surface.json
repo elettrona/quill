@@ -133,6 +133,7 @@
   "download_kokoro_engine",
   "download_libmpv",
   "download_mathcat",
+  "download_node_runtime",
   "download_offline_speech_engine",
   "download_pandoc",
   "download_piper_exe",

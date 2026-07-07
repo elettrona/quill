@@ -40,9 +40,7 @@ def test_detect_tool_finds_macos_well_known_path_when_not_on_path(
     fallback_dir.mkdir()
     executable = fallback_dir / "pandoc"
     executable.write_text("binary", encoding="utf-8")
-    monkeypatch.setattr(
-        "quill.core.external_tools._MACOS_FALLBACK_DIRS", (str(fallback_dir),)
-    )
+    monkeypatch.setattr("quill.core.external_tools._MACOS_FALLBACK_DIRS", (str(fallback_dir),))
     monkeypatch.setattr("quill.core.external_tools._tool_version", lambda *_args: None)
 
     status = get_external_tool_status("pandoc")
@@ -59,9 +57,7 @@ def test_detect_tool_macos_fallback_is_a_noop_on_windows(monkeypatch, tmp_path: 
     fallback_dir = tmp_path / "usr-local-bin"
     fallback_dir.mkdir()
     (fallback_dir / "pandoc").write_text("binary", encoding="utf-8")
-    monkeypatch.setattr(
-        "quill.core.external_tools._MACOS_FALLBACK_DIRS", (str(fallback_dir),)
-    )
+    monkeypatch.setattr("quill.core.external_tools._MACOS_FALLBACK_DIRS", (str(fallback_dir),))
 
     status = get_external_tool_status("pandoc")
 
