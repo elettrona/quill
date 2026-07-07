@@ -14,6 +14,7 @@ def test_offline_speech_engine_options_lists_both_recommended_first() -> None:
     # Every option carries a plain-language explanation for the picker.
     for opt in opts:
         assert opt.name
+        assert opt.tagline  # short trade-off spoken in the radio label
         assert len(opt.summary) > 20
 
 

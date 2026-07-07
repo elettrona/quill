@@ -23,7 +23,8 @@ class OfflineSpeechEngineOption:
 
     engine_id: str  # "whispercpp" | "faster-whisper"
     name: str
-    summary: str  # plain-language, screen-reader-first trade-off explanation
+    tagline: str  # short trade-off spoken as part of the radio label on focus
+    summary: str  # fuller plain-language explanation for the detail area
     installed: bool
     install_supported: bool
     recommended: bool = False
@@ -32,10 +33,12 @@ class OfflineSpeechEngineOption:
 # The friendly default: light, CPU-friendly, small download, works everywhere.
 RECOMMENDED_ENGINE_ID = "whispercpp"
 
+_WHISPERCPP_TAGLINE = "light and fast, works on any computer"
 _WHISPERCPP_SUMMARY = (
     "Light and fast on any computer. Runs well on the CPU with a small download, "
     "and it is a great choice for most people. Pick this if you are not sure."
 )
+_FASTER_WHISPER_TAGLINE = "most accurate; larger and can use your graphics card"
 _FASTER_WHISPER_SUMMARY = (
     "The most accurate option. It is a larger download, uses more memory, and can "
     "use your graphics card if you have one. Best when you want top-quality "
@@ -80,6 +83,7 @@ def offline_speech_engine_options() -> list[OfflineSpeechEngineOption]:
         OfflineSpeechEngineOption(
             engine_id="whispercpp",
             name="Whisper.cpp",
+            tagline=_WHISPERCPP_TAGLINE,
             summary=_WHISPERCPP_SUMMARY,
             installed=_safe(_whispercpp_installed),
             install_supported=True,
@@ -88,6 +92,7 @@ def offline_speech_engine_options() -> list[OfflineSpeechEngineOption]:
         OfflineSpeechEngineOption(
             engine_id="faster-whisper",
             name="Faster Whisper",
+            tagline=_FASTER_WHISPER_TAGLINE,
             summary=_FASTER_WHISPER_SUMMARY,
             installed=_safe(_faster_whisper_installed),
             install_supported=_safe(_faster_whisper_install_supported),

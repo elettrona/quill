@@ -19,6 +19,10 @@ def test_guided_speech_dialog_follows_contract_and_is_accessible() -> None:
     assert "wx.ListBox(" in src
     # Focus lands on a real control, never a button (screen-reader contract).
     assert "engine_box.SetFocus()" in src
+    # Grouped radio (RadioBox with a group label) + self-describing labels
+    # so the trade-off is announced on focus.
+    assert 'label="Speech engine"' in src
+    assert "_engine_label(" in src
     # Renders wx-free data; no engine/model logic baked into the UI.
     assert "from quill.core.speech.guided_setup import" in src
 

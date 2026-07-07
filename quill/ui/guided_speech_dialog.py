@@ -37,6 +37,17 @@ def _model_label(model: ModelChoice) -> str:
     return f"{model.display_name} — {model.size_text}{tag}"
 
 
+def _engine_label(option: OfflineSpeechEngineOption) -> str:
+    """A self-describing radio label so a screen reader announces the trade-off
+    (and recommended/installed state) when the option gets focus, not just the name."""
+    parts = [f"{option.name} — {option.tagline}"]
+    if option.recommended:
+        parts.append("(recommended)")
+    if option.installed:
+        parts.append("(installed)")
+    return "  ".join(parts)
+
+
 def show_guided_speech_setup(
     wx: Any,
     parent: Any,
@@ -69,7 +80,11 @@ def show_guided_speech_setup(
         8,
     )
 
-    engine_labels = [f"{o.name}{'  (Installed)' if o.installed else ''}" for o in options]
+    # A wx.RadioBox is a single grouped, labelled radio control: the "Speech
+    # engine" label is the accessible group name, and each choice is a radio
+    # button within it (announced as "Speech engine grouping, <label>, radio
+    # button N of M"). One column so arrow keys move top-to-bottom predictably.
+    engine_labels = [_engine_label(o) for o in options]
     engine_box = wx.RadioBox(
         dialog,
         label="Speech engine",
