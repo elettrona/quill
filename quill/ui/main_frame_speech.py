@@ -335,7 +335,9 @@ class SpeechCommandsMixin:
             _download_then_apply(wx, self, chosen[len("spell-") :])
             return
         actions = {
-            "whispercpp": self.download_offline_speech_engine,
+            # The offline-speech row opens the guided picker (engine + model),
+            # not the bare engine download -- meet people where they are.
+            "whispercpp": self.open_guided_offline_speech,
             "vosk": self.download_vosk,
             "kokoro": self._download_kokoro_models,
             "piper": self.download_piper_exe,
@@ -427,6 +429,126 @@ class SpeechCommandsMixin:
             self.open_speech_models()
         elif target == "voices":
             self.choose_read_aloud_configuration()
+
+    def open_guided_offline_speech(self) -> None:
+        """Guided offline-speech setup from the Download Optional Components hub:
+        pick an engine (Faster Whisper vs whisper.cpp, with explanations) and a
+        model, then install both in one flow and return to the hub."""
+        from quill.core.speech import guided_setup
+        from quill.ui.guided_speech_dialog import show_guided_speech_setup
+
+        wx = self._wx
+
+        class _Data:
+            def engine_options(self) -> list:
+                return guided_setup.offline_speech_engine_options()
+
+            def models_for(self, engine_id: str) -> list:
+                return guided_setup.models_for_engine(engine_id)
+
+            def recommended_engine(self) -> str:
+                return guided_setup.recommended_engine_id()
+
+            def default_model(self, engine_id: str) -> str:
+                return guided_setup.default_model_id(engine_id)
+
+        choice = show_guided_speech_setup(wx, self.frame, self._show_modal_dialog, _Data())
+        if choice is None:
+            return
+        engine_id, model_id = choice
+        self._install_offline_speech(engine_id, model_id)
+
+    def _ensure_offline_engine(
+        self, engine_id: str, progress: Callable[[float, str], None], cancel: object
+    ) -> None:
+        """Install the engine if it is not already present (runs on a worker)."""
+        if engine_id == "whispercpp":
+            from quill.core.speech import models
+            from quill.core.speech.providers.whispercpp import resolve_whisper_executable
+
+            if resolve_whisper_executable() is None:
+                from quill.core.release_assets import fetch_component
+
+                fetch_component(
+                    "whispercpp",
+                    models.app_data_dir() / "speech-engine",
+                    progress=progress,
+                    should_cancel=cancel.is_set,  # type: ignore[attr-defined]
+                    label="Downloading offline speech engine...",
+                )
+        elif engine_id == "fasterwhisper":
+            from quill.core.speech.engine_install import (
+                activate_engine_packs,
+                install_faster_whisper,
+                is_faster_whisper_available,
+            )
+
+            if not is_faster_whisper_available():
+                install_faster_whisper(progress)
+                activate_engine_packs()
+
+    def _install_offline_speech(self, engine_id: str, model_id: str) -> None:
+        """Install the chosen engine (if needed) and download the chosen model in
+        one worker behind a single progress dialog, then return to the hub."""
+        import threading
+
+        from quill.ui.ai_transcribe_dialog import AIProgressDialog
+
+        wx = self._wx
+        cancel = threading.Event()
+        progress = AIProgressDialog(
+            self.frame,
+            "Setting up offline speech",
+            "Preparing to set up offline speech...",
+            on_cancel=cancel.set,
+            status_fn=self._set_status,
+        )
+        progress.show()
+        self._announce("Setting up offline speech.")
+        last_percent = {"value": -1}
+
+        def _p(fraction: float, message: str) -> None:
+            if cancel.is_set():
+                raise RuntimeError("Offline speech setup cancelled.")
+            percent = int(max(0.0, min(1.0, fraction)) * 100)
+            if percent == last_percent["value"]:
+                return  # throttle to whole-percent changes (#748)
+            last_percent["value"] = percent
+            progress.set_progress(percent, f"{message} {percent}%")
+
+        def _run() -> None:
+            try:
+                self._ensure_offline_engine(engine_id, _p, cancel)
+                from quill.core.speech.service import default_registry
+
+                provider = default_registry().get(engine_id)
+                if provider is None:
+                    raise RuntimeError("The speech engine was not available after installing.")
+                provider.download_model(model_id, _p)  # type: ignore[attr-defined]
+            except Exception as exc:  # noqa: BLE001 - surface a clean message
+                wx.CallAfter(progress.close)
+                if cancel.is_set():
+                    wx.CallAfter(self._set_status, "Offline speech setup cancelled.")
+                    wx.CallAfter(self._announce, "Offline speech setup cancelled.")
+                else:
+                    wx.CallAfter(self._set_status, f"Offline speech setup failed: {exc}")
+                    wx.CallAfter(
+                        self._offer_component_bug_report,
+                        engine_id,
+                        "Offline speech setup failed.",
+                        str(exc),
+                    )
+                return
+
+            def _done() -> None:
+                progress.switch_to_ok(
+                    f"Offline speech is ready — the {model_id} model is installed.",
+                    on_ok=self.open_optional_components,
+                )
+
+            wx.CallAfter(_done)
+
+        threading.Thread(target=_run, daemon=True).start()  # GATE-40-OK: install worker.
 
     def _offer_component_bug_report(self, component_id: str, summary: str, detail: str) -> None:
         """On a failed self-test, offer to send a report with the captured detail."""

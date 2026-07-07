@@ -21,7 +21,7 @@ from dataclasses import dataclass
 class OfflineSpeechEngineOption:
     """One offline STT engine the user can pick in the guided flow."""
 
-    engine_id: str  # "whispercpp" | "faster-whisper"
+    engine_id: str  # matches the provider id: "whispercpp" | "fasterwhisper"
     name: str
     tagline: str  # short trade-off spoken as part of the radio label on focus
     summary: str  # fuller plain-language explanation for the detail area
@@ -90,7 +90,7 @@ def offline_speech_engine_options() -> list[OfflineSpeechEngineOption]:
             recommended=True,
         ),
         OfflineSpeechEngineOption(
-            engine_id="faster-whisper",
+            engine_id="fasterwhisper",
             name="Faster Whisper",
             tagline=_FASTER_WHISPER_TAGLINE,
             summary=_FASTER_WHISPER_SUMMARY,
@@ -130,7 +130,7 @@ def _size_text(megabytes: int) -> str:
 def _catalog_models(engine_id: str) -> tuple:  # type: ignore[type-arg]
     from quill.core.speech import catalog
 
-    if engine_id == "faster-whisper":
+    if engine_id == "fasterwhisper":
         return catalog.FASTER_WHISPER_MODELS
     return catalog.WHISPER_CPP_MODELS
 

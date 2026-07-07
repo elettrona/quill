@@ -6,7 +6,7 @@ import quill.core.speech.guided_setup as gs
 def test_offline_speech_engine_options_lists_both_recommended_first() -> None:
     opts = gs.offline_speech_engine_options()
     ids = [o.engine_id for o in opts]
-    assert ids == ["whispercpp", "faster-whisper"]
+    assert ids == ["whispercpp", "fasterwhisper"]
     # whisper.cpp is the friendly default and always installable (release asset).
     whispercpp = opts[0]
     assert whispercpp.recommended is True
@@ -36,12 +36,12 @@ def test_recommended_engine_prefers_an_installed_one_else_whispercpp(monkeypatch
 
     # Faster Whisper already installed -> keep the user on what they have.
     monkeypatch.setattr(gs, "_faster_whisper_installed", lambda: True)
-    assert gs.recommended_engine_id() == "faster-whisper"
+    assert gs.recommended_engine_id() == "fasterwhisper"
 
 
 def test_models_for_engine_lists_catalog_with_a_recommendation() -> None:
     cpp = gs.models_for_engine("whispercpp")
-    fw = gs.models_for_engine("faster-whisper")
+    fw = gs.models_for_engine("fasterwhisper")
     assert cpp and fw
     # Smallest first, and exactly one best-fit recommendation each.
     assert cpp[0].model_id == gs.default_model_id("whispercpp")

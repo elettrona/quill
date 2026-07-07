@@ -32,3 +32,27 @@ def test_guided_speech_dialog_returns_engine_and_model_selection() -> None:
     # The dialog yields (engine_id, model_id) for the caller to install.
     assert "tuple[str, str] | None" in src
     assert "data.default_model(" in src  # preselects the smallest model
+
+
+def test_hub_offline_speech_row_opens_the_guided_picker() -> None:
+    src = _src("main_frame_speech.py")
+    # The hub's offline-speech row opens the guided picker, not the bare download.
+    assert '"whispercpp": self.open_guided_offline_speech' in src
+    assert "def open_guided_offline_speech" in src
+    assert "show_guided_speech_setup(" in src
+
+
+def test_guided_install_does_engine_then_model_and_returns_to_hub() -> None:
+    src = _src("main_frame_speech.py")
+    assert "def _install_offline_speech" in src
+    assert "def _ensure_offline_engine" in src
+    assert "provider.download_model(" in src  # install engine (if needed) then model
+    assert "on_ok=self.open_optional_components" in src  # returns to the hub, stays put
+
+
+def test_speech_menu_consolidated_the_separate_download_items() -> None:
+    src = _src("main_frame_menu.py")
+    # These three moved into Download Optional Components / the guided picker.
+    assert "tools.speech_offline_engine" not in src
+    assert "tools.speech_engine_download" not in src
+    assert "Download &FFmpeg" not in src

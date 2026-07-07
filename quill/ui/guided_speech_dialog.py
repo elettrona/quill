@@ -23,13 +23,17 @@ from quill.ui.dialog_contract import apply_modal_ids
 class GuidedSpeechData(Protocol):
     """The wx-free data the dialog renders (backed by guided_setup)."""
 
-    def engine_options(self) -> list[OfflineSpeechEngineOption]: ...
+    def engine_options(self) -> list[OfflineSpeechEngineOption]:
+        """The offline STT engine choices, recommended first."""
 
-    def models_for(self, engine_id: str) -> list[ModelChoice]: ...
+    def models_for(self, engine_id: str) -> list[ModelChoice]:
+        """Downloadable models for the chosen engine."""
 
-    def recommended_engine(self) -> str: ...
+    def recommended_engine(self) -> str:
+        """The engine id to preselect."""
 
-    def default_model(self, engine_id: str) -> str: ...
+    def default_model(self, engine_id: str) -> str:
+        """The model id to preselect for the engine (smallest, for a fast start)."""
 
 
 def _model_label(model: ModelChoice) -> str:
@@ -51,7 +55,7 @@ def _engine_label(option: OfflineSpeechEngineOption) -> str:
 def show_guided_speech_setup(
     wx: Any,
     parent: Any,
-    show_modal: Callable[[Any, str], int],
+    show_modal_dialog: Callable[[Any, str], int],
     data: GuidedSpeechData,
 ) -> tuple[str, str] | None:
     """Show the guided offline-speech picker.
@@ -139,7 +143,7 @@ def show_guided_speech_setup(
     engine_box.SetFocus()
 
     chosen: tuple[str, str] | None = None
-    if show_modal(dialog, "Set up offline speech") == wx.ID_OK:
+    if show_modal_dialog(dialog, "Set up offline speech") == wx.ID_OK:
         opt = options[engine_box.GetSelection()]
         models = _models(opt.engine_id)
         sel = model_list.GetSelection()
