@@ -262,6 +262,10 @@ def test_verify_component_stt_flags_no_model(monkeypatch) -> None:
     result = oc.verify_component("vosk")
     assert result.ok is False
     assert "model" in result.summary.lower()
+    # Expected "download a model" state, not a bug: the dialog routes to Manage
+    # Speech Models via this remedy signal instead of offering a bug report.
+    assert result.remedy == "models"
+    assert not result.detail  # nothing to bug-report
 
 
 def test_verify_component_tool_uses_availability(monkeypatch) -> None:

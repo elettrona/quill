@@ -255,6 +255,10 @@ class VerifyResult:
     ok: bool
     summary: str
     detail: str = ""
+    # When set, the failure is an expected "you need to get one more piece" state,
+    # not a bug: "models" -> Manage Speech Models, "voices" -> Manage Voices. The
+    # dialog routes there instead of offering a bug report.
+    remedy: str = ""
 
 
 @dataclass(frozen=True, slots=True)
@@ -318,8 +322,8 @@ def _verify_stt(component_id: str) -> VerifyResult:
     if not _safe(has_installed_offline_model):
         return VerifyResult(
             False,
-            "No offline speech model is installed yet.",
-            "Download a model in Manage Speech Models, then run Test again.",
+            "The engine is installed, but no speech model has been downloaded yet.",
+            remedy="models",
         )
     wav = Path(tempfile.mkstemp(prefix="quill_stt_test_", suffix=".wav")[1])
     try:

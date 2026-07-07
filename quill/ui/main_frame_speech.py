@@ -377,15 +377,24 @@ class SpeechCommandsMixin:
     def _test_optional_component(self, component_id: str) -> None:
         """Prove *component_id* works: voices play a spoken sample; other
         components run their wx-free self-test on a worker and announce the
-        result, offering a bug report with the details on failure."""
+        result. Expected "get one more piece" states (no model / no voice) route
+        the user to Manage rather than erroring or offering a bug report."""
         from quill.core import optional_components as oc
 
         engine = oc.read_aloud_engine_for_component(component_id)
         if engine is not None:
             voices = self._voice_preview_voice_ids(engine)
-            voice = voices[0] if voices else ""
+            if not voices:
+                # Engine present but no voice to speak yet: route to Manage Voices
+                # instead of previewing an empty voice (which errors with "model
+                # file not found" and leaves focus stranded behind the hub).
+                self._set_status(
+                    f"No {engine} voice is downloaded yet — opening Manage Voices to get one."
+                )
+                self._manage_component_models_or_voices(component_id)
+                return
             self._announce(f"Playing a sample of the {engine} voice.")
-            self._preview_voice(engine, voice, live=True, text=oc.voice_preview_phrase())
+            self._preview_voice(engine, voices[0], live=True, text=oc.voice_preview_phrase())
             return
 
         def _work(_progress: Callable[[str, int, int], None]) -> object:
@@ -395,10 +404,15 @@ class SpeechCommandsMixin:
             # _set_status speaks the summary; a second _announce would double it (#728).
             summary = getattr(result, "summary", "")
             self._set_status(summary)
-            if not getattr(result, "ok", True):
-                self._offer_component_bug_report(
-                    component_id, summary, getattr(result, "detail", "")
-                )
+            if getattr(result, "ok", True):
+                return
+            # An expected "needs one more piece" outcome is not a bug -- send the
+            # user to Manage Speech Models / Manage Voices to finish, don't offer
+            # a bug report (which is jarring for a normal, not-yet-downloaded state).
+            if getattr(result, "remedy", ""):
+                self._manage_component_models_or_voices(component_id)
+                return
+            self._offer_component_bug_report(component_id, summary, getattr(result, "detail", ""))
 
         self._run_background_task(f"Testing {component_id}", _work, _done)
 
