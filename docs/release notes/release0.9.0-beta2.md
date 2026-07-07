@@ -95,5 +95,21 @@ on **Check for Updates**.
   error into a bug report we can pinpoint the exact cause faster. This now
   covers every one of QUILL's internal error types, not just a handful, and the
   code travels with the crash report automatically.
+- **Kokoro voices really work now, and the installer is smaller.** After
+  downloading Kokoro, previewing a voice used to fail with a confusing "needs
+  one more component" message. The true cause (found in a submitted diagnostics
+  log) was a missing support library that Kokoro quietly needs. Kokoro is now
+  downloaded on demand as one complete piece - which also trims the installer by
+  about 23 MB - so once you download it, it speaks.
+- **DECtalk speaks instead of opening a file.** Testing or using a DECtalk voice
+  in the installed app used to pop open a program file instead of talking.
+  DECtalk now runs through the right helper and speaks as it should.
+- **Testing a component you haven't finished setting up now helps, instead of
+  asking for a bug report.** In Download Optional Components, pressing Test on the
+  offline speech engine before downloading a model (or on a voice engine before
+  downloading a voice) sent you a "send a bug report?" prompt for a perfectly
+  normal situation. Now it takes you straight to Manage Speech Models or Manage
+  Voices to finish, and only offers a bug report when something has genuinely
+  gone wrong - which also fixed a spot where keyboard focus could get stuck.
 
 More fixes land in this file as they ship - check back before release day.

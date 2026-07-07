@@ -1170,8 +1170,11 @@ a plain-language description of what it enables and its impact.
 - **Test** proves an installed component works, so you can be confident before you
   rely on it: a voice speaks a short sample so you actually hear it; the offline
   speech engine transcribes a spoken phrase and tells you what it heard; tools
-  report their version. If a test fails, QUILL offers to send a bug report with
-  the technical details.
+  report their version. If a component just needs one more piece — an offline
+  speech **model**, or a **voice** for a voice engine — Test takes you straight to
+  Manage Speech Models or Manage Voices to get it, rather than treating a normal
+  not-yet-finished setup as an error. QUILL only offers to send a bug report when
+  a test genuinely fails.
 - **Remove** deletes QUILL's downloaded copy of an installed component and turns
   its features back off (removing a voice engine you were using, for example,
   switches Read Aloud back to the system voice). It only ever removes copies QUILL
