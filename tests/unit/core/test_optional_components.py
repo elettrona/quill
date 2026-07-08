@@ -235,6 +235,58 @@ def test_verify_component_voice_defers_to_preview() -> None:
     assert "Test" in result.summary  # UI plays the sample
 
 
+def test_voice_pick_label_folds_in_accent_and_style() -> None:
+    from quill.core.read_aloud import VoiceOption
+
+    v = VoiceOption(
+        id="en_GB-alan-medium", name="Alan", accent="British English", description="medium"
+    )
+    assert oc.voice_pick_label(v) == "Alan (British English, medium)"
+    bare = VoiceOption(id="x", name="Solo")
+    assert oc.voice_pick_label(bare) == "Solo"
+
+
+def test_available_live_voices_filters_piper_to_downloaded(monkeypatch) -> None:
+    from quill.core import read_aloud as ra
+    from quill.core.read_aloud import VoiceOption
+
+    monkeypatch.setattr(
+        ra,
+        "list_piper_catalog_voices",
+        lambda: [
+            VoiceOption(id="a", name="A", installed=True),
+            VoiceOption(id="b", name="B", installed=False),
+        ],
+    )
+    ids = [v.id for v in oc.available_live_voices("piper")]
+    assert ids == ["a"]  # undownloaded "b" is filtered out
+
+
+def test_available_live_voices_unknown_engine_is_empty() -> None:
+    assert oc.available_live_voices("nope") == []
+
+
+def test_verify_component_braille_reports_liblouis_version(monkeypatch) -> None:
+    from quill.core import braille_pack
+
+    monkeypatch.setattr(oc, "_braille_pack_installed", lambda: True)
+    monkeypatch.setattr(braille_pack, "braille_pack_version", lambda: "3.30.0")
+    result = oc.verify_component("braille")
+    assert result.ok is True
+    assert "LibLouis 3.30.0" in result.summary
+
+
+def test_verify_component_braille_omits_version_when_unknown(monkeypatch) -> None:
+    from quill.core import braille_pack
+
+    monkeypatch.setattr(oc, "_braille_pack_installed", lambda: True)
+    monkeypatch.setattr(braille_pack, "braille_pack_version", lambda: "unknown")
+    result = oc.verify_component("braille")
+    assert result.ok is True
+    assert "LibLouis" not in result.summary
+    assert "Installed and detected." in result.summary
+
+
 def test_verify_component_stt_reports_what_it_heard(monkeypatch) -> None:
     import types
 

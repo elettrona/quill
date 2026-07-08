@@ -396,7 +396,7 @@ class SpeechCommandsMixin:
 
         engine = oc.read_aloud_engine_for_component(component_id)
         if engine is not None:
-            voices = self._voice_preview_voice_ids(engine)
+            voices = oc.available_live_voices(engine)
             if not voices:
                 # Engine present but no voice to speak yet: route to Manage Voices
                 # instead of previewing an empty voice (which errors with "model
@@ -406,8 +406,18 @@ class SpeechCommandsMixin:
                 )
                 self._manage_component_models_or_voices(component_id)
                 return
-            self._announce(f"Playing a sample of the {engine} voice.")
-            self._preview_voice(engine, voices[0], live=True, text=oc.voice_preview_phrase())
+            # One voice: play it straight away (no dialog friction). More than one:
+            # let the user pick which to hear via an accessible single-select
+            # dialog, so Test is a small delight rather than always voice #1.
+            chosen = voices[0]
+            if len(voices) > 1:
+                picked = self._choose_voice_to_preview(engine, voices)
+                if picked is None:
+                    self._set_status("Voice test cancelled.")
+                    return
+                chosen = picked
+            self._announce(f"Playing {chosen.name}.")
+            self._preview_voice(engine, chosen.id, live=True, text=oc.voice_preview_phrase())
             return
 
         def _work(_progress: Callable[[str, int, int], None]) -> object:
@@ -428,6 +438,27 @@ class SpeechCommandsMixin:
             self._offer_component_bug_report(component_id, summary, getattr(result, "detail", ""))
 
         self._run_background_task(f"Testing {component_id}", _work, _done)
+
+    def _choose_voice_to_preview(self, engine: str, voices: list) -> object | None:
+        """Accessible single-select voice picker; returns the choice, or None.
+
+        Native ``wx.SingleChoiceDialog`` (screen-reader friendly, keyboard
+        navigable) through the standard modal contract. Voice enumeration and
+        label text are wx-free in ``optional_components`` so they stay testable.
+        """
+        from quill.core import optional_components as oc
+
+        wx = self._wx
+        title = "Choose a Voice to Hear"
+        labels = [oc.voice_pick_label(v) for v in voices]
+        with wx.SingleChoiceDialog(
+            self.frame, f"Pick a {engine} voice to hear:", title, labels
+        ) as dlg:
+            dlg.SetSelection(0)
+            if self._show_modal_dialog(dlg, title) != wx.ID_OK:
+                return None
+            index = dlg.GetSelection()
+        return voices[index] if 0 <= index < len(voices) else None
 
     def _manage_component_models_or_voices(self, component_id: str) -> None:
         """Route the hub's Manage button to the component's own dialog: offline

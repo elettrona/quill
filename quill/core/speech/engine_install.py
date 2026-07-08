@@ -362,8 +362,16 @@ def install_vosk(
     else:
         local_wheel = _maybe_fetch_vosk_wheel(progress)
         if local_wheel is not None:
+            # Pin vosk to our verified wheel by passing the file path as the
+            # requirement -- pip installs exactly that file, not a PyPI-resolved
+            # vosk. We deliberately do NOT pass --no-index: vosk depends on
+            # ``cffi`` at install time, and under --no-index + --target pip has no
+            # source for cffi (not even the base env), so it fails with
+            # "No matching distribution found for cffi". Leaving the index enabled
+            # lets the dependency resolve while vosk itself stays pinned to the
+            # verified wheel.
             reqs = (str(local_wheel),)
-            extra_args = ("--no-index",)  # install our verified wheel, never touch PyPI
+            extra_args = ()
         else:
             reqs = _VOSK_REQUIREMENTS
             extra_args = ()

@@ -292,6 +292,7 @@
   "quill/ui/main_frame_sessions.py::SessionsMixin.save_session::wx.FileDialog": "native",
   "quill/ui/main_frame_simple_open.py::SimpleOpenMixin._prompt_native_open_dialog::wx.FileDialog": "native",
   "quill/ui/main_frame_speech.py::SpeechCommandsMixin._choose_transcript_format::wx.SingleChoiceDialog": "native",
+  "quill/ui/main_frame_speech.py::SpeechCommandsMixin._choose_voice_to_preview::wx.SingleChoiceDialog": "native",
   "quill/ui/main_frame_speech.py::SpeechCommandsMixin._save_captions::wx.FileDialog": "native",
   "quill/ui/main_frame_speech.py::SpeechCommandsMixin._save_captions::wx.SingleChoiceDialog": "native",
   "quill/ui/main_frame_speech.py::SpeechCommandsMixin.choose_dictation_microphone::wx.SingleChoiceDialog": "native",

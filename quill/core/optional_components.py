@@ -63,6 +63,43 @@ def read_aloud_engine_for_component(component_id: str) -> str | None:
     return _ENGINE_BY_COMPONENT.get(component_id)
 
 
+def available_live_voices(engine: str) -> list:
+    """Voices for *engine* that can be heard live right now (wx-free).
+
+    The hub's Test picker offers only these, so every entry actually
+    synthesizes -- undownloaded Piper/Kokoro catalog voices are filtered out,
+    while the built-in eSpeak/DECtalk/SAPI voices are always available once the
+    engine itself is present. A broken lister degrades to an empty list rather
+    than blocking Test.
+    """
+    from quill.core import read_aloud as ra
+
+    safe = (engine or "").strip().lower()
+    try:
+        if safe == "piper":
+            return [v for v in ra.list_piper_catalog_voices() if v.installed]
+        if safe == "kokoro":
+            return [v for v in ra.list_kokoro_voices() if v.installed]
+        if safe == "espeak":
+            return list(ra.list_espeak_voices())
+        if safe == "dectalk":
+            return list(ra.list_dectalk_voices())
+        if safe == "sapi5":
+            return list(ra.list_voices())
+    except Exception:  # noqa: BLE001 - a broken lister must never block Test
+        return []
+    return []
+
+
+def voice_pick_label(voice: object) -> str:
+    """Label for a voice in the Test picker: name plus accent/style note."""
+    accent = str(getattr(voice, "accent", "") or "")
+    description = str(getattr(voice, "description", "") or "")
+    name = str(getattr(voice, "name", "") or "")
+    extra = ", ".join(part for part in (accent, description) if part)
+    return f"{name} ({extra})" if extra else name
+
+
 # Offline STT engines whose downloadable *models* live in Manage Speech Models.
 _STT_ENGINES = frozenset({"whispercpp", "vosk"})
 
@@ -397,6 +434,17 @@ def _verify_presence(component_id: str) -> VerifyResult:
     if detector is None:
         return VerifyResult(True, "Installed.")
     ok = _safe(detector)
+    if ok and component_id == "braille":
+        # Surface the embedded LibLouis version on Test, mirroring Pandoc's tool
+        # self-test. braille_pack_version() reads louis.version() (the liblouis
+        # library string), falling back to "unknown" when the binding can't
+        # report it -- so a present-but-unversioned pack still reads cleanly.
+        from quill.core.braille_pack import braille_pack_version
+
+        version = _safe_str(braille_pack_version)
+        if version and version != "unknown":
+            return VerifyResult(True, f"Installed and detected — LibLouis {version}.")
+        return VerifyResult(True, "Installed and detected.")
     return VerifyResult(
         ok, "Installed and detected." if ok else "Installed files were not detected."
     )
@@ -713,3 +761,11 @@ def _safe_list(getter) -> list:  # type: ignore[no-untyped-def]
         return list(getter())
     except Exception:  # noqa: BLE001
         return []
+
+
+def _safe_str(getter) -> str:  # type: ignore[no-untyped-def]
+    """Run a string getter, treating any failure (or None) as empty."""
+    try:
+        return str(getter() or "")
+    except Exception:  # noqa: BLE001 - a broken getter must never crash the list
+        return ""
