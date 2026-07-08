@@ -31,6 +31,13 @@ dependencies = [
     "tzdata>=2026.2",
     # Native .docx reading/writing without requiring Pandoc.
     "python-docx>=1.2.0",
+    # Hugging Face Hub client. NOT optional: the default, out-of-the-box
+    # speech-to-text engine (whisper.cpp) downloads its GGML models via
+    # huggingface_hub.hf_hub_download (quill/core/speech/providers/whispercpp.py),
+    # so it must be present on a clean install -- not only when the optional
+    # Faster Whisper extra ([fasterwhisper]) is installed. Keep the floor in sync
+    # with that extra.
+    "huggingface_hub>=1.22.0",
 ]
 
 [project.optional-dependencies]
@@ -145,6 +152,12 @@ ocr = [
 kokoro = [
     "kokoro-onnx>=0.5.0",
     "soundfile>=0.14.0",
+    # Runtime dep of the Kokoro phonemizer chain
+    # (kokoro-onnx -> phonemizer -> segments -> csvw -> babel.numbers). csvw
+    # normally pulls it transitively, but declaring it here makes the Kokoro
+    # runtime chain self-contained so a pruned/partial install can't leave the
+    # ONNX voice path importing a missing 'babel'. Keep in sync with [dev].
+    "Babel>=2.18.0",
 ]
 pages = ["keynote-parser>=1.14.4.0", "markitdown[docx,pptx,xlsx,xls,pdf]>=0.1.6"]
 # GLOW document accessibility engine (audit / fix / convert for docx, pptx,

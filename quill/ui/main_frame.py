@@ -17612,21 +17612,6 @@ class MainFrame(
                     return candidate
         return None
 
-    def _voice_preview_voice_ids(self, engine: str) -> list[str]:
-        safe_engine = (engine or "").strip().lower()
-        if not safe_engine:
-            return []
-        discovered: set[str] = set()
-        for root in self._voice_preview_catalog_roots():
-            provider_dir = root / safe_engine
-            if not provider_dir.exists():
-                continue
-            for candidate in provider_dir.glob("*.wav"):
-                discovered.add(candidate.stem)
-            for candidate in provider_dir.glob("*.mp3"):
-                discovered.add(candidate.stem)
-        return sorted(discovered)
-
     def _play_preview_asset(self, sample_path: Path) -> None:
         suffix = sample_path.suffix.lower()
         if suffix == ".wav" and _winsound is not None:

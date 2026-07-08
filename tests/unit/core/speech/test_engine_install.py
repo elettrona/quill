@@ -100,7 +100,13 @@ def test_install_vosk_falls_back_to_pypi_when_not_self_hosted(monkeypatch, tmp_p
 
 
 def test_install_vosk_uses_self_hosted_wheel_when_pinned(monkeypatch, tmp_path: Path) -> None:
-    """When a verified assets-v1 wheel is available, install it with --no-index."""
+    """When a verified assets-v1 wheel is available, vosk is pinned to that file.
+
+    The index stays enabled (no --no-index): vosk depends on ``cffi`` at install
+    time, and --no-index + --target leaves pip with no source for cffi, failing
+    with "No matching distribution found for cffi". Passing the wheel file path as
+    the requirement still pins vosk itself to the verified wheel.
+    """
     monkeypatch.setattr(ei, "is_vosk_available", lambda: True)
     wheel = tmp_path / "vosk-0.3.45-py3-none-win_amd64.whl"
     wheel.write_text("fake wheel", encoding="utf-8")
@@ -110,8 +116,8 @@ def test_install_vosk_uses_self_hosted_wheel_when_pinned(monkeypatch, tmp_path: 
         dest_dir=tmp_path / "vosk", python_executable="py.exe", runner=_make_runner(captured)
     )
     cmd = captured["command"]
-    assert str(wheel) in cmd
-    assert "--no-index" in cmd  # never touch PyPI when using our verified wheel
+    assert str(wheel) in cmd  # pinned to our verified wheel
+    assert "--no-index" not in cmd  # but deps (cffi) must be resolvable
     assert "vosk>=0.3.45" not in cmd
 
 

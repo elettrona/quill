@@ -388,8 +388,10 @@ def _download_to_file(
 
     GATE-9 / network-egress: this is the only outbound call here; it runs only on
     an explicit user "download model" action and is blocked in Safe Mode by the
-    caller. Uses ``huggingface_hub.hf_hub_download`` (already a QUILL dependency
-    via the Faster Whisper path) instead of a hand-rolled urllib request, so a
+    caller. Uses ``huggingface_hub.hf_hub_download`` (a base QUILL runtime
+    dependency -- see [project].dependencies in pyproject.toml -- because this
+    default engine's downloads must work without the optional Faster Whisper
+    extra) instead of a hand-rolled urllib request, so a
     stale pin surfaces as a typed, distinguishable error instead of a generic
     "download failed" -- and so retries/redirects/etag caching are the Hub's
     battle-tested implementation, not ours. The file is sha256-verified when a
