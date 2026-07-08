@@ -49,6 +49,27 @@ def test_request_change_to_new_location_queues_a_marker_without_moving_anything(
     assert marker.exists()
 
 
+def test_pending_data_location_target_is_none_with_no_marker(
+    current_data_dir: Path,
+) -> None:
+    assert data_location.pending_data_location_target() is None
+
+
+def test_pending_data_location_target_is_none_when_change_matches_current(
+    current_data_dir: Path,
+) -> None:
+    data_location.request_data_location_change("appdata")
+    assert data_location.pending_data_location_target() is None
+
+
+def test_pending_data_location_target_reports_the_queued_move(
+    current_data_dir: Path, tmp_path: Path
+) -> None:
+    new_location = tmp_path / "new-data-home"
+    data_location.request_data_location_change("custom", new_location)
+    assert data_location.pending_data_location_target() == new_location.resolve()
+
+
 def test_apply_pending_migration_moves_files_and_updates_storage_mode(
     current_data_dir: Path, tmp_path: Path
 ) -> None:
