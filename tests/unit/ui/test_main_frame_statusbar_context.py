@@ -361,3 +361,9 @@ def test_section_heading_in_status_bar_items() -> None:
     from quill.core.settings_normalizers import STATUS_BAR_ITEMS
 
     assert "section_heading" in STATUS_BAR_ITEMS
+
+
+def test_page_status_bar_metadata_is_registered() -> None:
+    assert MainFrame._STATUS_BAR_LABELS["page"] == "Page"
+    assert MainFrame._STATUS_BAR_WIDTHS["page"] == 220
+    assert MainFrame._STATUS_BAR_FEATURES["page"] == "core.analysis"

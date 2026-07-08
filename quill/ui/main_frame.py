@@ -792,6 +792,7 @@ class MainFrame(
     _STATUS_BAR_LABELS: dict[str, str] = {
         "message": "Status Message",
         "line_column": "Position",
+        "page": "Page",
         "word_count": "Word Count",
         "char_count": "Character Count",
         "line_count": "Line Count",
@@ -824,6 +825,7 @@ class MainFrame(
     _STATUS_BAR_WIDTHS: dict[str, int] = {
         "message": -1,
         "line_column": 140,
+        "page": 220,
         "word_count": 140,
         "char_count": 140,
         "line_count": 130,
@@ -856,6 +858,7 @@ class MainFrame(
     _STATUS_BAR_FEATURES: dict[str, str] = {
         "message": "core.app",
         "line_column": "core.editor",
+        "page": "core.analysis",
         "word_count": "core.analysis",
         "char_count": "core.analysis",
         "line_count": "core.analysis",

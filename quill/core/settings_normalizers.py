@@ -9,6 +9,10 @@ from __future__ import annotations
 
 STATUS_BAR_ITEMS: tuple[str, ...] = (
     "line_column",
+    # #872: page indicator. Visible by default (not in
+    # _default_status_bar_hidden below), placed right after line_column
+    # since both are "where am I" position cells -- not first, but adjacent.
+    "page",
     "message",
     "word_count",
     # Character count of the whole document.
