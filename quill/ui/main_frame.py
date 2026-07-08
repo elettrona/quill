@@ -4314,13 +4314,19 @@ class MainFrame(
 
                 editor = create_stc_editor(wx, splitter, wx.TE_MULTILINE | border)
             elif kind == "richedit_rtf":
-                # QuillRichEdit Phase 0: the SAME native RichEdit (RICHEDIT50W)
-                # the default uses, tagged with its own surface_kind so later
-                # phases (native RTF via EM_STREAMIN/OUT, the braille instrument
-                # for #616/#813) have a home. Falls back to a wx.TextCtrl.
+                # QuillRichEdit: the SAME native RichEdit (RICHEDIT50W) the default
+                # uses, with native RTF load/save via the TOM and the Phase 3
+                # braille instrument (#616/#813). The emulate-system-edit lever is
+                # applied only when its own experimental toggle is on (and the
+                # experimental gates are acknowledged). Falls back to a wx.TextCtrl.
                 from quill.ui.richedit_rtf_surface import create_richedit_rtf
 
-                editor = create_richedit_rtf(wx, splitter, wx.TE_MULTILINE | border)
+                emulate = acknowledged and bool(
+                    getattr(self.settings, "experimental_richedit_emulate_sysedit", False)
+                )
+                editor = create_richedit_rtf(
+                    wx, splitter, wx.TE_MULTILINE | border, emulate_system_edit=emulate
+                )
             elif kind == "plain":
                 # A Notepad-style EDIT control -- editable, reports its value to
                 # JAWS/NVDA correctly, and avoids the RichEdit leading-cell quirk (#616).
@@ -11109,9 +11115,12 @@ class MainFrame(
                 "(quill/ui/richedit_rtf_surface.py). RTF load/save go through the "
                 "Rich Edit TOM (EM_GETOLEINTERFACE → ITextDocument Open/Save, tomRTF) "
                 "— chosen because the EM_STREAMIN/EM_STREAMOUT ctypes callback "
-                "crashes msftedit (see the §8 post-mortem). Formatting commands "
-                "(Phase 2) and the #616/#813 braille work (Phase 3) are not wired "
-                "yet. Falls back to a plain control on any failure."
+                "crashes msftedit (see the §8 post-mortem). The braille instrument "
+                "(#616/#813) is wired: the diagnostic reports the edit style and a "
+                "TOM selection localizer, and the separate 'emulate a system edit "
+                "control' setting A/B-tests the cell-2 / dots-7-8 fix (needs a "
+                "braille display to judge). Formatting commands (Phase 2) are not "
+                "wired yet. Falls back to a plain control on any failure."
             ),
             "win32": (
                 "Native Win32 EDIT — the pywin32 spike (Windows only).\n\n"

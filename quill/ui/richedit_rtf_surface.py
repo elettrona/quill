@@ -45,6 +45,14 @@ _TOM_RTF = 1
 _TOM_CREATE_ALWAYS = 32
 _TOM_OPEN_EXISTING = 48
 
+# Edit-style messages + the SES_EMULATESYSEDIT flag (richedit.h). Phase 3 braille
+# lever: emulate the classic EDIT control (which JAWS renders from cell 1 with
+# selection dots 7-8) while staying a Rich Edit (so IAccessible value reporting is
+# unchanged) -- the candidate fix for #616 (cell-2 offset) and #813 (dots 7-8).
+_EM_SETEDITSTYLE = 0x0400 + 204
+_EM_GETEDITSTYLE = 0x0400 + 205
+_SES_EMULATESYSEDIT = 0x00000001
+
 
 class RichEditRtfError(RuntimeError):
     """A native RTF operation failed (no OLE interface, TOM error, file I/O).
@@ -209,6 +217,58 @@ class QuillRichEdit:
         except Exception:  # noqa: BLE001 - never break the plain-text contract
             return ""
 
+    # -- braille instrument + levers (Phase 3) ------------------------------ #
+
+    def edit_style(self) -> int:
+        """The control's current EM edit-style flags (0 off-Windows/no handle)."""
+        hwnd = self.hwnd()
+        if not (_TOM_AVAILABLE and hwnd):
+            return 0
+        try:
+            return int(_SendMessageW(hwnd, _EM_GETEDITSTYLE, 0, 0))
+        except Exception:  # noqa: BLE001 - a probe must never raise
+            return 0
+
+    def set_emulate_system_edit(self, enabled: bool) -> None:
+        """Toggle ``SES_EMULATESYSEDIT`` -- ask the Rich Edit to behave like the
+        classic EDIT control.
+
+        The braille lever for #616/#813: the plain EDIT control shows text from
+        cell 1 and shows selection dots 7-8, while the Rich Edit (which QUILL
+        keeps for its correct IAccessible value) shows the cell-2 offset and may
+        drop the selection dots. Emulating a system edit control may give the best
+        of both. Best-effort; **needs JAWS + a braille display to evaluate.**
+        """
+        hwnd = self.hwnd()
+        if not (_TOM_AVAILABLE and hwnd):
+            return
+        style = _SES_EMULATESYSEDIT if enabled else 0
+        try:
+            _SendMessageW(hwnd, _EM_SETEDITSTYLE, style, _SES_EMULATESYSEDIT)
+        except Exception:  # noqa: BLE001 - the lever is best-effort, never fatal
+            pass
+
+    def selection_diagnostic(self) -> str:
+        """Report the selection as the control's TOM sees it vs wx -- localizes #813.
+
+        Offsets and length only, never the selected text. If wx and the TOM agree,
+        the control *knows* the selection, so a braille display not showing dots
+        7-8 is an AT-rendering gap, not a control-tracking one.
+        """
+        try:
+            wx_sel = tuple(self._surface.GetSelection())
+        except Exception:  # noqa: BLE001
+            wx_sel = None
+        if not self.rtf_available():
+            return f"wx={wx_sel}, TOM=(unavailable)"
+        try:
+            selection = _get_text_document(self.hwnd()).Selection
+            tom = (int(selection.Start), int(selection.End))
+        except Exception as exc:  # noqa: BLE001 - report, never raise
+            return f"wx={wx_sel}, TOM=(error: {exc})"
+        agree = wx_sel is not None and wx_sel == tom
+        return f"wx={wx_sel}, TOM={tom}, agree={agree}"
+
     # -- formatting (Phase 2 -- not yet wired) ------------------------------ #
 
     def apply_bold(self) -> None:
@@ -276,21 +336,28 @@ class QuillRichEdit:
         """A short, read-only summary for Copy Diagnostic Summary (no document content)."""
         class_name = _window_class_name(self.hwnd()) or "(unavailable)"
         return (
-            "QuillRichEdit surface (Phase 1)\n"
+            "QuillRichEdit surface (Phase 1 + Phase 3 instrument)\n"
             f"Win32 class name: {class_name}\n"
             f"RTF (TOM) available: {'yes' if self.rtf_available() else 'no'}\n"
             f"RTF save probe: {self._rtf_out_probe()}\n"
+            f"Edit style (EM_GETEDITSTYLE): {hex(self.edit_style())} "
+            f"(SES_EMULATESYSEDIT {'ON' if self.edit_style() & _SES_EMULATESYSEDIT else 'off'})\n"
+            f"Selection (#813 localizer): {self.selection_diagnostic()}\n"
             "Document content included: no"
         )
 
 
-def create_richedit_rtf(wx_module: Any, parent: Any, style: int) -> Any:
+def create_richedit_rtf(
+    wx_module: Any, parent: Any, style: int, *, emulate_system_edit: bool = False
+) -> Any:
     """Build the native Rich Edit surface, or a stock ``wx.TextCtrl`` fallback.
 
     The surface is a ``wx.TextCtrl`` with ``TE_RICH2 | TE_NOHIDESEL`` (the same
     RICHEDIT50W the default editor uses), tagged with ``surface_kind`` and a
     :class:`QuillRichEdit` wrapper on ``quill_richedit`` for RTF I/O + later
-    phases. Any failure -- including off-Windows, where TE_RICH2 is a no-op --
+    phases. When ``emulate_system_edit`` is set (the experimental braille lever),
+    ``SES_EMULATESYSEDIT`` is applied so a tester can A/B the #616/#813 braille
+    behaviour. Any failure -- including off-Windows, where TE_RICH2 is a no-op --
     returns a plain multiline control so selecting this surface can never brick
     the editor.
     """
@@ -301,7 +368,10 @@ def create_richedit_rtf(wx_module: Any, parent: Any, style: int) -> Any:
         return wx_module.TextCtrl(parent, style=style)
     try:
         surface.surface_kind = SURFACE_KIND  # type: ignore[attr-defined]
-        surface.quill_richedit = QuillRichEdit(surface)  # type: ignore[attr-defined]
+        wrapper = QuillRichEdit(surface)
+        surface.quill_richedit = wrapper  # type: ignore[attr-defined]
+        if emulate_system_edit:
+            wrapper.set_emulate_system_edit(True)
     except Exception:  # noqa: BLE001 - tagging is best-effort; the control still works
         pass
     return surface

@@ -215,6 +215,12 @@ class Settings:
     #   editor_hide_border: draw the editor control with no border for a cleaner,
     #   Notepad-like frame. Off keeps the platform default border.
     editor_hide_border: bool = False
+    #   experimental_richedit_emulate_sysedit: the QuillRichEdit braille lever.
+    #   When on (and the QuillRichEdit surface is selected), the native Rich Edit
+    #   is put in SES_EMULATESYSEDIT mode to A/B whether emulating a classic EDIT
+    #   control fixes the JAWS cell-2 offset (#616) and selection dots 7-8 (#813).
+    #   Gated by experimental_acknowledged; needs JAWS + a braille display to judge.
+    experimental_richedit_emulate_sysedit: bool = False
     #   experimental_acknowledged: the master Experimental switch — the user has
     #   opted in to experimental features as a group. Every experimental option
     #   below is ignored (and its controls disabled) until this is True.
@@ -801,6 +807,9 @@ class Settings:
         experimental_editor_surfaces_enabled = bool(
             data.get("experimental_editor_surfaces_enabled", False)
         )
+        experimental_richedit_emulate_sysedit = bool(
+            data.get("experimental_richedit_emulate_sysedit", False)
+        )
         glow_experimental_enabled = bool(data.get("glow_experimental_enabled", False))
         publishing_experimental_enabled = bool(data.get("publishing_experimental_enabled", False))
         table_studio_experimental_enabled = bool(
@@ -1319,6 +1328,7 @@ class Settings:
             editor_control_kind=editor_control_kind,
             experimental_editor_surface=experimental_editor_surface,
             editor_hide_border=editor_hide_border,
+            experimental_richedit_emulate_sysedit=experimental_richedit_emulate_sysedit,
             experimental_acknowledged=experimental_acknowledged,
             experimental_editor_surfaces_enabled=experimental_editor_surfaces_enabled,
             glow_experimental_enabled=glow_experimental_enabled,

@@ -2207,4 +2207,27 @@ SETTING_SPECS: tuple[SettingSpec, ...] = (
         ),
         keywords=("experimental", "border", "margin", "notepad", "frame", "chrome"),
     ),
+    SettingSpec(
+        "experimental_richedit_emulate_sysedit",
+        "QuillRichEdit: emulate a system edit control (braille test)",
+        "experimental",
+        "bool",
+        (
+            "Only affects the QuillRichEdit editor surface. Puts the native Rich "
+            "Edit control in 'emulate system edit' mode to test whether it fixes "
+            "the braille cell-2 offset and missing selection dots 7-8 that some "
+            "displays show on Rich Edit. Needs a braille display to judge. RESTART "
+            "QUILL after changing this."
+        ),
+        keywords=(
+            "experimental",
+            "braille",
+            "richedit",
+            "quillrichedit",
+            "emulate",
+            "cell",
+            "selection",
+            "dots",
+        ),
+    ),
 )

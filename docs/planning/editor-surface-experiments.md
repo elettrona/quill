@@ -315,8 +315,31 @@ assertions, run against each surface with real wx) before we lean on it.
   aloud keep working.
 - **Phase 2 (not wired):** formatting via `CHARFORMAT2` / `PARAFORMAT2`
   (`apply_bold` etc. raise `RichEditRtfUnavailableError`).
-- **Phase 3 (not wired):** the braille instrument -- the Rich Edit TOM via
-  `EM_GETOLEINTERFACE`, plus `EM_SETEDITSTYLE` -- for #616 / #813.
+- **Phase 3 (instrument + lever landed; needs braille testing):** the braille
+  work for #616 (cell-2) and #813 (dots 7-8 on selection).
+  - *Instrument (measures, safe):* the accessibility diagnostic now reports the
+    control's edit style (`EM_GETEDITSTYLE`) and a **selection localizer** --
+    the selection as the control's TOM (`ITextSelection.Start/End`) sees it vs
+    wx's `GetSelection`, offsets/length only, no text. On-device it reports
+    `wx=(6,15), TOM=(6,15), agree=True`, which **localizes #813**: the control
+    *knows* the selection, so braille not showing dots 7-8 is an AT-rendering
+    gap, not a control-tracking one.
+  - *Lever (the candidate fix, A/B-able):* `QuillRichEdit.set_emulate_system_edit`
+    applies `SES_EMULATESYSEDIT` via `EM_SETEDITSTYLE`, asking the Rich Edit to
+    behave like the classic `EDIT` control -- which the four-way table shows is
+    the one that renders from cell 1 *and* shows selection dots 7-8 -- while
+    staying a Rich Edit so its `IAccessible` value (the reason for #616's default)
+    is unchanged. Verified to apply cleanly on-device (edit style 0x0 -> 0x3, no
+    crash). Exposed as the gated experimental setting
+    `experimental_richedit_emulate_sysedit`, applied at surface creation.
+  - **Test protocol (needs JAWS + a braille display -- cannot be done in CI):**
+    select the QuillRichEdit surface, attach a braille display, and A/B with the
+    emulate-system-edit setting off then on (restart between), checking on each:
+    (a) does text start in cell 1 or cell 2? (#616) (b) do dots 7-8 appear under
+    selected text? (#813) (c) does JAWS still read the editor value correctly
+    (the property the Rich Edit default protects)? Record the result here like
+    the 2026-07-03 four-way table. If emulate-sysedit fixes (a)/(b) without
+    breaking (c), it graduates to the default surface.
 - Risk: Low. Identical native control to the default, gated, with fallback; RTF
   streaming is guarded off (raises a clear error, never crashes); no existing
   surface changes.

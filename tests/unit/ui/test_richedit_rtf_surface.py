@@ -136,3 +136,43 @@ def test_diagnostic_summary_carries_no_document_content() -> None:
     summary = mod.QuillRichEdit(_FakeSurface()).accessibility_diagnostic_summary()
     assert "Win32 class name" in summary
     assert "Document content included: no" in summary
+
+
+def test_phase3_braille_instrument_and_lever_present() -> None:
+    # Phase 3: the SES_EMULATESYSEDIT lever + the TOM selection instrument for the
+    # cell-2 (#616) and dots-7-8 (#813) braille bugs.
+    import quill.ui.richedit_rtf_surface as mod
+
+    source = inspect.getsource(mod)
+    assert "SES_EMULATESYSEDIT" in source and "EM_SETEDITSTYLE" in source
+    assert "def set_emulate_system_edit" in source
+    assert "def selection_diagnostic" in source and ".Selection" in source
+    assert "emulate_system_edit" in inspect.getsource(mod.create_richedit_rtf)
+
+
+def test_phase3_probes_are_safe_without_a_handle() -> None:
+    import quill.ui.richedit_rtf_surface as mod
+
+    wrapper = mod.QuillRichEdit(_FakeSurface("hi"))
+    assert wrapper.edit_style() == 0
+    wrapper.set_emulate_system_edit(True)  # must not raise with no handle
+    wrapper.set_emulate_system_edit(False)
+    assert "unavailable" in wrapper.selection_diagnostic()
+    # The diagnostic surfaces the lever + the #813 localizer.
+    summary = wrapper.accessibility_diagnostic_summary()
+    assert "SES_EMULATESYSEDIT" in summary and "#813" in summary
+
+
+def test_emulate_sysedit_setting_round_trips() -> None:
+    loaded = Settings.from_dict({"experimental_richedit_emulate_sysedit": True})
+    assert loaded.experimental_richedit_emulate_sysedit is True
+    assert Settings().experimental_richedit_emulate_sysedit is False  # off by default
+
+
+def test_main_frame_gates_and_passes_the_emulate_lever() -> None:
+    from quill.ui.main_frame import MainFrame
+
+    source = inspect.getsource(MainFrame._create_document_tab)
+    assert "experimental_richedit_emulate_sysedit" in source
+    assert "emulate_system_edit=" in source
+    assert "acknowledged and" in source  # only when the experimental gates are on
