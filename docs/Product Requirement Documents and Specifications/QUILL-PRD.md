@@ -5321,6 +5321,22 @@ Fixed in the same pass: `settings.speech_provider`'s valid-value set had never i
 `"vosk"`, silently resetting it to `""` on load — harmless before Vosk was reachable from the
 guided picker, a real bug once it was.
 
+### 8.17 Status bar: the Message cell suppresses exact duplicates (0.9.0 Beta 2)
+
+The generic **Message** cell (`_status_message`, e.g. "Ready", "Saved") is the one status bar
+cell shown by default regardless of `status_bar_order`/`status_bar_hidden` — `_statusbar_items()`
+(`quill/ui/main_frame_statusbar.py`) force-inserts it, and falls back to it alone when every
+other cell is hidden. A user report surfaced a real gap in that always-on guarantee: Message can
+end up showing the exact same text as another currently-visible cell (observed with the **Page**
+cell), which reads as a confusing double-announcement rather than useful information. After the
+rest of `_statusbar_items()` resolves the visible list, it now computes Message's own text
+(`_statusbar_text_for_item("message")`) and compares it against every other visible cell's text;
+an exact match drops Message from the list for that refresh. `any()` short-circuits on the first
+match, so the (rare) no-match case is the only one that pays for computing every other visible
+cell's text — and several cells already re-derive from the live document on every refresh (line/
+column, page, word-count-family), so this is not a new class of cost, just one more consumer of
+it. The rule is general (any cell pair), not hard-coded to Page specifically.
+
 ---
 
 ## 9. Accessibility, WCAG 2.2 AA conformance, and certification

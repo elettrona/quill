@@ -296,7 +296,7 @@ Use `F6` to move into it. Once there, you can move between cells and activate th
 You can reorder or hide status items through **Tools → Customize & Support → Status Bar Layout...**.
 Right-click a focused status cell to **Activate**, **Hide this item**, or open **Status bar settings...**. On the **Notifications** (or **Background Tasks**) cell the context menu also offers **Clear All Notifications**, which empties the notification list in one step without opening the dialog.
 Use **Restore Defaults** in status bar settings to reset visibility and order.
-When title mode is set to full path, Quill automatically hides the duplicate file-path status cell.
+When title mode is set to full path, Quill automatically hides the duplicate file-path status cell. The current-message cell hides itself the same way whenever its text exactly matches another currently-visible cell's — it never says the same thing twice.
 
 ### Region cycling
 

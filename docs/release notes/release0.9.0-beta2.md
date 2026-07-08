@@ -142,6 +142,10 @@ on by default, right next to your line/column position.
   arrowing across it made your screen reader say "Status Bar" before every cell.
   Now you hear it once, on arrival; after that each cell just tells you what it is
   and what it says — for example, "Position, Ln 12, Col 7."
+- **The status bar stopped repeating itself, take two.** The general Message cell
+  could end up showing the exact same text as another cell right next to it — a
+  tester noticed it happening with the Page cell. Message now goes quiet whenever
+  another visible cell is already saying the same thing, instead of saying it twice.
 - **No more doubled ampersands.** "Writing & Language," "Reading & Dictation," and
   friends sometimes read back as "Writing && Language." They spell out "and" now.
 - **AI Hub: choosing a provider stays where you put it.** Arrowing through the
