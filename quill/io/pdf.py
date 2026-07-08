@@ -21,19 +21,39 @@ class PdfExtractionResult:
 
 
 def extract_pdf_text(path: Path) -> PdfExtractionResult:
+    # Distinguish "no extractor installed" from "an extractor ran but found no
+    # text" (#909). They are different problems with different remedies: the
+    # former is a broken/partial install, the latter is almost always a scanned
+    # or image-only PDF that needs OCR. Collapsing both into one message sent
+    # users chasing the wrong fix.
+    any_extractor_available = False
     for extractor in (_extract_with_pdfplumber, _extract_with_pypdf):
         try:
             result = extractor(path)
         except ModuleNotFoundError:
-            continue
+            continue  # this extractor's package is absent; try the next
         except Exception:
+            any_extractor_available = True  # it imported, it just failed on this file
             continue
+        any_extractor_available = True
         if result.text.strip():
             return result
+    if not any_extractor_available:
+        message = (
+            f"(No PDF text extractor is installed, so QUILL could not read "
+            f"{path.name}. Reinstall QUILL, or run: pip install pdfplumber pypdf.)\n"
+        )
+        engine = "unavailable"
+    else:
+        message = (
+            f"(No selectable text was found in {path.name}. It is likely a scanned "
+            f"or image-only PDF — use File > Import and choose OCR to read it.)\n"
+        )
+        engine = "empty"
     return PdfExtractionResult(
-        text=f"(No PDF text extractor was available for {path.name}.)\n",
+        text=message,
         quality_score=0,
-        engine="unavailable",
+        engine=engine,
         page_count=0,
         extracted_pages=0,
         page_scores=[],

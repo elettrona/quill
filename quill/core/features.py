@@ -88,19 +88,26 @@ PROFILE_DEFINITIONS: dict[str, FeatureProfile] = {
         id=PROFILE_WRITER,
         name=lazy_gettext("Casual Writer"),
         description=lazy_gettext(
-            "Everyday writing, formatting, and cleanup with guided power features. "
-            "For papers, citations, and a table of contents, try the Author or "
-            "Student profile instead."
+            "A focused 'just write' setup — everyday writing, formatting, and "
+            "printing, without the power surfaces. AI, GLOW review, remote files, "
+            "document analysis, watch folders, notebooks, and developer tools are "
+            "off (turn any on from Profiles and Features). For papers, citations, "
+            "and a table of contents, try the Author or Student profile instead."
         ),
         states={
+            # #890: an unlisted feature defaults to ON (see state_for), so a true
+            # "just write, format, print, send" identity has to name every power
+            # surface it wants OFF -- otherwise GLOW, remote files, the developer
+            # console, notebooks, and more are silently on. Accessibility I/O
+            # (read aloud, voice commands, dictation, OCR, and braille, which is
+            # left at its ON default) stays available on purpose: "just write"
+            # must never mean "less accessible."
             "core.search.regex": FEATURE_STATE_QUIET,
             "core.format": FEATURE_STATE_ON,
             "core.macros": FEATURE_STATE_QUIET,
             "core.links": FEATURE_STATE_ON,
             "core.read_aloud": FEATURE_STATE_QUIET,
             "core.voice_commands": FEATURE_STATE_ON,
-            "core.watch_folder": FEATURE_STATE_ON,
-            "core.analysis": FEATURE_STATE_ON,
             "core.shell": FEATURE_STATE_QUIET,
             "core.keymap": FEATURE_STATE_QUIET,
             "core.ocr": FEATURE_STATE_QUIET,
@@ -108,9 +115,22 @@ PROFILE_DEFINITIONS: dict[str, FeatureProfile] = {
             "core.text_encoding": FEATURE_STATE_QUIET,
             "future.character_inspector": FEATURE_STATE_QUIET,
             "future.cleanup": FEATURE_STATE_QUIET,
-            "future.ai": FEATURE_STATE_QUIET,
-            # Writer is one of the writer-tier-and-above profiles with
-            # publishing access (see PROFILE_ESSENTIAL's comment above).
+            # Explicitly off: not part of "write, format, print, send". Each stays
+            # individually re-enableable from Profiles and Features / the palette.
+            "core.watch_folder": FEATURE_STATE_OFF,
+            "core.analysis": FEATURE_STATE_OFF,
+            "core.glow": FEATURE_STATE_OFF,
+            "core.remote": FEATURE_STATE_OFF,
+            "core.github_remote": FEATURE_STATE_OFF,
+            "core.developer_console": FEATURE_STATE_OFF,
+            "core.developer_console.typescript": FEATURE_STATE_OFF,
+            "core.emmet": FEATURE_STATE_OFF,
+            "core.intellisense": FEATURE_STATE_OFF,
+            "core.notebook": FEATURE_STATE_OFF,
+            "future.ai": FEATURE_STATE_OFF,
+            "future.ai_menu_top_level": FEATURE_STATE_OFF,
+            # Writer is one of the writer-tier-and-above profiles with publishing
+            # ("send") access (see PROFILE_ESSENTIAL's comment above).
             "future.publishing": FEATURE_STATE_ON,
             "future.publishing_read": FEATURE_STATE_OFF,
         },

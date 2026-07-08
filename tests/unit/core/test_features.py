@@ -102,6 +102,41 @@ def test_feature_manager_respects_profile_state() -> None:
     assert manager.state_for("future.publishing") == FEATURE_STATE_OFF
 
 
+def test_casual_writer_is_a_focused_just_write_profile() -> None:
+    """#890: Casual Writer turns off power/AI/review/remote/developer surfaces
+    (an unlisted feature defaults to ON, so each must be named), while keeping
+    the write/format/print/send core -- and all screen-reader I/O -- available."""
+    from quill.core.features import PROFILE_WRITER
+
+    manager = FeatureManager(active_profile_id=PROFILE_WRITER)
+
+    # Explicitly off: not part of "write, format, print, send".
+    for off_feature in (
+        "future.ai",
+        "future.ai_menu_top_level",
+        "core.glow",
+        "core.remote",
+        "core.github_remote",
+        "core.developer_console",
+        "core.emmet",
+        "core.watch_folder",
+        "core.analysis",
+        "core.notebook",
+    ):
+        assert manager.state_for(off_feature) == FEATURE_STATE_OFF, off_feature
+
+    # Core writing stays on.
+    assert manager.state_for("core.editor") == FEATURE_STATE_ON
+    assert manager.state_for("core.file") == FEATURE_STATE_ON
+    assert manager.state_for("core.format") == FEATURE_STATE_ON
+
+    # "Just write" must not mean "less accessible": screen-reader I/O stays.
+    assert manager.state_for("core.voice_commands") == FEATURE_STATE_ON
+    assert manager.state_for("core.braille") == FEATURE_STATE_ON  # ON by default, not stripped
+    assert manager.state_for("core.read_aloud") != FEATURE_STATE_OFF
+    assert manager.state_for("core.dictation") != FEATURE_STATE_OFF
+
+
 def test_feature_manager_can_switch_profiles() -> None:
     manager = FeatureManager(active_profile_id=PROFILE_ESSENTIAL)
     preview = manager.change_profile_preview(PROFILE_DEVELOPER_POWER_TEXT)

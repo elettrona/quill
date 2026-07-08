@@ -206,6 +206,31 @@ on by default, right next to your line/column position.
 
 ---
 
+## Three fixes that unblock real work
+
+- **PDF and document import works out of the box again.** A tester on a clean
+  install hit "can't extract text from PDFs — no extraction engine available."
+  The free local converter and PDF text extractors were described in-app as
+  built-in, but weren't actually installed by the shipping build. They now ship
+  with QUILL on every install, so File → Import just works — and if a PDF has no
+  selectable text, QUILL now tells you it looks like a scanned document and points
+  you to OCR, instead of a confusing "no engine" message.
+- **Report a Bug works even if you never signed in.** After upgrading, some of you
+  found the bug reporter saying "no token." The Windows build wasn't including the
+  built-in reporting token, so it shipped empty. It's fixed at the source (and the
+  release now refuses to build without it, so this can't happen again), and if the
+  token is ever missing, QUILL now opens the online bug form for you — reading the
+  instructions aloud — instead of leaving you stuck.
+- **"Casual Writer" finally just lets you write.** The profile was quietly leaving
+  AI, GLOW review, remote files, analysis, watch folders, notebooks, and developer
+  tools switched on. Choose Casual Writer now and those step out of the way, for a
+  clean "write, format, print, send" workspace — while read aloud, voice commands,
+  dictation, and braille stay right where they are, because a simpler profile
+  should never be a less accessible one. Want any of it back? Preferences >
+  Profiles and Features, one toggle each.
+
+---
+
 ## With gratitude
 
 Beta 2 is a community release in the truest sense. **Elena Brescacin**

@@ -6,20 +6,30 @@ users (who have never configured a personal GitHub token) can still file a
 bug report through the "Report a Bug" dialog. See
 docs/superpowers/specs/2026-07-06-bundled-feedback-token-design.md.
 
-Unlike tools/generate_build_info.py, this never fails: a missing env var
-just writes an empty token, so dev checkouts, tests, and CI runs without the
-secret are unaffected. The token itself must be a fine-grained GitHub PAT
-scoped only to Community-Access/quill with Issues: read/write and no other
-permission (see the design doc for how to create one).
+By default this never fails: a missing env var just writes an empty token, so
+dev checkouts, tests, and local test builds without the secret are unaffected.
+Pass ``--require-token`` (which the release/beta packaging does) to make a
+missing/empty token a hard error instead: shipping a distributable build with an
+empty bundled token silently breaks "Report a Bug" for every user who never
+configured a personal token, which is the worst build to have in the field (it
+silences the channel that would tell us it is broken). A release build must fail
+loudly rather than degrade to a quietly broken binary.
+
+The token itself must be a fine-grained GitHub PAT scoped only to
+Community-Access/quill with Issues: read/write and no other permission (see the
+design doc for how to create one).
 
 Usage::
 
-    python tools/generate_feedback_token.py
+    python tools/generate_feedback_token.py                 # lenient (dev)
+    python tools/generate_feedback_token.py --require-token  # release/beta
 """
 
 from __future__ import annotations
 
+import argparse
 import os
+import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -39,8 +49,30 @@ BUNDLED_TOKEN = {token!r}
     )
 
 
-def main() -> int:
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+        "--require-token",
+        action="store_true",
+        help=(
+            "Fail (exit 2) instead of writing an empty token when "
+            f"{ENV_VAR} is unset. Release/beta/preview packaging passes this so a "
+            "distributable build can never silently ship with a broken bug reporter."
+        ),
+    )
+    args = parser.parse_args(argv)
     token = os.environ.get(ENV_VAR, "").strip()
+    if not token and args.require_token:
+        print(
+            f"ERROR: {ENV_VAR} is not set, but --require-token was given.\n"
+            "A release/beta build must bundle a working issues-only token so users "
+            "who never configured a personal GitHub token can still Report a Bug.\n"
+            "Set the secret in the build environment and re-run, or drop "
+            "--require-token for a local test build (its bug reporter will be "
+            "unavailable).",
+            file=sys.stderr,
+        )
+        return 2
     write_module(token, OUTPUT_FILE)
     if token:
         print(f"Wrote {OUTPUT_FILE} with a bundled token.")
