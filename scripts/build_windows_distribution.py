@@ -46,6 +46,13 @@ from quill.branding import APP_DISPLAY_NAME, APP_ORGANIZATION  # noqa: E402
 # (DECtalk, Piper, eSpeak-NG) ship ARM64 Windows binaries.  Revisit when any
 # of them do: Python (embed-arm64.zip), Pandoc, and Node all have arm64 assets.
 
+# A contributor's local dev-tool caches (mypy/pytest/ruff, stray bytecode)
+# must never leak into a shipped build -- they're sizable, irrelevant to end
+# users, and only present because *this* machine happened to run those tools.
+_DEV_CACHE_IGNORE = shutil.ignore_patterns(
+    "__pycache__", ".mypy_cache", ".pytest_cache", ".ruff_cache"
+)
+
 # Pinned Windows embeddable Python. Bumping these values is the only
 # thing needed to ship on a new Python point release.
 EMBEDDED_PYTHON_VERSION = "3.13.14"
@@ -1226,7 +1233,9 @@ def bundle_embedded_python(
     if not quill_source.is_dir():
         raise RuntimeError(f"Could not find quill/ package source under {source_root.resolve()}.")
     print(f"Copying Quill package source from {quill_source} into runtime...")
-    shutil.copytree(quill_source, site_packages / "quill", dirs_exist_ok=True)
+    shutil.copytree(
+        quill_source, site_packages / "quill", dirs_exist_ok=True, ignore=_DEV_CACHE_IGNORE
+    )
 
     # Stage the changelog inside the package so the running build can show
     # abbreviated "What's New" / Check-for-Updates release notes offline
