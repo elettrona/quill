@@ -2,7 +2,7 @@
 <html xmlns="http://www.w3.org/1999/xhtml">
 <head>
   <meta charset="utf-8" />
-  <meta name="generator" content="pandoc" />
+  <meta name="generator" content="pandoc 3.10" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
   <title>userguide</title>
   <style>
@@ -156,8 +156,12 @@
       text-decoration: none;
     }
     span.smallcaps{font-variant: small-caps;}
-    div.columns{display: flex; gap: min(4vw, 1.5em);}
-    div.column{flex: auto; overflow-x: auto;}
+    div.columns{display: flex; gap: 1.5em;}
+    div.column{flex: auto;}
+    @media screen {
+    div.columns{gap: min(4vw, 1.5em);}
+    div.column{overflow-x: auto;}
+    }
     div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
     /* The extra [class] is a hack that increases specificity enough to
        override a similar rule in reveal.js */
@@ -477,6 +481,12 @@ Windows reports the grave/back-tick key differently than expected. QUILL
 now uses three independent detection strategies (character code, Windows
 virtual key VK_OEM_3, and physical scan code 0x29) so the key is
 recognized on any layout.</p>
+<p><strong>macOS note.</strong> Use the physical
+<strong>Control</strong> key, not Cmd, for the QUILL key on macOS:
+<code>Cmd+Shift+</code> `` is macOS's own reserved "cycle windows"
+shortcut and never reaches QUILL. If you'd rather use Cmd, reassign that
+system shortcut in <strong>System Settings → Keyboard → Keyboard
+Shortcuts → Mission Control</strong> first.</p>
 <p><strong>Reassigning chord commands.</strong> Open <strong>Preferences
 → Keyboard → Keymap Editor</strong>, find the command you want to move,
 and type a new chord binding in the form
@@ -5744,6 +5754,32 @@ accessible control surface</h3>
 <p>Quill's status bar is navigable and interactive. This is a subtle but
 important design decision. It keeps useful information close while still
 making it reachable from the keyboard.</p>
+<h3 id="page-indicator">Page indicator</h3>
+<p>QUILL shows a <strong>Page</strong> cell in the status bar for every
+document, on by default, right next to your line/column position.</p>
+<p>For PDFs, this is an exact count: QUILL knows the real page
+boundaries from the file itself, so it reads, for example, "3 of
+12."</p>
+<p>For everything else -- plain text, Markdown, and most Word documents
+-- there is no such thing as a real "page" until you print or export:
+page breaks depend on your font, margins, and paper size, none of which
+QUILL tracks while you're writing. So for these documents, the Page cell
+shows an <strong>estimate</strong> based on word count, clearly marked
+as such: "~3 of ~12 (estimated)." The tilde and the word "estimated" are
+always there together -- if you ever see a page number without them,
+it's a real count; if you see them, it's QUILL's best guess, not a
+promise.</p>
+<p>You can tune the estimate's word-per-page basis in
+<strong>Preferences &gt; Navigation and QUILL Key &gt; Estimated words
+per page</strong> (default 300, range 150-600) if your writing runs
+noticeably longer or shorter per page than the default assumes.</p>
+<p><strong>Go To Page</strong> (<code>Ctrl+Shift+G</code>, also
+reachable by pressing Enter on the Page cell) jumps to a page number.
+For PDFs this is exact; for everything else, it jumps to QUILL's best
+estimate of where that page would fall -- the prompt tells you which
+kind of jump you're about to make.</p>
+<p>Braille (BRF) documents keep their own, more detailed page system
+(see Braille Mode above) and do not show this generic Page cell.</p>
 <h3 id="sound-notifications-and-earcons">Sound notifications and
 earcons</h3>
 <p>Quill can play short, non-speech audio cues — earcons — at meaningful

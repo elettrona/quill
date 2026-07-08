@@ -2876,6 +2876,36 @@ You can validate contrast, switch dark mode, and align with system behavior. Thi
 
 Quill's status bar is navigable and interactive. This is a subtle but important design decision. It keeps useful information close while still making it reachable from the keyboard.
 
+### Page indicator
+
+QUILL shows a **Page** cell in the status bar for every document, on by
+default, right next to your line/column position.
+
+For PDFs, this is an exact count: QUILL knows the real page boundaries
+from the file itself, so it reads, for example, "3 of 12."
+
+For everything else -- plain text, Markdown, and most Word documents --
+there is no such thing as a real "page" until you print or export: page
+breaks depend on your font, margins, and paper size, none of which QUILL
+tracks while you're writing. So for these documents, the Page cell shows
+an **estimate** based on word count, clearly marked as such: "~3 of ~12
+(estimated)." The tilde and the word "estimated" are always there together
+-- if you ever see a page number without them, it's a real count; if you
+see them, it's QUILL's best guess, not a promise.
+
+You can tune the estimate's word-per-page basis in **Preferences >
+Navigation and QUILL Key > Estimated words per page** (default 300, range
+150-600) if your writing runs noticeably longer or shorter per page than
+the default assumes.
+
+**Go To Page** (`Ctrl+Shift+G`, also reachable by pressing Enter on the
+Page cell) jumps to a page number. For PDFs this is exact; for everything
+else, it jumps to QUILL's best estimate of where that page would fall --
+the prompt tells you which kind of jump you're about to make.
+
+Braille (BRF) documents keep their own, more detailed page system (see
+Braille Mode above) and do not show this generic Page cell.
+
 ### Sound notifications and earcons
 
 Quill can play short, non-speech audio cues — earcons — at meaningful editing moments, so your screen reader stays free for the text while sound carries the "something happened" signal. This is entirely optional and off by default for most events; speech is never replaced.

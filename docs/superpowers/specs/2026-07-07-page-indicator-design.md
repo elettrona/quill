@@ -110,6 +110,17 @@ tracking:
   "real." `quill/io/docx_writer.py` already turns `\f` back into a real page
   break on export, so this round-trips symmetrically.
 
+**Scope note (added during implementation planning):** DOCX import goes
+through Pandoc or MarkItDown conversion to Markdown text
+(`quill/io/structured.py:_read_docx`), neither of which preserves explicit
+page-break positions in the converted text. Detecting hard page breaks
+would require a separate python-docx scan with no reliable way to map
+those positions into the converted text. Track B therefore ships for
+**PDF only** in the first implementation; DOCX stays on the Track A
+estimate. Real DOCX pagination is left as a follow-up, matching this
+issue's own original recommendation to treat exact-format pagination as
+separable, incremental work.
+
 ### Go to Page command
 
 The existing (currently dead) `navigation.page_start_for_number` powers an

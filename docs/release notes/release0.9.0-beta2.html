@@ -2,7 +2,7 @@
 <html xmlns="http://www.w3.org/1999/xhtml">
 <head>
   <meta charset="utf-8" />
-  <meta name="generator" content="pandoc" />
+  <meta name="generator" content="pandoc 3.10" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
   <title>release0.9.0-beta2</title>
   <style>
@@ -156,8 +156,12 @@
       text-decoration: none;
     }
     span.smallcaps{font-variant: small-caps;}
-    div.columns{display: flex; gap: min(4vw, 1.5em);}
-    div.column{flex: auto; overflow-x: auto;}
+    div.columns{display: flex; gap: 1.5em;}
+    div.column{flex: auto;}
+    @media screen {
+    div.columns{gap: min(4vw, 1.5em);}
+    div.column{overflow-x: auto;}
+    }
     div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
     /* The extra [class] is a hack that increases specificity enough to
        override a similar rule in reveal.js */
@@ -180,9 +184,10 @@ default. Yours to make quiet.</em></p>
 <p>Every single line below started life as a message from a beta tester
 — a crash report, a "this felt weird," a voice that wouldn't speak, a
 language that wasn't there. You wrote in; we listened; this is the
-result. Keeping the promise made at Beta 1, there are <strong>no new
-headline features here</strong> — just your reports, turned into fixes
-and polish, especially around getting the optional pieces you want.</p>
+result. Keeping the promise made at Beta 1, this is overwhelmingly your
+reports, turned into fixes and polish, especially around getting the
+optional pieces you want — with <strong>one exception</strong>: a page
+indicator, because enough of you asked for it that it couldn't wait.</p>
 <p>This is the friendly companion to the <strong>"0.9.0 Beta 2"</strong>
 section of <code>CHANGELOG.md</code>. The same words appear in-app under
 <strong>Help &gt; What's New</strong> and on <strong>Check for
@@ -232,6 +237,26 @@ whole setup travels with you.</li>
 <li><strong>MP3 chapter markers</strong>, so exported audiobooks let
 players jump between sections, are now a one-click download here
 too.</li>
+</ul>
+<h2 id="a-page-number-honestly-presented">A page number, honestly
+presented</h2>
+<p>A tester asked directly: "Are we going to be able to see proper page
+numbers with QUILL?" Now every document shows one, in the status bar, on
+by default, right next to your line/column position.</p>
+<ul>
+<li><strong>PDFs get a real page count.</strong> QUILL now preserves
+each PDF's actual page boundaries when you open it, so you see an exact
+"3 of 12" and <code>Ctrl+Shift+G</code> (Go To Page) jumps exactly.</li>
+<li><strong>Everything else gets an honest estimate.</strong> Plain
+text, Markdown, and Word documents don't have a real "page" until you
+print or export -- it depends on font, margins, and paper size, none of
+which QUILL tracks while you write. So for these, the same cell shows
+"~3 of ~12 (estimated)" -- the tilde and the word "estimated" always
+travel together, on purpose, so you never mistake a guess for a fact.
+Tune the words-per-page assumption in Preferences &gt; Navigation and
+QUILL Key if your pages run long or short.</li>
+<li>Braille documents are untouched -- they keep their own, richer page
+system.</li>
 </ul>
 <h2 id="a-simpler-installer-and-a-lighter-one">A simpler installer, and
 a lighter one</h2>
@@ -290,6 +315,16 @@ example, "Position, Ln 12, Col 7."</li>
 <li><strong>No more doubled ampersands.</strong> "Writing &amp;
 Language," "Reading &amp; Dictation," and friends sometimes read back as
 "Writing &amp;&amp; Language." They spell out "and" now.</li>
+<li><strong>AI Hub: choosing a provider stays where you put it.</strong>
+Arrowing through the Provider list without opening its dropdown could
+bounce focus over to the Model field the moment its suggestions
+refreshed. Focus now stays put.</li>
+<li>**macOS: the QUILL key answers to a real
+Ctrl+Shift+<code> press.** macOS reports the Cmd key, not the physical Control key, through the check QUILL was using — so a literal Ctrl+Shift+</code>
+press went unrecognized. It's recognized now. (Cmd+Shift+` is macOS's
+own "cycle windows" shortcut and will keep going to the OS first;
+reassign it in System Settings &gt; Keyboard Shortcuts if you'd rather
+use Cmd.)</li>
 </ul>
 <h2 id="language-stability-and-support">Language, stability, and
 support</h2>
@@ -313,6 +348,15 @@ now falls back gracefully and tells you in the status bar.</li>
 The speech options' hardware probe ran with no timeout on the main
 thread every time you opened the dialog; it's timeout-guarded and runs
 once per session now.</li>
+<li><strong>The Outline Navigator (Ctrl+Shift+O) opens again.</strong>
+It — and the EPUB and Quick Nav surfaces that share the same dialog —
+could crash instead of opening, because of an invalid call on the tree
+control's hidden root. Fixed.</li>
+<li><strong>Crash reports no longer carry your Windows
+username.</strong> If your portable copy lived inside your home folder,
+the local crash-report file path was included verbatim in a submitted
+report's metadata — the one place that path wasn't already being
+scrubbed. It's redacted the same way as everywhere else now.</li>
 <li><strong>Errors carry a short support code</strong> (like
 <code>[QUILL-SPEECH-WHISPER-DL-404]</code>), and it rides along in crash
 reports automatically — so if you paste an error to us, we can pinpoint

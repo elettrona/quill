@@ -7,8 +7,9 @@
 Every single line below started life as a message from a beta tester — a crash
 report, a "this felt weird," a voice that wouldn't speak, a language that wasn't
 there. You wrote in; we listened; this is the result. Keeping the promise made at
-Beta 1, there are **no new headline features here** — just your reports, turned
-into fixes and polish, especially around getting the optional pieces you want.
+Beta 1, this is overwhelmingly your reports, turned into fixes and polish,
+especially around getting the optional pieces you want — with **one exception**:
+a page indicator, because enough of you asked for it that it couldn't wait.
 
 This is the friendly companion to the **"0.9.0 Beta 2"** section of `CHANGELOG.md`.
 The same words appear in-app under **Help > What's New** and on **Check for Updates**.
@@ -50,6 +51,26 @@ Components** was rebuilt into one warm, guided place.
   folder when you run QUILL from a drive, so your whole setup travels with you.
 - **MP3 chapter markers**, so exported audiobooks let players jump between
   sections, are now a one-click download here too.
+
+## A page number, honestly presented
+
+A tester asked directly: "Are we going to be able to see proper page
+numbers with QUILL?" Now every document shows one, in the status bar,
+on by default, right next to your line/column position.
+
+- **PDFs get a real page count.** QUILL now preserves each PDF's actual
+  page boundaries when you open it, so you see an exact "3 of 12" and
+  `Ctrl+Shift+G` (Go To Page) jumps exactly.
+- **Everything else gets an honest estimate.** Plain text, Markdown, and
+  Word documents don't have a real "page" until you print or export --
+  it depends on font, margins, and paper size, none of which QUILL
+  tracks while you write. So for these, the same cell shows "~3 of ~12
+  (estimated)" -- the tilde and the word "estimated" always travel
+  together, on purpose, so you never mistake a guess for a fact. Tune
+  the words-per-page assumption in Preferences > Navigation and QUILL Key
+  if your pages run long or short.
+- Braille documents are untouched -- they keep their own, richer page
+  system.
 
 ## A simpler installer, and a lighter one
 
