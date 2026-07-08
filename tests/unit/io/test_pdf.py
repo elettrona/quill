@@ -4,6 +4,7 @@ import sys
 import types
 from pathlib import Path
 
+from quill.core.navigation import page_starts
 from quill.io import pdf as pdf_module
 from quill.io.pdf import PdfExtractionResult, _score_pdf_text, format_pdf_document
 
@@ -102,3 +103,54 @@ def test_malformed_pdf_returns_empty_text_not_crash(monkeypatch, tmp_path: Path)
     result = pdf_module.extract_pdf_text(tmp_path / "corrupt.pdf")
     # Must not raise; the unavailable message or empty text is acceptable.
     assert isinstance(result.text, str)
+
+
+def test_pdfplumber_extraction_joins_pages_with_form_feed(monkeypatch, tmp_path: Path) -> None:
+    class _StubPage:
+        def __init__(self, text: str) -> None:
+            self._text = text
+
+        def extract_text(self) -> str:
+            return self._text
+
+    class _StubPdf:
+        def __init__(self) -> None:
+            self.pages = [_StubPage("Page one"), _StubPage("Page two"), _StubPage("Page three")]
+
+        def __enter__(self) -> _StubPdf:
+            return self
+
+        def __exit__(self, *_exc: object) -> None:
+            return None
+
+    fake_pdfplumber = types.ModuleType("pdfplumber")
+    fake_pdfplumber.open = lambda _path: _StubPdf()  # type: ignore[attr-defined]
+    monkeypatch.setitem(sys.modules, "pdfplumber", fake_pdfplumber)
+
+    result = pdf_module._extract_with_pdfplumber(tmp_path / "sample.pdf")
+
+    assert result.text.count("\f") == 2
+    assert len(page_starts(result.text)) == 3
+    assert result.page_count == 3
+
+
+def test_pypdf_extraction_joins_pages_with_form_feed(monkeypatch, tmp_path: Path) -> None:
+    class _StubPage:
+        def __init__(self, text: str) -> None:
+            self._text = text
+
+        def extract_text(self) -> str:
+            return self._text
+
+    class _StubReader:
+        def __init__(self, _path: str) -> None:
+            self.pages = [_StubPage("Page one"), _StubPage("Page two")]
+
+    fake_pypdf = types.ModuleType("pypdf")
+    fake_pypdf.PdfReader = _StubReader  # type: ignore[attr-defined]
+    monkeypatch.setitem(sys.modules, "pypdf", fake_pypdf)
+
+    result = pdf_module._extract_with_pypdf(tmp_path / "sample.pdf")
+
+    assert result.text.count("\f") == 1
+    assert len(page_starts(result.text)) == 2

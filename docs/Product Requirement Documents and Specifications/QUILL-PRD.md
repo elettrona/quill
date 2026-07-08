@@ -5253,6 +5253,16 @@ The check is wired into `python -m quill.tools.menu_lint` and exposed via 12 new
 
 **Single source of truth for product name.** `tools/generate_build_info.py`, `scripts/generate_update_feed.py`, and `scripts/build_windows_distribution.py` import `APP_DISPLAY_NAME` and `APP_ORGANIZATION` from `quill.branding` so a rebrand touches one file. The TOML path still wins when `build/version.toml` provides a value (the installer and feed can be re-branded per release); the constant is the safety net for older checkouts and dev builds.
 
+### 8.15 The Page status bar indicator (0.9.0 Beta 2, #872)
+
+Every document shows a `Page` status bar cell, on by default (unlike most cells, which are opt-in), positioned right after the line/column position cell rather than first. For PDFs, it reports an exact page count and current page, derived from page boundaries preserved as form-feed characters at import (`quill/io/pdf.py`), reusing `quill/core/navigation.py`'s previously-dormant `page_starts()`/`page_start_for_number()`. For every other format (plain text, Markdown, DOCX), it reports an **estimate** derived from word count (`page_estimate_words_per_page`, default 300, clamped 150-600, Preferences > Navigation and QUILL Key) — this is explicitly not an exact science, and the cell's text always says so: `"Page ~N of ~M (estimated)"`. The tilde and the word "estimated" always appear together, never one without the other, so an estimate is never mistaken for a fact.
+
+BRF/braille documents keep their own richer page system (the `"braille"` status cell); the generic `"page"` cell is suppressed whenever that one is active, so the two never compete for the same space.
+
+Go To Page (`Ctrl+Shift+G`, also reachable by activating the Page cell) is track-aware the same way: an exact jump for form-feed-bearing documents via the existing `page_start_for_number`, an estimated jump (word-count-derived, via `estimate_page_start_for_number`) otherwise, with the prompt text stating which kind of jump is about to happen.
+
+DOCX real page breaks are a known gap, not an oversight: DOCX import goes through Pandoc/MarkItDown text conversion (`quill/io/structured.py:_read_docx`), which does not preserve page-break positions, so DOCX stays on the estimate track pending a follow-up.
+
 ---
 
 ## 9. Accessibility, WCAG 2.2 AA conformance, and certification

@@ -361,3 +361,53 @@ def test_section_heading_in_status_bar_items() -> None:
     from quill.core.settings_normalizers import STATUS_BAR_ITEMS
 
     assert "section_heading" in STATUS_BAR_ITEMS
+
+
+def test_page_status_bar_metadata_is_registered() -> None:
+    assert MainFrame._STATUS_BAR_LABELS["page"] == "Page"
+    assert MainFrame._STATUS_BAR_WIDTHS["page"] == 220
+    assert MainFrame._STATUS_BAR_FEATURES["page"] == "core.analysis"
+
+
+class _PageEditor:
+    def __init__(self, text: str, caret: int) -> None:
+        self._text = text
+        self._caret = caret
+
+    def GetValue(self) -> str:
+        return self._text
+
+    def GetInsertionPoint(self) -> int:
+        return self._caret
+
+
+def _make_page_frame(text: str, caret: int, *, words_per_page: int = 300) -> MainFrame:
+    frame = MainFrame.__new__(MainFrame)
+    frame.settings = Settings()
+    frame.settings.page_estimate_words_per_page = words_per_page
+    frame.editor = _PageEditor(text, caret)  # type: ignore[assignment]
+    return frame
+
+
+def test_page_cell_is_estimated_when_no_form_feeds() -> None:
+    text = " ".join(["word"] * 900)  # 3 pages at 300/page
+    frame = _make_page_frame(text, 0)
+    assert frame._statusbar_text_for_item("page") == "~1 of ~3 (estimated)"
+
+
+def test_page_cell_is_exact_when_form_feeds_present() -> None:
+    text = "page one\fpage two\fpage three"
+    caret = text.index("page two")
+    frame = _make_page_frame(text, caret)
+    assert frame._statusbar_text_for_item("page") == "2 of 3"
+
+
+def test_page_cell_empty_when_editor_missing() -> None:
+    frame = MainFrame.__new__(MainFrame)
+    frame.settings = Settings()
+    assert frame._statusbar_text_for_item("page") == ""
+
+
+def test_page_help_text_mentions_go_to_page() -> None:
+    frame = _make_page_frame("hello", 0)
+    assert "Go To Page" in frame._statusbar_help_text("page")

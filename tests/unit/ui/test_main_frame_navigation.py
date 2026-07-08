@@ -2174,3 +2174,104 @@ def test_quick_nav_panel_context_no_search_query_has_no_hits() -> None:
 
 def test_quick_nav_command_mapped_to_navigation_feature() -> None:
     assert feature_for_command("navigate.quick_nav") == "core.navigate"
+
+
+def test_page_cell_activates_go_to_page() -> None:
+    frame = _build_frame("hello", insertion_point=0)
+    called: list[bool] = []
+    frame.go_to_page = lambda: called.append(True)  # type: ignore[method-assign]
+    frame._activate_statusbar_cell("page")
+    assert called == [True]
+
+
+def test_page_cell_suppressed_when_braille_active() -> None:
+    frame = _build_frame("hello", insertion_point=0)
+    frame.document = Document(
+        text="hello\fworld",
+        source_metadata={
+            "source_kind": "brf",
+            "brf_suffix": "brf",
+            "brf_cell_width": 40,
+            "brf_line_height": 25,
+            "brf_non_ascii_offsets": [],
+            "brf_had_bom": False,
+            "brf_profile": "ueb_english",
+        },
+    )
+    frame.editor.GetCurrentPos = lambda: 0  # type: ignore[attr-defined]
+    frame._get_action_suggestion = lambda: None  # type: ignore[method-assign]
+    frame._ai_engine_should_autoshow = lambda: False  # type: ignore[method-assign]
+
+    items = frame._statusbar_items()
+
+    assert "braille" in items
+    assert "page" not in items
+
+
+def _go_to_page_wx(typed_value: str) -> object:
+    class _TextEntryDialog:
+        def __init__(self, _parent: object, message: str, _title: str, value: str) -> None:
+            self.message = message
+
+        def __enter__(self) -> _TextEntryDialog:
+            return self
+
+        def __exit__(self, *_args: object) -> None:
+            return None
+
+        def GetValue(self) -> str:
+            return typed_value
+
+    # _TextEntryDialog is assigned as the class itself (not a lambda/function):
+    # a plain function stored in a dynamically-created class's dict is bound
+    # as a method when read off an instance (implicit self), which would
+    # shift every positional argument by one. A class reference isn't a
+    # descriptor, so it stays a plain callable.
+    return type(
+        "WX",
+        (),
+        {
+            "TextEntryDialog": _TextEntryDialog,
+            "ICON_ERROR": 8,
+            "OK": 16,
+            "ID_OK": 1,
+        },
+    )()
+
+
+def test_go_to_page_exact_jumps_to_form_feed_boundary() -> None:
+    text = "page one\fpage two\fpage three"
+    frame = _build_frame(text, insertion_point=0)
+    frame._wx = _go_to_page_wx("2")
+    frame._show_modal_dialog = lambda dialog, title: frame._wx.ID_OK  # type: ignore[method-assign]
+    frame.go_to_page()
+    assert frame.editor.GetInsertionPoint() == text.index("page two")
+
+
+def test_go_to_page_estimated_prompt_says_estimated() -> None:
+    text = " ".join(["word"] * 900)  # 3 pages at 300/page
+    frame = _build_frame(text, insertion_point=0)
+    frame._wx = _go_to_page_wx("1")
+    frame._show_modal_dialog = lambda dialog, title: frame._wx.ID_OK  # type: ignore[method-assign]
+    # Capture the prompt text passed to TextEntryDialog by wrapping the
+    # constructor _go_to_page_wx already installed on frame._wx.
+    captured: list[str] = []
+    original = frame._wx.TextEntryDialog
+    frame._wx.TextEntryDialog = lambda parent, message, title, value: (
+        captured.append(message) or original(parent, message, title, value)
+    )
+    frame.go_to_page()
+    assert "estimated" in captured[0].lower()
+
+
+def test_go_to_page_estimated_out_of_range_reports_total() -> None:
+    text = " ".join(["word"] * 10)  # 1 page at 300/page
+    frame = _build_frame(text, insertion_point=0)
+    frame._wx = _go_to_page_wx("5")
+    frame._show_modal_dialog = lambda dialog, title: frame._wx.ID_OK  # type: ignore[method-assign]
+    messages: list[str] = []
+    frame._show_message_box = (  # type: ignore[method-assign]
+        lambda message, *_a, **_k: messages.append(message)
+    )
+    frame.go_to_page()
+    assert "1 page" in messages[0]

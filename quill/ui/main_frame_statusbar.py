@@ -19,6 +19,7 @@ from quill.core.links import infer_markup_kind
 from quill.core.markdown_sections import current_section_at, parse_heading_blocks
 from quill.core.marks import line_column_for_position
 from quill.core.metrics import compute_document_stats
+from quill.core.navigation import estimate_page_count, estimate_page_for_position, page_starts
 from quill.core.palette import load_palette_usage, top_suggestion
 from quill.core.settings import STATUS_BAR_ITEMS, Settings, save_settings
 from quill.platform.sr_announce import announce
@@ -92,6 +93,8 @@ class StatusBarMixin:
             visible.append("suggestion")
         if "braille" not in visible and self._statusbar_braille_text():
             visible.append("braille")
+        if "page" in visible and self._statusbar_braille_text():
+            visible = [item for item in visible if item != "page"]
         # Auto-surface the AI engine cell once the user has chosen a non-Native
         # agentic engine, so the active engine is always visible while in use
         # without permanently occupying the bar for everyone else.
@@ -281,6 +284,8 @@ class StatusBarMixin:
             return self.ai_engine_status_text()
         if item == "braille":
             return self._statusbar_braille_text()
+        if item == "page":
+            return self._statusbar_page_text()
         if item == "sr_name":
             # A11Y live indicator (§8.3): show the detected screen reader name.
             # Cache the result on the instance to avoid re-running the process
@@ -395,6 +400,33 @@ class StatusBarMixin:
         except (ValueError, TypeError):
             return ""
 
+    def _statusbar_page_text(self) -> str:
+        """Return the page cell's text: exact "N of M" or "~N of ~M (estimated)".
+
+        Exact when the document's text contains at least one form-feed
+        (real page boundaries, e.g. from PDF import); otherwise estimated
+        from word count via ``page_estimate_words_per_page``. Never
+        returns one style's punctuation for the other -- the tilde and the
+        word "estimated" always travel together.
+        """
+        editor = getattr(self, "editor", None)
+        if editor is None:
+            return ""
+        try:
+            text = editor.GetValue()
+            position = editor.GetInsertionPoint()
+        except RuntimeError:
+            return ""
+        starts = page_starts(text)
+        if len(starts) > 1:
+            current = sum(1 for start in starts if start <= position)
+            current = max(1, min(current, len(starts)))
+            return f"{current} of {len(starts)}"
+        words_per_page = getattr(self.settings, "page_estimate_words_per_page", 300)
+        total = estimate_page_count(text, words_per_page)
+        current = estimate_page_for_position(text, position, words_per_page)
+        return f"~{current} of ~{total} (estimated)"
+
     def _active_brf_resolver(self) -> object | None:
         """Return a BraillePositionResolver for the active BRF document, or None.
 
@@ -468,6 +500,7 @@ class StatusBarMixin:
         labels = {
             "message": "Open notifications",
             "line_column": "Go to line",
+            "page": "Page position. Press Enter for Go To Page.",
             "word_count": "Show document statistics",
             "mode": "Toggle overwrite mode",
             "tab_mode": "Toggle Tab key mode (QUILL Key + U). Indent or insert a tab character.",
@@ -674,6 +707,7 @@ class StatusBarMixin:
         actions: dict[str, Callable[[], None]] = {
             "message": self.open_notifications,
             "line_column": self.go_to_line,
+            "page": self.go_to_page,
             "word_count": self.show_word_count,
             "mode": self.toggle_overwrite_mode,
             "tab_mode": self.toggle_tab_insert_mode,

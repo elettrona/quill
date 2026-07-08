@@ -839,3 +839,40 @@ def test_first_line_as_title_defaults_on_and_round_trips(
     # when the key is absent.
     save_settings(Settings(first_line_as_title=False))
     assert load_settings().first_line_as_title is False
+
+
+def test_page_estimate_words_per_page_defaults_to_300() -> None:
+    assert Settings().page_estimate_words_per_page == 300
+
+
+def test_page_estimate_words_per_page_clamps_on_load(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    monkeypatch.setenv("QUILL_DATA_DIR", str(tmp_path))
+    (tmp_path / "settings.json").write_text(
+        '{"page_estimate_words_per_page": 5000}', encoding="utf-8"
+    )
+    loaded = load_settings()
+    assert loaded.page_estimate_words_per_page == 600
+
+
+def test_page_estimate_words_per_page_invalid_value_falls_back(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    monkeypatch.setenv("QUILL_DATA_DIR", str(tmp_path))
+    (tmp_path / "settings.json").write_text(
+        '{"page_estimate_words_per_page": "not a number"}', encoding="utf-8"
+    )
+    loaded = load_settings()
+    assert loaded.page_estimate_words_per_page == 300
+
+
+def test_page_is_a_status_bar_item_right_after_line_column() -> None:
+    from quill.core.settings_normalizers import STATUS_BAR_ITEMS as _ITEMS
+
+    assert "page" in _ITEMS
+    assert _ITEMS.index("page") == _ITEMS.index("line_column") + 1
+
+
+def test_page_is_visible_by_default() -> None:
+    assert "page" not in Settings().status_bar_hidden

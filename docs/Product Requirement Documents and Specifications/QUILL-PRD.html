@@ -2,7 +2,7 @@
 <html xmlns="http://www.w3.org/1999/xhtml">
 <head>
   <meta charset="utf-8" />
-  <meta name="generator" content="pandoc" />
+  <meta name="generator" content="pandoc 3.10" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
   <title>QUILL-PRD</title>
   <style>
@@ -156,8 +156,12 @@
       text-decoration: none;
     }
     span.smallcaps{font-variant: small-caps;}
-    div.columns{display: flex; gap: min(4vw, 1.5em);}
-    div.column{flex: auto; overflow-x: auto;}
+    div.columns{display: flex; gap: 1.5em;}
+    div.column{flex: auto;}
+    @media screen {
+    div.columns{gap: min(4vw, 1.5em);}
+    div.column{overflow-x: auto;}
+    }
     div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
     /* The extra [class] is a hack that increases specificity enough to
        override a similar rule in reveal.js */
@@ -9328,6 +9332,40 @@ fails the build.</p>
 still wins when <code>build/version.toml</code> provides a value (the
 installer and feed can be re-branded per release); the constant is the
 safety net for older checkouts and dev builds.</p>
+<h3 id="815-the-page-status-bar-indicator-090-beta-2-872">8.15 The Page
+status bar indicator (0.9.0 Beta 2, #872)</h3>
+<p>Every document shows a <code>Page</code> status bar cell, on by
+default (unlike most cells, which are opt-in), positioned right after
+the line/column position cell rather than first. For PDFs, it reports an
+exact page count and current page, derived from page boundaries
+preserved as form-feed characters at import
+(<code>quill/io/pdf.py</code>), reusing
+<code>quill/core/navigation.py</code>'s previously-dormant
+<code>page_starts()</code>/<code>page_start_for_number()</code>. For
+every other format (plain text, Markdown, DOCX), it reports an
+<strong>estimate</strong> derived from word count
+(<code>page_estimate_words_per_page</code>, default 300, clamped
+150-600, Preferences &gt; Navigation and QUILL Key) — this is explicitly
+not an exact science, and the cell's text always says so:
+<code>"Page ~N of ~M (estimated)"</code>. The tilde and the word
+"estimated" always appear together, never one without the other, so an
+estimate is never mistaken for a fact.</p>
+<p>BRF/braille documents keep their own richer page system (the
+<code>"braille"</code> status cell); the generic <code>"page"</code>
+cell is suppressed whenever that one is active, so the two never compete
+for the same space.</p>
+<p>Go To Page (<code>Ctrl+Shift+G</code>, also reachable by activating
+the Page cell) is track-aware the same way: an exact jump for
+form-feed-bearing documents via the existing
+<code>page_start_for_number</code>, an estimated jump
+(word-count-derived, via <code>estimate_page_start_for_number</code>)
+otherwise, with the prompt text stating which kind of jump is about to
+happen.</p>
+<p>DOCX real page breaks are a known gap, not an oversight: DOCX import
+goes through Pandoc/MarkItDown text conversion
+(<code>quill/io/structured.py:_read_docx</code>), which does not
+preserve page-break positions, so DOCX stays on the estimate track
+pending a follow-up.</p>
 <hr />
 <h2 id="9-accessibility-wcag-22-aa-conformance-and-certification">9.
 Accessibility, WCAG 2.2 AA conformance, and certification</h2>
