@@ -192,6 +192,8 @@ from quill.core.menu_customization import (
 from quill.core.metrics import compute_document_stats
 from quill.core.multi_press import MultiPressDispatcher
 from quill.core.navigation import (
+    estimate_page_count,
+    estimate_page_start_for_number,
     next_block_start,
     next_heading_start,
     page_start_for_number,
@@ -15180,9 +15182,20 @@ class MainFrame(
         wx = self._wx
         text = self.editor.GetValue()
         starts = page_starts(text)
+        exact = len(starts) > 1
+        words_per_page = getattr(self.settings, "page_estimate_words_per_page", 300)
+        total_pages = len(starts) if exact else estimate_page_count(text, words_per_page)
+        prompt = (
+            f"Enter a page number (1-{total_pages}):"
+            if exact
+            else (
+                f"Enter an estimated page number (1-{total_pages}). This is "
+                "based on word count, not an exact printed page count:"
+            )
+        )
         with wx.TextEntryDialog(
             self.frame,
-            f"Enter a page number (1-{len(starts)}):",
+            prompt,
             "Go To Page",
             value="1",
         ) as dialog:
@@ -15198,10 +15211,13 @@ class MainFrame(
                 wx.ICON_ERROR | wx.OK,
             )
             return
-        target = page_start_for_number(text, page_number)
+        if exact:
+            target = page_start_for_number(text, page_number)
+        else:
+            target = estimate_page_start_for_number(text, page_number, words_per_page)
         if target is None:
             self._show_message_box(
-                f"Document has only {len(starts)} page(s).",
+                f"Document has only {total_pages} page(s).",
                 "Go To Page",
                 wx.ICON_ERROR | wx.OK,
             )
