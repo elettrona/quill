@@ -238,6 +238,15 @@ def main() -> int:
         help="Compile the generated Inno Setup script into an installer executable.",
     )
     parser.add_argument(
+        "--require-feedback-token",
+        action="store_true",
+        help=(
+            "Fail the build if QUILL_FEEDBACK_GITHUB_TOKEN is unset (release/beta/"
+            "preview packaging), so a distributable can never silently ship with a "
+            "broken Report a Bug. Omit for local test builds."
+        ),
+    )
+    parser.add_argument(
         "--iscc-path",
         type=Path,
         default=None,
@@ -264,6 +273,7 @@ def main() -> int:
         kokoro_dir=args.kokoro_dir,
         compile_installer=args.compile_installer,
         iscc_path=args.iscc_path,
+        require_feedback_token=args.require_feedback_token,
     )
     print(f"Wrote portable bundle to {bundle['portable_dir']}")
     print(f"Wrote installer template to {bundle['installer_script']}")
@@ -284,6 +294,7 @@ def build_windows_distribution(
     braille_pack_dir: Path | None = None,
     compile_installer: bool = False,
     iscc_path: Path | None = None,
+    require_feedback_token: bool = False,
 ) -> dict[str, str]:
     identity = _build_identity(pyproject.parent)
     version = identity.display_version
@@ -413,6 +424,7 @@ def build_windows_distribution(
             identity=identity,
             launcher_file_version=iss_numeric_version,
             build_cache_dir=output_dir / "_build-tools",
+            require_feedback_token=require_feedback_token,
         )
         # Flatten the runtime to the bundle root. quill.exe (a VERSIONINFO-stamped
         # pythonw.exe) can only bootstrap when its python313.dll/zip/_pth sit next
@@ -1123,6 +1135,7 @@ def bundle_embedded_python(
     build_cache_dir: Path | None = None,
     download_url: str = EMBEDDED_PYTHON_URL,
     expected_sha256: str | None = EMBEDDED_PYTHON_SHA256,
+    require_feedback_token: bool = False,
 ) -> Path:
     """Download the official Windows embeddable Python and prepare it for use.
 
@@ -1220,10 +1233,14 @@ def bundle_embedded_python(
     )
 
     print("Generating bundled feedback-hub token (quill/_feedback_token.py)...")
-    subprocess.run(
-        [str(python_exe), str(source_root / "tools" / "generate_feedback_token.py")],
-        check=False,  # best-effort: an unset QUILL_FEEDBACK_GITHUB_TOKEN must not fail the build
-    )
+    token_cmd = [str(python_exe), str(source_root / "tools" / "generate_feedback_token.py")]
+    if require_feedback_token:
+        # Release/beta/preview builds: an unset QUILL_FEEDBACK_GITHUB_TOKEN must
+        # HARD-FAIL the build, so a distributable can never silently ship with a
+        # broken bug reporter (the "No token" field regression). Local test builds
+        # leave this off and keep the lenient, empty-token behavior.
+        token_cmd.append("--require-token")
+    subprocess.run(token_cmd, check=require_feedback_token)
 
     # Copy the Quill package source into site-packages so `python -m quill`
     # works without requiring a separate wheel build.

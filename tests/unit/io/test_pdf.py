@@ -105,6 +105,40 @@ def test_malformed_pdf_returns_empty_text_not_crash(monkeypatch, tmp_path: Path)
     assert isinstance(result.text, str)
 
 
+def test_extract_pdf_text_distinguishes_missing_extractor_from_scanned_pdf(
+    monkeypatch, tmp_path: Path
+) -> None:
+    # #909: no extractor installed vs. an extractor that ran but found no text
+    # (scanned/image PDF) are different problems with different remedies, so they
+    # must produce different engine tags and messages.
+    def _absent(_path: Path) -> object:
+        raise ModuleNotFoundError("no module")
+
+    def _empty(_path: Path) -> PdfExtractionResult:
+        return PdfExtractionResult(
+            text="",
+            quality_score=0,
+            engine="pypdf",
+            page_count=1,
+            extracted_pages=0,
+            page_scores=[],
+        )
+
+    # Both extractors absent -> "not installed" remedy.
+    monkeypatch.setattr(pdf_module, "_extract_with_pdfplumber", _absent)
+    monkeypatch.setattr(pdf_module, "_extract_with_pypdf", _absent)
+    missing = pdf_module.extract_pdf_text(tmp_path / "doc.pdf")
+    assert missing.engine == "unavailable"
+    assert "not" in missing.text.lower() and "install" in missing.text.lower()
+
+    # An extractor ran but found nothing -> point at OCR, not reinstalling.
+    monkeypatch.setattr(pdf_module, "_extract_with_pdfplumber", _empty)
+    monkeypatch.setattr(pdf_module, "_extract_with_pypdf", _empty)
+    scanned = pdf_module.extract_pdf_text(tmp_path / "scan.pdf")
+    assert scanned.engine == "empty"
+    assert "ocr" in scanned.text.lower()
+
+
 def test_pdfplumber_extraction_joins_pages_with_form_feed(monkeypatch, tmp_path: Path) -> None:
     class _StubPage:
         def __init__(self, text: str) -> None:
