@@ -1836,6 +1836,21 @@ SETTING_SPECS: tuple[SettingSpec, ...] = (
         keywords=("braille", "form feed", "page break", "brf"),
         feature_id="core.braille",
     ),
+    # --- Page indicator (#872) ---------------------------------------------
+    SettingSpec(
+        "page_estimate_words_per_page",
+        "Estimated words per page",
+        "navigation",
+        "int",
+        "Used only for documents without real page breaks (plain text, "
+        "Markdown, most DOCX files) to estimate a page count from word "
+        "count. This is an approximation, not an exact printed page count -- "
+        "it does not account for fonts, margins, or paper size.",
+        minimum=150,
+        maximum=600,
+        keywords=("page", "page count", "page number", "status bar", "estimate"),
+        feature_id="core.editor",
+    ),
     SettingSpec(
         "braille_calculate_pages",
         "Calculate pages from geometry",

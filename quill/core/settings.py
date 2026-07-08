@@ -467,6 +467,10 @@ class Settings:
     # documents round-trip unchanged.
     braille_cells_per_line: int = 40
     braille_lines_per_page: int = 25
+    # Page indicator (#872): word-count basis for the estimated page count
+    # shown for documents with no real page breaks (plain text, Markdown,
+    # most DOCX). This is an approximation, not a printed page count.
+    page_estimate_words_per_page: int = 300
     braille_use_form_feeds: bool = True
     braille_calculate_pages: bool = True
     braille_save_sidecar: bool = True
@@ -1068,6 +1072,11 @@ class Settings:
         except (TypeError, ValueError):
             braille_lines_per_page = 25
         braille_lines_per_page = max(20, min(30, braille_lines_per_page))
+        try:
+            page_estimate_words_per_page = int(data.get("page_estimate_words_per_page", 300))
+        except (TypeError, ValueError):
+            page_estimate_words_per_page = 300
+        page_estimate_words_per_page = max(150, min(600, page_estimate_words_per_page))
         braille_use_form_feeds = bool(data.get("braille_use_form_feeds", True))
         braille_calculate_pages = bool(data.get("braille_calculate_pages", True))
         braille_save_sidecar = bool(data.get("braille_save_sidecar", True))
@@ -1436,6 +1445,7 @@ class Settings:
             abbreviation_backspace_behavior=abbreviation_backspace_behavior,
             braille_cells_per_line=braille_cells_per_line,
             braille_lines_per_page=braille_lines_per_page,
+            page_estimate_words_per_page=page_estimate_words_per_page,
             braille_use_form_feeds=braille_use_form_feeds,
             braille_calculate_pages=braille_calculate_pages,
             braille_save_sidecar=braille_save_sidecar,
