@@ -296,7 +296,7 @@ Use `F6` to move into it. Once there, you can move between cells and activate th
 You can reorder or hide status items through **Tools → Customize & Support → Status Bar Layout...**.
 Right-click a focused status cell to **Activate**, **Hide this item**, or open **Status bar settings...**. On the **Notifications** (or **Background Tasks**) cell the context menu also offers **Clear All Notifications**, which empties the notification list in one step without opening the dialog.
 Use **Restore Defaults** in status bar settings to reset visibility and order.
-When title mode is set to full path, Quill automatically hides the duplicate file-path status cell.
+When title mode is set to full path, Quill automatically hides the duplicate file-path status cell. The current-message cell hides itself the same way whenever its text exactly matches another currently-visible cell's — it never says the same thing twice.
 
 ### Region cycling
 
@@ -1158,29 +1158,40 @@ when you want them. **Help > Download Optional Components...** is the single pla
 to see, get, test, and remove them all. It lists each component — most important
 first: **Pandoc** (document conversion for Word, ODT, EPUB, and RTF), the
 **braille translation pack** (liblouis tables and BRF profiles for the Translation
-submenu and BRF/embossing export), the **offline speech engine** (whisper.cpp),
-**Kokoro** and **Piper** neural voices, **eSpeak NG** and **DECtalk** voices, the
-**FFmpeg** audio-export helper, the **Node.js** runtime (for Node Quillins and the
-Developer Console's TypeScript interface), the **mpv player engine**, the
-**MathCAT** math-speech engine, the very-low-resource **Vosk** engine, and any
-non-English **spell-check dictionaries**. Each row shows whether it is
-**Installed** or **Available to download** and its size, and selecting a row fills
-a plain-language description of what it enables and its impact.
+submenu and BRF/embossing export), the **offline speech engine** (a guided picker
+covering Whisper.cpp, Faster Whisper, and Vosk — see below), **Kokoro** and
+**Piper** neural voices, **eSpeak NG** and **DECtalk** voices, the **FFmpeg**
+audio-export helper, **Audio playback & MP3 chapter markers** (the mpv playback
+engine plus MP3 audiobook chapter markers, one combined download), the **Node.js**
+runtime (for Node Quillins and the Developer Console's TypeScript interface), the
+**MathCAT** math-speech engine, and any non-English **spell-check dictionaries**.
+Each row shows whether it is **Installed** or **Available to download** and its
+size, and selecting a row fills a plain-language description of what it enables
+and its impact.
 
 - **Download** fetches a not-yet-installed component — checksum-verified, with its
-  own progress.
+  own progress. The offline speech engine's row opens a guided picker instead of a
+  bare download: pick your engine (**Whisper.cpp**, light and fast; **Faster
+  Whisper**, most accurate; or **Vosk**, tiny and best for old or low-memory
+  machines), then a model, and QUILL installs both together and sets them as your
+  default in one step.
 - **Test** proves an installed component works, so you can be confident before you
   rely on it: a voice speaks a short sample so you actually hear it; the offline
   speech engine transcribes a spoken phrase and tells you what it heard; tools
-  report their version. If a component just needs one more piece — an offline
-  speech **model**, or a **voice** for a voice engine — Test takes you straight to
-  Manage Speech Models or Manage Voices to get it, rather than treating a normal
-  not-yet-finished setup as an error. QUILL only offers to send a bug report when
-  a test genuinely fails.
+  report their version. If a component just needs one more piece, Test takes you
+  straight to get it — the guided engine-and-model picker for offline speech, or
+  Manage Voices for a voice engine with no voice yet — rather than treating a
+  normal not-yet-finished setup as an error. QUILL only offers to send a bug
+  report when a test genuinely fails.
 - **Remove** deletes QUILL's downloaded copy of an installed component and turns
   its features back off (removing a voice engine you were using, for example,
   switches Read Aloud back to the system voice). It only ever removes copies QUILL
   downloaded — never a system tool or a shared install.
+- **Set as Default:** in Manage Speech Models and Manage Voices, a **Set as
+  Default** button (and a right-click option on the list) lets you pick which
+  installed model or voice QUILL uses, without needing to reach OK in just the
+  right way. Downloading a model or voice engine sets it as the default
+  automatically; use these when you want to switch back to one you already have.
 
 Everything here is optional — the base app, and Windows' built-in SAPI 5 voices,
 work without any of it — so download only what you need. In **portable mode**,
@@ -1283,12 +1294,14 @@ engines, each by installing its dependency:
   machines where the other engines are impractical. Models download from
   alphacephei.com (verified HTTPS, integrity-checked) via Manage Speech Models.
 
-When more than one engine is available, **Manage Speech Models** first asks which
-**Speech Engine** to use; QUILL remembers your choice and applies it to
-transcription, captions, and dictation. Each engine has its own models, so
-download a model after switching. All engines run **entirely on your computer**.
-Note that Faster Whisper does not label speakers — for speaker attribution, use
-the whisper.cpp speaker-detection model.
+**Manage Speech Models** is the **Dictation (Offline)** tab of the Speech Settings
+dialog; when more than one local engine is available, it asks which **Speech
+Engine** to use, and a **Set as Default** button (or a right-click option) lets
+you pick which downloaded model QUILL uses without switching engines. QUILL
+remembers your choice and applies it to transcription, captions, and dictation.
+Each engine has its own models, so download a model after switching. All engines
+run **entirely on your computer**. Note that Faster Whisper does not label
+speakers — for speaker attribution, use the whisper.cpp speaker-detection model.
 
 The offline speech **engine ships with QUILL**: enable the *offline speech engine
 (whisper.cpp)* component in the installer, or place the executable under
@@ -1304,7 +1317,11 @@ always a draft to review.
 The offline engines above keep everything on your machine. If you want a cloud
 provider as well — for example **OpenAI Whisper** for its accuracy — install the
 **OpenAI Whisper Transcription** Quillin (a bundled extension) and configure an
-OpenAI API key in AI Hub. It then appears as a provider in Manage Speech Models.
+OpenAI API key in AI Hub. It then appears as a provider on the **Dictation
+(Online)** tab of Speech Settings, kept separate from the offline engines above
+so local (install-once) and cloud (API-key, per-use) options are never mixed in
+one list. If no cloud provider is installed, that tab explains how to add one
+instead of showing an empty list.
 
 Cloud providers are **opt-in and never silent**: audio is uploaded only when you
 explicitly transcribe a file with that provider, never offline and never in Safe
@@ -2577,6 +2594,8 @@ Read Aloud uses local voices with a deterministic support policy. The Windows sy
 The **Kokoro** voice models (~120 MB), the classic **DECtalk** runtime (~2 MB), and the **eSpeak NG** engine with its voice data (~40 MB) are not bundled in the installer; the first time you choose one of these voices, QUILL downloads it for you from its own verified source (checksum-checked, with a cancelable progress window), and your other voices — including the always-present SAPI 5 system voice — keep working in the meantime. If you are **upgrading** from a version that bundled these, your existing copies are kept and keep working — you do not need to download anything.
 
 To audition a voice in **Manage Voices**, select it and use the **Preview** button. If the voice is already downloaded, Quill synthesises the preview phrase with that voice's real model; if it is not downloaded yet (for example a Kokoro voice), Quill plays a short pre-recorded sample so you can still hear it before deciding to download. The rate, volume, pitch, and speed controls apply to real synthesis, so they stay dimmed until the voice is downloaded.
+
+**Manage Voices** is the **Speech (Offline)** tab of the Speech Settings dialog — SAPI 5, DECtalk, Piper, Kokoro, and eSpeak NG. ElevenLabs (the only cloud voice) lives on its own **Speech (Online)** tab instead of sharing this list, so local and cloud voices are never mixed together. A **Set as Default** button (and a right-click option on the voice list) applies your current engine and voice choice immediately, without needing to close the dialog with OK.
 
 **Read Aloud speaks more than English.** The Windows engine lists **every voice installed on your PC, in any language** — add a voice in Windows Settings under **Time & language > Speech > Manage voices** (for example Italian's Elsa, or a Spanish, French, German, or Japanese voice) and it appears in QUILL's voice list ready to use, no download from QUILL needed. The offline neural voices go beyond English too: the **Kokoro** engine includes **Spanish, French, Hindi, Italian, and Brazilian Portuguese** voices — they are part of the same voice pack you already downloaded, so picking one just works — and the **Piper** catalog includes Italian voices (Paola and Riccardo) you can download like any other. **eSpeak NG** also offers those languages from its built-in data. Pick the voice whose language matches your document and Read Aloud, audiobook export, and batch speech all speak it correctly.
 

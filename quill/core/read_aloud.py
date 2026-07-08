@@ -85,6 +85,18 @@ def default_piper_model_dir() -> Path:
     return app_data_dir() / "piper-models"
 
 
+def resolve_piper_model_path(voice_id: str, model_dir: Path | None = None) -> Path:
+    """The on-disk ``.onnx`` file for a catalog voice id.
+
+    Mirrors the exact check :func:`list_piper_catalog_voices` uses to decide a
+    voice is installed, so callers that synthesize from a voice id resolve the
+    same file the catalog already confirmed exists -- a bare voice id (e.g.
+    ``"en_GB-alan-medium"``) is not itself a usable path.
+    """
+    d = model_dir if model_dir is not None else default_piper_model_dir()
+    return d / f"{voice_id}.onnx"
+
+
 def list_piper_catalog_voices(model_dir: Path | None = None) -> list[VoiceOption]:
     """Return all catalog Piper voices with download status and accent metadata."""
     d = model_dir if model_dir is not None else default_piper_model_dir()

@@ -95,6 +95,25 @@ def request_data_location_change(mode: str, custom_path: Path | None = None) -> 
     return target
 
 
+def pending_data_location_target() -> Path | None:
+    """The target directory queued by :func:`request_data_location_change`,
+    or None when no move is pending.
+
+    A caller offering an immediate restart (e.g. the setup wizard, mirroring
+    Preferences' existing restart offer) uses this to know whether a real
+    move was queued, since ``request_data_location_change`` applies in place
+    with no marker when the chosen target already matches the current one.
+    """
+    marker = app_data_dir().resolve() / _PENDING_MARKER_NAME
+    document = read_json(marker, None)
+    if not isinstance(document, dict):
+        return None
+    target = document.get("target")
+    if not isinstance(target, str) or not target:
+        return None
+    return Path(target)
+
+
 def apply_pending_data_location_migration() -> None:
     """Apply a pending data-location move recorded by Preferences, if any.
 

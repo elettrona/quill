@@ -4364,8 +4364,10 @@ The wx-free status model
 (<code>quill/core/optional_components.py</code>) sorts components by
 importance (Pandoc and the braille pack first) and covers every
 component QUILL can fetch — a completeness guard test asserts each
-hosted <code>release_assets</code> component is catalogued, and Piper
-and Node.js (missing before) are now listed. The dialog
+hosted <code>release_assets</code> component is catalogued (Vosk and
+libmpv are hosted assets folded into other rows rather than standalone
+ones — see below — and are explicitly exempted from that guard), and
+Piper and Node.js (missing before) are now listed. The dialog
 (<code>quill/ui/optional_components_dialog.py</code>) shows a size on
 every row and a rich, read-only description of the focused component
 (<code>describe_component</code>), and gathers the list on a worker
@@ -4387,6 +4389,28 @@ captured (<code>DownloadFailure</code>, plus the pip error logged to
 the diagnostics bundle. The scattered startup braille-pack prompt now
 routes into this hub, preselected on the braille pack with a guiding
 popup, rather than running its own installer.</p>
+<p><strong>Two rows were folded into others for a flatter, less
+repetitive list (0.9.0 Beta 2, #847).</strong> Vosk (a third offline
+dictation engine, alongside whisper.cpp and Faster Whisper) no longer
+has its own row — the hub's single "Offline speech engine" row already
+opens a guided picker to choose an engine and a model together
+(<code>quill/core/speech/guided_setup.py</code>,
+<code>quill/ui/guided_speech_dialog.py</code>); Vosk is simply a third
+<code>OfflineSpeechEngineOption</code> there, installed via the same
+<code>_ensure_offline_engine</code>/<code>install_vosk</code> path as
+the other two. Separately, mpv playback and MP3 chapter markers — two
+different Audio Studio/export extras that both happened to be
+"MP3-adjacent" — are now one combined download, <strong>"Audio playback
+&amp; MP3 chapter markers"</strong>
+(<code>_audio_extras_installed</code>,
+<code>download_audio_extras</code>), with an accurate combined size (~46
+MB) and one consent prompt that fetches only whichever half is actually
+missing. Testing whisper.cpp/Faster Whisper/Vosk with no model installed
+yet reopens the same guided picker
+(<code>open_guided_offline_speech</code>) rather than the full Speech
+Settings dialog — Test, Download, and "get the missing piece" all now
+stay inside the hub/guided-picker, never detouring into a bigger
+settings surface for what should be a one-button action.</p>
 <p><strong>Size / RAM reference (current observations, to be
 re-baselined by the footprint report).</strong>
 <code>scripts/footprint_report.py</code> emits the diffable size/machine
@@ -9366,6 +9390,94 @@ goes through Pandoc/MarkItDown text conversion
 (<code>quill/io/structured.py:_read_docx</code>), which does not
 preserve page-break positions, so DOCX stays on the estimate track
 pending a follow-up.</p>
+<h3
+id="816-speech-hub-offlineonline-split-and-set-as-default-090-beta-2-847">8.16
+Speech Hub: Offline/Online split and Set as Default (0.9.0 Beta 2,
+#847)</h3>
+<p><strong>The Speech Settings dialog splits into four tabs instead of
+two</strong> (<code>quill/ui/speech_hub_dialog.py</code>):
+<strong>Speech (Offline)</strong>, <strong>Speech (Online)</strong>,
+<strong>Dictation (Offline)</strong>, <strong>Dictation
+(Online)</strong> —
+<code>TAB_SPEECH_OFFLINE</code>/<code>TAB_SPEECH_ONLINE</code>/<code>TAB_DICTATION_OFFLINE</code>/<code>TAB_DICTATION_ONLINE</code>.
+Before this, one flat "Dictation" tab mixed local engines (whisper.cpp,
+Faster Whisper, Vosk — install once, no ongoing cost) with any
+registered cloud provider (a Quillin-based transcription service — an
+API key, a per-use network cost) in a single radio list
+(<code>build_engine_descriptors</code>); a "Read Aloud" tab did the same
+for SAPI5/DECtalk/Piper/Kokoro/ eSpeak alongside ElevenLabs. Local and
+cloud are different enough resource models that mixing them read as
+confusing. Both <code>VoiceBrowserDialog</code> (Speech) and
+<code>SpeechSetupDialog</code> (Dictation) already took their
+engine/provider list as a caller-supplied parameter, so the split is
+achieved by constructing two instances of each with a filtered list
+rather than rewriting either dialog: <code>VoiceBrowserDialog</code>'s
+<code>engine_options</code> is partitioned into the five offline engines
+and the one (<code>elevenlabs</code>) online engine at the call site
+(<code>MainFrame.open_speech_hub</code>); <code>SpeechSetupDialog</code>
+gained an <code>engine_scope: "all" | "offline" | "online"</code>
+parameter that filters <code>build_engine_descriptors()</code>'s output.
+When no cloud dictation provider is registered — the common case, since
+those arrive only via a transcription Quillin — Dictation (Online) shows
+a plain explanatory message instead of attempting to build a dialog
+around an empty engine list (a <code>wx.RadioBox</code> cannot hold zero
+choices).</p>
+<p><strong>"Set as Default" is now explicit and reachable
+everywhere</strong>, not just an implicit side effect of closing the
+dialog. Read Aloud already applied the OK button's current engine+voice
+selection as the default
+(<code>VoiceBrowserResult(action="select", ...)</code>); it now also has
+a dedicated <strong>Set as Default</strong> button and a right-click
+context menu on the voice list
+(<code>_do_set_default</code>/<code>_show_voice_context_menu</code>), so
+the choice can be made without closing the dialog. Dictation previously
+had no equivalent for the <em>model</em> (only the engine, via the
+engine radio switching <code>settings.speech_provider</code> as a side
+effect of any dispatched action) — a new
+<code>speech_default_model_id</code> setting, a <strong>Set as
+Default</strong> button, and a matching context menu
+(<code>_on_set_default</code>/<code>_show_model_context_menu</code> in
+<code>SpeechSetupDialog</code>) close that gap.
+<code>SpeechCommandsMixin._default_model_id</code> (the one function
+every dictation/transcription/ captions call site funnels through to
+pick a model) now prefers <code>speech_default_model_id</code> when it
+names a model that is actually installed, falling back to the catalog's
+recommended model otherwise. The guided offline-speech picker (§ above)
+also writes both <code>speech_provider</code> and
+<code>speech_default_model_id</code> automatically after a successful
+install, so downloading an engine + model there is itself sufficient to
+make it the default — the explicit buttons are for changing that choice
+later without re-running the picker.</p>
+<p>Fixed in the same pass: <code>settings.speech_provider</code>'s
+valid-value set had never included <code>"vosk"</code>, silently
+resetting it to <code>""</code> on load — harmless before Vosk was
+reachable from the guided picker, a real bug once it was.</p>
+<h3
+id="817-status-bar-the-message-cell-suppresses-exact-duplicates-090-beta-2">8.17
+Status bar: the Message cell suppresses exact duplicates (0.9.0 Beta
+2)</h3>
+<p>The generic <strong>Message</strong> cell
+(<code>_status_message</code>, e.g. "Ready", "Saved") is the one status
+bar cell shown by default regardless of
+<code>status_bar_order</code>/<code>status_bar_hidden</code> —
+<code>_statusbar_items()</code>
+(<code>quill/ui/main_frame_statusbar.py</code>) force-inserts it, and
+falls back to it alone when every other cell is hidden. A user report
+surfaced a real gap in that always-on guarantee: Message can end up
+showing the exact same text as another currently-visible cell (observed
+with the <strong>Page</strong> cell), which reads as a confusing
+double-announcement rather than useful information. After the rest of
+<code>_statusbar_items()</code> resolves the visible list, it now
+computes Message's own text
+(<code>_statusbar_text_for_item("message")</code>) and compares it
+against every other visible cell's text; an exact match drops Message
+from the list for that refresh. <code>any()</code> short-circuits on the
+first match, so the (rare) no-match case is the only one that pays for
+computing every other visible cell's text — and several cells already
+re-derive from the live document on every refresh (line/ column, page,
+word-count-family), so this is not a new class of cost, just one more
+consumer of it. The rule is general (any cell pair), not hard-coded to
+Page specifically.</p>
 <hr />
 <h2 id="9-accessibility-wcag-22-aa-conformance-and-certification">9.
 Accessibility, WCAG 2.2 AA conformance, and certification</h2>

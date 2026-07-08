@@ -14,6 +14,7 @@ Mode by the core layer.
 from __future__ import annotations
 
 import threading
+from collections.abc import Callable
 from typing import Any
 
 from quill.core import spellcheck
@@ -83,7 +84,12 @@ def _apply_language(host: Any, lang: str) -> None:
     host._announce(f"Spell-check language set to {name}.")
 
 
-def _download_then_apply(wx: Any, host: Any, lang: str) -> None:
+def _download_then_apply(
+    wx: Any, host: Any, lang: str, *, on_done: Callable[[bool], None] | None = None
+) -> None:
+    """Download *lang*'s dictionary and apply it. ``on_done(True)`` runs on
+    success only (the hub's reopen-on-completion callback); a standalone caller
+    with no hub to return to just omits it."""
     from quill.ui.ai_transcribe_dialog import AIProgressDialog
 
     name = spellcheck.language_display_name(lang)
@@ -129,5 +135,7 @@ def _download_then_apply(wx: Any, host: Any, lang: str) -> None:
             return
         wx.CallAfter(progress.close)
         wx.CallAfter(_apply_language, host, lang)
+        if on_done is not None:
+            wx.CallAfter(on_done, True)
 
     threading.Thread(target=_run, daemon=True).start()  # GATE-40-OK: dictionary download worker.

@@ -26,6 +26,7 @@ from __future__ import annotations
 
 import os
 import webbrowser
+from collections.abc import Callable
 from pathlib import Path
 
 from quill.core import format_ops as _fmt
@@ -755,13 +756,44 @@ class PowerToolsActionsMixin:
         self._select_tab(rep_idx)
 
     def encode_all_non_ascii(self) -> None:
-        """Replace every non-ASCII character with its HTML entity (#197)."""
+        """Replace every non-ASCII character with its HTML entity (#197).
+
+        Runs on a background thread (#906): the per-character transform loop
+        can take the better part of a minute on a large (1MB+) document, and
+        running that synchronously on the UI thread (the shared
+        ``_power_tools_transform_selection_or_document`` helper other, faster
+        power-tool commands use) froze QUILL -- and the screen reader riding
+        along with it -- for the whole duration.
+        """
         from quill.core import encoding_tools
 
-        self._power_tools_transform_selection_or_document(
-            encoding_tools.encode_non_ascii_to_entities,
-            "Converted non-ASCII characters to HTML entities",
-        )
+        if self._document_is_read_only():
+            self._set_status("Document is read-only")
+            return
+        text = self.editor.GetValue()
+        start, end = self.editor.GetSelection()
+        if start == end:
+            start, end = 0, len(text)
+        segment = text[start:end]
+
+        def _work(_progress: Callable[[str, int, int], None]) -> str:
+            return encoding_tools.encode_non_ascii_to_entities(segment)
+
+        def _done(block: object) -> None:
+            updated = text[:start] + str(block) + text[end:]
+            self._replace_document_text(updated)
+            self.document.set_text(updated)
+            self.editor.SetSelection(start, start + len(str(block)))
+            # #905: a UTF-8 BOM only makes sense when the file still has
+            # multi-byte UTF-8 content. Once every non-ASCII character is an
+            # HTML entity, the result is pure ASCII, and saving with
+            # "utf-8-sig" would keep writing a three-byte BOM prefix nothing
+            # in the file needs anymore.
+            if self.document.encoding == "utf-8-sig" and updated.isascii():
+                self.document.encoding = "utf-8"
+            self._set_status("Converted non-ASCII characters to HTML entities")
+
+        self._run_background_task("Converting non-ASCII characters", _work, _done)
 
     def reencode_file(self) -> None:
         """Save a copy of the document in a chosen text encoding (#197)."""

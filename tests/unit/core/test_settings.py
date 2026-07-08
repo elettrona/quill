@@ -274,6 +274,35 @@ def test_settings_clamps_indent_size(monkeypatch: pytest.MonkeyPatch, tmp_path: 
     assert loaded.indent_with_tabs is True
 
 
+def test_settings_speech_provider_accepts_vosk(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    # Vosk is a valid offline-speech engine choice from the guided picker; it
+    # must not be silently rejected back to "" like an unknown value would be.
+    monkeypatch.setenv("QUILL_DATA_DIR", str(tmp_path))
+    (tmp_path / "settings.json").write_text('{"speech_provider":"vosk"}', encoding="utf-8")
+    loaded = load_settings()
+    assert loaded.speech_provider == "vosk"
+
+
+def test_settings_speech_provider_rejects_unknown_value(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    monkeypatch.setenv("QUILL_DATA_DIR", str(tmp_path))
+    (tmp_path / "settings.json").write_text('{"speech_provider":"bogus"}', encoding="utf-8")
+    loaded = load_settings()
+    assert loaded.speech_provider == ""
+
+
+def test_settings_speech_default_model_id_round_trips(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    monkeypatch.setenv("QUILL_DATA_DIR", str(tmp_path))
+    save_settings(Settings(speech_default_model_id="small"))
+    loaded = load_settings()
+    assert loaded.speech_default_model_id == "small"
+
+
 def test_settings_normalize_status_bar_layout(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:

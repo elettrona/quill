@@ -3169,7 +3169,7 @@ class MenuBuilderMixin:
         )
         self.frame.Bind(
             wx.EVT_MENU,
-            lambda _e: self.open_speech_hub(0),
+            lambda _e: self.open_speech_hub(),
             id=self._id_speech_models,
         )
         self.frame.Bind(

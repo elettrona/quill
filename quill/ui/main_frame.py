@@ -233,6 +233,7 @@ from quill.core.read_aloud import (
     discover_dectalk_executable,
     discover_espeak_executable,
     discover_piper_executable,
+    resolve_piper_model_path,
     synthesize_to_file_with_dectalk,
     synthesize_to_file_with_sapi5,
     synthesize_with_espeak,
@@ -17728,7 +17729,7 @@ class MainFrame(
                         sample,
                         wav,
                         executable_path=exe,
-                        model_path=_Path(voice_id),
+                        model_path=resolve_piper_model_path(voice_id),
                     )
                 elif engine == "kokoro":
                     synthesize_with_kokoro(
@@ -17773,11 +17774,15 @@ class MainFrame(
         )
 
     def choose_read_aloud_configuration(self) -> None:
-        """Open the unified Speech Hub on the Read Aloud tab."""
-        self.open_speech_hub(0)
+        """Open the unified Speech Hub on the Speech (Offline) tab."""
+        from quill.ui.speech_hub_dialog import TAB_SPEECH_OFFLINE
+
+        self.open_speech_hub(TAB_SPEECH_OFFLINE)
 
     def open_speech_hub(self, initial_tab: int = 0) -> None:  # noqa: PLR0912,PLR0915
-        """Open the unified Speech Hub dialog (Read Aloud + Dictation tabs)."""
+        """Open the unified Speech Hub dialog: Speech and Dictation, each split
+        into Offline/Online tabs (local engines vs. API-key cloud providers,
+        #847)."""
         from quill.core.read_aloud import (
             discover_dectalk_executable,
             discover_espeak_executable,
@@ -17803,13 +17808,23 @@ class MainFrame(
 
         wx = self._wx
 
-        # --- Read Aloud kwargs ---
+        # --- Speech (Read Aloud) kwargs, split Offline/Online ---
         from quill.core.ai import elevenlabs_tts
 
         elevenlabs_ready = (
             bool(self._get_elevenlabs_api_key().strip()) and elevenlabs_tts.available()
         )
-        engine_available = {
+        offline_engine_options: list[tuple[str, str]] = [
+            ("Windows (SAPI 5)", "sapi5"),
+            ("DECtalk", "dectalk"),
+            ("Piper (neural, offline)", "piper"),
+            ("Kokoro (neural, offline)", "kokoro"),
+            ("eSpeak-NG (many languages)", "espeak"),
+        ]
+        online_engine_options: list[tuple[str, str]] = [
+            ("ElevenLabs (premium cloud)", "elevenlabs"),
+        ]
+        offline_engine_available = {
             "sapi5": True,
             "dectalk": discover_dectalk_executable(self.settings.read_aloud_dectalk_executable)
             is not None,
@@ -17817,33 +17832,37 @@ class MainFrame(
             "kokoro": kokoro_engine_ready(),
             "espeak": discover_espeak_executable(self.settings.read_aloud_espeak_executable)
             is not None,
-            "elevenlabs": elevenlabs_ready,
         }
-        engine_options: list[tuple[str, str]] = [
-            ("Windows (SAPI 5)", "sapi5"),
-            ("DECtalk", "dectalk"),
-            ("Piper (neural, offline)", "piper"),
-            ("Kokoro (neural, offline)", "kokoro"),
-            ("eSpeak-NG (many languages)", "espeak"),
-            ("ElevenLabs (premium cloud)", "elevenlabs"),
-        ]
-        current_engine = self.settings.read_aloud_engine.strip().lower() or "sapi5"
-        if current_engine not in {val for _, val in engine_options}:
-            current_engine = "sapi5"
-        read_aloud_kwargs: dict = {
-            "engine_options": engine_options,
-            "current_engine": current_engine,
+        online_engine_available = {"elevenlabs": elevenlabs_ready}
+        configured_engine = self.settings.read_aloud_engine.strip().lower() or "sapi5"
+        offline_current_engine = (
+            configured_engine
+            if configured_engine in {val for _, val in offline_engine_options}
+            else "sapi5"
+        )
+        common_ra_kwargs: dict = {
             "piper_model_dir": default_piper_model_dir(),
             "settings": self.settings,
             "preview_fn": self._preview_voice,
-            "engine_available": engine_available,
             "elevenlabs_api_key": self._get_elevenlabs_api_key() if elevenlabs_ready else "",
             "has_preview_sample": (
                 lambda eng, vid: self._voice_preview_sample_path(eng, vid) is not None
             ),
         }
+        read_aloud_offline_kwargs: dict = {
+            "engine_options": offline_engine_options,
+            "current_engine": offline_current_engine,
+            "engine_available": offline_engine_available,
+            **common_ra_kwargs,
+        }
+        read_aloud_online_kwargs: dict = {
+            "engine_options": online_engine_options,
+            "current_engine": "elevenlabs",
+            "engine_available": online_engine_available,
+            **common_ra_kwargs,
+        }
 
-        # --- Dictation kwargs ---
+        # --- Dictation kwargs, split Offline/Online ---
         registry = self._speech_registry()
         # Show every *registered* engine, not just the ones usable right now
         # (#514/#669 model-manager): an engine whose runtime isn't installed yet
@@ -17855,9 +17874,7 @@ class MainFrame(
         total_ram = detect_total_ram_gb()
         has_gpu = detect_has_gpu()
         rows = describe_models(provider, total_ram, has_gpu)  # type: ignore[arg-type]
-        dictation_kwargs: dict = {
-            "provider": provider,
-            "rows": rows,
+        common_dict_kwargs: dict = {
             "machine_summary": machine_summary(total_ram, has_gpu),
             "whispercpp_ok": resolve_whisper_executable() is not None,
             "ffmpeg_ok": ffmpeg_available(),
@@ -17870,11 +17887,35 @@ class MainFrame(
             "total_ram": total_ram,
             "has_gpu": has_gpu,
         }
+        dictation_offline_kwargs: dict = {
+            "provider": provider,
+            "rows": rows,
+            "engine_scope": "offline",
+            **common_dict_kwargs,
+        }
+        known_offline_ids = {"whispercpp", "fasterwhisper", "vosk"}
+        cloud_providers = [
+            p for p in all_providers if str(getattr(p, "id", "")) not in known_offline_ids
+        ]
+        dictation_online_kwargs: dict | None = None
+        if cloud_providers:
+            cloud_provider = (
+                next((p for p in cloud_providers if getattr(p, "id", "") == provider.id), None)
+                or cloud_providers[0]
+            )
+            dictation_online_kwargs = {
+                "provider": cloud_provider,
+                "rows": describe_models(cloud_provider, total_ram, has_gpu),  # type: ignore[arg-type]
+                "engine_scope": "online",
+                **common_dict_kwargs,
+            }
 
         hub = SpeechHubDialog(
             self.frame,
-            read_aloud_kwargs=read_aloud_kwargs,
-            dictation_kwargs=dictation_kwargs,
+            read_aloud_offline_kwargs=read_aloud_offline_kwargs,
+            read_aloud_online_kwargs=read_aloud_online_kwargs,
+            dictation_offline_kwargs=dictation_offline_kwargs,
+            dictation_online_kwargs=dictation_online_kwargs,
             initial_tab=initial_tab,
         )
         ra_result, dict_result = hub.show(self._show_modal_dialog)
@@ -17917,7 +17958,7 @@ class MainFrame(
                                 "Speech Settings",
                                 wx.ICON_INFORMATION | wx.OK,
                             )
-                            self.settings.read_aloud_engine = current_engine
+                            self.settings.read_aloud_engine = offline_current_engine
                             dict_result = None  # skip dictation processing
                     elif eng == "kokoro":
                         self.settings.read_aloud_kokoro_voice = ra_result.voice_id
@@ -17938,7 +17979,7 @@ class MainFrame(
                 elif eng == "kokoro":
                     self.settings.read_aloud_kokoro_speed = ra_result.kokoro_speed
                 save_settings(self.settings)
-                engine_label = dict(engine_options).get(eng, eng)
+                engine_label = dict(offline_engine_options + online_engine_options).get(eng, eng)
                 self._set_status(f"Read aloud configured: {engine_label}")
                 if ra_result.action == "export":
                     self.generate_speech_audio()
@@ -17974,6 +18015,10 @@ class MainFrame(
                 self.download_kokoro_engine()
             elif dict_result.action == "hf_token":
                 self.set_huggingface_token()
+            elif dict_result.action == "set_default" and dict_result.model_id:
+                self.settings.speech_default_model_id = dict_result.model_id
+                save_settings(self.settings)
+                self._announce(f"{dict_result.model_id} set as the default speech model.")
 
     def _download_piper_voice(self, voice_id: str) -> None:
         """Download a Piper ONNX voice model in the background."""
@@ -26438,6 +26483,16 @@ class MainFrame(
                 f"Profile set to {get_intent_profile(intent_id).name}. "
                 "QUILL is ready. You can personalise further any time from Help."
             )
+            # The wizard's Data Location page defers a real move to the next
+            # launch the same way Preferences does -- a first-run choice
+            # otherwise appears to be silently ignored until the second
+            # launch. Offer the same Restart Now/Later Preferences already
+            # gives, so the choice takes effect right away if wanted.
+            from quill.core.data_location import pending_data_location_target
+
+            target = pending_data_location_target()
+            if target is not None:
+                self._confirm_restart_for_data_location(target)
         elif first_run and aborted:
             # User cancelled on first run: apply minimal text_editor profile
             # so they start with a clean, quiet editor rather than the raw defaults.

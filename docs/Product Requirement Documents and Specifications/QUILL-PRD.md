@@ -2269,22 +2269,38 @@ voices (the AI Hub Services framework).
 `docs/superpowers/specs/2026-07-07-download-components-experience-design.md`).** The wx-free
 status model (`quill/core/optional_components.py`) sorts components by importance (Pandoc and
 the braille pack first) and covers every component QUILL can fetch — a completeness guard test
-asserts each hosted `release_assets` component is catalogued, and Piper and Node.js (missing
-before) are now listed. The dialog (`quill/ui/optional_components_dialog.py`) shows a size on
-every row and a rich, read-only description of the focused component (`describe_component`),
-and gathers the list on a worker thread so it opens instantly rather than stalling on tool
-version probes. For an installed component it offers **Test** — a per-component self-test that
-maintains confidence: voice engines speak a sample (the phrase lives in `scripts/phrase.txt`),
-offline STT engines run a SAPI→transcribe→compare loop and report what they heard
-(`verify_component`), and tools report their version — and **Remove**
-(`removable_path`/`remove_component`), which deletes only QUILL-downloaded copies **under the
-active data dir** (the portable data folder in portable mode; never a system tool, a bundled
-`{app}` copy, or anything outside it) and closes the loop by resetting the active Read Aloud
-engine to SAPI 5 when the removed engine was in use. Any download or self-test failure is
-captured (`DownloadFailure`, plus the pip error logged to `quill.log`) and offered as a
-one-click bug report through the diagnostics bundle. The scattered startup braille-pack prompt
-now routes into this hub, preselected on the braille pack with a guiding popup, rather than
-running its own installer.
+asserts each hosted `release_assets` component is catalogued (Vosk and libmpv are hosted
+assets folded into other rows rather than standalone ones — see below — and are explicitly
+exempted from that guard), and Piper and Node.js (missing before) are now listed. The dialog
+(`quill/ui/optional_components_dialog.py`) shows a size on every row and a rich, read-only
+description of the focused component (`describe_component`), and gathers the list on a worker
+thread so it opens instantly rather than stalling on tool version probes. For an installed
+component it offers **Test** — a per-component self-test that maintains confidence: voice
+engines speak a sample (the phrase lives in `scripts/phrase.txt`), offline STT engines run a
+SAPI→transcribe→compare loop and report what they heard (`verify_component`), and tools report
+their version — and **Remove** (`removable_path`/`remove_component`), which deletes only
+QUILL-downloaded copies **under the active data dir** (the portable data folder in portable
+mode; never a system tool, a bundled `{app}` copy, or anything outside it) and closes the loop
+by resetting the active Read Aloud engine to SAPI 5 when the removed engine was in use. Any
+download or self-test failure is captured (`DownloadFailure`, plus the pip error logged to
+`quill.log`) and offered as a one-click bug report through the diagnostics bundle. The
+scattered startup braille-pack prompt now routes into this hub, preselected on the braille
+pack with a guiding popup, rather than running its own installer.
+
+**Two rows were folded into others for a flatter, less repetitive list (0.9.0 Beta 2, #847).**
+Vosk (a third offline dictation engine, alongside whisper.cpp and Faster Whisper) no longer has
+its own row — the hub's single "Offline speech engine" row already opens a guided picker to
+choose an engine and a model together (`quill/core/speech/guided_setup.py`,
+`quill/ui/guided_speech_dialog.py`); Vosk is simply a third `OfflineSpeechEngineOption` there,
+installed via the same `_ensure_offline_engine`/`install_vosk` path as the other two. Separately,
+mpv playback and MP3 chapter markers — two different Audio Studio/export extras that both
+happened to be "MP3-adjacent" — are now one combined download, **"Audio playback & MP3 chapter
+markers"** (`_audio_extras_installed`, `download_audio_extras`), with an accurate combined size
+(~46 MB) and one consent prompt that fetches only whichever half is actually missing. Testing
+whisper.cpp/Faster Whisper/Vosk with no model installed yet reopens the same guided picker
+(`open_guided_offline_speech`) rather than the full Speech Settings dialog — Test, Download, and
+"get the missing piece" all now stay inside the hub/guided-picker, never detouring into a bigger
+settings surface for what should be a one-button action.
 
 **Size / RAM reference (current observations, to be re-baselined by the footprint report).**
 `scripts/footprint_report.py` emits the diffable size/machine baseline under
@@ -5262,6 +5278,64 @@ BRF/braille documents keep their own richer page system (the `"braille"` status 
 Go To Page (`Ctrl+Shift+G`, also reachable by activating the Page cell) is track-aware the same way: an exact jump for form-feed-bearing documents via the existing `page_start_for_number`, an estimated jump (word-count-derived, via `estimate_page_start_for_number`) otherwise, with the prompt text stating which kind of jump is about to happen.
 
 DOCX real page breaks are a known gap, not an oversight: DOCX import goes through Pandoc/MarkItDown text conversion (`quill/io/structured.py:_read_docx`), which does not preserve page-break positions, so DOCX stays on the estimate track pending a follow-up.
+
+### 8.16 Speech Hub: Offline/Online split and Set as Default (0.9.0 Beta 2, #847)
+
+**The Speech Settings dialog splits into four tabs instead of two** (`quill/ui/speech_hub_dialog.py`):
+**Speech (Offline)**, **Speech (Online)**, **Dictation (Offline)**, **Dictation (Online)** —
+`TAB_SPEECH_OFFLINE`/`TAB_SPEECH_ONLINE`/`TAB_DICTATION_OFFLINE`/`TAB_DICTATION_ONLINE`. Before
+this, one flat "Dictation" tab mixed local engines (whisper.cpp, Faster Whisper, Vosk — install
+once, no ongoing cost) with any registered cloud provider (a Quillin-based transcription
+service — an API key, a per-use network cost) in a single radio list
+(`build_engine_descriptors`); a "Read Aloud" tab did the same for SAPI5/DECtalk/Piper/Kokoro/
+eSpeak alongside ElevenLabs. Local and cloud are different enough resource models that mixing
+them read as confusing. Both `VoiceBrowserDialog` (Speech) and `SpeechSetupDialog` (Dictation)
+already took their engine/provider list as a caller-supplied parameter, so the split is achieved
+by constructing two instances of each with a filtered list rather than rewriting either dialog:
+`VoiceBrowserDialog`'s `engine_options` is partitioned into the five offline engines and the one
+(`elevenlabs`) online engine at the call site (`MainFrame.open_speech_hub`); `SpeechSetupDialog`
+gained an `engine_scope: "all" | "offline" | "online"` parameter that filters
+`build_engine_descriptors()`'s output. When no cloud dictation provider is registered — the
+common case, since those arrive only via a transcription Quillin — Dictation (Online) shows a
+plain explanatory message instead of attempting to build a dialog around an empty engine list
+(a `wx.RadioBox` cannot hold zero choices).
+
+**"Set as Default" is now explicit and reachable everywhere**, not just an implicit side effect
+of closing the dialog. Read Aloud already applied the OK button's current engine+voice selection
+as the default (`VoiceBrowserResult(action="select", ...)`); it now also has a dedicated
+**Set as Default** button and a right-click context menu on the voice list
+(`_do_set_default`/`_show_voice_context_menu`), so the choice can be made without closing the
+dialog. Dictation previously had no equivalent for the *model* (only the engine, via the engine
+radio switching `settings.speech_provider` as a side effect of any dispatched action) — a new
+`speech_default_model_id` setting, a **Set as Default** button, and a matching context menu
+(`_on_set_default`/`_show_model_context_menu` in `SpeechSetupDialog`) close that gap.
+`SpeechCommandsMixin._default_model_id` (the one function every dictation/transcription/
+captions call site funnels through to pick a model) now prefers `speech_default_model_id` when
+it names a model that is actually installed, falling back to the catalog's recommended model
+otherwise. The guided offline-speech picker (§ above) also writes both `speech_provider` and
+`speech_default_model_id` automatically after a successful install, so downloading an engine +
+model there is itself sufficient to make it the default — the explicit buttons are for changing
+that choice later without re-running the picker.
+
+Fixed in the same pass: `settings.speech_provider`'s valid-value set had never included
+`"vosk"`, silently resetting it to `""` on load — harmless before Vosk was reachable from the
+guided picker, a real bug once it was.
+
+### 8.17 Status bar: the Message cell suppresses exact duplicates (0.9.0 Beta 2)
+
+The generic **Message** cell (`_status_message`, e.g. "Ready", "Saved") is the one status bar
+cell shown by default regardless of `status_bar_order`/`status_bar_hidden` — `_statusbar_items()`
+(`quill/ui/main_frame_statusbar.py`) force-inserts it, and falls back to it alone when every
+other cell is hidden. A user report surfaced a real gap in that always-on guarantee: Message can
+end up showing the exact same text as another currently-visible cell (observed with the **Page**
+cell), which reads as a confusing double-announcement rather than useful information. After the
+rest of `_statusbar_items()` resolves the visible list, it now computes Message's own text
+(`_statusbar_text_for_item("message")`) and compares it against every other visible cell's text;
+an exact match drops Message from the list for that refresh. `any()` short-circuits on the first
+match, so the (rare) no-match case is the only one that pays for computing every other visible
+cell's text — and several cells already re-derive from the live document on every refresh (line/
+column, page, word-count-family), so this is not a new class of cost, just one more consumer of
+it. The rule is general (any cell pair), not hard-coded to Page specifically.
 
 ---
 

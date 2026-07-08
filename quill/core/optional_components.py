@@ -167,7 +167,10 @@ def _candidate_removable_path(component_id: str) -> Path | None:
             from quill.core.speech.engine_install import vosk_pack_dir
 
             return vosk_pack_dir()
-        if component_id == "libmpv":
+        if component_id == "audio_extras":
+            # Only mpv has a managed directory to remove; mutagen (the mp3
+            # half) is a pip-installed package with no separate removal path,
+            # matching its pre-merge behavior.
             from quill.core.speech.engine_install import engine_packs_dir
 
             return engine_packs_dir() / "mpv"
@@ -427,8 +430,7 @@ def _verify_presence(component_id: str) -> VerifyResult:
     detectors = {
         "braille": _braille_pack_installed,
         "mathcat": _mathcat_installed,
-        "libmpv": _libmpv_installed,
-        "mp3": _mp3_installed,
+        "audio_extras": _audio_extras_installed,
     }
     detector = detectors.get(component_id)
     if detector is None:
@@ -537,6 +539,13 @@ def _mp3_installed() -> bool:
     return is_mp3_available()
 
 
+def _audio_extras_installed() -> bool:
+    """Both halves of the bundled audio-extras download: mpv playback and MP3
+    chapter markers. Reports installed only once both are present, since the
+    hub now offers them as a single download."""
+    return _libmpv_installed() and _mp3_installed()
+
+
 def gather_optional_components() -> list[OptionalComponent]:
     """Return every optional component with its current installed status.
 
@@ -633,18 +642,6 @@ def gather_optional_components() -> list[OptionalComponent]:
             priority=80,
         ),
         OptionalComponent(
-            "mp3",
-            "MP3 chapter markers",
-            "Adds chapter markers when you export a document to an MP3 audiobook, so "
-            "players can jump between sections. MP3 export itself works without it; "
-            "this adds the embedded chapter list.",
-            TOOL,
-            _safe(_mp3_installed),
-            "~2 MB",
-            note="Provided by mutagen (GPL-2.0+); installed on demand.",
-            priority=82,
-        ),
-        OptionalComponent(
             "node",
             "Node.js runtime",
             "Runs Node (JavaScript/TypeScript) Quillins and the Developer Console's "
@@ -656,16 +653,20 @@ def gather_optional_components() -> list[OptionalComponent]:
             priority=85,
         ),
         OptionalComponent(
-            "libmpv",
-            "mpv player engine (Audio Studio playback)",
-            "A higher-fidelity playback engine for the Audio Studio's player: "
-            "gapless audio, exact seeking, and instant chapter jumps on long "
-            "books. Playback works without it on the built-in Windows engine.",
+            "audio_extras",
+            "Audio playback & MP3 chapter markers",
+            "Two optional Audio Studio/MP3-export extras, bundled as one download: "
+            "the mpv playback engine (gapless audio, exact seeking, instant chapter "
+            "jumps in the Audio Studio player) and MP3 chapter markers (a jumpable "
+            "chapter list embedded in MP3 audiobook exports). Playback and MP3 export "
+            "both work without them, on the built-in Windows engine and without "
+            "embedded chapters respectively.",
             TOOL,
-            _safe(_libmpv_installed),
-            "~44 MB",
+            _safe(_audio_extras_installed),
+            "~46 MB",
             note="mpv playback library (GPL; the download carries its licenses and a "
-            "source offer); fetched from QUILL's pinned release.",
+            "source offer) and mutagen (GPL-2.0+); fetched together from QUILL's "
+            "pinned release and PyPI respectively.",
             priority=90,
         ),
         OptionalComponent(
@@ -679,17 +680,6 @@ def gather_optional_components() -> list[OptionalComponent]:
             "~3 MB",
             note="MathCAT (MIT, daisy/MathCATForC); fetched from QUILL's pinned release.",
             priority=100,
-        ),
-        OptionalComponent(
-            "vosk",
-            "Vosk speech engine (very low resource)",
-            "A tiny offline dictation/transcription engine for old or low-memory "
-            "machines with no GPU. whisper.cpp is the default; this is the lightweight "
-            "fallback.",
-            SPEECH_ENGINE,
-            _safe(_vosk_installed),
-            "~51 MB",
-            priority=110,
         ),
     ]
     out.extend(_dictionary_components())

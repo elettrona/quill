@@ -33,24 +33,39 @@ Components** was rebuilt into one warm, guided place.
   engine listens to a spoken phrase and tells you what it heard, and tools report
   their version. There's a **Remove** button too, and a **Manage** button that
   jumps you straight to the right picker (Manage Speech Models or Manage Voices).
-- **A guided setup for offline speech.** Choosing offline dictation used to mean
-  hunting through menus. Now one step walks you through it: pick your engine —
-  **Whisper.cpp** (light and fast, works on any computer) or **Faster Whisper**
-  (most accurate) — with a plain-language explanation of each, then pick a model,
-  with the smallest one ready to go so you're transcribing within a minute. It
-  installs the engine and the model together and drops you right back in the hub.
-- **You always land back where you started.** Downloading something used to fling
-  you off into the editor or another tab. Now every download — voices, engines,
-  Pandoc, the braille pack, FFmpeg, Node.js, MathCAT, MP3 support — finishes and
-  returns you to the hub.
-- **A gentler helping hand.** If you Test a piece before it's fully set up (an
-  offline engine with no model yet, a voice engine with no voice), QUILL walks you
-  over to finish rather than treating a perfectly normal situation as an error.
-  And if a download genuinely fails, it offers to send a report with the details.
+- **A guided setup for offline speech, now with three engines.** Choosing offline
+  dictation used to mean hunting through menus. Now one step walks you through it:
+  pick your engine — **Whisper.cpp** (light and fast, works on any computer),
+  **Faster Whisper** (most accurate), or **Vosk** (tiny, for old or low-memory
+  machines) — with a plain-language explanation of each, then pick a model, with
+  the smallest one ready to go so you're transcribing within a minute. It installs
+  the engine and the model together and drops you right back in the hub. Vosk used
+  to sit as its own separate row further down the list; it's simply a third choice
+  here now, so there's exactly one place to set up offline dictation.
+- **You always land back where you started — on the row you were just on.**
+  Downloading something used to fling you off into the editor or another tab, or
+  reset the list to the top. Now every download — voices, engines, Pandoc, the
+  braille pack, FFmpeg, Node.js, MathCAT, spell-check dictionaries, MP3 support —
+  finishes, returns you to the hub, and reselects exactly the row you were working
+  with.
+- **A gentler helping hand.** If you Test a piece before it's fully set up, QUILL
+  walks you over to finish rather than treating a perfectly normal situation as an
+  error — for offline speech specifically, that now means reopening the same
+  guided engine-and-model picker above, not a bigger settings dialog. And if a
+  download genuinely fails, it offers to send a report with the details.
 - **Runs portable, stays portable.** Everything installs into your portable data
   folder when you run QUILL from a drive, so your whole setup travels with you.
-- **MP3 chapter markers**, so exported audiobooks let players jump between
-  sections, are now a one-click download here too.
+- **mpv playback and MP3 chapter markers are now one download.** Two separate
+  Audio Studio/export extras that both happened to be "MP3-adjacent" are now a
+  single "Audio playback & MP3 chapter markers" download (about 46 MB) instead of
+  two separate prompts.
+- **"Set as Default" is now a real, findable button.** Pick your favorite offline
+  speech model, or your favorite Read Aloud voice, and tell QUILL to use it from
+  now on — a button and a right-click option, right where you already are, instead
+  of a side effect of closing a dialog a particular way.
+- **Speech Settings now separates offline from online.** The Speech and Dictation
+  tabs each split into **Offline** and **Online**, so your installed-once local
+  engines and voices aren't mixed in with API-key cloud services in one long list.
 
 ## A page number, honestly presented
 
@@ -94,6 +109,15 @@ on by default, right next to your line/column position.
 - **Piper voices preview cleanly.** Also from Richard: previewing a freshly
   downloaded Piper voice failed with an internal error. Fixed — preview and saving
   audio both work.
+- **Testing a downloaded Piper voice no longer says the model file is missing.**
+  A second, separate Piper bug: the voice-preview code was looking in the wrong
+  place for the file it had just downloaded. Fixed.
+- **Offline speech-model downloads no longer crash with a cryptic Python error.**
+  Downloading a whisper.cpp or Faster Whisper model could fail partway through
+  with `'NoneType' object has no attribute 'write'` — an internal progress-bar
+  library trying to write status to a console QUILL doesn't have. Fixed.
+- **The braille pack's Test button now actually reports the installed LibLouis
+  version**, instead of always saying "unknown."
 - **DECtalk speaks instead of opening a file.** Testing a DECtalk voice in the
   installed app used to pop open a program file rather than talk. It speaks as it
   should now.
@@ -118,6 +142,10 @@ on by default, right next to your line/column position.
   arrowing across it made your screen reader say "Status Bar" before every cell.
   Now you hear it once, on arrival; after that each cell just tells you what it is
   and what it says — for example, "Position, Ln 12, Col 7."
+- **The status bar stopped repeating itself, take two.** The general Message cell
+  could end up showing the exact same text as another cell right next to it — a
+  tester noticed it happening with the Page cell. Message now goes quiet whenever
+  another visible cell is already saying the same thing, instead of saying it twice.
 - **No more doubled ampersands.** "Writing & Language," "Reading & Dictation," and
   friends sometimes read back as "Writing && Language." They spell out "and" now.
 - **AI Hub: choosing a provider stays where you put it.** Arrowing through the
@@ -145,6 +173,18 @@ on by default, right next to your line/column position.
 - **A stalled graphics-card check can't freeze the app.** The speech options'
   hardware probe ran with no timeout on the main thread every time you opened the
   dialog; it's timeout-guarded and runs once per session now.
+- **Convert Non-ASCII to HTML Entities no longer freezes QUILL on a large file.**
+  On a document over a megabyte, this could take the better part of a minute —
+  and QUILL, along with your screen reader, went unresponsive for the whole
+  time. It now runs in the background instead.
+- **Converting a UTF-8 file's non-ASCII characters no longer leaves a pointless
+  byte-order mark behind.** Once every non-ASCII character becomes an HTML
+  entity, the file is pure ASCII — but it still saved with a three-byte UTF-8
+  marker at the start. That marker is dropped when nothing in the file needs
+  it anymore.
+- **First-run "Personalise QUILL" now offers to restart** when your choice of
+  where to store data needs one to take effect — the same prompt Preferences
+  already gives, instead of the choice silently waiting for your next launch.
 - **The Outline Navigator (Ctrl+Shift+O) opens again.** It — and the EPUB and Quick
   Nav surfaces that share the same dialog — could crash instead of opening, because
   of an invalid call on the tree control's hidden root. Fixed.

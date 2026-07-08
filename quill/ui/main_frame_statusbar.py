@@ -104,6 +104,19 @@ class StatusBarMixin:
             return ["message"]
         if "message" not in visible:
             visible.insert(0, "message")
+        # The generic Message cell has nothing left to say once another
+        # visible cell already shows the exact same text -- saying it twice
+        # through two different cells is confusing noise, not information.
+        # ``any()`` short-circuits on the first match, so this only computes
+        # every other cell's text in the (rare) case nothing matches.
+        if "message" in visible:
+            message_text = self._statusbar_text_for_item("message")
+            if message_text and any(
+                self._statusbar_text_for_item(item) == message_text
+                for item in visible
+                if item != "message"
+            ):
+                visible = [item for item in visible if item != "message"]
         return visible
 
     def _statusbar_document_stats(self) -> object | None:

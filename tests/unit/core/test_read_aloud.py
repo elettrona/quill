@@ -722,6 +722,18 @@ def test_piper_catalog_includes_italian_voices(tmp_path: Path) -> None:
     assert by_id["it_IT-paola-medium"].installed is False
 
 
+def test_resolve_piper_model_path_matches_catalog_installed_check(tmp_path: Path) -> None:
+    """The path Test/Preview synthesizes from must be the same file
+    list_piper_catalog_voices() checked to decide the voice was installed --
+    a bare voice id is not a path (regression guard for "Piper model file was
+    not found" when previewing a voice the catalog already reports as
+    downloaded)."""
+    (tmp_path / "en_GB-alan-medium.onnx").write_text("model", encoding="utf-8")
+    resolved = read_aloud_module.resolve_piper_model_path("en_GB-alan-medium", tmp_path)
+    assert resolved == tmp_path / "en_GB-alan-medium.onnx"
+    assert resolved.exists()
+
+
 def test_piper_voice_download_urls_for_any_language() -> None:
     urls = piper_voice_download_urls("it_IT-paola-medium")
     assert urls is not None

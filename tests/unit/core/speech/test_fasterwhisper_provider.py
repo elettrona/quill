@@ -4,7 +4,10 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+import pytest
+
 from quill.core.speech import catalog
+from quill.core.speech.provider import SpeechModelInfo
 from quill.core.speech.providers import fasterwhisper as fw
 from quill.core.speech.service import default_registry
 
@@ -30,6 +33,36 @@ def test_pick_device_and_compute_returns_known_pair() -> None:
     device, compute = fw.pick_device_and_compute()
     assert device in {"cpu", "cuda"}
     assert compute in {"int8", "float16"}
+
+
+def test_progress_tqdm_survives_no_console_stderr(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Mirrors the same regression guard in test_whispercpp.py: QUILL's bundled
+    quill.exe is a windowed pythonw.exe with no console, so sys.stderr is None
+    there. tqdm's own bar rendering defaults to writing to sys.stderr; update()
+    must not crash with "'NoneType' object has no attribute 'write'"."""
+    pytest.importorskip("tqdm")
+    monkeypatch.setattr("sys.stderr", None)
+    calls: list[tuple[float, str]] = []
+    info = SpeechModelInfo(
+        id="small",
+        display_name="Small",
+        language_mode="multilingual",
+        approximate_size_mb=465,
+        accuracy_tier="medium",
+        speed_tier="medium",
+        recommended_use="test",
+    )
+    tqdm_cls = fw._make_progress_tqdm(info, lambda f, m: calls.append((f, m)))
+    assert tqdm_cls is not None
+    bar = tqdm_cls(total=100, disable=False)
+    try:
+        bar.update(10)
+        expected_fraction = 0.02 + 0.95 * min(10 / (465 * 1024 * 1024), 1.0)
+        assert calls == [(pytest.approx(expected_fraction), "Downloading Small...")]
+    finally:
+        bar.close()
 
 
 def test_catalog_has_recommended_and_distil() -> None:

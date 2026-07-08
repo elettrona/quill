@@ -7,14 +7,18 @@ def test_gather_includes_the_core_optional_components() -> None:
     ids = {c.component_id for c in oc.gather_optional_components()}
     assert {
         "whispercpp",
-        "vosk",
         "kokoro",
         "espeak",
         "dectalk",
         "ffmpeg",
-        "libmpv",
+        "audio_extras",
         "mathcat",
     }.issubset(ids)
+    # Vosk is a third engine choice inside the guided offline-speech picker
+    # (the "whispercpp" row), not its own hub row -- no separate "vosk" entry.
+    assert "vosk" not in ids
+    assert "libmpv" not in ids
+    assert "mp3" not in ids
 
 
 def test_status_reflects_detectors(monkeypatch) -> None:
@@ -123,12 +127,19 @@ def test_describe_component_reports_state_and_size() -> None:
 def test_every_hosted_release_asset_is_catalogued() -> None:
     """A component QUILL can fetch from its own release must appear in the dialog,
     so a future downloadable component can't silently miss it. Spell-check assets
-    map to the dynamic spell-<lang> rows and are checked separately."""
+    map to the dynamic spell-<lang> rows and are checked separately. Vosk and
+    libmpv are hosted assets but not their own hub rows: Vosk is a third engine
+    choice inside the "whispercpp" row's guided picker, and libmpv is bundled
+    into the "audio_extras" row with MP3 chapter markers."""
     from quill.core.release_assets import ASSETS
 
     ids = {c.component_id for c in oc.gather_optional_components()}
+    folded_into = {"vosk": "whispercpp", "libmpv": "audio_extras"}
     for key in ASSETS:
         if key.startswith("spell-"):
+            continue
+        if key in folded_into:
+            assert folded_into[key] in ids, f"{key!r}'s hub row {folded_into[key]!r} is missing"
             continue
         assert key in ids, f"release_assets component {key!r} is not in the download dialog"
 
@@ -367,7 +378,16 @@ def test_manage_target_routes_stt_to_models_and_voices_to_voices() -> None:
     assert oc.manage_target("spell-fr_FR") is None
 
 
-def test_gather_includes_mp3_support() -> None:
+def test_gather_includes_audio_extras() -> None:
     ids = {c.component_id for c in oc.gather_optional_components()}
-    assert "mp3" in ids  # MP3 chapter-marker support is downloadable from the hub
-    assert oc.manage_target("mp3") is None  # a tool, not a models/voices route
+    # mpv playback + MP3 chapter markers, bundled as one download from the hub.
+    assert "audio_extras" in ids
+    assert oc.manage_target("audio_extras") is None  # a tool, not a models/voices route
+
+
+def test_audio_extras_installed_only_when_both_halves_present(monkeypatch) -> None:
+    monkeypatch.setattr(oc, "_libmpv_installed", lambda: True)
+    monkeypatch.setattr(oc, "_mp3_installed", lambda: False)
+    assert oc._audio_extras_installed() is False
+    monkeypatch.setattr(oc, "_mp3_installed", lambda: True)
+    assert oc._audio_extras_installed() is True

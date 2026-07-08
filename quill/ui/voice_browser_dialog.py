@@ -253,9 +253,12 @@ class VoiceBrowserDialog:
         self._download_btn.SetName("Download voice model")
         self._export_btn = wx.Button(parent, label="E&xport to Audio File...")
         self._export_btn.SetName("Export document to audio file")
+        self._set_default_btn = wx.Button(parent, label="Set as &Default")
+        self._set_default_btn.SetName("Set selected voice as default")
         btn_row.Add(self._preview_btn, 0, wx.RIGHT, 6)
         btn_row.Add(self._download_btn, 0, wx.RIGHT, 6)
         btn_row.Add(self._export_btn, 0, wx.RIGHT, 6)
+        btn_row.Add(self._set_default_btn, 0, wx.RIGHT, 6)
 
         if not self._embed_mode:
             ok_btn = wx.Button(parent, id=wx.ID_OK)
@@ -278,6 +281,8 @@ class VoiceBrowserDialog:
         self._preview_btn.Bind(wx.EVT_BUTTON, lambda _e: self._do_preview())
         self._download_btn.Bind(wx.EVT_BUTTON, lambda _e: self._do_download())
         self._export_btn.Bind(wx.EVT_BUTTON, lambda _e: self._do_export())
+        self._set_default_btn.Bind(wx.EVT_BUTTON, lambda _e: self._do_set_default())
+        self._voice_lb.Bind(wx.EVT_CONTEXT_MENU, lambda _e: self._show_voice_context_menu())
 
         # Preview is the primary action after picking a voice, so place it right
         # after the voice list in tab order (without moving it visually) (#700).
@@ -577,6 +582,29 @@ class VoiceBrowserDialog:
             **self._collect_settings(eng),
         )
         self._dispatch_action(result)
+
+    def _do_set_default(self) -> None:
+        """Make the selected engine+voice the Read Aloud default without
+        closing the dialog -- the same result OK produces, just explicit and
+        reachable mid-session (#847 Set as Default)."""
+        self._dispatch_action(self.collect_result())
+
+    def _show_voice_context_menu(self) -> None:
+        """Right-click on a voice row: the same actions as the buttons below,
+        reached without leaving the list (keyboard: Shift+F10 / Menu key)."""
+        wx = self._wx
+        idx = self._voice_lb.GetSelection()
+        if idx == wx.NOT_FOUND or idx >= len(self._displayed_voices):
+            return
+        menu = wx.Menu()
+        preview_item = menu.Append(wx.ID_ANY, "&Preview")
+        default_item = menu.Append(wx.ID_ANY, "Set as &Default")
+        download_item = menu.Append(wx.ID_ANY, "&Download Voice...")
+        menu.Bind(wx.EVT_MENU, lambda _e: self._do_preview(), preview_item)
+        menu.Bind(wx.EVT_MENU, lambda _e: self._do_set_default(), default_item)
+        menu.Bind(wx.EVT_MENU, lambda _e: self._do_download(), download_item)
+        self._voice_lb.PopupMenu(menu)
+        menu.Destroy()
 
     def _dispatch_action(self, result: VoiceBrowserResult) -> None:
         if self._embed_mode and self._on_action is not None:

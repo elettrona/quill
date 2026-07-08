@@ -26,7 +26,7 @@ class SpeechSetupResult:
 
     action: str
     """One of: 'download' | 'remove' | 'ffmpeg' | 'engine' | 'vosk' | 'kokoro_engine'
-    | 'hf_token'."""
+    | 'hf_token' | 'set_default'."""
     model_id: str | None = None
     model_row: object | None = None
     provider_id: str | None = None
@@ -38,6 +38,7 @@ def build_engine_descriptors(
     whispercpp_ok: bool,
     faster_whisper_ok: bool,
     vosk_ok: bool,
+    engine_scope: str = "all",
 ) -> list[dict]:
     """Describe every dictation engine as a radio row (installed or not).
 
@@ -46,41 +47,49 @@ def build_engine_descriptors(
     ``install_action`` so selecting it installs the engine. Any other registered
     provider (e.g. a cloud Quillin) is appended as an already-installed engine.
     Pure and wx-free so it is unit-testable.
+
+    ``engine_scope`` narrows the list for the Dictation (Offline)/Dictation
+    (Online) tab split: "offline" is just the three local engines above;
+    "online" is just the other registered (cloud) providers; "all" (default)
+    is both, preserving the original single-tab behavior.
     """
     by_id: dict[str, object] = {}
     for provider in all_providers:
         pid = str(getattr(provider, "id", "") or "")
         if pid:
             by_id[pid] = provider
-    descriptors: list[dict] = [
-        {
-            "label": "Whisper (built in)",
-            "provider": by_id.get("whispercpp"),
-            "installed": whispercpp_ok,
-            "install_action": None,
-        },
-        {
-            "label": "Faster Whisper (faster, GPU-capable)",
-            "provider": by_id.get("fasterwhisper"),
-            "installed": faster_whisper_ok,
-            "install_action": "engine",
-        },
-        {
-            "label": "Vosk (lightweight, low RAM, no GPU)",
-            "provider": by_id.get("vosk"),
-            "installed": vosk_ok,
-            "install_action": "vosk",
-        },
-    ]
-    known = {"whispercpp", "fasterwhisper", "vosk"}
-    for pid, provider in by_id.items():
-        if pid not in known:
-            descriptors.append({
-                "label": str(getattr(provider, "display_name", pid)),
-                "provider": provider,
-                "installed": True,
+    descriptors: list[dict] = []
+    if engine_scope in ("all", "offline"):
+        descriptors += [
+            {
+                "label": "Whisper (built in)",
+                "provider": by_id.get("whispercpp"),
+                "installed": whispercpp_ok,
                 "install_action": None,
-            })
+            },
+            {
+                "label": "Faster Whisper (faster, GPU-capable)",
+                "provider": by_id.get("fasterwhisper"),
+                "installed": faster_whisper_ok,
+                "install_action": "engine",
+            },
+            {
+                "label": "Vosk (lightweight, low RAM, no GPU)",
+                "provider": by_id.get("vosk"),
+                "installed": vosk_ok,
+                "install_action": "vosk",
+            },
+        ]
+    if engine_scope in ("all", "online"):
+        known = {"whispercpp", "fasterwhisper", "vosk"}
+        for pid, provider in by_id.items():
+            if pid not in known:
+                descriptors.append({
+                    "label": str(getattr(provider, "display_name", pid)),
+                    "provider": provider,
+                    "installed": True,
+                    "install_action": None,
+                })
     return descriptors
 
 
@@ -134,6 +143,7 @@ class SpeechSetupDialog:
         all_providers: list,
         total_ram: float = 0.0,
         has_gpu: bool = False,
+        engine_scope: str = "all",
         embed_in: object | None = None,
         on_action: Callable[[SpeechSetupResult], None] | None = None,
     ) -> None:
@@ -153,6 +163,7 @@ class SpeechSetupDialog:
         self._all_providers = all_providers
         self._total_ram = total_ram
         self._has_gpu = has_gpu
+        self._engine_scope = engine_scope
         self._result: SpeechSetupResult | None = None
         self._on_action = on_action
 
@@ -272,9 +283,11 @@ class SpeechSetupDialog:
         btn_row = wx.BoxSizer(wx.HORIZONTAL)
         self._btn_download = wx.Button(parent, label="&Download Selected")
         self._btn_remove = wx.Button(parent, label="&Remove Selected")
+        self._btn_set_default = wx.Button(parent, label="Set as &Default")
         btn_hf = wx.Button(parent, label="&Hugging Face Token...")
         btn_row.Add(self._btn_download, 0, wx.RIGHT, 6)
         btn_row.Add(self._btn_remove, 0, wx.RIGHT, 6)
+        btn_row.Add(self._btn_set_default, 0, wx.RIGHT, 6)
         btn_row.Add(btn_hf, 0, wx.RIGHT, 6)
 
         if not self._embed_mode:
@@ -291,8 +304,10 @@ class SpeechSetupDialog:
 
         self._btn_download.Bind(wx.EVT_BUTTON, lambda _e: self._on_download())
         self._btn_remove.Bind(wx.EVT_BUTTON, lambda _e: self._on_remove())
+        self._btn_set_default.Bind(wx.EVT_BUTTON, lambda _e: self._on_set_default())
         btn_hf.Bind(wx.EVT_BUTTON, lambda _e: self._choose("hf_token"))
         self._model_list.Bind(wx.EVT_LISTBOX, lambda _e: self._update_buttons())
+        self._model_list.Bind(wx.EVT_CONTEXT_MENU, lambda _e: self._show_model_context_menu())
 
         self._update_buttons()
         self._sync_engine_install_button()
@@ -323,6 +338,7 @@ class SpeechSetupDialog:
         if sel == self._wx.NOT_FOUND or sel >= len(self._rows):
             self._btn_download.Enable(False)
             self._btn_remove.Enable(False)
+            self._btn_set_default.Enable(False)
             if not self._rows:
                 self._model_note.SetLabel("No models for this engine yet.")
             else:
@@ -331,8 +347,10 @@ class SpeechSetupDialog:
         installed = bool(getattr(self._rows[sel], "installed", False))
         self._btn_download.Enable(not installed)
         self._btn_remove.Enable(installed)
+        self._btn_set_default.Enable(installed)
         self._model_note.SetLabel(
-            "This model is installed — use Remove to delete it."
+            "This model is installed — use Remove to delete it, or Set as Default to "
+            "use it for Dictate/Transcribe/Captions."
             if installed
             else "This model is not installed — use Download to get it."
         )
@@ -362,6 +380,40 @@ class SpeechSetupDialog:
         )
         self._dispatch_action(result)
 
+    def _on_set_default(self) -> None:
+        sel = self._model_list.GetSelection()
+        if sel == self._wx.NOT_FOUND or sel >= len(self._rows):
+            return
+        row = self._rows[sel]
+        if not bool(getattr(row, "installed", False)):
+            return
+        result = SpeechSetupResult(
+            action="set_default",
+            model_id=str(getattr(row, "id", "")),
+            provider_id=getattr(self._provider, "id", None),
+        )
+        self._dispatch_action(result)
+
+    def _show_model_context_menu(self) -> None:
+        """Right-click on a model row: the same actions as the buttons below,
+        reached without leaving the list (keyboard: Shift+F10 / Menu key)."""
+        wx = self._wx
+        sel = self._model_list.GetSelection()
+        if sel == wx.NOT_FOUND or sel >= len(self._rows):
+            return
+        installed = bool(getattr(self._rows[sel], "installed", False))
+        menu = wx.Menu()
+        if installed:
+            remove_item = menu.Append(wx.ID_ANY, "&Remove")
+            default_item = menu.Append(wx.ID_ANY, "Set as &Default")
+            menu.Bind(wx.EVT_MENU, lambda _e: self._on_remove(), remove_item)
+            menu.Bind(wx.EVT_MENU, lambda _e: self._on_set_default(), default_item)
+        else:
+            download_item = menu.Append(wx.ID_ANY, "&Download")
+            menu.Bind(wx.EVT_MENU, lambda _e: self._on_download(), download_item)
+        self._model_list.PopupMenu(menu)
+        menu.Destroy()
+
     def _choose(self, action: str) -> None:
         result = SpeechSetupResult(
             action=action,
@@ -382,6 +434,7 @@ class SpeechSetupDialog:
             whispercpp_ok=self._whispercpp_ok,
             faster_whisper_ok=self._engine_ok,
             vosk_ok=self._vosk_ok,
+            engine_scope=self._engine_scope,
         )
 
     def _selected_engine(self) -> dict | None:

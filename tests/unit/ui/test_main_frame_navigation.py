@@ -587,6 +587,29 @@ def test_statusbar_hides_cells_for_disabled_features() -> None:
     assert "line_column" in items
 
 
+def test_statusbar_message_hides_when_it_duplicates_another_visible_cell() -> None:
+    """The generic Message cell has nothing left to say once another visible
+    cell is already showing the exact same text -- saying it twice through two
+    different cells is confusing noise, not extra information."""
+    frame = _build_frame("hello", insertion_point=0)
+    line_column_text = frame._statusbar_text_for_item("line_column")
+    frame._status_message = line_column_text
+
+    items = frame._statusbar_items()
+
+    assert "message" not in items
+    assert "line_column" in items
+
+
+def test_statusbar_message_stays_when_it_says_something_new() -> None:
+    frame = _build_frame("hello", insertion_point=0)
+    frame._status_message = "Saved"
+
+    items = frame._statusbar_items()
+
+    assert "message" in items
+
+
 def test_statusbar_hides_modified_message_when_title_shows_dirty_state() -> None:
     frame = _build_frame("hello", insertion_point=0)
     frame.document.modified = True

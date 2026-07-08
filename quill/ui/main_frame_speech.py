@@ -156,8 +156,10 @@ class SpeechCommandsMixin:
     # -- model manager ---------------------------------------------------- #
 
     def open_speech_models(self) -> None:
-        """Open the unified Speech Hub on the Dictation tab."""
-        self.open_speech_hub(1)
+        """Open the unified Speech Hub on the Dictation (Offline) tab."""
+        from quill.ui.speech_hub_dialog import TAB_DICTATION_OFFLINE
+
+        self.open_speech_hub(TAB_DICTATION_OFFLINE)
 
     def set_huggingface_token(self) -> None:
         """Store an optional Hugging Face access token for model downloads (#617).
@@ -331,24 +333,28 @@ class SpeechCommandsMixin:
         )
         if not chosen:
             return
-        if chosen.startswith("spell-"):
-            from quill.ui.spell_language import _download_then_apply
-
-            _download_then_apply(wx, self, chosen[len("spell-") :])
-            return
 
         # The hub closes itself to dispatch a download, so every handler reopens it
         # on completion -- the user is never dropped out into the editor or another
         # tab. Handlers take an on_done(success) callback for this; the guided
-        # picker and MP3 support already return to the hub themselves.
+        # picker already returns to the hub itself. Reselecting the row just
+        # downloaded (rather than reopening with no preselect, which lands on the
+        # first row) keeps the reopened hub from jarringly resetting to the top
+        # of the list.
         def _back(_ok: bool = True) -> None:
-            self.open_optional_components()
+            self.open_optional_components(preselect=chosen)
+
+        if chosen.startswith("spell-"):
+            from quill.ui.spell_language import _download_then_apply
+
+            _download_then_apply(wx, self, chosen[len("spell-") :], on_done=_back)
+            return
 
         actions = {
-            # The offline-speech row opens the guided picker (engine + model),
-            # not the bare engine download -- meet people where they are.
+            # The offline-speech row opens the guided picker (engine + model:
+            # whisper.cpp, Faster Whisper, or Vosk), not a bare engine download
+            # -- meet people where they are. There is no separate "vosk" row.
             "whispercpp": self.open_guided_offline_speech,
-            "vosk": lambda: self.download_vosk(on_done=_back),
             "kokoro": lambda: self._download_kokoro_models(on_done=_back),
             "piper": lambda: self.download_piper_exe(on_done=_back),
             "espeak": lambda: self.download_espeak_exe(on_done=_back),
@@ -357,9 +363,8 @@ class SpeechCommandsMixin:
             "pandoc": lambda: self.download_pandoc(on_done=_back),
             "node": lambda: self.download_node_runtime(on_done=_back),
             "braille": lambda: self.download_braille_pack(on_done=_back),
-            "libmpv": lambda: self.download_libmpv(on_done=_back),
+            "audio_extras": lambda: self.download_audio_extras(on_done=_back),
             "mathcat": lambda: self.download_mathcat(on_done=_back),
-            "mp3": self.download_mp3_support,
         }
         action = actions.get(chosen)
         if action is not None:
@@ -429,11 +434,14 @@ class SpeechCommandsMixin:
             self._set_status(summary)
             if getattr(result, "ok", True):
                 return
-            # An expected "needs one more piece" outcome is not a bug -- send the
-            # user to Manage Speech Models / Manage Voices to finish, don't offer
-            # a bug report (which is jarring for a normal, not-yet-downloaded state).
+            # An expected "needs one more piece" outcome is not a bug. Today the
+            # only remedy is "no offline speech model yet" -- reopen the same
+            # guided engine+model picker used for the initial download (pick a
+            # model, install it, back to the hub) rather than the full, multi-tab
+            # Speech Settings dialog; don't offer a bug report for this normal,
+            # not-yet-downloaded state.
             if getattr(result, "remedy", ""):
-                self._manage_component_models_or_voices(component_id)
+                self.open_guided_offline_speech()
                 return
             self._offer_component_bug_report(component_id, summary, getattr(result, "detail", ""))
 
@@ -528,6 +536,16 @@ class SpeechCommandsMixin:
             if not is_faster_whisper_available():
                 install_faster_whisper(progress)
                 activate_engine_packs()
+        elif engine_id == "vosk":
+            from quill.core.speech.engine_install import (
+                activate_engine_packs,
+                install_vosk,
+                is_vosk_available,
+            )
+
+            if not is_vosk_available():
+                install_vosk(progress)
+                activate_engine_packs()
 
     def _install_offline_speech(self, engine_id: str, model_id: str) -> None:
         """Install the chosen engine (if needed) and download the chosen model in
@@ -567,6 +585,15 @@ class SpeechCommandsMixin:
                 if provider is None:
                     raise RuntimeError("The speech engine was not available after installing.")
                 provider.download_model(model_id, _p)  # type: ignore[attr-defined]
+                # The engine + model just set up is what the user wants to
+                # dictate/transcribe with -- make it the default so Dictate
+                # (Offline)/Transcribe/Captions use it without a separate
+                # "Set as Default" step.
+                from quill.core.settings import save_settings
+
+                self.settings.speech_provider = engine_id
+                self.settings.speech_default_model_id = model_id
+                save_settings(self.settings)
             except Exception as exc:  # noqa: BLE001 - surface a clean message
                 wx.CallAfter(progress.close)
                 if cancel.is_set():
@@ -585,49 +612,54 @@ class SpeechCommandsMixin:
             def _done() -> None:
                 progress.switch_to_ok(
                     f"Offline speech is ready — the {model_id} model is installed.",
-                    on_ok=self.open_optional_components,
+                    on_ok=lambda: self.open_optional_components(preselect=engine_id),
                 )
 
             wx.CallAfter(_done)
 
         threading.Thread(target=_run, daemon=True).start()  # GATE-40-OK: install worker.
 
-    def download_mp3_support(self) -> None:
-        """Install MP3 chapter-marker support (mutagen) on demand from the hub,
-        then return to the Download Optional Components hub."""
+    def download_audio_extras(self, *, on_done: Callable[[bool], None] | None = None) -> None:
+        """Install the mpv playback engine and MP3 chapter-marker support together
+        (about 46 MB combined) -- one download instead of two separate prompts,
+        since both are optional Audio Studio/MP3-export extras. mpv is pinned +
+        SHA-256-verified via quill.core.release_assets; MP3 support (mutagen) is a
+        pip install. Only what is actually missing is fetched. Runs on a worker
+        thread behind one combined progress dialog, blocked in Safe Mode."""
         import threading
 
+        from quill.core.optional_components import _libmpv_installed, _mp3_installed
         from quill.core.speech.engine_install import (
             EngineInstallError,
             activate_engine_packs,
             install_mp3_support,
-            is_mp3_available,
             mp3_install_supported,
         )
         from quill.ui.ai_transcribe_dialog import AIProgressDialog
 
         wx = self._wx
-        if is_mp3_available():
-            self._show_message_box(
-                "MP3 chapter-marker support is already installed.",
-                "Download MP3 Support",
-                wx.ICON_INFORMATION | wx.OK,
-            )
+        if bool(getattr(self, "_safe_mode", False)):
+            self._announce("Downloading components is disabled in Safe Mode.")
             return
-        if not mp3_install_supported():
+        need_libmpv = not _libmpv_installed()
+        need_mp3 = not _mp3_installed() and mp3_install_supported()
+        if not need_libmpv and not need_mp3:
             self._show_message_box(
-                "This build cannot install MP3 support automatically. Install it "
-                "from a command prompt with: pip install mutagen",
-                "Download MP3 Support",
+                "Audio playback and MP3 chapter-marker support are already installed.",
+                "Audio Playback & MP3 Chapter Markers",
                 wx.ICON_INFORMATION | wx.OK,
             )
+            if on_done is not None:
+                on_done(True)
             return
         if (
             self._show_message_box(
-                "Download MP3 chapter-marker support (mutagen, about 2 MB)? It adds a "
-                "chapter list to MP3 audiobook exports so players can jump between "
-                "sections. MP3 export itself works without it.",
-                "Download MP3 Support",
+                "Download the mpv playback engine and MP3 chapter-marker support "
+                "(about 46 MB total)? mpv upgrades the Audio Studio player to "
+                "gapless audio with exact seeking; MP3 chapter markers add a "
+                "jumpable chapter list to MP3 audiobook exports. Both are "
+                "optional -- QUILL works without them.",
+                "Download Audio Playback & MP3 Chapter Markers",
                 wx.ICON_QUESTION | wx.YES_NO,
             )
             != wx.YES
@@ -636,55 +668,74 @@ class SpeechCommandsMixin:
         cancel = threading.Event()
         progress = AIProgressDialog(
             self.frame,
-            "Downloading MP3 Support",
-            "Preparing to install MP3 support...",
+            "Downloading Audio Extras",
+            "Preparing to download...",
             on_cancel=cancel.set,
             status_fn=self._set_status,
         )
         progress.show()
-        self._announce("Downloading MP3 support.")
+        self._announce("Downloading audio playback and MP3 chapter-marker support.")
         last_percent = {"value": -1}
 
-        def _p(fraction: float, message: str) -> None:
-            if cancel.is_set():
-                raise RuntimeError("MP3 support install cancelled.")
-            percent = int(max(0.0, min(1.0, fraction)) * 100)
-            if percent == last_percent["value"]:
-                return
-            last_percent["value"] = percent
-            progress.set_progress(percent, f"{message} {percent}%")
+        # Both steps report their own 0.0-1.0 fraction; map each into its share
+        # of one combined bar so the user sees a single, continuous download
+        # rather than two separate ones.
+        span = 0.5 if (need_libmpv and need_mp3) else 1.0
+
+        def _combined_progress(base: float) -> Callable[[float, str], None]:
+            def _p(fraction: float, message: str) -> None:
+                if cancel.is_set():
+                    raise RuntimeError("Download cancelled.")
+                percent = int((base + span * max(0.0, min(1.0, fraction))) * 100)
+                if percent == last_percent["value"]:
+                    return
+                last_percent["value"] = percent
+                progress.set_progress(percent, f"{message} {percent}%")
+
+            return _p
 
         def _run() -> None:
             try:
-                install_mp3_support(_p)
-                activate_engine_packs()
+                if need_libmpv:
+                    from quill.core.release_assets import fetch_component
+                    from quill.core.speech.engine_install import engine_packs_dir
+
+                    fetch_component(
+                        "libmpv",
+                        engine_packs_dir() / "mpv",
+                        progress=_combined_progress(0.0),
+                        label="Downloading the mpv player engine...",
+                    )
+                if need_mp3:
+                    install_mp3_support(_combined_progress(span if need_libmpv else 0.0))
+                    activate_engine_packs()
             except Exception as exc:  # noqa: BLE001 - surface a clean message
                 wx.CallAfter(progress.close)
                 if cancel.is_set():
-                    wx.CallAfter(self._set_status, "MP3 support install cancelled.")
-                    wx.CallAfter(self._announce, "MP3 support install cancelled.")
+                    wx.CallAfter(self._set_status, "Download cancelled.")
+                    wx.CallAfter(self._announce, "Download cancelled.")
                 else:
-                    wx.CallAfter(self._set_status, f"MP3 support install failed: {exc}")
+                    wx.CallAfter(self._set_status, f"Could not finish the download: {exc}")
                     detail = str(exc)
                     if not isinstance(exc, EngineInstallError):
                         detail = f"Unexpected error: {exc}"
                     wx.CallAfter(
                         self._offer_component_bug_report,
-                        "mp3",
-                        "MP3 support install failed.",
+                        "audio_extras",
+                        "Audio playback & MP3 chapter markers download failed.",
                         detail,
                     )
                 return
 
             def _done() -> None:
                 progress.switch_to_ok(
-                    "MP3 chapter-marker support is installed.",
-                    on_ok=self.open_optional_components,
+                    "Audio playback and MP3 chapter-marker support are installed.",
+                    on_ok=(lambda: on_done(True)) if on_done else self.open_optional_components,
                 )
 
             wx.CallAfter(_done)
 
-        threading.Thread(target=_run, daemon=True).start()  # GATE-40-OK: mp3 install worker.
+        threading.Thread(target=_run, daemon=True).start()  # GATE-40-OK: audio extras worker.
 
     def _offer_component_bug_report(self, component_id: str, summary: str, detail: str) -> None:
         """On a failed self-test, offer to send a report with the captured detail."""
@@ -777,68 +828,6 @@ class SpeechCommandsMixin:
                 on_done(ok)
 
         self._run_background_task("Downloading braille pack", _work, _finished)
-
-    def download_libmpv(self, *, on_done: Callable[[bool], None] | None = None) -> None:
-        """Fetch the mpv playback library for the Audio Studio player.
-
-        Pinned + SHA-256-verified via quill.core.release_assets (the zip carries
-        the GPL texts, mpv's Copyright, and a corresponding-source offer), on a
-        worker thread with live progress, blocked in Safe Mode. The Audio
-        Studio's player prefers libmpv automatically on its next open; nothing
-        else in QUILL changes."""
-        from quill.core.optional_components import _libmpv_installed
-
-        wx = self._wx
-        if bool(getattr(self, "_safe_mode", False)):
-            self._announce("Downloading components is disabled in Safe Mode.")
-            return
-        if _libmpv_installed():
-            again = self._show_message_box(
-                "The mpv player engine is already installed. Download QUILL's "
-                "verified copy again anyway?",
-                "mpv Player Engine",
-                wx.ICON_QUESTION | wx.YES_NO,
-            )
-            if again != wx.YES:
-                if on_done is not None:
-                    on_done(True)
-                return
-        proceed = self._show_message_box(
-            "QUILL will download the mpv playback library (about 44 MB) and verify "
-            "it. It upgrades the Audio Studio's player to gapless audio with exact "
-            "seeking; the built-in Windows engine keeps working without it. "
-            "Continue?",
-            "Download mpv Player Engine",
-            wx.ICON_INFORMATION | wx.YES_NO,
-        )
-        if proceed != wx.YES:
-            return
-
-        def _work(progress):
-            from quill.core.release_assets import fetch_component
-            from quill.core.speech.engine_install import engine_packs_dir
-
-            fetch_component(
-                "libmpv",
-                engine_packs_dir() / "mpv",
-                progress=lambda fraction, message: progress(message, int(fraction * 100), 100),
-                label="Downloading the mpv player engine...",
-            )
-            return True
-
-        def _finished(result: object) -> None:
-            ok = bool(result)
-            if ok:
-                self._announce(
-                    "mpv player engine installed. The Audio Studio's player will "
-                    "use it the next time it opens."
-                )
-            else:
-                self._announce("The mpv player engine could not be installed.")
-            if on_done is not None:
-                on_done(ok)
-
-        self._run_background_task("Downloading mpv player engine", _work, _finished)
 
     def download_mathcat(self, *, on_done: Callable[[bool], None] | None = None) -> None:
         """Fetch the MathCAT math-speech engine for Explore Equation Structure.
@@ -1931,11 +1920,16 @@ class SpeechCommandsMixin:
             self.open_speech_models()
         return None
 
-    @staticmethod
-    def _default_model_id(installed: list) -> str:
+    def _default_model_id(self, installed: list) -> str:
+        """The model id to transcribe/dictate with: the user's explicit "Set as
+        Default" choice when it is actually installed, else the catalog's
+        recommended model, else whichever model is installed first."""
         from quill.core.speech.catalog import RECOMMENDED_MODEL_ID
 
         ids = [m.id for m in installed]
+        preferred = str(getattr(self.settings, "speech_default_model_id", "") or "")
+        if preferred and preferred in ids:
+            return preferred
         return RECOMMENDED_MODEL_ID if RECOMMENDED_MODEL_ID in ids else ids[0]
 
     # -- captions --------------------------------------------------------- #

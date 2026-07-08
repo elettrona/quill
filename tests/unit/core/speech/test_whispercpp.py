@@ -231,6 +231,29 @@ def test_download_to_file_network_error_raises_coded_error(
         whispercpp._download_to_file(info, target, None)
 
 
+def test_progress_tqdm_survives_no_console_stderr(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """QUILL's bundled quill.exe is a windowed pythonw.exe with no console, so
+    sys.stderr is None there. tqdm's own bar rendering defaults to writing to
+    sys.stderr; calling update() must not crash with "'NoneType' object has no
+    attribute 'write'" (regression guard for the whisper.cpp download failure
+    with that exact message on a real bundled build)."""
+    pytest.importorskip("tqdm")
+    monkeypatch.setattr("sys.stderr", None)
+    calls: list[tuple[float, str]] = []
+    info = _sample_model_info("0" * 64)
+    tqdm_cls = whispercpp._make_progress_tqdm(info, lambda f, m: calls.append((f, m)))
+    assert tqdm_cls is not None
+    bar = tqdm_cls(total=100, disable=False)
+    try:
+        bar.update(10)
+        expected_fraction = 0.02 + 0.95 * min(10 / (465 * 1024 * 1024), 1.0)
+        assert calls == [(pytest.approx(expected_fraction), "Downloading Small...")]
+    finally:
+        bar.close()
+
+
 def test_transcribe_requires_installed_model(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
