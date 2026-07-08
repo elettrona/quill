@@ -280,6 +280,37 @@ assertions, run against each surface with real wx) before we lean on it.
   visual spell-check squiggles (Scintilla indicators are good at this), and
   confirm IME/dead-key behavior.
 
+## 8. richedit_rtf -- QuillRichEdit, the native Rich Edit wrapper (Phase 0, added 2026-07-08)
+
+- Classes: Python `wx.TextCtrl`; Win32 window class `RICHEDIT50W` -- the *same*
+  native Rich Edit control as `rich2`/the shipping default. What differs is that
+  the live control is tagged with `surface_kind = "richedit_rtf"` and carries a
+  `QuillRichEdit` wrapper (`quill/ui/richedit_rtf_surface.py`).
+- What it is: `wx.TextCtrl` with `TE_RICH2 | TE_NOHIDESEL`, built by
+  `create_richedit_rtf(...)` which falls back to a plain `wx.TextCtrl` on any
+  failure (the proven win32/stc/rtf idiom). Because the inner control is the
+  proven native control, the full editor contract (value/caret/selection/undo/
+  events) is inherited unchanged -- Phase 0 adds no behavioral risk.
+- Why it exists: the first, safe rung of the QuillRichEdit ladder toward a
+  lightweight, accessible RTF document mode (WordPad/HJPad class), and -- because
+  it gives us a *controlled* handle on the native control we already ship -- the
+  eventual home for the two open braille bugs: **#616 (JAWS cell-2 offset)** and
+  **#813 (JAWS braille not showing dots 7-8 on selection)**. Later phases add
+  native RTF I/O (`EM_STREAMIN`/`EM_STREAMOUT`), formatting (`CHARFORMAT2`/
+  `PARAFORMAT2`), and the braille instrument (the Rich Edit TOM via
+  `EM_GETOLEINTERFACE`, plus `EM_SETEDITSTYLE`) -- driven directly on the native
+  HWND rather than the generic-window bridge that failed for `stc`.
+- Phase 0 scope (what is wired now): the surface, its `surface_kind`, capability
+  reporting, a read-only class-name diagnostic (confirms it is a genuine
+  `RICHEDIT50W`), gating behind the two Experimental switches, and the settings/
+  combo/explainer wiring + contract tests. RTF load/save (`load_rtf`/`save_rtf`)
+  are declared but raise `RichEditRtfUnavailableError` until Phase 1 so nothing
+  silently half-works.
+- Risk: Low. Identical native control to the default, gated, with fallback; no
+  existing surface changes.
+- Full magical proposal (phases, integration map, braille payoff): see the
+  QuillRichEdit proposal in the team backlog doc.
+
 ## Preference ranking
 
 Ranked for QUILL's audience (screen-reader-first, data integrity above all):

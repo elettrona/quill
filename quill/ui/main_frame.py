@@ -4313,6 +4313,14 @@ class MainFrame(
                 from quill.ui.stc_edit_surface import create_stc_editor
 
                 editor = create_stc_editor(wx, splitter, wx.TE_MULTILINE | border)
+            elif kind == "richedit_rtf":
+                # QuillRichEdit Phase 0: the SAME native RichEdit (RICHEDIT50W)
+                # the default uses, tagged with its own surface_kind so later
+                # phases (native RTF via EM_STREAMIN/OUT, the braille instrument
+                # for #616/#813) have a home. Falls back to a wx.TextCtrl.
+                from quill.ui.richedit_rtf_surface import create_richedit_rtf
+
+                editor = create_richedit_rtf(wx, splitter, wx.TE_MULTILINE | border)
             elif kind == "plain":
                 # A Notepad-style EDIT control -- editable, reports its value to
                 # JAWS/NVDA correctly, and avoids the RichEdit leading-cell quirk (#616).
@@ -11085,6 +11093,21 @@ class MainFrame(
                 "to the TextCtrl contract: EVT_TEXT forwarding, LF-only line "
                 "endings, load-without-dirty, and caret moves that collapse the "
                 "selection. Full risk analysis: docs/planning/editor-surface-experiments.md."
+            ),
+            "richedit_rtf": (
+                "QuillRichEdit (Phase 0) — the native Rich Edit control, wrapped.\n\n"
+                "User: behaves exactly like the default RichEdit 3.0 today — it IS "
+                "the same native control (RICHEDIT50W). This is the first, safe step "
+                "toward a lightweight RTF mode: a distinct surface we can later teach "
+                "to open and save real RTF and to expose selection to braille "
+                "properly. Nothing to see yet beyond the default; use it to confirm "
+                "the surface loads and to A/B braille against RichEdit 3.0.\n\n"
+                "Technical: a wx.TextCtrl with TE_RICH2 | TE_NOHIDESEL tagged with "
+                "surface_kind='richedit_rtf' and a QuillRichEdit wrapper "
+                "(quill/ui/richedit_rtf_surface.py). RTF load/save (EM_STREAMIN/"
+                "EM_STREAMOUT), formatting, and the #616/#813 braille instrument are "
+                "later phases; Phase 0 adds the surface only. Falls back to a plain "
+                "control on any failure."
             ),
             "win32": (
                 "Native Win32 EDIT — the pywin32 spike (Windows only).\n\n"
