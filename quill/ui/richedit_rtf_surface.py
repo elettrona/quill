@@ -136,7 +136,7 @@ if sys.platform == "win32":  # pragma: no cover - exercised only on Windows with
             wintypes.HWND,
             wintypes.UINT,
             wintypes.WPARAM,
-            ctypes.c_void_p,  # lParam is an EDITSTREAM* here
+            wintypes.LPARAM,  # lParam is an EDITSTREAM* here (passed as its address)
         )
         _SendMessageW.restype = ctypes.c_ssize_t  # LRESULT
         _WIN32_STREAMING = True
@@ -144,8 +144,37 @@ if sys.platform == "win32":  # pragma: no cover - exercised only on Windows with
         _WIN32_STREAMING = False
 
 
+# ------------------------------------------------------------------------- #
+# On-device finding (2026-07-08): the ctypes EDITSTREAM callback approach below
+# HARD-CRASHES msftedit.dll (RICHEDIT50W) with an access violation the moment the
+# control invokes the callback -- reproduced for EM_STREAMOUT *and* EM_STREAMIN,
+# SF_TEXT *and* SF_RTF, on a wx.TextCtrl(TE_RICH2) *and* a raw CreateWindowExW
+# RICHEDIT50W, shown or not, with WINFUNCTYPE *and* CFUNCTYPE. The thunk is
+# provably valid (callable directly from Python; the EDITSTREAM struct holds the
+# correct 24-byte layout and callback address), and ctypes callbacks work here
+# with other guarded system APIs (EnumWindows visits 746 windows fine) -- so this
+# is specific to msftedit's EM_STREAM dispatch, not a general callback problem.
+# Conclusion: pure-ctypes EM_STREAM is not viable; native RTF I/O needs the
+# callback to live in compiled C -- a small native helper .pyd (the
+# _quill_table_uia precedent, scripts/build_table_uia.py) -- or the TOM
+# ITextDocument::Save/Open path (file/IStream based, no Python callback). Until
+# one of those lands, streaming is GATED OFF so it can never crash QUILL. The
+# _stream_in/_stream_out below are kept as the reference implementation for the
+# native-helper port. See docs/planning/editor-surface-experiments.md §8.
+_NATIVE_STREAM_CALLBACK_BLOCKED = True
+_STREAM_BLOCKED_MESSAGE = (
+    "Native RTF streaming is not available yet: the EM_STREAMIN/EM_STREAMOUT "
+    "ctypes callback crashes the native Rich Edit control (msftedit), so it is "
+    "disabled pending a compiled-C helper. See the QuillRichEdit Phase 1 notes."
+)
+
+
 def _stream_in(hwnd: int, data: bytes, fmt: int) -> None:
-    """Push *data* into the Rich Edit *hwnd* via EM_STREAMIN (replaces content)."""
+    """Push *data* into the Rich Edit *hwnd* via EM_STREAMIN (replaces content).
+
+    Reference implementation only -- see _NATIVE_STREAM_CALLBACK_BLOCKED above;
+    this path is gated off because it crashes msftedit from a ctypes callback.
+    """
     if not (_WIN32_STREAMING and hwnd):
         raise RichEditRtfError("Native RTF streaming is unavailable on this control.")
     pump = _StreamInPump(data)
@@ -162,7 +191,7 @@ def _stream_in(hwnd: int, data: bytes, fmt: int) -> None:
 
     callback = _EDITSTREAMCALLBACK(_callback)
     stream = _EDITSTREAM(0, 0, callback)
-    _SendMessageW(hwnd, _EM_STREAMIN, fmt, ctypes.byref(stream))
+    _SendMessageW(hwnd, _EM_STREAMIN, fmt, ctypes.addressof(stream))
     if stream.dwError:
         raise RichEditRtfError(f"EM_STREAMIN failed (dwError={stream.dwError}).")
 
@@ -185,7 +214,7 @@ def _stream_out(hwnd: int, fmt: int) -> bytes:
 
     callback = _EDITSTREAMCALLBACK(_callback)
     stream = _EDITSTREAM(0, 0, callback)
-    _SendMessageW(hwnd, _EM_STREAMOUT, fmt, ctypes.byref(stream))
+    _SendMessageW(hwnd, _EM_STREAMOUT, fmt, ctypes.addressof(stream))
     if stream.dwError:
         raise RichEditRtfError(f"EM_STREAMOUT failed (dwError={stream.dwError}).")
     return sink.getvalue()
@@ -211,12 +240,14 @@ def _window_class_name(hwnd: int) -> str:
 class QuillRichEdit:
     """Thin, replaceable wrapper API over the native Rich Edit control.
 
-    Phase 1 wires native RTF load/save (``get_rtf``/``set_rtf``/``load_rtf``/
-    ``save_rtf``) on the control's HWND. ``get_plain_text`` returns the control's
-    plain value so QUILL's offset-anchored features (search, spell, AI, read
-    aloud, braille) keep working unchanged. Formatting (Phase 2) and the braille
-    instrument (Phase 3) still raise / are not wired. ``surface`` is the live
-    ``wx.TextCtrl`` (TE_RICH2).
+    Phase 1 implemented native RTF load/save over ``EM_STREAMIN``/``EM_STREAMOUT``,
+    but on-device testing found the ctypes EDITSTREAM callback hard-crashes
+    msftedit (see ``_NATIVE_STREAM_CALLBACK_BLOCKED``). So RTF I/O is **gated off**
+    -- ``get_rtf``/``set_rtf``/``load_rtf``/``save_rtf`` raise a clear
+    :class:`RichEditRtfUnavailableError` instead of crashing, pending a compiled-C
+    helper or the TOM path. ``get_plain_text`` returns the control's plain value
+    so QUILL's offset-anchored features (search, spell, AI, read aloud, braille)
+    keep working unchanged. ``surface`` is the live ``wx.TextCtrl`` (TE_RICH2).
     """
 
     def __init__(self, surface: Any) -> None:
@@ -231,18 +262,27 @@ class QuillRichEdit:
             return 0
 
     def rtf_streaming_available(self) -> bool:
-        """True when native RTF load/save can run (Windows + a real HWND)."""
-        return bool(_WIN32_STREAMING and self.hwnd())
+        """True when native RTF load/save can actually run.
 
-    # -- RTF I/O (Phase 1) -------------------------------------------------- #
+        False while ``_NATIVE_STREAM_CALLBACK_BLOCKED`` -- the ctypes EDITSTREAM
+        callback crashes msftedit, so streaming is gated off even though the
+        Windows glue and a real HWND are present.
+        """
+        return bool(_WIN32_STREAMING and self.hwnd() and not _NATIVE_STREAM_CALLBACK_BLOCKED)
+
+    # -- RTF I/O (implemented, but gated off pending a safe callback) -------- #
 
     def get_rtf(self) -> bytes:
-        """Return the document as RTF bytes (EM_STREAMOUT)."""
-        return _stream_out(self.hwnd(), _SF_RTF)
+        """Return the document as RTF bytes (EM_STREAMOUT) -- gated off, see notes."""
+        if not self.rtf_streaming_available():
+            raise RichEditRtfUnavailableError(_STREAM_BLOCKED_MESSAGE)
+        return _stream_out(self.hwnd(), _SF_RTF)  # reference path; unreached while blocked
 
     def set_rtf(self, data: bytes) -> None:
-        """Replace the document with RTF bytes (EM_STREAMIN)."""
-        _stream_in(self.hwnd(), data, _SF_RTF)
+        """Replace the document with RTF bytes (EM_STREAMIN) -- gated off, see notes."""
+        if not self.rtf_streaming_available():
+            raise RichEditRtfUnavailableError(_STREAM_BLOCKED_MESSAGE)
+        _stream_in(self.hwnd(), data, _SF_RTF)  # reference path; unreached while blocked
 
     def load_rtf(self, path: str) -> None:
         """Load an RTF file into the control via native streaming."""
@@ -289,9 +329,11 @@ class QuillRichEdit:
             "rtf_save": rtf,
             "formatting_commands": False,
             "notes": (
-                "Phase 1: native Windows Rich Edit (RICHEDIT50W) with RTF load/save "
-                "via EM_STREAMIN/EM_STREAMOUT. Formatting (Phase 2) and the braille "
-                "instrument (Phase 3) are not wired yet."
+                "Native Windows Rich Edit (RICHEDIT50W). RTF load/save is "
+                "implemented over EM_STREAMIN/EM_STREAMOUT but GATED OFF: the "
+                "ctypes EDITSTREAM callback crashes msftedit, so it awaits a "
+                "compiled-C helper (or the TOM ITextDocument path). Formatting "
+                "and the braille instrument are later phases."
             ),
         }
 
@@ -325,10 +367,12 @@ class QuillRichEdit:
         works on the device, with zero document text included and no mutation.
         """
         if not self.rtf_streaming_available():
+            if _NATIVE_STREAM_CALLBACK_BLOCKED:
+                return "gated off (EDITSTREAM callback crashes msftedit; awaiting native helper)"
             return "not run (no native handle)"
         try:
             data = self.get_rtf()
-        except RichEditRtfError as exc:
+        except (RichEditRtfError, RichEditRtfUnavailableError) as exc:
             return f"failed ({exc})"
         signed = data[:6].startswith(b"{\\rtf")
         return f"{len(data)} bytes, RTF signature: {'yes' if signed else 'no'}"

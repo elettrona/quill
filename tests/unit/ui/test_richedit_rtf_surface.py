@@ -102,34 +102,40 @@ def test_stream_out_sink_accumulates_bytes() -> None:
     assert sink.getvalue() == b"{\\rtf1 hi}"
 
 
-def test_phase1_capabilities_and_no_handle_boundaries() -> None:
-    # Phase 1 reports itself; without a real HWND, RTF I/O raises RichEditRtfError
-    # (a clear failure, never a silent no-op), and the self-test reports, never raises.
+def test_rtf_streaming_is_gated_off_never_crashes() -> None:
+    # On-device testing found the ctypes EDITSTREAM callback hard-crashes msftedit,
+    # so streaming is gated off (_NATIVE_STREAM_CALLBACK_BLOCKED). RTF I/O must
+    # RAISE a clear error -- never invoke the crashing native path, never no-op.
     import quill.ui.richedit_rtf_surface as mod
 
-    wrapper = mod.QuillRichEdit(_FakeSurface("plain text here"))
-    assert wrapper.rtf_streaming_available() is False  # hwnd 0
-    caps = wrapper.capabilities()
-    assert caps["phase"] == 1 and caps["native_control"] is True
-    assert caps["rtf_load"] is False and caps["rtf_save"] is False  # follows availability
+    assert mod._NATIVE_STREAM_CALLBACK_BLOCKED is True
 
-    calls = (
-        lambda: wrapper.load_rtf("x.rtf"),
-        lambda: wrapper.save_rtf("x.rtf"),
-        wrapper.get_rtf,
-    )
+    wrapper = mod.QuillRichEdit(_FakeSurface("plain text here"))
+    assert wrapper.rtf_streaming_available() is False  # gated off
+    caps = wrapper.capabilities()
+    assert caps["rtf_load"] is False and caps["rtf_save"] is False
+    assert "gated off" in caps["notes"].lower() or "crash" in caps["notes"].lower()
+
+    calls = (lambda: wrapper.load_rtf("x.rtf"), lambda: wrapper.save_rtf("x.rtf"), wrapper.get_rtf)
     for call in calls:
         try:
             call()
-        except mod.RichEditRtfError:
+        except (mod.RichEditRtfUnavailableError, mod.RichEditRtfError):
             pass
         else:  # pragma: no cover - defensive
-            raise AssertionError("RTF I/O with no handle must raise RichEditRtfError")
+            raise AssertionError("gated-off RTF I/O must raise, not run the crashing path")
 
     ok, detail = wrapper.self_test_rtf_roundtrip()
-    assert ok is False and isinstance(detail, str)  # no HWND here, but must not raise
+    assert ok is False and isinstance(detail, str)  # reports, never raises
     # Plain-text extraction still works for search/spell/AI/read-aloud.
     assert wrapper.get_plain_text() == "plain text here"
+
+
+def test_diagnostic_reports_the_gating() -> None:
+    import quill.ui.richedit_rtf_surface as mod
+
+    summary = mod.QuillRichEdit(_FakeSurface()).accessibility_diagnostic_summary()
+    assert "gated off" in summary.lower()
 
 
 def test_formatting_is_the_phase2_stub() -> None:

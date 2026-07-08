@@ -301,22 +301,59 @@ assertions, run against each surface with real wx) before we lean on it.
 - **Phase 0 (done):** the surface, `surface_kind`, capability reporting, a
   read-only class-name diagnostic (confirms a genuine `RICHEDIT50W`), the two
   Experimental gates, and the settings/combo/explainer wiring + contract tests.
-- **Phase 1 (done):** native **RTF load/save** -- `QuillRichEdit.get_rtf` /
-  `set_rtf` / `load_rtf` / `save_rtf` drive `EM_STREAMIN` / `EM_STREAMOUT` with an
-  `EDITSTREAM` callback on the HWND (`SF_RTF`). The byte-pump seams
-  (`_StreamInPump` / `_StreamOutSink`) are pure and unit-tested cross-platform;
-  the diagnostic runs a safe, read-only `EM_STREAMOUT` probe (byte count + RTF
-  signature, no content) so a tester can confirm streaming on the device.
-  `get_plain_text()` returns the control's plain value so search/spell/AI/read
-  aloud keep working. **Needs on-device verification** (JAWS + a real RTF file);
-  no live HWND exists in CI.
+- **Phase 1 (attempted; native path blocked -- see post-mortem below):** RTF
+  load/save was implemented over `EM_STREAMIN` / `EM_STREAMOUT` with an
+  `EDITSTREAM` callback (`QuillRichEdit.get_rtf`/`set_rtf`/`load_rtf`/`save_rtf`,
+  `SF_RTF`), but **on-device testing found the ctypes callback hard-crashes
+  msftedit**, so streaming is **gated off** (`_NATIVE_STREAM_CALLBACK_BLOCKED`):
+  the methods raise a clear `RichEditRtfUnavailableError` and never invoke the
+  crashing path. The pure byte-pump seams (`_StreamInPump`/`_StreamOutSink`) are
+  unit-tested and the native `_stream_in`/`_stream_out` are kept as the reference
+  implementation for a compiled-C port. `get_plain_text()` returns the control's
+  plain value so search/spell/AI/read-aloud keep working.
 - **Phase 2 (not wired):** formatting via `CHARFORMAT2` / `PARAFORMAT2`
   (`apply_bold` etc. raise `RichEditRtfUnavailableError`).
 - **Phase 3 (not wired):** the braille instrument -- the Rich Edit TOM via
   `EM_GETOLEINTERFACE`, plus `EM_SETEDITSTYLE` -- for #616 / #813.
 - Risk: Low. Identical native control to the default, gated, with fallback; RTF
-  streaming is additive and guarded (raises a clear `RichEditRtfError`, never a
-  silent no-op); no existing surface changes.
+  streaming is guarded off (raises a clear error, never crashes); no existing
+  surface changes.
+
+### 2026-07-08 EM_STREAM ctypes-callback crash: post-mortem
+
+Driving `EM_STREAMOUT`/`EM_STREAMIN` from a Python `ctypes` callback
+**hard-crashes msftedit** (`RICHEDIT50W`) with an access violation the instant
+the control invokes the callback. Reproduced and narrowed on-device:
+
+| Variable | Tried | Result |
+|----------|-------|--------|
+| Control | wx `TextCtrl(TE_RICH2)` and raw `CreateWindowExW('RICHEDIT50W')` | both crash |
+| Format | `SF_TEXT` and `SF_RTF` | both crash |
+| Convention | `WINFUNCTYPE` (stdcall) and `CFUNCTYPE` | both crash |
+| lParam | `byref(stream)` and `addressof(stream)` | both crash |
+| Realization | window shown + `Yield()` and never shown | both crash |
+| OLE | with and without `CoInitialize` | both crash |
+
+Ruled out: **the thunk is valid** (callable directly from Python; the
+`EDITSTREAM` struct is 24 bytes, `pfnCallback` at offset 16, holding the correct
+address), and **ctypes callbacks work here with other guarded system APIs**
+(`EnumWindows` visits 746 windows fine). The crash is specific to msftedit's
+`EM_STREAM` dispatch of a libffi closure -- not a general callback problem, not
+CFG in the blanket sense, not wx, not control state.
+
+Verdict: pure-ctypes `EM_STREAM` is not viable. Two paths forward, both keeping
+the callback out of Python:
+
+1. **A small native helper `.pyd`** owning the `EDITSTREAM` callback in compiled
+   C, exposing `load_rtf(hwnd, bytes)` / `save_rtf(hwnd) -> bytes`. QUILL already
+   ships exactly this shape of helper (`_quill_table_uia`,
+   `scripts/build_table_uia.py`) -- the proven precedent.
+2. **The TOM path:** `EM_GETOLEINTERFACE` -> `ITextDocument::Save`/`Open` to a
+   file or `IStream` -- no Python callback at all, so no crash surface. Also the
+   natural home for the Phase 3 selection (#813) work.
+
+Until one lands, the surface ships Phase 0 behavior (a native Rich Edit clone of
+the default) with RTF I/O gated off and honestly reported.
 
 ## Preference ranking
 

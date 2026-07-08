@@ -558,19 +558,21 @@ generic-window bridge that failed for <code>stc</code>.</li>
 diagnostic (confirms a genuine <code>RICHEDIT50W</code>), the two
 Experimental gates, and the settings/combo/explainer wiring + contract
 tests.</li>
-<li><strong>Phase 1 (done):</strong> native <strong>RTF
-load/save</strong> -- <code>QuillRichEdit.get_rtf</code> /
-<code>set_rtf</code> / <code>load_rtf</code> / <code>save_rtf</code>
-drive <code>EM_STREAMIN</code> / <code>EM_STREAMOUT</code> with an
-<code>EDITSTREAM</code> callback on the HWND (<code>SF_RTF</code>). The
-byte-pump seams (<code>_StreamInPump</code> /
-<code>_StreamOutSink</code>) are pure and unit-tested cross-platform;
-the diagnostic runs a safe, read-only <code>EM_STREAMOUT</code> probe
-(byte count + RTF signature, no content) so a tester can confirm
-streaming on the device. <code>get_plain_text()</code> returns the
-control's plain value so search/spell/AI/read aloud keep working.
-<strong>Needs on-device verification</strong> (JAWS + a real RTF file);
-no live HWND exists in CI.</li>
+<li><strong>Phase 1 (attempted; native path blocked -- see post-mortem
+below):</strong> RTF load/save was implemented over
+<code>EM_STREAMIN</code> / <code>EM_STREAMOUT</code> with an
+<code>EDITSTREAM</code> callback
+(<code>QuillRichEdit.get_rtf</code>/<code>set_rtf</code>/<code>load_rtf</code>/<code>save_rtf</code>,
+<code>SF_RTF</code>), but <strong>on-device testing found the ctypes
+callback hard-crashes msftedit</strong>, so streaming is <strong>gated
+off</strong> (<code>_NATIVE_STREAM_CALLBACK_BLOCKED</code>): the methods
+raise a clear <code>RichEditRtfUnavailableError</code> and never invoke
+the crashing path. The pure byte-pump seams
+(<code>_StreamInPump</code>/<code>_StreamOutSink</code>) are unit-tested
+and the native <code>_stream_in</code>/<code>_stream_out</code> are kept
+as the reference implementation for a compiled-C port.
+<code>get_plain_text()</code> returns the control's plain value so
+search/spell/AI/read-aloud keep working.</li>
 <li><strong>Phase 2 (not wired):</strong> formatting via
 <code>CHARFORMAT2</code> / <code>PARAFORMAT2</code>
 (<code>apply_bold</code> etc. raise
@@ -579,10 +581,84 @@ no live HWND exists in CI.</li>
 Rich Edit TOM via <code>EM_GETOLEINTERFACE</code>, plus
 <code>EM_SETEDITSTYLE</code> -- for #616 / #813.</li>
 <li>Risk: Low. Identical native control to the default, gated, with
-fallback; RTF streaming is additive and guarded (raises a clear
-<code>RichEditRtfError</code>, never a silent no-op); no existing
-surface changes.</li>
+fallback; RTF streaming is guarded off (raises a clear error, never
+crashes); no existing surface changes.</li>
 </ul>
+<h3
+id="2026-07-08-em_stream-ctypes-callback-crash-post-mortem">2026-07-08
+EM_STREAM ctypes-callback crash: post-mortem</h3>
+<p>Driving <code>EM_STREAMOUT</code>/<code>EM_STREAMIN</code> from a
+Python <code>ctypes</code> callback <strong>hard-crashes
+msftedit</strong> (<code>RICHEDIT50W</code>) with an access violation
+the instant the control invokes the callback. Reproduced and narrowed
+on-device:</p>
+<table>
+<thead>
+<tr>
+<th>Variable</th>
+<th>Tried</th>
+<th>Result</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Control</td>
+<td>wx <code>TextCtrl(TE_RICH2)</code> and raw
+<code>CreateWindowExW('RICHEDIT50W')</code></td>
+<td>both crash</td>
+</tr>
+<tr>
+<td>Format</td>
+<td><code>SF_TEXT</code> and <code>SF_RTF</code></td>
+<td>both crash</td>
+</tr>
+<tr>
+<td>Convention</td>
+<td><code>WINFUNCTYPE</code> (stdcall) and <code>CFUNCTYPE</code></td>
+<td>both crash</td>
+</tr>
+<tr>
+<td>lParam</td>
+<td><code>byref(stream)</code> and <code>addressof(stream)</code></td>
+<td>both crash</td>
+</tr>
+<tr>
+<td>Realization</td>
+<td>window shown + <code>Yield()</code> and never shown</td>
+<td>both crash</td>
+</tr>
+<tr>
+<td>OLE</td>
+<td>with and without <code>CoInitialize</code></td>
+<td>both crash</td>
+</tr>
+</tbody>
+</table>
+<p>Ruled out: <strong>the thunk is valid</strong> (callable directly
+from Python; the <code>EDITSTREAM</code> struct is 24 bytes,
+<code>pfnCallback</code> at offset 16, holding the correct address), and
+<strong>ctypes callbacks work here with other guarded system
+APIs</strong> (<code>EnumWindows</code> visits 746 windows fine). The
+crash is specific to msftedit's <code>EM_STREAM</code> dispatch of a
+libffi closure -- not a general callback problem, not CFG in the blanket
+sense, not wx, not control state.</p>
+<p>Verdict: pure-ctypes <code>EM_STREAM</code> is not viable. Two paths
+forward, both keeping the callback out of Python:</p>
+<ol type="1">
+<li><strong>A small native helper <code>.pyd</code></strong> owning the
+<code>EDITSTREAM</code> callback in compiled C, exposing
+<code>load_rtf(hwnd, bytes)</code> /
+<code>save_rtf(hwnd) -&gt; bytes</code>. QUILL already ships exactly
+this shape of helper (<code>_quill_table_uia</code>,
+<code>scripts/build_table_uia.py</code>) -- the proven precedent.</li>
+<li><strong>The TOM path:</strong> <code>EM_GETOLEINTERFACE</code> -&gt;
+<code>ITextDocument::Save</code>/<code>Open</code> to a file or
+<code>IStream</code> -- no Python callback at all, so no crash surface.
+Also the natural home for the Phase 3 selection (#813) work.</li>
+</ol>
+<p>Until one lands, the surface ships Phase 0 behavior (a native Rich
+Edit clone of the default) with RTF I/O gated off and honestly
+reported.</p>
 <h2 id="preference-ranking">Preference ranking</h2>
 <p>Ranked for QUILL's audience (screen-reader-first, data integrity
 above all):</p>
