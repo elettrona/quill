@@ -815,3 +815,36 @@ def test_kokoro_is_not_bundled_and_installs_on_demand() -> None:
     # The engines users actually need offline stay bundled.
     assert "speech" in DEFAULT_BUNDLED_DEPENDENCY_GROUPS
     assert "ui" in DEFAULT_BUNDLED_DEPENDENCY_GROUPS
+
+
+def test_dev_cache_ignore_excludes_local_tool_caches_but_keeps_real_source(
+    tmp_path: Path,
+) -> None:
+    """A contributor's local mypy/pytest/ruff caches (or stray __pycache__)
+    must never leak into a shipped build via the quill/ source copy -- they're
+    only present because tools happened to run on this machine, and a mypy
+    cache alone can be tens of MB of pure bloat for an end user."""
+    from scripts.build_windows_distribution import _DEV_CACHE_IGNORE
+
+    source = tmp_path / "quill"
+    (source / "core").mkdir(parents=True)
+    (source / "core" / "settings.py").write_text("x = 1\n", encoding="utf-8")
+    (source / "__pycache__").mkdir()
+    (source / "__pycache__" / "settings.cpython-313.pyc").write_bytes(b"\x00")
+    (source / "io" / ".mypy_cache" / "3.13").mkdir(parents=True)
+    (source / "io" / ".mypy_cache" / "3.13" / "settings.data.json").write_text(
+        "{}", encoding="utf-8"
+    )
+    (source / ".pytest_cache").mkdir()
+    (source / ".ruff_cache").mkdir()
+
+    dest = tmp_path / "copied"
+    import shutil
+
+    shutil.copytree(source, dest, ignore=_DEV_CACHE_IGNORE)
+
+    assert (dest / "core" / "settings.py").exists()
+    assert not (dest / "__pycache__").exists()
+    assert not (dest / "io" / ".mypy_cache").exists()
+    assert not (dest / ".pytest_cache").exists()
+    assert not (dest / ".ruff_cache").exists()
