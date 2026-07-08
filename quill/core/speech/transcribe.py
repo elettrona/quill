@@ -51,18 +51,41 @@ def has_installed_offline_model(registry: SpeechProviderRegistry | None = None) 
     )
 
 
+def provider_has_installed_model(
+    provider_id: str, registry: SpeechProviderRegistry | None = None
+) -> bool:
+    """True when the specific offline provider ``provider_id`` has a model on disk.
+
+    Used by the guided self-test to gate on the *selected* engine rather than any
+    engine (:func:`has_installed_offline_model`), so testing Faster Whisper while
+    only whisper.cpp has a model correctly reports "no model yet" for the choice.
+    """
+    reg = registry if registry is not None else _default_registry()
+    for provider in reg.available():
+        if str(getattr(provider, "id", "")) == provider_id and _is_offline(provider):
+            return bool(provider.list_installed_models())
+    return False
+
+
 def _provider_and_model(
-    registry: SpeechProviderRegistry, preferred_model_id: str | None
+    registry: SpeechProviderRegistry,
+    preferred_model_id: str | None,
+    preferred_provider_id: str | None = None,
 ) -> tuple[SpeechToTextProvider, str]:
     """Pick an available provider and an installed model id to transcribe with.
 
-    Prefers ``preferred_model_id`` when an available provider has it installed;
-    otherwise uses the first installed model of the first available provider.
-    Raises :class:`SpeechError` when no offline provider has a usable model.
+    When ``preferred_provider_id`` is given, only that provider is considered, so
+    a self-test can prove the exact engine the user selected rather than whichever
+    happens to be first. Otherwise prefers ``preferred_model_id`` when an
+    available provider has it installed, else the first installed model of the
+    first available provider. Raises :class:`SpeechError` when no matching offline
+    provider has a usable model.
     """
     for provider in registry.available():
         if not _is_offline(provider):
             continue  # cloud providers are used only via explicit consented UI
+        if preferred_provider_id and str(getattr(provider, "id", "")) != preferred_provider_id:
+            continue
         installed = provider.list_installed_models()
         if not installed:
             continue
@@ -71,6 +94,11 @@ def _provider_and_model(
                 if model.id == preferred_model_id:
                     return provider, model.id
         return provider, installed[0].id
+    if preferred_provider_id:
+        raise SpeechError(
+            f"The '{preferred_provider_id}' engine has no installed model yet. "
+            "Download one in Manage Speech Models, then try again."
+        )
     raise SpeechError(
         "No offline speech model is installed. Open Tools > Speech > Whisperer > "
         "Manage Speech Models to download one, then try again."
@@ -83,15 +111,18 @@ def transcribe_audio_file(
     model_id: str | None = None,
     language: str | None = None,
     registry: SpeechProviderRegistry | None = None,
+    provider_id: str | None = None,
 ) -> TranscriptionResult:
     """Transcribe ``source_path`` with the best available offline provider.
 
-    ``model_id`` is preferred when installed; otherwise the first installed model
-    is used. Raises :class:`SpeechError` (or a subclass) when no offline provider
-    with an installed model is available, or when the provider itself fails.
+    ``provider_id`` pins the engine (used by the guided self-test to prove the
+    selected engine); ``model_id`` is preferred when installed; otherwise the
+    first installed model is used. Raises :class:`SpeechError` (or a subclass)
+    when no matching offline provider with an installed model is available, or
+    when the provider itself fails.
     """
     reg = registry if registry is not None else _default_registry()
-    provider, resolved_model_id = _provider_and_model(reg, model_id)
+    provider, resolved_model_id = _provider_and_model(reg, model_id, provider_id)
     request = TranscriptionRequest(
         source_path=Path(source_path),
         model_id=resolved_model_id,
@@ -102,5 +133,6 @@ def transcribe_audio_file(
 
 __all__ = [
     "has_installed_offline_model",
+    "provider_has_installed_model",
     "transcribe_audio_file",
 ]

@@ -147,3 +147,32 @@ def test_provider_label_treats_broken_provider_as_not_installed() -> None:
 
 def test_provider_label_falls_back_when_name_missing() -> None:
     assert SpeechSetupDialog._provider_label(object()) == "Engine (not installed)"
+
+
+def test_guided_status_banner_and_test_button_are_wired() -> None:
+    """The guided Engine->Model->Test->Default flow: a status banner driven by the
+    wx-free guided_setup.dictation_setup_status, and a Test button that dispatches
+    the 'test' action so the host can run the engine self-test."""
+    src = _MODULE_PATH.read_text(encoding="utf-8")
+    # Status banner is rendered from the pure journey helper, not ad-hoc strings.
+    assert "dictation_setup_status" in src
+    assert "def _refresh_status" in src and "def _compute_status" in src
+    assert "_status_headline" in src and "_status_next" in src
+    # Test button exists and dispatches the new action.
+    assert "def _on_test" in src
+    assert 'action="test"' in src
+    assert "self._btn_test" in src
+    # Test availability follows the journey state (engine + model ready).
+    assert "self._btn_test.Enable(self._compute_status().can_test)" in src
+    # A screen reader hears each new step: the banner announces via announce_cb
+    # when the headline changes (GATE-12), not silently.
+    assert "announce_cb" in src
+    assert "self._announce_cb" in src
+
+
+def test_model_list_preselects_a_row_for_a_one_click_next_step() -> None:
+    """Step 2/Test is one action: the model list auto-selects an installed model,
+    else the recommended one, else the first row."""
+    src = _MODULE_PATH.read_text(encoding="utf-8")
+    assert "SetSelection(" in src
+    assert 'getattr(r, "recommended", False)' in src

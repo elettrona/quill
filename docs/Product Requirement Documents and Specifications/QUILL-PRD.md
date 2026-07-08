@@ -2287,20 +2287,35 @@ download or self-test failure is captured (`DownloadFailure`, plus the pip error
 scattered startup braille-pack prompt now routes into this hub, preselected on the braille
 pack with a guiding popup, rather than running its own installer.
 
-**Two rows were folded into others for a flatter, less repetitive list (0.9.0 Beta 2, #847).**
+**Rows were folded together for a flatter, less repetitive list (0.9.0 Beta 2, #847).**
 Vosk (a third offline dictation engine, alongside whisper.cpp and Faster Whisper) no longer has
-its own row — the hub's single "Offline speech engine" row already opens a guided picker to
+its own row — the hub's single **"Dictation (offline speech)"** row (renamed from "Offline speech
+engine (whisper.cpp)" so it names the outcome, not the implementation) opens a guided picker to
 choose an engine and a model together (`quill/core/speech/guided_setup.py`,
 `quill/ui/guided_speech_dialog.py`); Vosk is simply a third `OfflineSpeechEngineOption` there,
 installed via the same `_ensure_offline_engine`/`install_vosk` path as the other two. Separately,
-mpv playback and MP3 chapter markers — two different Audio Studio/export extras that both
-happened to be "MP3-adjacent" — are now one combined download, **"Audio playback & MP3 chapter
-markers"** (`_audio_extras_installed`, `download_audio_extras`), with an accurate combined size
-(~46 MB) and one consent prompt that fetches only whichever half is actually missing. Testing
-whisper.cpp/Faster Whisper/Vosk with no model installed yet reopens the same guided picker
-(`open_guided_offline_speech`) rather than the full Speech Settings dialog — Test, Download, and
-"get the missing piece" all now stay inside the hub/guided-picker, never detouring into a bigger
-settings surface for what should be a one-button action.
+FFmpeg (compressed-audio export), mpv playback, and MP3 chapter markers — three export/playback
+extras — are now one row, **"Audio: export, playback & chapters"** (`_audio_extras_installed`,
+`download_audio_extras`; FFmpeg is fetched on demand at export time via `download_ffmpeg`, not as
+part of the row's own download), so there is one place for audio extras instead of three; the
+standalone FFmpeg row is gone. Node.js moved to the bottom of the list as the least-used extra
+(`priority=110`).
+
+**The dictation setup is a guided Engine→Model→Test→Default journey (0.9.0 Beta 2).** A wx-free
+brain, `guided_setup.dictation_setup_status()` (unit-tested), computes the three-step state
+(install an engine → download a model → test and set default) for the selected engine, and the
+Manage Speech Models panel (`quill/ui/speech_setup_dialog.py`) renders it as a "you are here / do
+this next" banner, auto-selects the recommended model, and adds an inline **Test dictation**
+button. The panel now opens on the user's *saved* engine even when it is not yet ready
+(`MainFrame._configured_speech_provider`, resolved from the shared registry so the engine radio
+matches by identity), instead of the availability-fallback default that made it always reopen on
+whisper.cpp. The self-test (`optional_components.verify_component` → `_verify_stt`) targets the
+selected provider (`transcribe.transcribe_audio_file(provider_id=…)` /
+`provider_has_installed_model`) so it proves the exact engine, covers all three offline engines
+(whisper.cpp, Faster Whisper, Vosk), and logs its OK/FAILED outcome so failures reach the
+diagnostics bundle rather than living only in the on-screen dialog. Testing an engine with no
+model installed still routes to the guided picker (`open_guided_offline_speech`); a successful
+Test also persists the engine as the dictation default, so Test doubles as "use this engine."
 
 **Size / RAM reference (current observations, to be re-baselined by the footprint report).**
 `scripts/footprint_report.py` emits the diffable size/machine baseline under

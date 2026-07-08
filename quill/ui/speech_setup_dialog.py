@@ -25,8 +25,8 @@ class SpeechSetupResult:
     """What the dialog wants to happen after it closes."""
 
     action: str
-    """One of: 'download' | 'remove' | 'ffmpeg' | 'engine' | 'vosk' | 'kokoro_engine'
-    | 'hf_token' | 'set_default'."""
+    """One of: 'download' | 'remove' | 'test' | 'ffmpeg' | 'engine' | 'vosk'
+    | 'kokoro_engine' | 'hf_token' | 'set_default'."""
     model_id: str | None = None
     model_row: object | None = None
     provider_id: str | None = None
@@ -144,13 +144,20 @@ class SpeechSetupDialog:
         total_ram: float = 0.0,
         has_gpu: bool = False,
         engine_scope: str = "all",
+        default_provider_id: str = "",
         embed_in: object | None = None,
         on_action: Callable[[SpeechSetupResult], None] | None = None,
+        announce_cb: Callable[[str], None] | None = None,
     ) -> None:
         import wx
 
         self._wx = wx
         self._provider = provider
+        self._default_provider_id = default_provider_id
+        # Screen readers do not auto-announce a changed StaticText, so the guided
+        # banner speaks each *new* step through this callback (GATE-12).
+        self._announce_cb = announce_cb
+        self._last_status_headline = ""
         self._rows = rows
         self._machine_summary = machine_summary
         self._whispercpp_ok = whispercpp_ok
@@ -188,6 +195,21 @@ class SpeechSetupDialog:
         wx = self._wx
         root = wx.BoxSizer(wx.VERTICAL)
         parent = self._root
+
+        # Guided "you are here, do this next" banner. Driven by the wx-free
+        # guided_setup.dictation_setup_status() so the panel is a thin renderer:
+        # a bold step headline plus the single next action, refreshed whenever the
+        # engine or model selection changes. First control in the panel, so a
+        # screen reader reads the current step on open.
+        self._status_headline = wx.StaticText(parent, label="")
+        self._status_headline.SetName("Dictation setup step")
+        headline_font = self._status_headline.GetFont()
+        headline_font.MakeBold()
+        self._status_headline.SetFont(headline_font)
+        root.Add(self._status_headline, 0, wx.EXPAND | wx.LEFT | wx.RIGHT | wx.TOP, 10)
+        self._status_next = wx.StaticText(parent, label="")
+        self._status_next.SetName("Next step")
+        root.Add(self._status_next, 0, wx.EXPAND | wx.LEFT | wx.RIGHT | wx.BOTTOM, 10)
 
         # Dictation engine: one radio choice covering every engine, installed or
         # not. Selecting an installed engine switches to it; a not-installed engine
@@ -283,10 +305,12 @@ class SpeechSetupDialog:
         btn_row = wx.BoxSizer(wx.HORIZONTAL)
         self._btn_download = wx.Button(parent, label="&Download Selected")
         self._btn_remove = wx.Button(parent, label="&Remove Selected")
+        self._btn_test = wx.Button(parent, label="&Test dictation")
         self._btn_set_default = wx.Button(parent, label="Set as &Default")
         btn_hf = wx.Button(parent, label="&Hugging Face Token...")
         btn_row.Add(self._btn_download, 0, wx.RIGHT, 6)
         btn_row.Add(self._btn_remove, 0, wx.RIGHT, 6)
+        btn_row.Add(self._btn_test, 0, wx.RIGHT, 6)
         btn_row.Add(self._btn_set_default, 0, wx.RIGHT, 6)
         btn_row.Add(btn_hf, 0, wx.RIGHT, 6)
 
@@ -304,6 +328,7 @@ class SpeechSetupDialog:
 
         self._btn_download.Bind(wx.EVT_BUTTON, lambda _e: self._on_download())
         self._btn_remove.Bind(wx.EVT_BUTTON, lambda _e: self._on_remove())
+        self._btn_test.Bind(wx.EVT_BUTTON, lambda _e: self._on_test())
         self._btn_set_default.Bind(wx.EVT_BUTTON, lambda _e: self._on_set_default())
         btn_hf.Bind(wx.EVT_BUTTON, lambda _e: self._choose("hf_token"))
         self._model_list.Bind(wx.EVT_LISTBOX, lambda _e: self._update_buttons())
@@ -311,6 +336,7 @@ class SpeechSetupDialog:
 
         self._update_buttons()
         self._sync_engine_install_button()
+        self._refresh_status()
         self._root.SetSizer(root)
 
     @staticmethod
@@ -332,8 +358,23 @@ class SpeechSetupDialog:
         self._model_list.Clear()
         for row in self._rows:
             self._model_list.Append(row.label)
+        # Preselect so the guided next step ("choose Download"/"Test") is one
+        # action: an already-installed model if there is one, else the model
+        # recommended for this computer, else the first (smallest) row.
+        if self._rows:
+            installed_idx = next(
+                (i for i, r in enumerate(self._rows) if getattr(r, "installed", False)), None
+            )
+            recommended_idx = next(
+                (i for i, r in enumerate(self._rows) if getattr(r, "recommended", False)), None
+            )
+            preselect = installed_idx if installed_idx is not None else recommended_idx
+            self._model_list.SetSelection(preselect if preselect is not None else 0)
 
     def _update_buttons(self) -> None:
+        # Test follows the engine's readiness (engine + some model installed), not
+        # the current row selection, so it stays available while browsing models.
+        self._btn_test.Enable(self._compute_status().can_test)
         sel = self._model_list.GetSelection()
         if sel == self._wx.NOT_FOUND or sel >= len(self._rows):
             self._btn_download.Enable(False)
@@ -343,6 +384,7 @@ class SpeechSetupDialog:
                 self._model_note.SetLabel("No models for this engine yet.")
             else:
                 self._model_note.SetLabel("Select a model above, then Download or Remove.")
+            self._refresh_status()
             return
         installed = bool(getattr(self._rows[sel], "installed", False))
         self._btn_download.Enable(not installed)
@@ -354,6 +396,7 @@ class SpeechSetupDialog:
             if installed
             else "This model is not installed — use Download to get it."
         )
+        self._refresh_status()
 
     def _on_download(self) -> None:
         sel = self._model_list.GetSelection()
@@ -393,6 +436,55 @@ class SpeechSetupDialog:
             provider_id=getattr(self._provider, "id", None),
         )
         self._dispatch_action(result)
+
+    def _on_test(self) -> None:
+        """Run a dictation self-test for the current engine (host runs it async
+        and speaks/logs the outcome). Enabled only when engine + model are ready.
+        """
+        result = SpeechSetupResult(
+            action="test",
+            provider_id=getattr(self._provider, "id", None),
+        )
+        self._dispatch_action(result)
+
+    def _compute_status(self) -> object:
+        """The guided journey state for the currently selected engine (wx-free)."""
+        from quill.core.speech.guided_setup import dictation_setup_status
+
+        provider = self._provider
+        name = str(getattr(provider, "display_name", "this engine"))
+        try:
+            engine_installed = bool(provider.is_available())  # type: ignore[attr-defined]
+        except Exception:  # noqa: BLE001 - a broken provider reads as "not installed"
+            engine_installed = False
+        has_model = any(bool(getattr(r, "installed", False)) for r in self._rows)
+        is_default = bool(
+            self._default_provider_id
+            and str(getattr(provider, "id", "")) == self._default_provider_id
+        )
+        return dictation_setup_status(
+            engine_name=name,
+            engine_installed=engine_installed,
+            has_installed_model=has_model,
+            is_default=is_default,
+        )
+
+    def _refresh_status(self) -> None:
+        """Repaint the "you are here / do this next" banner from _compute_status.
+
+        Announces the banner only when the step actually changes (not on every
+        model-selection refresh, and not on the initial build), so a screen reader
+        hears "Step 2 of 3..." when setup advances without chattering otherwise.
+        """
+        status = self._compute_status()
+        headline = str(getattr(status, "headline", ""))
+        next_step = str(getattr(status, "next_step", ""))
+        self._status_headline.SetLabel(headline)
+        self._status_next.SetLabel(next_step)
+        changed = bool(self._last_status_headline) and headline != self._last_status_headline
+        if self._announce_cb and changed:
+            self._announce_cb(f"{headline} {next_step}".strip())
+        self._last_status_headline = headline
 
     def _show_model_context_menu(self) -> None:
         """Right-click on a model row: the same actions as the buttons below,

@@ -2,7 +2,7 @@
 <html xmlns="http://www.w3.org/1999/xhtml">
 <head>
   <meta charset="utf-8" />
-  <meta name="generator" content="pandoc 3.10" />
+  <meta name="generator" content="pandoc" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
   <title>QUILL-PRD</title>
   <style>
@@ -156,12 +156,8 @@
       text-decoration: none;
     }
     span.smallcaps{font-variant: small-caps;}
-    div.columns{display: flex; gap: 1.5em;}
-    div.column{flex: auto;}
-    @media screen {
-    div.columns{gap: min(4vw, 1.5em);}
-    div.column{overflow-x: auto;}
-    }
+    div.columns{display: flex; gap: min(4vw, 1.5em);}
+    div.column{flex: auto; overflow-x: auto;}
     div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
     /* The extra [class] is a hack that increases specificity enough to
        override a similar rule in reveal.js */
@@ -4389,28 +4385,50 @@ captured (<code>DownloadFailure</code>, plus the pip error logged to
 the diagnostics bundle. The scattered startup braille-pack prompt now
 routes into this hub, preselected on the braille pack with a guiding
 popup, rather than running its own installer.</p>
-<p><strong>Two rows were folded into others for a flatter, less
-repetitive list (0.9.0 Beta 2, #847).</strong> Vosk (a third offline
-dictation engine, alongside whisper.cpp and Faster Whisper) no longer
-has its own row — the hub's single "Offline speech engine" row already
-opens a guided picker to choose an engine and a model together
+<p><strong>Rows were folded together for a flatter, less repetitive list
+(0.9.0 Beta 2, #847).</strong> Vosk (a third offline dictation engine,
+alongside whisper.cpp and Faster Whisper) no longer has its own row —
+the hub's single <strong>"Dictation (offline speech)"</strong> row
+(renamed from "Offline speech engine (whisper.cpp)" so it names the
+outcome, not the implementation) opens a guided picker to choose an
+engine and a model together
 (<code>quill/core/speech/guided_setup.py</code>,
 <code>quill/ui/guided_speech_dialog.py</code>); Vosk is simply a third
 <code>OfflineSpeechEngineOption</code> there, installed via the same
 <code>_ensure_offline_engine</code>/<code>install_vosk</code> path as
-the other two. Separately, mpv playback and MP3 chapter markers — two
-different Audio Studio/export extras that both happened to be
-"MP3-adjacent" — are now one combined download, <strong>"Audio playback
-&amp; MP3 chapter markers"</strong>
+the other two. Separately, FFmpeg (compressed-audio export), mpv
+playback, and MP3 chapter markers — three export/playback extras — are
+now one row, <strong>"Audio: export, playback &amp; chapters"</strong>
 (<code>_audio_extras_installed</code>,
-<code>download_audio_extras</code>), with an accurate combined size (~46
-MB) and one consent prompt that fetches only whichever half is actually
-missing. Testing whisper.cpp/Faster Whisper/Vosk with no model installed
-yet reopens the same guided picker
-(<code>open_guided_offline_speech</code>) rather than the full Speech
-Settings dialog — Test, Download, and "get the missing piece" all now
-stay inside the hub/guided-picker, never detouring into a bigger
-settings surface for what should be a one-button action.</p>
+<code>download_audio_extras</code>; FFmpeg is fetched on demand at
+export time via <code>download_ffmpeg</code>, not as part of the row's
+own download), so there is one place for audio extras instead of three;
+the standalone FFmpeg row is gone. Node.js moved to the bottom of the
+list as the least-used extra (<code>priority=110</code>).</p>
+<p><strong>The dictation setup is a guided Engine→Model→Test→Default
+journey (0.9.0 Beta 2).</strong> A wx-free brain,
+<code>guided_setup.dictation_setup_status()</code> (unit-tested),
+computes the three-step state (install an engine → download a model →
+test and set default) for the selected engine, and the Manage Speech
+Models panel (<code>quill/ui/speech_setup_dialog.py</code>) renders it
+as a "you are here / do this next" banner, auto-selects the recommended
+model, and adds an inline <strong>Test dictation</strong> button. The
+panel now opens on the user's <em>saved</em> engine even when it is not
+yet ready (<code>MainFrame._configured_speech_provider</code>, resolved
+from the shared registry so the engine radio matches by identity),
+instead of the availability-fallback default that made it always reopen
+on whisper.cpp. The self-test
+(<code>optional_components.verify_component</code> →
+<code>_verify_stt</code>) targets the selected provider
+(<code>transcribe.transcribe_audio_file(provider_id=…)</code> /
+<code>provider_has_installed_model</code>) so it proves the exact
+engine, covers all three offline engines (whisper.cpp, Faster Whisper,
+Vosk), and logs its OK/FAILED outcome so failures reach the diagnostics
+bundle rather than living only in the on-screen dialog. Testing an
+engine with no model installed still routes to the guided picker
+(<code>open_guided_offline_speech</code>); a successful Test also
+persists the engine as the dictation default, so Test doubles as "use
+this engine."</p>
 <p><strong>Size / RAM reference (current observations, to be
 re-baselined by the footprint report).</strong>
 <code>scripts/footprint_report.py</code> emits the diffable size/machine

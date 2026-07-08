@@ -15,8 +15,11 @@ consent), keyed by :attr:`OptionalComponent.component_id`.
 
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass
 from pathlib import Path
+
+_LOG = logging.getLogger(__name__)
 
 # Categories (also the dialog's grouping labels).
 SPEECH_ENGINE = "Speech engine"
@@ -342,24 +345,40 @@ def verify_component(component_id: str) -> VerifyResult:
     presence/load check. Never raises -- any failure becomes ``ok=False``.
     """
     try:
-        if component_id in ("whispercpp", "vosk"):
-            return _verify_stt(component_id)
-        if component_id in ("pandoc", "ffmpeg", "node"):
-            return _verify_tool(component_id)
-        if read_aloud_engine_for_component(component_id) is not None:
-            return VerifyResult(True, "Installed — press Test to hear a sample of this voice.")
-        return _verify_presence(component_id)
+        if component_id in ("whispercpp", "fasterwhisper", "vosk"):
+            result = _verify_stt(component_id)
+        elif component_id in ("pandoc", "ffmpeg", "node"):
+            result = _verify_tool(component_id)
+        elif read_aloud_engine_for_component(component_id) is not None:
+            result = VerifyResult(True, "Installed — press Test to hear a sample of this voice.")
+        else:
+            result = _verify_presence(component_id)
     except Exception as exc:  # noqa: BLE001 - a verify must never crash the dialog
+        # Log so the failure is captured in diagnostics -- the Test result is
+        # otherwise shown only on-screen and never reaches the log bundle.
+        _LOG.warning("verify_component(%s) could not run: %s", component_id, exc)
         return VerifyResult(False, "The self-test could not run.", str(exc))
+    if result.ok:
+        _LOG.info("verify_component(%s): OK -- %s", component_id, result.summary)
+    else:
+        _LOG.warning(
+            "verify_component(%s): FAILED -- %s%s",
+            component_id,
+            result.summary,
+            f" | {result.detail}" if result.detail else "",
+        )
+    return result
 
 
 def _verify_stt(component_id: str) -> VerifyResult:
     import tempfile
 
     from quill.core.read_aloud import synthesize_to_file_with_sapi5
-    from quill.core.speech.transcribe import has_installed_offline_model, transcribe_audio_file
+    from quill.core.speech.transcribe import provider_has_installed_model, transcribe_audio_file
 
-    if not _safe(has_installed_offline_model):
+    # Gate on the *selected* engine, not any engine, so testing Faster Whisper
+    # while only whisper.cpp has a model correctly routes to "download a model".
+    if not _safe(lambda: provider_has_installed_model(component_id)):
         return VerifyResult(
             False,
             "The engine is installed, but no speech model has been downloaded yet.",
@@ -368,7 +387,7 @@ def _verify_stt(component_id: str) -> VerifyResult:
     wav = Path(tempfile.mkstemp(prefix="quill_stt_test_", suffix=".wav")[1])
     try:
         synthesize_to_file_with_sapi5(_STT_TEST_PHRASE, wav)
-        result = transcribe_audio_file(wav)
+        result = transcribe_audio_file(wav, provider_id=component_id)
         heard = (getattr(result, "full_text", "") or "").strip()
     except Exception as exc:  # noqa: BLE001
         return VerifyResult(False, "The speech engine could not transcribe a test clip.", str(exc))
@@ -584,9 +603,11 @@ def gather_optional_components() -> list[OptionalComponent]:
         ),
         OptionalComponent(
             "whispercpp",
-            "Offline speech engine (whisper.cpp)",
-            "Powers private, on-device dictation and transcription. SAPI 5 dictation "
-            "works without it; this adds the offline Whisper engine.",
+            "Dictation (offline speech)",
+            "Private, on-device dictation and transcription. Opens a guided setup "
+            "where you choose an engine (Whisper, Faster Whisper, or Vosk) and a "
+            "model to match your computer, then test it. SAPI 5 dictation works "
+            "without any of this.",
             SPEECH_ENGINE,
             _safe(_whisper_installed),
             "~8 MB",
@@ -631,43 +652,35 @@ def gather_optional_components() -> list[OptionalComponent]:
             priority=70,
         ),
         OptionalComponent(
-            "ffmpeg",
-            "FFmpeg (audio export helper)",
-            "Lets QUILL export speech audio as MP3, M4A/M4B, OGG, Opus, or FLAC. "
-            "WAV export works without it.",
+            "audio_extras",
+            "Audio: export, playback & chapters",
+            "Everything for richer speech audio, in one place. FFmpeg lets QUILL "
+            "export speech as MP3, M4A/M4B, OGG, Opus, or FLAC; the mpv engine adds "
+            "gapless playback, exact seeking, and instant chapter jumps in the Audio "
+            "Studio player; MP3 chapter markers embed a jumpable chapter list in MP3 "
+            "audiobook exports. Each piece is fetched only when you first use its "
+            "feature, so nothing large downloads until it is needed. WAV export and "
+            "basic playback work without any of them.",
             TOOL,
-            _safe(_ffmpeg_installed),
-            "~90 MB",
-            note="Provided by FFmpeg; QUILL helps you fetch the official build.",
-            priority=80,
+            _safe(_audio_extras_installed),
+            "~46 MB (+ FFmpeg ~90 MB when first exporting compressed audio)",
+            note="FFmpeg (GPL/LGPL, official build), the mpv playback library (GPL; "
+            "the download carries its licenses and a source offer), and mutagen "
+            "(GPL-2.0+); fetched on demand from their official sources and QUILL's "
+            "pinned release.",
+            priority=90,
         ),
         OptionalComponent(
             "node",
             "Node.js runtime",
             "Runs Node (JavaScript/TypeScript) Quillins and the Developer Console's "
-            "TypeScript interface. Python Quillins and the rest of QUILL work without it.",
+            "TypeScript interface. Python Quillins and the rest of QUILL work without "
+            "it — this is the least-used extra, so it sits last.",
             TOOL,
             _safe(_node_installed),
             "~30 MB",
             note="Provided by the OpenJS Foundation; QUILL fetches the official build.",
-            priority=85,
-        ),
-        OptionalComponent(
-            "audio_extras",
-            "Audio playback & MP3 chapter markers",
-            "Two optional Audio Studio/MP3-export extras, bundled as one download: "
-            "the mpv playback engine (gapless audio, exact seeking, instant chapter "
-            "jumps in the Audio Studio player) and MP3 chapter markers (a jumpable "
-            "chapter list embedded in MP3 audiobook exports). Playback and MP3 export "
-            "both work without them, on the built-in Windows engine and without "
-            "embedded chapters respectively.",
-            TOOL,
-            _safe(_audio_extras_installed),
-            "~46 MB",
-            note="mpv playback library (GPL; the download carries its licenses and a "
-            "source offer) and mutagen (GPL-2.0+); fetched together from QUILL's "
-            "pinned release and PyPI respectively.",
-            priority=90,
+            priority=110,
         ),
         OptionalComponent(
             "mathcat",

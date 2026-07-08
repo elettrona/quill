@@ -2,7 +2,7 @@
 <html xmlns="http://www.w3.org/1999/xhtml">
 <head>
   <meta charset="utf-8" />
-  <meta name="generator" content="pandoc 3.10" />
+  <meta name="generator" content="pandoc" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
   <title>release0.9.0-beta2</title>
   <style>
@@ -156,12 +156,8 @@
       text-decoration: none;
     }
     span.smallcaps{font-variant: small-caps;}
-    div.columns{display: flex; gap: 1.5em;}
-    div.column{flex: auto;}
-    @media screen {
-    div.columns{gap: min(4vw, 1.5em);}
-    div.column{overflow-x: auto;}
-    }
+    div.columns{display: flex; gap: min(4vw, 1.5em);}
+    div.column{flex: auto; overflow-x: auto;}
     div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
     /* The extra [class] is a hack that increases specificity enough to
        override a similar rule in reveal.js */
@@ -213,24 +209,29 @@ spoken phrase and tells you what it heard, and tools report their
 version. There's a <strong>Remove</strong> button too, and a
 <strong>Manage</strong> button that jumps you straight to the right
 picker (Manage Speech Models or Manage Voices).</li>
-<li><strong>A guided setup for offline speech, now with three
-engines.</strong> Choosing offline dictation used to mean hunting
-through menus. Now one step walks you through it: pick your engine —
+<li><strong>A guided, step-by-step setup for offline dictation.</strong>
+Choosing offline dictation used to mean hunting through menus. Now the
+row is simply called <strong>Dictation (offline speech)</strong>, and it
+walks you through it one step at a time — a banner at the top always
+tells you which step you're on and the single next thing to do:
+<strong>1.</strong> pick and install your engine —
 <strong>Whisper.cpp</strong> (light and fast, works on any computer),
 <strong>Faster Whisper</strong> (most accurate), or
-<strong>Vosk</strong> (tiny, for old or low-memory machines) — with a
-plain-language explanation of each, then pick a model, with the smallest
-one ready to go so you're transcribing within a minute. It installs the
-engine and the model together and drops you right back in the hub. Vosk
+<strong>Vosk</strong> (tiny, for old or low-memory machines);
+<strong>2.</strong> pick a model, with the best fit for your computer
+already selected so it's one click; <strong>3.</strong> press
+<strong>Test dictation</strong> to hear it prove itself, and it becomes
+your default. QUILL remembers the engine you chose, so you come back to
+where you left off instead of it resetting to the built-in engine. Vosk
 used to sit as its own separate row further down the list; it's simply a
 third choice here now, so there's exactly one place to set up offline
 dictation.</li>
 <li><strong>You always land back where you started — on the row you were
 just on.</strong> Downloading something used to fling you off into the
 editor or another tab, or reset the list to the top. Now every download
-— voices, engines, Pandoc, the braille pack, FFmpeg, Node.js, MathCAT,
-spell-check dictionaries, MP3 support — finishes, returns you to the
-hub, and reselects exactly the row you were working with.</li>
+— voices, engines, Pandoc, the braille pack, audio extras, Node.js,
+MathCAT, spell-check dictionaries — finishes, returns you to the hub,
+and reselects exactly the row you were working with.</li>
 <li><strong>A gentler helping hand.</strong> If you Test a piece before
 it's fully set up, QUILL walks you over to finish rather than treating a
 perfectly normal situation as an error — for offline speech
@@ -240,11 +241,14 @@ fails, it offers to send a report with the details.</li>
 <li><strong>Runs portable, stays portable.</strong> Everything installs
 into your portable data folder when you run QUILL from a drive, so your
 whole setup travels with you.</li>
-<li><strong>mpv playback and MP3 chapter markers are now one
-download.</strong> Two separate Audio Studio/export extras that both
-happened to be "MP3-adjacent" are now a single "Audio playback &amp; MP3
-chapter markers" download (about 46 MB) instead of two separate
-prompts.</li>
+<li><strong>Audio export, playback, and chapters live in one
+place.</strong> FFmpeg (for exporting compressed audio like MP3 and
+M4B), the mpv playback engine, and MP3 audiobook chapter markers are now
+a single <strong>"Audio: export, playback &amp; chapters"</strong> row
+instead of three scattered entries — and each piece is still fetched
+only when you first use its feature, so nothing large downloads until
+it's actually needed. <strong>Node.js</strong> now sits at the very
+bottom of the list, as the least-used extra.</li>
 <li><strong>"Set as Default" is now a real, findable button.</strong>
 Pick your favorite offline speech model, or your favorite Read Aloud
 voice, and tell QUILL to use it from now on — a button and a right-click

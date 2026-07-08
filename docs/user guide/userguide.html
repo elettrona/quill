@@ -2,7 +2,7 @@
 <html xmlns="http://www.w3.org/1999/xhtml">
 <head>
   <meta charset="utf-8" />
-  <meta name="generator" content="pandoc 3.10" />
+  <meta name="generator" content="pandoc" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
   <title>userguide</title>
   <style>
@@ -156,12 +156,8 @@
       text-decoration: none;
     }
     span.smallcaps{font-variant: small-caps;}
-    div.columns{display: flex; gap: 1.5em;}
-    div.column{flex: auto;}
-    @media screen {
-    div.columns{gap: min(4vw, 1.5em);}
-    div.column{overflow-x: auto;}
-    }
+    div.columns{display: flex; gap: min(4vw, 1.5em);}
+    div.column{flex: auto; overflow-x: auto;}
     div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
     /* The extra [class] is a hack that increases specificity enough to
        override a similar rule in reveal.js */
@@ -2131,29 +2127,37 @@ Components...</strong> is the single place to see, get, test, and remove
 them all. It lists each component — most important first:
 <strong>Pandoc</strong> (document conversion for Word, ODT, EPUB, and
 RTF), the <strong>braille translation pack</strong> (liblouis tables and
-BRF profiles for the Translation submenu and BRF/embossing export), the
-<strong>offline speech engine</strong> (a guided picker covering
+BRF profiles for the Translation submenu and BRF/embossing export),
+<strong>Dictation (offline speech)</strong> (a guided setup covering
 Whisper.cpp, Faster Whisper, and Vosk — see below),
 <strong>Kokoro</strong> and <strong>Piper</strong> neural voices,
-<strong>eSpeak NG</strong> and <strong>DECtalk</strong> voices, the
-<strong>FFmpeg</strong> audio-export helper, <strong>Audio playback
-&amp; MP3 chapter markers</strong> (the mpv playback engine plus MP3
-audiobook chapter markers, one combined download), the
-<strong>Node.js</strong> runtime (for Node Quillins and the Developer
-Console's TypeScript interface), the <strong>MathCAT</strong>
-math-speech engine, and any non-English <strong>spell-check
+<strong>eSpeak NG</strong> and <strong>DECtalk</strong> voices,
+<strong>Audio: export, playback &amp; chapters</strong> (FFmpeg for
+exporting compressed audio, the mpv playback engine, and MP3 audiobook
+chapter markers — all in one place, each piece fetched only when its
+feature is first used), the <strong>MathCAT</strong> math-speech engine,
+the <strong>Node.js</strong> runtime (for Node Quillins and the
+Developer Console's TypeScript interface — listed last, as the
+least-used extra), and any non-English <strong>spell-check
 dictionaries</strong>. Each row shows whether it is
 <strong>Installed</strong> or <strong>Available to download</strong> and
 its size, and selecting a row fills a plain-language description of what
 it enables and its impact.</p>
 <ul>
 <li><strong>Download</strong> fetches a not-yet-installed component —
-checksum-verified, with its own progress. The offline speech engine's
-row opens a guided picker instead of a bare download: pick your engine
+checksum-verified, with its own progress. The <strong>Dictation (offline
+speech)</strong> row opens a guided setup instead of a bare download,
+and walks you through one step at a time — a banner at the top always
+shows which step you are on and the single next thing to do:
+<strong>1.</strong> pick and install an engine
 (<strong>Whisper.cpp</strong>, light and fast; <strong>Faster
 Whisper</strong>, most accurate; or <strong>Vosk</strong>, tiny and best
-for old or low-memory machines), then a model, and QUILL installs both
-together and sets them as your default in one step.</li>
+for old or low-memory machines); <strong>2.</strong> download a model,
+with the best fit for your computer already selected;
+<strong>3.</strong> <strong>Test dictation</strong> to confirm it works,
+then set it as your default. QUILL remembers the engine you chose, so
+the setup reopens where you left off instead of resetting to the
+built-in engine.</li>
 <li><strong>Test</strong> proves an installed component works, so you
 can be confident before you rely on it: a voice speaks a short sample so
 you actually hear it; the offline speech engine transcribes a spoken

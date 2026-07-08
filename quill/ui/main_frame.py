@@ -17870,7 +17870,7 @@ class MainFrame(
         # the chooser, labelled "(not installed)", so the user can discover it and
         # reach its guided install path instead of having it silently disappear.
         all_providers = list(registry.all())  # type: ignore[attr-defined]
-        provider = self._speech_provider()
+        provider = self._configured_speech_provider(registry)  # saved engine, not avail-fallback
         total_ram = detect_total_ram_gb()
         has_gpu = detect_has_gpu()
         rows = describe_models(provider, total_ram, has_gpu)  # type: ignore[arg-type]
@@ -17886,6 +17886,8 @@ class MainFrame(
             "all_providers": all_providers,
             "total_ram": total_ram,
             "has_gpu": has_gpu,
+            "default_provider_id": str(getattr(self.settings, "speech_provider", "") or ""),
+            "announce_cb": self._announce,
         }
         dictation_offline_kwargs: dict = {
             "provider": provider,
@@ -18015,6 +18017,12 @@ class MainFrame(
                 self.download_kokoro_engine()
             elif dict_result.action == "hf_token":
                 self.set_huggingface_token()
+            elif dict_result.action == "test":
+                # Prove the selected engine (SAPI clip -> transcribe), speaking and
+                # logging the result; the provider_id block above already made it
+                # the default, so a successful Test doubles as "use this engine".
+                test_id = dict_result.provider_id or getattr(provider, "id", "")
+                self._test_optional_component(test_id)
             elif dict_result.action == "set_default" and dict_result.model_id:
                 self.settings.speech_default_model_id = dict_result.model_id
                 save_settings(self.settings)

@@ -64,13 +64,13 @@ def test_hub_downloads_reopen_the_hub_when_done() -> None:
     src = _src("main_frame_speech.py")
     assert "def _back(" in src and "self.open_optional_components(preselect=chosen)" in src
     # Every download handler gets the reopen callback -- no download drops you out.
-    # Vosk has no standalone hub row (it's a guided-picker engine choice), so it
-    # is not in this list.
+    # Vosk has no standalone hub row (it's a guided-picker engine choice), and
+    # FFmpeg is folded into the "audio_extras" row (fetched on demand at export),
+    # so neither is in this list.
     for handler in (
         "self.download_piper_exe(on_done=_back)",
         "self.download_espeak_exe(on_done=_back)",
         "self.download_dectalk_exe(on_done=_back)",
-        "self.download_ffmpeg(on_done=_back)",
         "self.download_node_runtime(on_done=_back)",
         "self._download_kokoro_models(on_done=_back)",
         "self.download_braille_pack(on_done=_back)",
