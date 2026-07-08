@@ -2174,3 +2174,35 @@ def test_quick_nav_panel_context_no_search_query_has_no_hits() -> None:
 
 def test_quick_nav_command_mapped_to_navigation_feature() -> None:
     assert feature_for_command("navigate.quick_nav") == "core.navigate"
+
+
+def test_page_cell_activates_go_to_page() -> None:
+    frame = _build_frame("hello", insertion_point=0)
+    called: list[bool] = []
+    frame.go_to_page = lambda: called.append(True)  # type: ignore[method-assign]
+    frame._activate_statusbar_cell("page")
+    assert called == [True]
+
+
+def test_page_cell_suppressed_when_braille_active() -> None:
+    frame = _build_frame("hello", insertion_point=0)
+    frame.document = Document(
+        text="hello\fworld",
+        source_metadata={
+            "source_kind": "brf",
+            "brf_suffix": "brf",
+            "brf_cell_width": 40,
+            "brf_line_height": 25,
+            "brf_non_ascii_offsets": [],
+            "brf_had_bom": False,
+            "brf_profile": "ueb_english",
+        },
+    )
+    frame.editor.GetCurrentPos = lambda: 0  # type: ignore[attr-defined]
+    frame._get_action_suggestion = lambda: None  # type: ignore[method-assign]
+    frame._ai_engine_should_autoshow = lambda: False  # type: ignore[method-assign]
+
+    items = frame._statusbar_items()
+
+    assert "braille" in items
+    assert "page" not in items

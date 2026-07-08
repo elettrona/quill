@@ -1,4 +1,5 @@
 {
+  "_rebaseline_2026_07_07_page_indicator_statusbar": "Page indicator (#872): main_frame_statusbar.py 975->1009 (+34): _statusbar_page_text() (exact 'N of M' via page_starts(), or estimated '~N of ~M (estimated)' via the new navigation.py estimate helpers), the 'page' dispatcher branch, its help text, its activation wiring (self.go_to_page), and the BRF-suppression rule in _statusbar_items(). Single cohesive feature addition, no unrelated growth.",
   "_rebaseline_2026_07_07_page_indicator_settings": "Page indicator (#872): the new page_estimate_words_per_page setting. settings.py 1517->1527 (+10): the field, its load()/clamp parsing, and constructor wiring, mirroring braille_lines_per_page exactly. settings_specs.py 2191->2206 (+15): one new SettingSpec in the 'navigation' group. main_frame.py 27058->27061 (+3): one new entry in each of _STATUS_BAR_LABELS/_STATUS_BAR_WIDTHS/_STATUS_BAR_FEATURES for the new 'page' status bar item. Additive feature setup, no unrelated growth.",
   "_rebaseline_2026_07_07_crash_submit_username_redaction": "Privacy fix (#886): the crash-report metadata's local_crash_file field was included verbatim, bypassing the redaction the report body already gets, leaking the reporter's OS username in public GitHub issues. crash_submit.py 290->294 (+4): imports redact_command_arg and runs it over the path before storing it in metadata, plus an explanatory comment. Single bug-fix line, no feature growth.",
   "_rebaseline_2026_07_07_ai_hub_focus_restore": "Accessibility fix (#883): choosing an AI Hub provider via arrow keys (without opening the dropdown) could lose focus to the Model field once its suggestions refreshed. ai_hub_dialog.py 1394->1400 (+6): _on_hub_provider_changed captures whether the Provider choice had focus before repopulating the Model combo and restores it if the repopulation stole it. Single bug-fix guard, no feature growth.",
@@ -411,7 +412,7 @@
     "_rebaseline_2026_07_03_pandoc_download_progress_dialog": "main_frame_speech.py 2097 -> 2126 (+29): download_pandoc rewritten from the silent _run_background_task (status-bar-only feedback) to the AIProgressDialog + threading.Thread pattern used by download_ffmpeg/download_offline_speech_engine/download_faster_whisper, so the Pandoc download (triggered from File > Convert File's first-use prompt, #806) shows a visible, cancelable percentage instead of relying solely on a status-bar line and one-shot announcement that's easy to miss.",
     "quill/ui/main_frame_speech.py": 2744,
     "quill/ui/main_frame_dictation_hotkeys.py": 635,
-    "quill/ui/main_frame_statusbar.py": 975,
+    "quill/ui/main_frame_statusbar.py": 1009,
     "quill/ui/prompt_library_dialog.py": 514,
     "quill/ui/publishing_tools.py": 958,
     "quill/ui/setup_wizard_pages.py": 1212,
