@@ -10,7 +10,6 @@ def test_gather_includes_the_core_optional_components() -> None:
         "kokoro",
         "espeak",
         "dectalk",
-        "ffmpeg",
         "audio_extras",
         "mathcat",
     }.issubset(ids)
@@ -19,6 +18,9 @@ def test_gather_includes_the_core_optional_components() -> None:
     assert "vosk" not in ids
     assert "libmpv" not in ids
     assert "mp3" not in ids
+    # FFmpeg is no longer its own row: it is folded into the single "audio_extras"
+    # row (Audio: export, playback & chapters) and fetched on demand.
+    assert "ffmpeg" not in ids
 
 
 def test_status_reflects_detectors(monkeypatch) -> None:
@@ -304,7 +306,37 @@ def test_verify_component_stt_reports_what_it_heard(monkeypatch) -> None:
     from quill.core import read_aloud
     from quill.core.speech import transcribe as tr
 
-    monkeypatch.setattr(tr, "has_installed_offline_model", lambda *a, **k: True)
+    monkeypatch.setattr(tr, "provider_has_installed_model", lambda *a, **k: True)
+    monkeypatch.setattr(read_aloud, "synthesize_to_file_with_sapi5", lambda *a, **k: None)
+    captured: dict = {}
+
+    def fake_transcribe(*_a, **k):
+        captured.update(k)
+        return types.SimpleNamespace(full_text="The quick brown fox jumps over the lazy dog.")
+
+    monkeypatch.setattr(tr, "transcribe_audio_file", fake_transcribe)
+    result = oc.verify_component("whispercpp")
+    assert result.ok is True
+    assert "heard" in result.summary.lower()
+    # The self-test pins the engine under test, not "first available".
+    assert captured.get("provider_id") == "whispercpp"
+
+
+def test_verify_component_stt_targets_the_selected_engine(monkeypatch) -> None:
+    """Faster Whisper is now a testable STT engine, and its own model presence
+    (not any engine's) gates the test."""
+    import types
+
+    from quill.core import read_aloud
+    from quill.core.speech import transcribe as tr
+
+    seen: dict = {}
+
+    def fake_gate(pid, *_a, **_k):
+        seen["gate"] = pid
+        return True
+
+    monkeypatch.setattr(tr, "provider_has_installed_model", fake_gate)
     monkeypatch.setattr(read_aloud, "synthesize_to_file_with_sapi5", lambda *a, **k: None)
     monkeypatch.setattr(
         tr,
@@ -313,15 +345,15 @@ def test_verify_component_stt_reports_what_it_heard(monkeypatch) -> None:
             full_text="The quick brown fox jumps over the lazy dog."
         ),
     )
-    result = oc.verify_component("whispercpp")
+    result = oc.verify_component("fasterwhisper")
     assert result.ok is True
-    assert "heard" in result.summary.lower()
+    assert seen.get("gate") == "fasterwhisper"
 
 
 def test_verify_component_stt_flags_no_model(monkeypatch) -> None:
     from quill.core.speech import transcribe as tr
 
-    monkeypatch.setattr(tr, "has_installed_offline_model", lambda *a, **k: False)
+    monkeypatch.setattr(tr, "provider_has_installed_model", lambda *a, **k: False)
     result = oc.verify_component("vosk")
     assert result.ok is False
     assert "model" in result.summary.lower()

@@ -77,3 +77,66 @@ def test_models_for_engine_never_crashes_on_detection_failure(monkeypatch) -> No
     )
     models = gs.models_for_engine("whispercpp")  # must not raise
     assert models and sum(1 for m in models if m.recommended) == 1
+
+
+def test_setup_status_step1_when_engine_not_installed() -> None:
+    st = gs.dictation_setup_status(
+        engine_name="Faster Whisper",
+        engine_installed=False,
+        has_installed_model=False,
+        is_default=False,
+    )
+    assert st.stage == gs.STAGE_ENGINE
+    assert st.step_number == 1
+    assert "Faster Whisper" in st.headline and "1 of 3" in st.headline
+    assert not st.can_test and not st.can_set_default
+
+
+def test_setup_status_step1_flags_unsupported_install() -> None:
+    st = gs.dictation_setup_status(
+        engine_name="Faster Whisper",
+        engine_installed=False,
+        has_installed_model=False,
+        is_default=False,
+        engine_install_supported=False,
+    )
+    assert st.stage == gs.STAGE_ENGINE
+    assert "another engine" in st.next_step.lower()
+
+
+def test_setup_status_step2_when_engine_but_no_model() -> None:
+    st = gs.dictation_setup_status(
+        engine_name="Whisper",
+        engine_installed=True,
+        has_installed_model=False,
+        is_default=False,
+    )
+    assert st.stage == gs.STAGE_MODEL
+    assert st.step_number == 2
+    assert not st.can_test  # no model yet
+    assert not st.can_set_default
+
+
+def test_setup_status_step3_ready_but_not_default_can_test_and_set() -> None:
+    st = gs.dictation_setup_status(
+        engine_name="Whisper",
+        engine_installed=True,
+        has_installed_model=True,
+        is_default=False,
+    )
+    assert st.stage == gs.STAGE_READY
+    assert st.can_test and st.can_set_default
+    assert "Set as Default" in st.next_step
+
+
+def test_setup_status_ready_and_default_can_test_but_not_reset_default() -> None:
+    st = gs.dictation_setup_status(
+        engine_name="Whisper",
+        engine_installed=True,
+        has_installed_model=True,
+        is_default=True,
+    )
+    assert st.stage == gs.STAGE_READY
+    assert st.is_default
+    assert st.can_test and not st.can_set_default
+    assert "default" in st.headline.lower()

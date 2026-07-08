@@ -200,3 +200,118 @@ def default_model_id(engine_id: str) -> str:
     'recommended' in the list for those who want more accuracy."""
     ids = [m.id for m in _catalog_models(engine_id)]
     return ids[0] if ids else ""
+
+
+# The guided dictation journey has three visible steps: pick+install an engine,
+# download a model, then test and make it the default. TOTAL_SETUP_STEPS keeps
+# the "Step N of 3" wording in one place.
+TOTAL_SETUP_STEPS = 3
+
+STAGE_ENGINE = "engine"
+STAGE_MODEL = "model"
+STAGE_READY = "ready"
+
+
+@dataclass(frozen=True, slots=True)
+class DictationSetupStatus:
+    """The "you are here, do this next" state for the guided dictation panel.
+
+    Pure and wx-free so the panel is a thin renderer and the whole journey is
+    unit-testable. ``stage`` is one of ``STAGE_ENGINE`` / ``STAGE_MODEL`` /
+    ``STAGE_READY``; ``headline`` is the step banner; ``next_step`` is the single
+    imperative next action. The ``can_*`` flags drive button enablement so the
+    panel never has to re-derive the journey logic.
+    """
+
+    stage: str
+    step_number: int
+    total_steps: int
+    headline: str
+    next_step: str
+    can_test: bool
+    can_set_default: bool
+    is_default: bool
+    engine_installed: bool
+    has_model: bool
+
+
+def dictation_setup_status(
+    *,
+    engine_name: str,
+    engine_installed: bool,
+    has_installed_model: bool,
+    is_default: bool,
+    engine_install_supported: bool = True,
+) -> DictationSetupStatus:
+    """Compute the guided-journey state for one dictation engine.
+
+    The three stages map to the three things a user must do, in order: get the
+    engine, get a model, then test it and make it the default. Each stage names
+    the single next action, so the panel can show one clear "do this next" line
+    and light up exactly the right button. ``is_default`` reflects whether this
+    engine is already the saved dictation default (``settings.speech_provider``).
+    """
+    if not engine_installed:
+        if engine_install_supported:
+            next_step = "Select an engine above, then choose Install selected engine."
+        else:
+            next_step = (
+                "This engine can't be installed automatically on this system; "
+                "pick another engine above."
+            )
+        return DictationSetupStatus(
+            stage=STAGE_ENGINE,
+            step_number=1,
+            total_steps=TOTAL_SETUP_STEPS,
+            headline=f"Step 1 of {TOTAL_SETUP_STEPS}: install the {engine_name} engine.",
+            next_step=next_step,
+            can_test=False,
+            can_set_default=False,
+            is_default=is_default,
+            engine_installed=False,
+            has_model=False,
+        )
+    if not has_installed_model:
+        return DictationSetupStatus(
+            stage=STAGE_MODEL,
+            step_number=2,
+            total_steps=TOTAL_SETUP_STEPS,
+            headline=f"Step 2 of {TOTAL_SETUP_STEPS}: download a model for {engine_name}.",
+            next_step=(
+                "Pick a model below (a recommended one is already selected) and "
+                "choose Download Selected."
+            ),
+            can_test=False,
+            can_set_default=False,
+            is_default=is_default,
+            engine_installed=True,
+            has_model=False,
+        )
+    if is_default:
+        return DictationSetupStatus(
+            stage=STAGE_READY,
+            step_number=TOTAL_SETUP_STEPS,
+            total_steps=TOTAL_SETUP_STEPS,
+            headline=f"Ready: {engine_name} is your dictation default.",
+            next_step=(
+                "Use Test dictation to confirm it, or download another model to switch quality."
+            ),
+            can_test=True,
+            can_set_default=False,
+            is_default=True,
+            engine_installed=True,
+            has_model=True,
+        )
+    return DictationSetupStatus(
+        stage=STAGE_READY,
+        step_number=TOTAL_SETUP_STEPS,
+        total_steps=TOTAL_SETUP_STEPS,
+        headline=f"Step {TOTAL_SETUP_STEPS} of {TOTAL_SETUP_STEPS}: test {engine_name} "
+        "and set it as your default.",
+        next_step="Use Test dictation to try it, then choose Set as Default.",
+        can_test=True,
+        can_set_default=True,
+        is_default=False,
+        engine_installed=True,
+        has_model=True,
+    )

@@ -33,19 +33,23 @@ Components** was rebuilt into one warm, guided place.
   engine listens to a spoken phrase and tells you what it heard, and tools report
   their version. There's a **Remove** button too, and a **Manage** button that
   jumps you straight to the right picker (Manage Speech Models or Manage Voices).
-- **A guided setup for offline speech, now with three engines.** Choosing offline
-  dictation used to mean hunting through menus. Now one step walks you through it:
-  pick your engine — **Whisper.cpp** (light and fast, works on any computer),
-  **Faster Whisper** (most accurate), or **Vosk** (tiny, for old or low-memory
-  machines) — with a plain-language explanation of each, then pick a model, with
-  the smallest one ready to go so you're transcribing within a minute. It installs
-  the engine and the model together and drops you right back in the hub. Vosk used
-  to sit as its own separate row further down the list; it's simply a third choice
-  here now, so there's exactly one place to set up offline dictation.
+- **A guided, step-by-step setup for offline dictation.** Choosing offline
+  dictation used to mean hunting through menus. Now the row is simply called
+  **Dictation (offline speech)**, and it walks you through it one step at a time —
+  a banner at the top always tells you which step you're on and the single next
+  thing to do: **1.** pick and install your engine — **Whisper.cpp** (light and
+  fast, works on any computer), **Faster Whisper** (most accurate), or **Vosk**
+  (tiny, for old or low-memory machines); **2.** pick a model, with the best fit
+  for your computer already selected so it's one click; **3.** press **Test
+  dictation** to hear it prove itself, and it becomes your default. QUILL
+  remembers the engine you chose, so you come back to where you left off instead
+  of it resetting to the built-in engine. Vosk used to sit as its own separate row
+  further down the list; it's simply a third choice here now, so there's exactly
+  one place to set up offline dictation.
 - **You always land back where you started — on the row you were just on.**
   Downloading something used to fling you off into the editor or another tab, or
   reset the list to the top. Now every download — voices, engines, Pandoc, the
-  braille pack, FFmpeg, Node.js, MathCAT, spell-check dictionaries, MP3 support —
+  braille pack, audio extras, Node.js, MathCAT, spell-check dictionaries —
   finishes, returns you to the hub, and reselects exactly the row you were working
   with.
 - **A gentler helping hand.** If you Test a piece before it's fully set up, QUILL
@@ -55,10 +59,13 @@ Components** was rebuilt into one warm, guided place.
   download genuinely fails, it offers to send a report with the details.
 - **Runs portable, stays portable.** Everything installs into your portable data
   folder when you run QUILL from a drive, so your whole setup travels with you.
-- **mpv playback and MP3 chapter markers are now one download.** Two separate
-  Audio Studio/export extras that both happened to be "MP3-adjacent" are now a
-  single "Audio playback & MP3 chapter markers" download (about 46 MB) instead of
-  two separate prompts.
+- **Audio export, playback, and chapters live in one place.** FFmpeg (for
+  exporting compressed audio like MP3 and M4B), the mpv playback engine, and MP3
+  audiobook chapter markers are now a single **"Audio: export, playback &
+  chapters"** row instead of three scattered entries — and each piece is still
+  fetched only when you first use its feature, so nothing large downloads until
+  it's actually needed. **Node.js** now sits at the very bottom of the list, as
+  the least-used extra.
 - **"Set as Default" is now a real, findable button.** Pick your favorite offline
   speech model, or your favorite Read Aloud voice, and tell QUILL to use it from
   now on — a button and a right-click option, right where you already are, instead

@@ -1158,23 +1158,28 @@ when you want them. **Help > Download Optional Components...** is the single pla
 to see, get, test, and remove them all. It lists each component — most important
 first: **Pandoc** (document conversion for Word, ODT, EPUB, and RTF), the
 **braille translation pack** (liblouis tables and BRF profiles for the Translation
-submenu and BRF/embossing export), the **offline speech engine** (a guided picker
+submenu and BRF/embossing export), **Dictation (offline speech)** (a guided setup
 covering Whisper.cpp, Faster Whisper, and Vosk — see below), **Kokoro** and
-**Piper** neural voices, **eSpeak NG** and **DECtalk** voices, the **FFmpeg**
-audio-export helper, **Audio playback & MP3 chapter markers** (the mpv playback
-engine plus MP3 audiobook chapter markers, one combined download), the **Node.js**
-runtime (for Node Quillins and the Developer Console's TypeScript interface), the
-**MathCAT** math-speech engine, and any non-English **spell-check dictionaries**.
-Each row shows whether it is **Installed** or **Available to download** and its
-size, and selecting a row fills a plain-language description of what it enables
-and its impact.
+**Piper** neural voices, **eSpeak NG** and **DECtalk** voices, **Audio: export,
+playback & chapters** (FFmpeg for exporting compressed audio, the mpv playback
+engine, and MP3 audiobook chapter markers — all in one place, each piece fetched
+only when its feature is first used), the **MathCAT** math-speech engine, the
+**Node.js** runtime (for Node Quillins and the Developer Console's TypeScript
+interface — listed last, as the least-used extra), and any non-English
+**spell-check dictionaries**. Each row shows whether it is **Installed** or
+**Available to download** and its size, and selecting a row fills a plain-language
+description of what it enables and its impact.
 
 - **Download** fetches a not-yet-installed component — checksum-verified, with its
-  own progress. The offline speech engine's row opens a guided picker instead of a
-  bare download: pick your engine (**Whisper.cpp**, light and fast; **Faster
+  own progress. The **Dictation (offline speech)** row opens a guided setup
+  instead of a bare download, and walks you through one step at a time — a banner
+  at the top always shows which step you are on and the single next thing to do:
+  **1.** pick and install an engine (**Whisper.cpp**, light and fast; **Faster
   Whisper**, most accurate; or **Vosk**, tiny and best for old or low-memory
-  machines), then a model, and QUILL installs both together and sets them as your
-  default in one step.
+  machines); **2.** download a model, with the best fit for your computer already
+  selected; **3.** **Test dictation** to confirm it works, then set it as your
+  default. QUILL remembers the engine you chose, so the setup reopens where you
+  left off instead of resetting to the built-in engine.
 - **Test** proves an installed component works, so you can be confident before you
   rely on it: a voice speaks a short sample so you actually hear it; the offline
   speech engine transcribes a spoken phrase and tells you what it heard; tools

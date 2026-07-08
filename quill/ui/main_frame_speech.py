@@ -44,6 +44,30 @@ class SpeechCommandsMixin:
                 pass
         return registry.get(DEFAULT_PROVIDER_ID)  # type: ignore[attr-defined]
 
+    def _configured_speech_provider(self, registry: object | None = None) -> object:
+        """The dictation engine the user last chose, for UI initial selection.
+
+        Unlike :meth:`_speech_provider`, this does NOT fall back to the bundled
+        default when the saved engine isn't ready yet -- so Manage Speech Models
+        opens on the engine you actually picked (showing its "needs a model"
+        state) instead of silently snapping back to whisper.cpp. Real dictation
+        still goes through :meth:`_speech_provider`, which keeps the availability
+        fallback so speech always works.
+
+        Pass ``registry`` to resolve from a registry the caller already built, so
+        the returned provider is object-identical to that registry's ``all()``
+        entries (the engine radio selects by identity).
+        """
+        from quill.core.speech.service import DEFAULT_PROVIDER_ID
+
+        reg = registry if registry is not None else self._speech_registry()
+        chosen = str(getattr(self.settings, "speech_provider", "") or "")
+        if chosen:
+            provider = reg.get(chosen)  # type: ignore[attr-defined]
+            if provider is not None:
+                return provider
+        return reg.get(DEFAULT_PROVIDER_ID)  # type: ignore[attr-defined]
+
     def _voice_provider(self) -> object:
         """The speech engine that powers the voice-interaction features.
 
@@ -359,7 +383,6 @@ class SpeechCommandsMixin:
             "piper": lambda: self.download_piper_exe(on_done=_back),
             "espeak": lambda: self.download_espeak_exe(on_done=_back),
             "dectalk": lambda: self.download_dectalk_exe(on_done=_back),
-            "ffmpeg": lambda: self.download_ffmpeg(on_done=_back),
             "pandoc": lambda: self.download_pandoc(on_done=_back),
             "node": lambda: self.download_node_runtime(on_done=_back),
             "braille": lambda: self.download_braille_pack(on_done=_back),
