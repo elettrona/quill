@@ -86,7 +86,12 @@ def _extract_with_pdfplumber(path: Path) -> PdfExtractionResult:
             flush_cache = getattr(page, "flush_cache", None)
             if callable(flush_cache):
                 flush_cache()
-    text = "\n\n".join(page_texts).strip()
+    # #872: join with a form feed, not a blank line, so real page
+    # boundaries survive into the editable Document text. This makes
+    # quill.core.navigation.page_starts()/page_start_for_number() -- already
+    # built for this, previously unreachable for real documents -- report
+    # exact pages for PDFs.
+    text = "\f".join(page_texts).strip()
     score = _score_pdf_text(text, page_count, sum(1 for page_text in page_texts if page_text))
     return PdfExtractionResult(
         text=text + "\n" if text else "",
@@ -108,7 +113,8 @@ def _extract_with_pypdf(path: Path) -> PdfExtractionResult:
         if index >= _PDF_MAX_PAGES:
             break
         page_texts.append((page.extract_text() or "").strip())
-    text = "\n\n".join(page_texts).strip()
+    # #872: see the matching comment in _extract_with_pdfplumber above.
+    text = "\f".join(page_texts).strip()
     score = _score_pdf_text(text, page_count, sum(1 for page_text in page_texts if page_text))
     return PdfExtractionResult(
         text=text + "\n" if text else "",
