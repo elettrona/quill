@@ -17,10 +17,12 @@ the tom type library) and call ``ITextDocument::Open`` / ``::Save`` with the
 ``tomRTF`` format flag against a file. Verified end-to-end on a real
 ``RICHEDIT50W`` with no crash.
 
-Still to come: formatting commands (``CHARFORMAT2`` / ``PARAFORMAT2``, Phase 2)
-and the braille instrument (the same TOM ``ITextSelection`` plus
-``EM_SETEDITSTYLE``, Phase 3) that will drive the fixes for the cell-2 (#616) and
-dots-7-8-on-selection (#813) braille bugs on the real control.
+Also wired, all through the TOM: **Phase 2** formatting (bold/italic/underline/
+font/size/alignment via ``ITextFont`` / ``ITextPara``) and **Phase 3** the
+braille instrument (the TOM ``ITextSelection`` localizer plus the
+``EM_SETEDITSTYLE`` / ``SES_EMULATESYSEDIT`` lever) for the cell-2 (#616) and
+dots-7-8-on-selection (#813) braille bugs. The formatting methods are wired at
+the surface; menu/keyboard command routing is the remaining integration.
 
 Everything Windows/COM is guarded so the module imports on every platform, and
 every path raises a clear error or falls back -- selecting the surface can never
@@ -53,6 +55,10 @@ _EM_SETEDITSTYLE = 0x0400 + 204
 _EM_GETEDITSTYLE = 0x0400 + 205
 _SES_EMULATESYSEDIT = 0x00000001
 
+# TOM formatting (Phase 2): ITextFont bool values + ITextPara alignment (tom.h).
+_TOM_TOGGLE = -9999998
+_TOM_ALIGNMENT = {"left": 0, "center": 1, "right": 2, "justify": 3}
+
 
 class RichEditRtfError(RuntimeError):
     """A native RTF operation failed (no OLE interface, TOM error, file I/O).
@@ -60,14 +66,6 @@ class RichEditRtfError(RuntimeError):
     A plain ``RuntimeError`` subclass, not a ``CodedError``: this is UI-layer glue
     (``quill/ui``), outside the error-code audit's scope, and the caller degrades
     to a clear on-screen message + the plain-text fallback.
-    """
-
-
-class RichEditRtfUnavailableError(NotImplementedError):
-    """A QuillRichEdit capability scheduled for a later phase (e.g. formatting).
-
-    Raised by the Phase 2 formatting methods so callers get a clear, catchable
-    signal rather than a silent no-op.
     """
 
 
@@ -148,7 +146,8 @@ class QuillRichEdit:
     ``load_rtf``/``save_rtf``). ``get_plain_text`` returns the control's plain
     value so QUILL's offset-anchored features (search, spell, AI, read aloud,
     braille) keep working unchanged. Formatting (Phase 2) and the braille
-    instrument (Phase 3) are not wired. ``surface`` is the live ``wx.TextCtrl``.
+    instrument (Phase 3) are also wired here. ``surface`` is the live
+    ``wx.TextCtrl``.
     """
 
     def __init__(self, surface: Any) -> None:
@@ -269,12 +268,51 @@ class QuillRichEdit:
         agree = wx_sel is not None and wx_sel == tom
         return f"wx={wx_sel}, TOM={tom}, agree={agree}"
 
-    # -- formatting (Phase 2 -- not yet wired) ------------------------------ #
+    # -- formatting (Phase 2, via the TOM ITextFont / ITextPara) ------------ #
+
+    def _selection(self) -> Any:
+        """The control's live ``ITextSelection`` (raises :class:`RichEditRtfError`)."""
+        return _get_text_document(self.hwnd()).Selection
+
+    def _apply_font(self, attr: str, value: Any) -> None:
+        try:
+            setattr(self._selection().Font, attr, value)
+        except RichEditRtfError:
+            raise
+        except Exception as exc:  # noqa: BLE001 - map COM failure to our error
+            raise RichEditRtfError(f"Could not apply {attr} formatting: {exc}") from exc
 
     def apply_bold(self) -> None:
-        raise RichEditRtfUnavailableError(
-            "Formatting commands (CHARFORMAT2) land in Phase 2 of the QuillRichEdit surface."
-        )
+        """Toggle bold on the current selection (ITextFont.Bold)."""
+        self._apply_font("Bold", _TOM_TOGGLE)
+
+    def apply_italic(self) -> None:
+        """Toggle italic on the current selection."""
+        self._apply_font("Italic", _TOM_TOGGLE)
+
+    def apply_underline(self) -> None:
+        """Toggle underline on the current selection."""
+        self._apply_font("Underline", _TOM_TOGGLE)
+
+    def set_font_name(self, name: str) -> None:
+        """Set the font family of the current selection."""
+        self._apply_font("Name", str(name))
+
+    def set_font_size(self, points: float) -> None:
+        """Set the font size (points) of the current selection."""
+        self._apply_font("Size", float(points))
+
+    def set_alignment(self, how: str) -> None:
+        """Set paragraph alignment: ``left`` / ``center`` / ``right`` / ``justify``."""
+        value = _TOM_ALIGNMENT.get(str(how).lower())
+        if value is None:
+            raise RichEditRtfError(f"Unknown alignment: {how!r}")
+        try:
+            self._selection().Para.Alignment = value
+        except RichEditRtfError:
+            raise
+        except Exception as exc:  # noqa: BLE001
+            raise RichEditRtfError(f"Could not set alignment: {exc}") from exc
 
     # -- reporting ---------------------------------------------------------- #
 
@@ -287,11 +325,12 @@ class QuillRichEdit:
             "native_control": True,
             "rtf_load": rtf,
             "rtf_save": rtf,
-            "formatting_commands": False,
+            "formatting_commands": rtf,
             "notes": (
-                "Native Windows Rich Edit (RICHEDIT50W) with RTF load/save via the "
-                "Text Object Model (ITextDocument Open/Save). Formatting (Phase 2) "
-                "and the braille instrument (Phase 3) are not wired yet."
+                "Native Windows Rich Edit (RICHEDIT50W): RTF load/save and "
+                "bold/italic/underline/font/size/alignment via the Text Object "
+                "Model, plus the Phase 3 braille instrument (selection localizer + "
+                "emulate-system-edit lever)."
             ),
         }
 
@@ -327,7 +366,7 @@ class QuillRichEdit:
             return "unavailable (no native handle or comtypes)"
         try:
             data = self.get_rtf()
-        except (RichEditRtfError, RichEditRtfUnavailableError) as exc:
+        except RichEditRtfError as exc:
             return f"failed ({exc})"
         signed = data[:6].startswith(b"{\\rtf")
         return f"{len(data)} bytes, RTF signature: {'yes' if signed else 'no'}"

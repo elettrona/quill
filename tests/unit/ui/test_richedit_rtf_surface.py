@@ -118,16 +118,40 @@ def test_no_handle_raises_cleanly_and_plain_text_still_works() -> None:
     assert wrapper.get_plain_text() == "plain text here"
 
 
-def test_formatting_is_the_phase2_stub() -> None:
+def test_formatting_via_tom_and_boundary_safe() -> None:
+    # Phase 2: formatting goes through the TOM ITextFont/ITextPara. Without a real
+    # handle the methods raise a clear RichEditRtfError (never a silent no-op).
     import quill.ui.richedit_rtf_surface as mod
 
+    source = inspect.getsource(mod)
+    assert ".Font" in source and ".Para" in source and "_TOM_TOGGLE" in source
+    assert "_TOM_ALIGNMENT" in source
+
     wrapper = mod.QuillRichEdit(_FakeSurface())
+    for call in (
+        wrapper.apply_bold,
+        wrapper.apply_italic,
+        wrapper.apply_underline,
+        lambda: wrapper.set_font_name("Consolas"),
+        lambda: wrapper.set_font_size(14),
+        lambda: wrapper.set_alignment("center"),
+    ):
+        try:
+            call()
+        except mod.RichEditRtfError:
+            pass
+        else:  # pragma: no cover - defensive
+            raise AssertionError("formatting with no handle must raise RichEditRtfError")
+    # An unknown alignment is a clear error, not a silent pass.
     try:
-        wrapper.apply_bold()
-    except mod.RichEditRtfUnavailableError:
+        wrapper.set_alignment("sideways")
+    except mod.RichEditRtfError:
         pass
     else:  # pragma: no cover - defensive
-        raise AssertionError("formatting must raise until Phase 2")
+        raise AssertionError("unknown alignment must raise")
+
+    # The now-removed 'not yet implemented' error type is gone.
+    assert not hasattr(mod, "RichEditRtfUnavailableError")
 
 
 def test_diagnostic_summary_carries_no_document_content() -> None:
@@ -176,3 +200,17 @@ def test_main_frame_gates_and_passes_the_emulate_lever() -> None:
     assert "experimental_richedit_emulate_sysedit" in source
     assert "emulate_system_edit=" in source
     assert "acknowledged and" in source  # only when the experimental gates are on
+
+
+def test_everything_is_gated_behind_both_experimental_flags() -> None:
+    # The whole QuillRichEdit surface (and therefore all of its RTF/formatting/
+    # braille capabilities, which only exist once it is instantiated) is only
+    # activated when BOTH experimental gates are acknowledged -- so nothing here
+    # can reach a user who has not opted into experimental editor surfaces.
+    from quill.ui.main_frame import MainFrame
+
+    source = inspect.getsource(MainFrame._create_document_tab)
+    assert "experimental_acknowledged" in source
+    assert "experimental_editor_surfaces_enabled" in source
+    # The surface override (incl. richedit_rtf) is applied only under `acknowledged`.
+    assert "if acknowledged and override" in source

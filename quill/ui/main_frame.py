@@ -11119,8 +11119,10 @@ class MainFrame(
                 "(#616/#813) is wired: the diagnostic reports the edit style and a "
                 "TOM selection localizer, and the separate 'emulate a system edit "
                 "control' setting A/B-tests the cell-2 / dots-7-8 fix (needs a "
-                "braille display to judge). Formatting commands (Phase 2) are not "
-                "wired yet. Falls back to a plain control on any failure."
+                "braille display to judge). Formatting (bold/italic/underline/font/"
+                "size/alignment) is wired through the TOM too; native Ctrl+B/I/U "
+                "also work on this control. Falls back to a plain control on any "
+                "failure."
             ),
             "win32": (
                 "Native Win32 EDIT — the pywin32 spike (Windows only).\n\n"

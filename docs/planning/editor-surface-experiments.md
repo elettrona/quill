@@ -313,8 +313,14 @@ assertions, run against each surface with real wx) before we lean on it.
   TOM avoids a Python callback entirely, which is why it works.
   `get_plain_text()` returns the control's plain value so search/spell/AI/read
   aloud keep working.
-- **Phase 2 (not wired):** formatting via `CHARFORMAT2` / `PARAFORMAT2`
-  (`apply_bold` etc. raise `RichEditRtfUnavailableError`).
+- **Phase 2 (done, via TOM):** formatting on the selection --
+  `apply_bold`/`apply_italic`/`apply_underline` (toggle via `ITextFont` +
+  `tomToggle`), `set_font_name`/`set_font_size` (`ITextFont.Name`/`.Size`), and
+  `set_alignment` (`ITextPara.Alignment`). Verified on-device: italic, font
+  (Consolas), size (18pt -> `fs36`), and center (`\qc`) all appear in the saved
+  RTF, no crash. The surface-level methods are wired; **menu/keyboard command
+  routing is the remaining integration** (native RichEdit already handles
+  Ctrl+B/I/U itself).
 - **Phase 3 (instrument + lever landed; needs braille testing):** the braille
   work for #616 (cell-2) and #813 (dots 7-8 on selection).
   - *Instrument (measures, safe):* the accessibility diagnostic now reports the

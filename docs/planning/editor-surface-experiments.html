@@ -575,10 +575,18 @@ flow out) -- <strong>no crash.</strong> The first attempt used an
 (post-mortem below); TOM avoids a Python callback entirely, which is why
 it works. <code>get_plain_text()</code> returns the control's plain
 value so search/spell/AI/read aloud keep working.</li>
-<li><strong>Phase 2 (not wired):</strong> formatting via
-<code>CHARFORMAT2</code> / <code>PARAFORMAT2</code>
-(<code>apply_bold</code> etc. raise
-<code>RichEditRtfUnavailableError</code>).</li>
+<li><strong>Phase 2 (done, via TOM):</strong> formatting on the
+selection --
+<code>apply_bold</code>/<code>apply_italic</code>/<code>apply_underline</code>
+(toggle via <code>ITextFont</code> + <code>tomToggle</code>),
+<code>set_font_name</code>/<code>set_font_size</code>
+(<code>ITextFont.Name</code>/<code>.Size</code>), and
+<code>set_alignment</code> (<code>ITextPara.Alignment</code>). Verified
+on-device: italic, font (Consolas), size (18pt -&gt; <code>fs36</code>),
+and center (<code>\qc</code>) all appear in the saved RTF, no crash. The
+surface-level methods are wired; <strong>menu/keyboard command routing
+is the remaining integration</strong> (native RichEdit already handles
+Ctrl+B/I/U itself).</li>
 <li><strong>Phase 3 (instrument + lever landed; needs braille
 testing):</strong> the braille work for #616 (cell-2) and #813 (dots 7-8
 on selection).
