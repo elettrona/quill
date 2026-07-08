@@ -39,6 +39,36 @@ def test_installed_from_managed_download(monkeypatch, tmp_path: Path) -> None:
     assert pack.get_brf_profiles() == [{"id": "p1"}]
 
 
+def test_version_reads_liblouis_version_from_manifest(monkeypatch, tmp_path: Path) -> None:
+    # braille_pack.py never imports liblouis in-process (BR-020); the version
+    # comes from the pack's own manifest.json (baked in at build time by
+    # build_braille_pack.py), the same file get_brf_profiles() already reads
+    # brf_profiles.json alongside.
+    monkeypatch.setattr(pack.shutil, "which", lambda _name: None)
+    monkeypatch.setattr(pack.importlib.util, "find_spec", lambda _name: None)
+    managed = tmp_path / "braille-pack"
+    managed.mkdir()
+    (managed / "lou_translate.exe").write_bytes(b"x")
+    (managed / "manifest.json").write_text(
+        '{"version": 1, "liblouis_version": "3.30.0"}', encoding="utf-8"
+    )
+    monkeypatch.setattr(pack, "managed_braille_dir", lambda: managed)
+    monkeypatch.delenv("QUILL_APP_ROOT", raising=False)
+    assert pack.braille_pack_version() == "3.30.0"
+
+
+def test_version_is_unknown_when_manifest_missing_the_field(monkeypatch, tmp_path: Path) -> None:
+    monkeypatch.setattr(pack.shutil, "which", lambda _name: None)
+    monkeypatch.setattr(pack.importlib.util, "find_spec", lambda _name: None)
+    managed = tmp_path / "braille-pack"
+    managed.mkdir()
+    (managed / "lou_translate.exe").write_bytes(b"x")
+    (managed / "manifest.json").write_text('{"version": 1}', encoding="utf-8")
+    monkeypatch.setattr(pack, "managed_braille_dir", lambda: managed)
+    monkeypatch.delenv("QUILL_APP_ROOT", raising=False)
+    assert pack.braille_pack_version() == "unknown"
+
+
 def test_install_downloads_via_release_assets(monkeypatch, tmp_path: Path) -> None:
     captured: dict[str, object] = {}
 

@@ -258,9 +258,13 @@ class Settings:
     # plus the serialized TextNormalizationOptions (empty = recommended defaults).
     tts_normalization_enabled: bool = True
     tts_normalization: dict[str, Any] = field(default_factory=dict)
-    # Offline speech engine: "" = bundled whisper.cpp; "fasterwhisper" opts into
-    # the Faster Whisper (CTranslate2) engine on machines that have it.
+    # Offline speech engine: "" = bundled whisper.cpp; "fasterwhisper" or "vosk"
+    # opt into those engines on machines that have them installed.
     speech_provider: str = ""
+    # The model id to prefer for speech_provider (e.g. "small", "base.en"); ""
+    # falls back to the first installed model of whichever engine is active.
+    # Set by the guided offline-speech picker and "Set as Default".
+    speech_default_model_id: str = ""
     bw_speech_selection_mode: str = "recommended"
     bw_speech_model_id: str = "whisper-base"
     bw_provider_id: str = "local_whisper"
@@ -810,8 +814,9 @@ class Settings:
             dict(tts_normalization_raw) if isinstance(tts_normalization_raw, dict) else {}
         )
         speech_provider = str(data.get("speech_provider", "")).strip().lower()
-        if speech_provider not in {"", "whispercpp", "fasterwhisper"}:
+        if speech_provider not in {"", "whispercpp", "fasterwhisper", "vosk"}:
             speech_provider = ""
+        speech_default_model_id = str(data.get("speech_default_model_id", "")).strip()
         bw_speech_selection_mode = (
             str(data.get("bw_speech_selection_mode", "recommended")).strip().lower()
             or "recommended"
@@ -1319,6 +1324,7 @@ class Settings:
             tts_normalization=tts_normalization,
             dictation_min_hold_seconds=dictation_min_hold_seconds,
             speech_provider=speech_provider,
+            speech_default_model_id=speech_default_model_id,
             bw_speech_selection_mode=bw_speech_selection_mode,
             bw_speech_model_id=bw_speech_model_id,
             bw_provider_id=bw_provider_id,

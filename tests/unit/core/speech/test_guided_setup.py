@@ -6,7 +6,7 @@ import quill.core.speech.guided_setup as gs
 def test_offline_speech_engine_options_lists_both_recommended_first() -> None:
     opts = gs.offline_speech_engine_options()
     ids = [o.engine_id for o in opts]
-    assert ids == ["whispercpp", "fasterwhisper"]
+    assert ids == ["whispercpp", "fasterwhisper", "vosk"]
     # whisper.cpp is the friendly default and always installable (release asset).
     whispercpp = opts[0]
     assert whispercpp.recommended is True
@@ -24,6 +24,7 @@ def test_engine_options_never_crash_on_detector_failure(monkeypatch) -> None:
 
     monkeypatch.setattr(gs, "_whispercpp_installed", boom)
     monkeypatch.setattr(gs, "_faster_whisper_installed", boom)
+    monkeypatch.setattr(gs, "_vosk_installed", boom)
     opts = gs.offline_speech_engine_options()  # must not raise
     assert all(o.installed is False for o in opts)
 
@@ -32,6 +33,7 @@ def test_recommended_engine_prefers_an_installed_one_else_whispercpp(monkeypatch
     # Nothing installed -> the friendly default.
     monkeypatch.setattr(gs, "_whispercpp_installed", lambda: False)
     monkeypatch.setattr(gs, "_faster_whisper_installed", lambda: False)
+    monkeypatch.setattr(gs, "_vosk_installed", lambda: False)
     assert gs.recommended_engine_id() == "whispercpp"
 
     # Faster Whisper already installed -> keep the user on what they have.
@@ -55,6 +57,16 @@ def test_models_for_engine_lists_catalog_with_a_recommendation() -> None:
 def test_default_model_is_the_smallest_for_a_fast_start() -> None:
     # "default to tiny so they're going immediately" -- the first (smallest) model.
     assert gs.default_model_id("whispercpp") == "tiny"
+
+
+def test_vosk_is_a_third_engine_with_its_own_model_catalog() -> None:
+    # Vosk is reached through this same guided flow, not a separate hub row.
+    vosk = gs.models_for_engine("vosk")
+    assert vosk
+    assert vosk[0].model_id == gs.default_model_id("vosk")
+    assert sum(1 for m in vosk if m.recommended) == 1
+    cpp_ids = {m.model_id for m in gs.models_for_engine("whispercpp")}
+    assert {m.model_id for m in vosk} != cpp_ids
 
 
 def test_models_for_engine_never_crashes_on_detection_failure(monkeypatch) -> None:

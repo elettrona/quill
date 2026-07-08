@@ -43,9 +43,29 @@ class _Provider:
         ]
 
 
+class _CloudProvider:
+    """Shape of a cloud (Quillin-registered) provider: no downloadable models,
+    since it's API-based -- the Dictation (Online) tab's "current" provider."""
+
+    id = "cloud-stt"
+
+    def list_supported_models(self) -> list[SpeechModelInfo]:
+        return []
+
+    def list_installed_models(self) -> list[InstalledSpeechModel]:
+        return []
+
+
 def test_default_registry_has_whispercpp() -> None:
     registry = service.default_registry()
     assert registry.get(service.DEFAULT_PROVIDER_ID) is not None
+
+
+def test_describe_models_is_empty_for_a_modelless_cloud_provider() -> None:
+    # Regression guard: Dictation (Online) reuses describe_models() for
+    # whichever cloud provider is "current" there; a provider with no models
+    # must produce an empty row list, not crash the hub.
+    assert service.describe_models(_CloudProvider()) == []
 
 
 def test_describe_models_marks_installed_and_sizes() -> None:

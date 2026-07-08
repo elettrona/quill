@@ -59,12 +59,14 @@ def test_open_optional_components_routes_and_covers_all_downloads() -> None:
 
 def test_hub_downloads_reopen_the_hub_when_done() -> None:
     """After a download the hub reopens, so the user is never dropped out of it
-    (the hub closes itself to dispatch)."""
+    (the hub closes itself to dispatch). It reopens on the row just downloaded,
+    not the top of the list, so returning doesn't jarringly reset position."""
     src = _src("main_frame_speech.py")
-    assert "def _back(" in src and "self.open_optional_components()" in src
+    assert "def _back(" in src and "self.open_optional_components(preselect=chosen)" in src
     # Every download handler gets the reopen callback -- no download drops you out.
+    # Vosk has no standalone hub row (it's a guided-picker engine choice), so it
+    # is not in this list.
     for handler in (
-        "self.download_vosk(on_done=_back)",
         "self.download_piper_exe(on_done=_back)",
         "self.download_espeak_exe(on_done=_back)",
         "self.download_dectalk_exe(on_done=_back)",
@@ -72,10 +74,14 @@ def test_hub_downloads_reopen_the_hub_when_done() -> None:
         "self.download_node_runtime(on_done=_back)",
         "self._download_kokoro_models(on_done=_back)",
         "self.download_braille_pack(on_done=_back)",
+        "self.download_audio_extras(on_done=_back)",
         "self.download_mathcat(on_done=_back)",
     ):
         assert handler in src, f"hub dispatch missing reopen-hub for {handler}"
     assert "on_ok=(lambda: on_done(True)) if on_done else" in src
+    # The spell-check download path reopens the hub too, instead of dropping
+    # the user into the editor.
+    assert '_download_then_apply(wx, self, chosen[len("spell-") :], on_done=_back)' in src
 
 
 def test_startup_braille_prompt_routes_into_the_hub() -> None:

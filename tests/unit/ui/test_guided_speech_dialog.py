@@ -47,7 +47,23 @@ def test_guided_install_does_engine_then_model_and_returns_to_hub() -> None:
     assert "def _install_offline_speech" in src
     assert "def _ensure_offline_engine" in src
     assert "provider.download_model(" in src  # install engine (if needed) then model
-    assert "on_ok=self.open_optional_components" in src  # returns to the hub, stays put
+    # returns to the hub, reselecting the engine row rather than resetting to the top
+    assert "on_ok=lambda: self.open_optional_components(preselect=engine_id)" in src
+    # the engine + model just installed become the default automatically
+    assert "self.settings.speech_provider = engine_id" in src
+    assert "self.settings.speech_default_model_id = model_id" in src
+
+
+def test_ensure_offline_engine_handles_vosk() -> None:
+    src = _src("main_frame_speech.py")
+    assert 'elif engine_id == "vosk":' in src
+    assert "install_vosk(progress)" in src
+
+
+def test_dictation_dialog_set_default_action_is_handled() -> None:
+    src = _src("main_frame.py")
+    assert 'elif dict_result.action == "set_default" and dict_result.model_id:' in src
+    assert "self.settings.speech_default_model_id = dict_result.model_id" in src
 
 
 def test_speech_menu_consolidated_the_separate_download_items() -> None:
@@ -58,8 +74,18 @@ def test_speech_menu_consolidated_the_separate_download_items() -> None:
     assert "Download &FFmpeg" not in src
 
 
-def test_hub_offers_mp3_support_download() -> None:
+def test_test_button_no_model_remedy_reopens_the_guided_picker() -> None:
+    """Test's "no offline speech model yet" outcome reopens the same guided
+    engine+model picker used for the initial download, not the full multi-tab
+    Speech Settings dialog -- no complex detour just to grab a model."""
     src = _src("main_frame_speech.py")
-    assert '"mp3": self.download_mp3_support' in src
-    assert "def download_mp3_support" in src
+    assert 'if getattr(result, "remedy", ""):' in src
+    assert "self.open_guided_offline_speech()" in src
+
+
+def test_hub_offers_audio_extras_download() -> None:
+    src = _src("main_frame_speech.py")
+    assert '"audio_extras": lambda: self.download_audio_extras(on_done=_back)' in src
+    assert "def download_audio_extras" in src
     assert "install_mp3_support(" in src  # on-demand mutagen install
+    assert '"libmpv",' in src  # on-demand mpv fetch_component call

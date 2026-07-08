@@ -20,6 +20,18 @@ def test_module_calls_focus_primary_control() -> None:
     assert "focus_primary_control" in src
 
 
+def test_set_default_button_and_context_menu_are_wired() -> None:
+    """ "Set as Default" reaches an installed model via the button or a
+    right-click context menu, without leaving the model list."""
+    src = _MODULE_PATH.read_text(encoding="utf-8")
+    assert 'action="set_default"' in src
+    assert "def _on_set_default" in src
+    assert "def _show_model_context_menu" in src
+    assert "EVT_CONTEXT_MENU" in src
+    # Only an installed model can be set as default.
+    assert "self._btn_set_default.Enable(installed)" in src
+
+
 class _IdProvider:
     def __init__(self, pid: str, display_name: str) -> None:
         self.id = pid
@@ -66,6 +78,44 @@ def test_engine_descriptors_append_other_registered_providers() -> None:
     assert len(cloud_rows) == 1
     assert cloud_rows[0]["installed"] is True
     assert cloud_rows[0]["install_action"] is None
+
+
+def test_engine_scope_offline_excludes_cloud_providers() -> None:
+    cloud = _IdProvider("cloud-stt", "Cloud STT")
+    rows = build_engine_descriptors(
+        [_IdProvider("whispercpp", "Whisper.cpp"), cloud],
+        whispercpp_ok=True,
+        faster_whisper_ok=False,
+        vosk_ok=False,
+        engine_scope="offline",
+    )
+    labels = [r["label"] for r in rows]
+    assert any("Whisper (built in)" in label for label in labels)
+    assert not any(r["provider"] is cloud for r in rows)
+
+
+def test_engine_scope_online_is_only_cloud_providers() -> None:
+    cloud = _IdProvider("cloud-stt", "Cloud STT")
+    rows = build_engine_descriptors(
+        [_IdProvider("whispercpp", "Whisper.cpp"), cloud],
+        whispercpp_ok=True,
+        faster_whisper_ok=False,
+        vosk_ok=False,
+        engine_scope="online",
+    )
+    assert len(rows) == 1
+    assert rows[0]["provider"] is cloud
+
+
+def test_engine_scope_online_is_empty_with_no_cloud_providers_registered() -> None:
+    rows = build_engine_descriptors(
+        [_IdProvider("whispercpp", "Whisper.cpp")],
+        whispercpp_ok=True,
+        faster_whisper_ok=False,
+        vosk_ok=False,
+        engine_scope="online",
+    )
+    assert rows == []
 
 
 class _FakeProvider:

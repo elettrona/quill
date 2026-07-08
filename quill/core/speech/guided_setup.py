@@ -1,15 +1,18 @@
 """Wx-free foundation for the guided offline-speech setup in the Download
 Optional Components hub.
 
-The hub walks the user through *choosing* an offline speech engine -- Faster
-Whisper or whisper.cpp -- with plain-language explanations of the trade-off,
-then choosing a model (via :mod:`quill.core.speech.service`, which already marks
-one "recommended for your computer"). This module supplies the engine step's
-data and a friendly default, so the UI is a thin renderer. No ``wx`` here.
+The hub walks the user through *choosing* an offline speech engine --
+whisper.cpp, Faster Whisper, or Vosk -- with plain-language explanations of
+the trade-off, then choosing a model (via :mod:`quill.core.speech.service`,
+which already marks one "recommended for your computer"). This module
+supplies the engine step's data and a friendly default, so the UI is a thin
+renderer. No ``wx`` here.
 
 Meet-people-where-they-are: the recommended engine is the light one that works
 on any machine, and the recommended model defaults small so the user is
-transcribing within a minute.
+transcribing within a minute. All three engines are reached through this one
+guided flow rather than separate hub rows, so there is exactly one "offline
+speech" download to find.
 """
 
 from __future__ import annotations
@@ -44,6 +47,11 @@ _FASTER_WHISPER_SUMMARY = (
     "use your graphics card if you have one. Best when you want top-quality "
     "transcription and have a capable machine."
 )
+_VOSK_TAGLINE = "very low resource; best for old or low-memory machines"
+_VOSK_SUMMARY = (
+    "A tiny offline engine for old or low-memory machines with no GPU. Less "
+    "accurate than the other two, but works on hardware where they may struggle."
+)
 
 
 def _safe(predicate) -> bool:  # type: ignore[no-untyped-def]
@@ -72,6 +80,18 @@ def _faster_whisper_install_supported() -> bool:
     return faster_whisper_install_supported()
 
 
+def _vosk_installed() -> bool:
+    from quill.core.speech.engine_install import is_vosk_available
+
+    return is_vosk_available()
+
+
+def _vosk_install_supported() -> bool:
+    from quill.core.speech.engine_install import vosk_install_supported
+
+    return vosk_install_supported()
+
+
 def offline_speech_engine_options() -> list[OfflineSpeechEngineOption]:
     """The engine choices for the guided offline-speech flow, recommended first.
 
@@ -96,6 +116,14 @@ def offline_speech_engine_options() -> list[OfflineSpeechEngineOption]:
             summary=_FASTER_WHISPER_SUMMARY,
             installed=_safe(_faster_whisper_installed),
             install_supported=_safe(_faster_whisper_install_supported),
+        ),
+        OfflineSpeechEngineOption(
+            engine_id="vosk",
+            name="Vosk",
+            tagline=_VOSK_TAGLINE,
+            summary=_VOSK_SUMMARY,
+            installed=_safe(_vosk_installed),
+            install_supported=_safe(_vosk_install_supported),
         ),
     ]
 
@@ -132,6 +160,8 @@ def _catalog_models(engine_id: str) -> tuple:  # type: ignore[type-arg]
 
     if engine_id == "fasterwhisper":
         return catalog.FASTER_WHISPER_MODELS
+    if engine_id == "vosk":
+        return catalog.VOSK_MODELS
     return catalog.WHISPER_CPP_MODELS
 
 

@@ -24,6 +24,7 @@ download paths are thin wrappers over them.
 from __future__ import annotations
 
 import hashlib
+import io
 import json
 import os
 import shutil
@@ -476,6 +477,17 @@ def _make_progress_tqdm(info: SpeechModelInfo, progress: ProgressCallback) -> ty
     shared = {"done": 0}
 
     class _ProgressTqdm(_BaseTqdm):  # type: ignore[misc, valid-type]
+        def __init__(self, *args: object, **kwargs: object) -> None:
+            # QUILL's bundled quill.exe is a windowed pythonw.exe with no
+            # console, so sys.stderr is None there -- tqdm's own default
+            # write target for its bar rendering. We report progress
+            # ourselves via progress() below and never need tqdm's own bar,
+            # so give it a real sink instead of crashing on "'NoneType'
+            # object has no attribute 'write'" (the whisper.cpp download
+            # failure this guards against).
+            kwargs.setdefault("file", io.StringIO())
+            super().__init__(*args, **kwargs)  # type: ignore[no-untyped-call]
+
         def update(self, n: float | None = 1) -> bool | None:
             shared["done"] += int(n or 0)
             fraction = 0.02 + 0.95 * min(shared["done"] / total_bytes, 1.0)

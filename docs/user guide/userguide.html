@@ -2130,35 +2130,48 @@ them all. It lists each component — most important first:
 <strong>Pandoc</strong> (document conversion for Word, ODT, EPUB, and
 RTF), the <strong>braille translation pack</strong> (liblouis tables and
 BRF profiles for the Translation submenu and BRF/embossing export), the
-<strong>offline speech engine</strong> (whisper.cpp),
+<strong>offline speech engine</strong> (a guided picker covering
+Whisper.cpp, Faster Whisper, and Vosk — see below),
 <strong>Kokoro</strong> and <strong>Piper</strong> neural voices,
 <strong>eSpeak NG</strong> and <strong>DECtalk</strong> voices, the
-<strong>FFmpeg</strong> audio-export helper, the
+<strong>FFmpeg</strong> audio-export helper, <strong>Audio playback
+&amp; MP3 chapter markers</strong> (the mpv playback engine plus MP3
+audiobook chapter markers, one combined download), the
 <strong>Node.js</strong> runtime (for Node Quillins and the Developer
-Console's TypeScript interface), the <strong>mpv player engine</strong>,
-the <strong>MathCAT</strong> math-speech engine, the very-low-resource
-<strong>Vosk</strong> engine, and any non-English <strong>spell-check
+Console's TypeScript interface), the <strong>MathCAT</strong>
+math-speech engine, and any non-English <strong>spell-check
 dictionaries</strong>. Each row shows whether it is
 <strong>Installed</strong> or <strong>Available to download</strong> and
 its size, and selecting a row fills a plain-language description of what
 it enables and its impact.</p>
 <ul>
 <li><strong>Download</strong> fetches a not-yet-installed component —
-checksum-verified, with its own progress.</li>
+checksum-verified, with its own progress. The offline speech engine's
+row opens a guided picker instead of a bare download: pick your engine
+(<strong>Whisper.cpp</strong>, light and fast; <strong>Faster
+Whisper</strong>, most accurate; or <strong>Vosk</strong>, tiny and best
+for old or low-memory machines), then a model, and QUILL installs both
+together and sets them as your default in one step.</li>
 <li><strong>Test</strong> proves an installed component works, so you
 can be confident before you rely on it: a voice speaks a short sample so
 you actually hear it; the offline speech engine transcribes a spoken
 phrase and tells you what it heard; tools report their version. If a
-component just needs one more piece — an offline speech
-<strong>model</strong>, or a <strong>voice</strong> for a voice engine —
-Test takes you straight to Manage Speech Models or Manage Voices to get
-it, rather than treating a normal not-yet-finished setup as an error.
-QUILL only offers to send a bug report when a test genuinely fails.</li>
+component just needs one more piece, Test takes you straight to get it —
+the guided engine-and-model picker for offline speech, or Manage Voices
+for a voice engine with no voice yet — rather than treating a normal
+not-yet-finished setup as an error. QUILL only offers to send a bug
+report when a test genuinely fails.</li>
 <li><strong>Remove</strong> deletes QUILL's downloaded copy of an
 installed component and turns its features back off (removing a voice
 engine you were using, for example, switches Read Aloud back to the
 system voice). It only ever removes copies QUILL downloaded — never a
 system tool or a shared install.</li>
+<li><strong>Set as Default:</strong> in Manage Speech Models and Manage
+Voices, a <strong>Set as Default</strong> button (and a right-click
+option on the list) lets you pick which installed model or voice QUILL
+uses, without needing to reach OK in just the right way. Downloading a
+model or voice engine sets it as the default automatically; use these
+when you want to switch back to one you already have.</li>
 </ul>
 <p>Everything here is optional — the base app, and Windows' built-in
 SAPI 5 voices, work without any of it — so download only what you need.
@@ -2289,13 +2302,17 @@ where the other engines are impractical. Models download from
 alphacephei.com (verified HTTPS, integrity-checked) via Manage Speech
 Models.</li>
 </ul>
-<p>When more than one engine is available, <strong>Manage Speech
-Models</strong> first asks which <strong>Speech Engine</strong> to use;
-QUILL remembers your choice and applies it to transcription, captions,
-and dictation. Each engine has its own models, so download a model after
-switching. All engines run <strong>entirely on your computer</strong>.
-Note that Faster Whisper does not label speakers — for speaker
-attribution, use the whisper.cpp speaker-detection model.</p>
+<p><strong>Manage Speech Models</strong> is the <strong>Dictation
+(Offline)</strong> tab of the Speech Settings dialog; when more than one
+local engine is available, it asks which <strong>Speech Engine</strong>
+to use, and a <strong>Set as Default</strong> button (or a right-click
+option) lets you pick which downloaded model QUILL uses without
+switching engines. QUILL remembers your choice and applies it to
+transcription, captions, and dictation. Each engine has its own models,
+so download a model after switching. All engines run <strong>entirely on
+your computer</strong>. Note that Faster Whisper does not label speakers
+— for speaker attribution, use the whisper.cpp speaker-detection
+model.</p>
 <p>The offline speech <strong>engine ships with QUILL</strong>: enable
 the <em>offline speech engine (whisper.cpp)</em> component in the
 installer, or place the executable under
@@ -2312,8 +2329,12 @@ transcription providers (optional, via Quillins)</h5>
 want a cloud provider as well — for example <strong>OpenAI
 Whisper</strong> for its accuracy — install the <strong>OpenAI Whisper
 Transcription</strong> Quillin (a bundled extension) and configure an
-OpenAI API key in AI Hub. It then appears as a provider in Manage Speech
-Models.</p>
+OpenAI API key in AI Hub. It then appears as a provider on the
+<strong>Dictation (Online)</strong> tab of Speech Settings, kept
+separate from the offline engines above so local (install-once) and
+cloud (API-key, per-use) options are never mixed in one list. If no
+cloud provider is installed, that tab explains how to add one instead of
+showing an empty list.</p>
 <p>Cloud providers are <strong>opt-in and never silent</strong>: audio
 is uploaded only when you explicitly transcribe a file with that
 provider, never offline and never in Safe Mode. The Watch Folder offline
@@ -5024,6 +5045,14 @@ plays a short pre-recorded sample so you can still hear it before
 deciding to download. The rate, volume, pitch, and speed controls apply
 to real synthesis, so they stay dimmed until the voice is
 downloaded.</p>
+<p><strong>Manage Voices</strong> is the <strong>Speech
+(Offline)</strong> tab of the Speech Settings dialog — SAPI 5, DECtalk,
+Piper, Kokoro, and eSpeak NG. ElevenLabs (the only cloud voice) lives on
+its own <strong>Speech (Online)</strong> tab instead of sharing this
+list, so local and cloud voices are never mixed together. A <strong>Set
+as Default</strong> button (and a right-click option on the voice list)
+applies your current engine and voice choice immediately, without
+needing to close the dialog with OK.</p>
 <p><strong>Read Aloud speaks more than English.</strong> The Windows
 engine lists <strong>every voice installed on your PC, in any
 language</strong> — add a voice in Windows Settings under <strong>Time

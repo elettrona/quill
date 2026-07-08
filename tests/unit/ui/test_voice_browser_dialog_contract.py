@@ -18,3 +18,14 @@ def _read_source() -> str:
 def test_module_calls_focus_primary_control() -> None:
     src = _read_source()
     assert "focus_primary_control" in src
+
+
+def test_set_default_button_and_context_menu_are_wired() -> None:
+    """ "Set as Default" reaches the selected voice via the button or a
+    right-click context menu, dispatching the same 'select' result OK does,
+    without closing the dialog."""
+    src = _read_source()
+    assert "def _do_set_default" in src
+    assert "self._dispatch_action(self.collect_result())" in src
+    assert "def _show_voice_context_menu" in src
+    assert "EVT_CONTEXT_MENU" in src
