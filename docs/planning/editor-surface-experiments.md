@@ -301,16 +301,18 @@ assertions, run against each surface with real wx) before we lean on it.
 - **Phase 0 (done):** the surface, `surface_kind`, capability reporting, a
   read-only class-name diagnostic (confirms a genuine `RICHEDIT50W`), the two
   Experimental gates, and the settings/combo/explainer wiring + contract tests.
-- **Phase 1 (attempted; native path blocked -- see post-mortem below):** RTF
-  load/save was implemented over `EM_STREAMIN` / `EM_STREAMOUT` with an
-  `EDITSTREAM` callback (`QuillRichEdit.get_rtf`/`set_rtf`/`load_rtf`/`save_rtf`,
-  `SF_RTF`), but **on-device testing found the ctypes callback hard-crashes
-  msftedit**, so streaming is **gated off** (`_NATIVE_STREAM_CALLBACK_BLOCKED`):
-  the methods raise a clear `RichEditRtfUnavailableError` and never invoke the
-  crashing path. The pure byte-pump seams (`_StreamInPump`/`_StreamOutSink`) are
-  unit-tested and the native `_stream_in`/`_stream_out` are kept as the reference
-  implementation for a compiled-C port. `get_plain_text()` returns the control's
-  plain value so search/spell/AI/read-aloud keep working.
+- **Phase 1 (done, via the TOM path):** native **RTF load/save works** --
+  `QuillRichEdit.load_rtf`/`save_rtf`/`get_rtf`/`set_rtf` reach the control's
+  **Text Object Model**: `EM_GETOLEINTERFACE` -> `IRichEditOle` ->
+  `QueryInterface(ITextDocument)` (via `comtypes` + the tom type library) ->
+  `ITextDocument::Open`/`::Save` with the `tomRTF` format flag. **Verified
+  end-to-end on a real `RICHEDIT50W`** (load an RTF file, formatting applies;
+  save back out is valid RTF with the bold run preserved; live wx edits flow
+  out) -- **no crash.** The first attempt used an `EM_STREAMIN`/`EM_STREAMOUT`
+  ctypes `EDITSTREAM` callback, which hard-crashes msftedit (post-mortem below);
+  TOM avoids a Python callback entirely, which is why it works.
+  `get_plain_text()` returns the control's plain value so search/spell/AI/read
+  aloud keep working.
 - **Phase 2 (not wired):** formatting via `CHARFORMAT2` / `PARAFORMAT2`
   (`apply_bold` etc. raise `RichEditRtfUnavailableError`).
 - **Phase 3 (not wired):** the braille instrument -- the Rich Edit TOM via
@@ -341,19 +343,15 @@ address), and **ctypes callbacks work here with other guarded system APIs**
 `EM_STREAM` dispatch of a libffi closure -- not a general callback problem, not
 CFG in the blanket sense, not wx, not control state.
 
-Verdict: pure-ctypes `EM_STREAM` is not viable. Two paths forward, both keeping
-the callback out of Python:
+Verdict: pure-ctypes `EM_STREAM` is not viable. Two paths were identified, both
+keeping the callback out of Python:
 
-1. **A small native helper `.pyd`** owning the `EDITSTREAM` callback in compiled
-   C, exposing `load_rtf(hwnd, bytes)` / `save_rtf(hwnd) -> bytes`. QUILL already
-   ships exactly this shape of helper (`_quill_table_uia`,
-   `scripts/build_table_uia.py`) -- the proven precedent.
-2. **The TOM path:** `EM_GETOLEINTERFACE` -> `ITextDocument::Save`/`Open` to a
-   file or `IStream` -- no Python callback at all, so no crash surface. Also the
-   natural home for the Phase 3 selection (#813) work.
-
-Until one lands, the surface ships Phase 0 behavior (a native Rich Edit clone of
-the default) with RTF I/O gated off and honestly reported.
+1. A small native helper `.pyd` owning the `EDITSTREAM` callback in compiled C
+   (the `_quill_table_uia` / `scripts/build_table_uia.py` precedent).
+2. **The TOM path (CHOSEN, and now shipping):** `EM_GETOLEINTERFACE` ->
+   `ITextDocument::Open`/`::Save` with `tomRTF` -- no Python callback at all, so
+   no crash surface. Verified end-to-end (see Phase 1 above). It is also the
+   natural home for the Phase 3 selection (#813) work (`ITextSelection`).
 
 ## Preference ranking
 

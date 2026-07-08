@@ -2167,8 +2167,8 @@ SETTING_SPECS: tuple[SettingSpec, ...] = (
             "RichEdit 3.0/2.0 are the native Windows rich controls; 'Notepad' is a "
             "plain EDIT control; 'Rich text' is an experimental wx.RichTextCtrl; "
             "'Notepad++ experiment' is the Scintilla control (wx.stc.StyledTextCtrl); "
-            "'QuillRichEdit' wraps the native Rich Edit control (groundwork for a "
-            "lightweight RTF mode; RTF I/O in progress). "
+            "'QuillRichEdit' wraps the native Rich Edit control and adds RTF "
+            "load/save via its text object model. "
             "RESTART QUILL after changing this so every document uses the new surface."
         ),
         choices=(
@@ -2179,7 +2179,7 @@ SETTING_SPECS: tuple[SettingSpec, ...] = (
             ("rtf", "Rich text (wx.RichTextCtrl, experimental)"),
             ("win32", "Native Win32 EDIT (pywin32 spike, Windows only)"),
             ("stc", "Notepad++ experiment (Scintilla, wx.stc.StyledTextCtrl)"),
-            ("richedit_rtf", "QuillRichEdit (native Rich Edit wrapper, experimental)"),
+            ("richedit_rtf", "QuillRichEdit (native Rich Edit + RTF, experimental)"),
         ),
         keywords=(
             "experimental",

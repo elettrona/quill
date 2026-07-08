@@ -1,10 +1,12 @@
-"""QuillRichEdit Phase 0 surface (native Rich Edit wrapper, "richedit_rtf").
+"""QuillRichEdit surface (native Rich Edit wrapper, "richedit_rtf") with RTF via TOM.
 
-Contract-level tests (no live wx): the setting round-trips, the combo offers the
-surface, the Experimental-tab explainer covers it, MainFrame dispatches it, and
-the wrapper's Phase-0 boundaries are honest (RTF I/O not yet wired, capability
-reporting says so, the diagnostic carries no document content). See
-docs/planning/editor-surface-experiments.md §8 for the surface entry.
+Contract-level tests (no live wx/COM): the setting round-trips, the combo offers
+the surface, the Experimental-tab explainer covers it, MainFrame dispatches it,
+the factory tags the surface + falls back safely, RTF I/O uses the Text Object
+Model (not the crashing EM_STREAM callback), and the wrapper degrades cleanly
+without a real HWND. The end-to-end RTF round-trip is verified on-device (a real
+RICHEDIT50W + comtypes), which CI has no handle for. See
+docs/planning/editor-surface-experiments.md §8.
 """
 
 from __future__ import annotations
@@ -17,6 +19,19 @@ from quill.core.settings_specs import SETTING_SPECS
 
 def _surface_spec():
     return next(spec for spec in SETTING_SPECS if spec.key == "experimental_editor_surface")
+
+
+class _FakeSurface:
+    """A surface with no real native handle (hwnd 0), for boundary tests."""
+
+    def __init__(self, value: str = "") -> None:
+        self._value = value
+
+    def GetHandle(self) -> int:  # noqa: N802 - wx API shape
+        return 0
+
+    def GetValue(self) -> str:  # noqa: N802
+        return self._value
 
 
 def test_settings_accept_richedit_rtf_surface() -> None:
@@ -36,8 +51,6 @@ def test_combo_offers_quill_richedit_surface() -> None:
 
 
 def test_explainer_covers_every_surface_choice() -> None:
-    # Every combo value must have an Experimental-tab explanation; a missing key
-    # silently falls back to the "default" text and users read the wrong one.
     from quill.ui.main_frame import MainFrame
 
     source = inspect.getsource(MainFrame._build_experimental_explainer)
@@ -54,8 +67,6 @@ def test_main_frame_dispatches_richedit_rtf_surface() -> None:
 
 
 def test_factory_falls_back_and_tags_surface_kind() -> None:
-    # Mirror of the win32/rtf/stc defensive pattern: any hosting failure returns
-    # a plain control, and a successful build carries surface_kind + wrapper.
     import quill.ui.richedit_rtf_surface as mod
 
     assert callable(mod.create_richedit_rtf)
@@ -63,79 +74,48 @@ def test_factory_falls_back_and_tags_surface_kind() -> None:
     assert "TE_RICH2" in source and "TE_NOHIDESEL" in source
     assert "surface_kind = SURFACE_KIND" in source
     assert "QuillRichEdit(surface)" in source
-    # Fallback to a stock TextCtrl on failure.
-    assert "return wx_module.TextCtrl(parent, style=style)" in source
+    assert "return wx_module.TextCtrl(parent, style=style)" in source  # fallback
 
 
-class _FakeSurface:
-    """A surface with no real native handle (hwnd 0), for boundary tests."""
-
-    def __init__(self, value: str = "") -> None:
-        self._value = value
-
-    def GetHandle(self) -> int:  # noqa: N802 - wx API shape
-        return 0
-
-    def GetValue(self) -> str:  # noqa: N802
-        return self._value
-
-
-def test_stream_in_pump_chunks_and_reports_done() -> None:
+def test_rtf_uses_the_text_object_model_not_the_crashing_callback() -> None:
+    # RTF I/O must go through the TOM (ITextDocument Open/Save), NOT the ctypes
+    # EM_STREAM callback that hard-crashes msftedit (see the §8 post-mortem).
     import quill.ui.richedit_rtf_surface as mod
 
-    pump = mod._StreamInPump(b"hello world")
-    assert pump.read(5) == b"hello"
-    assert pump.done is False
-    assert pump.read(100) == b" world"  # returns only what's left
-    assert pump.done is True
-    assert pump.read(10) == b""  # EOF
-    assert mod._StreamInPump(b"").done is True
+    source = inspect.getsource(mod)
+    assert "EM_GETOLEINTERFACE" in source
+    assert "ITextDocument" in source
+    assert "_TOM_RTF" in source and ".Open(" in source and ".Save(" in source
+    assert "comtypes" in source
+    # The crashing callback machinery (the ctypes closure + stream pumps) must be
+    # gone from the code -- only the docstring may reference EM_STREAM as history.
+    assert "WINFUNCTYPE" not in source
+    assert "_StreamInPump" not in source and "_stream_in(" not in source
 
 
-def test_stream_out_sink_accumulates_bytes() -> None:
+def test_no_handle_raises_cleanly_and_plain_text_still_works() -> None:
+    # Without a real HWND/comtypes, RTF I/O raises a clear RichEditRtfError (never
+    # a silent no-op, never a crash), and plain-text extraction still works.
     import quill.ui.richedit_rtf_surface as mod
-
-    sink = mod._StreamOutSink()
-    sink.write(b"{\\rtf1 ")
-    sink.write(b"")  # empty chunks ignored
-    sink.write(b"hi}")
-    assert sink.getvalue() == b"{\\rtf1 hi}"
-
-
-def test_rtf_streaming_is_gated_off_never_crashes() -> None:
-    # On-device testing found the ctypes EDITSTREAM callback hard-crashes msftedit,
-    # so streaming is gated off (_NATIVE_STREAM_CALLBACK_BLOCKED). RTF I/O must
-    # RAISE a clear error -- never invoke the crashing native path, never no-op.
-    import quill.ui.richedit_rtf_surface as mod
-
-    assert mod._NATIVE_STREAM_CALLBACK_BLOCKED is True
 
     wrapper = mod.QuillRichEdit(_FakeSurface("plain text here"))
-    assert wrapper.rtf_streaming_available() is False  # gated off
+    assert wrapper.rtf_available() is False  # hwnd 0
     caps = wrapper.capabilities()
+    assert caps["phase"] == 1 and caps["native_control"] is True
     assert caps["rtf_load"] is False and caps["rtf_save"] is False
-    assert "gated off" in caps["notes"].lower() or "crash" in caps["notes"].lower()
 
     calls = (lambda: wrapper.load_rtf("x.rtf"), lambda: wrapper.save_rtf("x.rtf"), wrapper.get_rtf)
     for call in calls:
         try:
             call()
-        except (mod.RichEditRtfUnavailableError, mod.RichEditRtfError):
+        except mod.RichEditRtfError:
             pass
         else:  # pragma: no cover - defensive
-            raise AssertionError("gated-off RTF I/O must raise, not run the crashing path")
+            raise AssertionError("RTF I/O with no handle must raise RichEditRtfError")
 
     ok, detail = wrapper.self_test_rtf_roundtrip()
     assert ok is False and isinstance(detail, str)  # reports, never raises
-    # Plain-text extraction still works for search/spell/AI/read-aloud.
     assert wrapper.get_plain_text() == "plain text here"
-
-
-def test_diagnostic_reports_the_gating() -> None:
-    import quill.ui.richedit_rtf_surface as mod
-
-    summary = mod.QuillRichEdit(_FakeSurface()).accessibility_diagnostic_summary()
-    assert "gated off" in summary.lower()
 
 
 def test_formatting_is_the_phase2_stub() -> None:
@@ -150,24 +130,8 @@ def test_formatting_is_the_phase2_stub() -> None:
         raise AssertionError("formatting must raise until Phase 2")
 
 
-def test_load_save_stream_the_native_messages() -> None:
-    # The RTF path drives the documented Rich Edit stream messages, not wx LoadFile.
-    import inspect
-
-    import quill.ui.richedit_rtf_surface as mod
-
-    source = inspect.getsource(mod)
-    assert "_EM_STREAMIN" in source and "_EM_STREAMOUT" in source
-    assert "EDITSTREAM" in source and "SendMessageW" in source
-    assert "_SF_RTF" in source
-
-
 def test_diagnostic_summary_carries_no_document_content() -> None:
     import quill.ui.richedit_rtf_surface as mod
-
-    class _FakeSurface:
-        def GetHandle(self) -> int:  # noqa: N802
-            return 0
 
     summary = mod.QuillRichEdit(_FakeSurface()).accessibility_diagnostic_summary()
     assert "Win32 class name" in summary

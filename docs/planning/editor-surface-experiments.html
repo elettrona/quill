@@ -558,21 +558,23 @@ generic-window bridge that failed for <code>stc</code>.</li>
 diagnostic (confirms a genuine <code>RICHEDIT50W</code>), the two
 Experimental gates, and the settings/combo/explainer wiring + contract
 tests.</li>
-<li><strong>Phase 1 (attempted; native path blocked -- see post-mortem
-below):</strong> RTF load/save was implemented over
-<code>EM_STREAMIN</code> / <code>EM_STREAMOUT</code> with an
-<code>EDITSTREAM</code> callback
-(<code>QuillRichEdit.get_rtf</code>/<code>set_rtf</code>/<code>load_rtf</code>/<code>save_rtf</code>,
-<code>SF_RTF</code>), but <strong>on-device testing found the ctypes
-callback hard-crashes msftedit</strong>, so streaming is <strong>gated
-off</strong> (<code>_NATIVE_STREAM_CALLBACK_BLOCKED</code>): the methods
-raise a clear <code>RichEditRtfUnavailableError</code> and never invoke
-the crashing path. The pure byte-pump seams
-(<code>_StreamInPump</code>/<code>_StreamOutSink</code>) are unit-tested
-and the native <code>_stream_in</code>/<code>_stream_out</code> are kept
-as the reference implementation for a compiled-C port.
-<code>get_plain_text()</code> returns the control's plain value so
-search/spell/AI/read-aloud keep working.</li>
+<li><strong>Phase 1 (done, via the TOM path):</strong> native
+<strong>RTF load/save works</strong> --
+<code>QuillRichEdit.load_rtf</code>/<code>save_rtf</code>/<code>get_rtf</code>/<code>set_rtf</code>
+reach the control's <strong>Text Object Model</strong>:
+<code>EM_GETOLEINTERFACE</code> -&gt; <code>IRichEditOle</code> -&gt;
+<code>QueryInterface(ITextDocument)</code> (via <code>comtypes</code> +
+the tom type library) -&gt;
+<code>ITextDocument::Open</code>/<code>::Save</code> with the
+<code>tomRTF</code> format flag. <strong>Verified end-to-end on a real
+<code>RICHEDIT50W</code></strong> (load an RTF file, formatting applies;
+save back out is valid RTF with the bold run preserved; live wx edits
+flow out) -- <strong>no crash.</strong> The first attempt used an
+<code>EM_STREAMIN</code>/<code>EM_STREAMOUT</code> ctypes
+<code>EDITSTREAM</code> callback, which hard-crashes msftedit
+(post-mortem below); TOM avoids a Python callback entirely, which is why
+it works. <code>get_plain_text()</code> returns the control's plain
+value so search/spell/AI/read aloud keep working.</li>
 <li><strong>Phase 2 (not wired):</strong> formatting via
 <code>CHARFORMAT2</code> / <code>PARAFORMAT2</code>
 (<code>apply_bold</code> etc. raise
@@ -643,22 +645,19 @@ crash is specific to msftedit's <code>EM_STREAM</code> dispatch of a
 libffi closure -- not a general callback problem, not CFG in the blanket
 sense, not wx, not control state.</p>
 <p>Verdict: pure-ctypes <code>EM_STREAM</code> is not viable. Two paths
-forward, both keeping the callback out of Python:</p>
+were identified, both keeping the callback out of Python:</p>
 <ol type="1">
-<li><strong>A small native helper <code>.pyd</code></strong> owning the
-<code>EDITSTREAM</code> callback in compiled C, exposing
-<code>load_rtf(hwnd, bytes)</code> /
-<code>save_rtf(hwnd) -&gt; bytes</code>. QUILL already ships exactly
-this shape of helper (<code>_quill_table_uia</code>,
-<code>scripts/build_table_uia.py</code>) -- the proven precedent.</li>
-<li><strong>The TOM path:</strong> <code>EM_GETOLEINTERFACE</code> -&gt;
-<code>ITextDocument::Save</code>/<code>Open</code> to a file or
-<code>IStream</code> -- no Python callback at all, so no crash surface.
-Also the natural home for the Phase 3 selection (#813) work.</li>
+<li>A small native helper <code>.pyd</code> owning the
+<code>EDITSTREAM</code> callback in compiled C (the
+<code>_quill_table_uia</code> / <code>scripts/build_table_uia.py</code>
+precedent).</li>
+<li><strong>The TOM path (CHOSEN, and now shipping):</strong>
+<code>EM_GETOLEINTERFACE</code> -&gt;
+<code>ITextDocument::Open</code>/<code>::Save</code> with
+<code>tomRTF</code> -- no Python callback at all, so no crash surface.
+Verified end-to-end (see Phase 1 above). It is also the natural home for
+the Phase 3 selection (#813) work (<code>ITextSelection</code>).</li>
 </ol>
-<p>Until one lands, the surface ships Phase 0 behavior (a native Rich
-Edit clone of the default) with RTF I/O gated off and honestly
-reported.</p>
 <h2 id="preference-ranking">Preference ranking</h2>
 <p>Ranked for QUILL's audience (screen-reader-first, data integrity
 above all):</p>
