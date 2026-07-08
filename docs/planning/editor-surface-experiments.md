@@ -280,36 +280,43 @@ assertions, run against each surface with real wx) before we lean on it.
   visual spell-check squiggles (Scintilla indicators are good at this), and
   confirm IME/dead-key behavior.
 
-## 8. richedit_rtf -- QuillRichEdit, the native Rich Edit wrapper (Phase 0, added 2026-07-08)
+## 8. richedit_rtf -- QuillRichEdit, the native Rich Edit wrapper (added 2026-07-08)
 
 - Classes: Python `wx.TextCtrl`; Win32 window class `RICHEDIT50W` -- the *same*
   native Rich Edit control as `rich2`/the shipping default. What differs is that
   the live control is tagged with `surface_kind = "richedit_rtf"` and carries a
-  `QuillRichEdit` wrapper (`quill/ui/richedit_rtf_surface.py`).
+  `QuillRichEdit` wrapper (`quill/ui/richedit_rtf_surface.py`) that reaches the
+  control's `HWND` for things wx's high-level API cannot do.
 - What it is: `wx.TextCtrl` with `TE_RICH2 | TE_NOHIDESEL`, built by
   `create_richedit_rtf(...)` which falls back to a plain `wx.TextCtrl` on any
   failure (the proven win32/stc/rtf idiom). Because the inner control is the
   proven native control, the full editor contract (value/caret/selection/undo/
-  events) is inherited unchanged -- Phase 0 adds no behavioral risk.
-- Why it exists: the first, safe rung of the QuillRichEdit ladder toward a
-  lightweight, accessible RTF document mode (WordPad/HJPad class), and -- because
-  it gives us a *controlled* handle on the native control we already ship -- the
-  eventual home for the two open braille bugs: **#616 (JAWS cell-2 offset)** and
-  **#813 (JAWS braille not showing dots 7-8 on selection)**. Later phases add
-  native RTF I/O (`EM_STREAMIN`/`EM_STREAMOUT`), formatting (`CHARFORMAT2`/
-  `PARAFORMAT2`), and the braille instrument (the Rich Edit TOM via
-  `EM_GETOLEINTERFACE`, plus `EM_SETEDITSTYLE`) -- driven directly on the native
-  HWND rather than the generic-window bridge that failed for `stc`.
-- Phase 0 scope (what is wired now): the surface, its `surface_kind`, capability
-  reporting, a read-only class-name diagnostic (confirms it is a genuine
-  `RICHEDIT50W`), gating behind the two Experimental switches, and the settings/
-  combo/explainer wiring + contract tests. RTF load/save (`load_rtf`/`save_rtf`)
-  are declared but raise `RichEditRtfUnavailableError` until Phase 1 so nothing
-  silently half-works.
-- Risk: Low. Identical native control to the default, gated, with fallback; no
-  existing surface changes.
-- Full magical proposal (phases, integration map, braille payoff): see the
-  QuillRichEdit proposal in the team backlog doc.
+  events) is inherited unchanged -- no behavioral risk to existing surfaces.
+- Why it exists: the ladder toward a lightweight, accessible RTF document mode
+  (WordPad/HJPad class), and -- because it gives us a *controlled* handle on the
+  native control we already ship -- the eventual home for the two open braille
+  bugs: **#616 (JAWS cell-2 offset)** and **#813 (JAWS braille not showing dots
+  7-8 on selection)**, driven directly on the native HWND rather than the
+  generic-window bridge that failed for `stc`.
+- **Phase 0 (done):** the surface, `surface_kind`, capability reporting, a
+  read-only class-name diagnostic (confirms a genuine `RICHEDIT50W`), the two
+  Experimental gates, and the settings/combo/explainer wiring + contract tests.
+- **Phase 1 (done):** native **RTF load/save** -- `QuillRichEdit.get_rtf` /
+  `set_rtf` / `load_rtf` / `save_rtf` drive `EM_STREAMIN` / `EM_STREAMOUT` with an
+  `EDITSTREAM` callback on the HWND (`SF_RTF`). The byte-pump seams
+  (`_StreamInPump` / `_StreamOutSink`) are pure and unit-tested cross-platform;
+  the diagnostic runs a safe, read-only `EM_STREAMOUT` probe (byte count + RTF
+  signature, no content) so a tester can confirm streaming on the device.
+  `get_plain_text()` returns the control's plain value so search/spell/AI/read
+  aloud keep working. **Needs on-device verification** (JAWS + a real RTF file);
+  no live HWND exists in CI.
+- **Phase 2 (not wired):** formatting via `CHARFORMAT2` / `PARAFORMAT2`
+  (`apply_bold` etc. raise `RichEditRtfUnavailableError`).
+- **Phase 3 (not wired):** the braille instrument -- the Rich Edit TOM via
+  `EM_GETOLEINTERFACE`, plus `EM_SETEDITSTYLE` -- for #616 / #813.
+- Risk: Low. Identical native control to the default, gated, with fallback; RTF
+  streaming is additive and guarded (raises a clear `RichEditRtfError`, never a
+  silent no-op); no existing surface changes.
 
 ## Preference ranking
 
