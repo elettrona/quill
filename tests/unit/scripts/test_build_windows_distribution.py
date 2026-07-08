@@ -656,35 +656,39 @@ def test_compile_inno_setup_installer_accepts_inno_output_folder(
     assert built == installer_exe
 
 
-def test_prune_removes_build_only_babel_but_keeps_runtime_packages(tmp_path: Path) -> None:
-    """Phase 1 trim: Babel (build-only) is pruned; runtime packages are kept.
+def test_prune_keeps_babel_but_removes_true_build_only_packages(tmp_path: Path) -> None:
+    """babel must survive the prune; genuinely build-only packages are removed.
 
-    Babel is used only to *compile* translations at build time; the shipped app
-    loads ``.mo`` files through stdlib ``gettext`` and never imports ``babel``. This
-    guards that the prune targets Babel (and its dist-info) without touching a
-    real runtime dependency like ``wx``.
+    babel looks build-only (we compile translations with it; QUILL's own i18n
+    uses stdlib ``gettext``), but ``kokoro-onnx`` imports it transitively at
+    runtime (``kokoro_onnx -> phonemizer -> segments -> csvw -> babel.numbers``).
+    Pruning it broke Kokoro's onnx path on a clean build (#881), so this guards
+    that babel stays while a real build-only package like ``setuptools`` is still
+    removed and a runtime package like ``wx`` is untouched.
     """
     site_packages = tmp_path / "site-packages"
     site_packages.mkdir()
     (site_packages / "babel").mkdir()
-    (site_packages / "babel" / "core.py").write_text("x = 1", encoding="utf-8")
+    (site_packages / "babel" / "numbers.py").write_text("x = 1", encoding="utf-8")
     (site_packages / "Babel-2.18.0.dist-info").mkdir()
     (site_packages / "Babel-2.18.0.dist-info" / "RECORD").write_text("", encoding="utf-8")
+    (site_packages / "setuptools").mkdir()  # genuinely build-only -> pruned
+    (site_packages / "setuptools" / "__init__.py").write_text("x = 1", encoding="utf-8")
     (site_packages / "wx").mkdir()
     (site_packages / "wx" / "__init__.py").write_text("core = 1", encoding="utf-8")
 
     _prune_embedded_runtime(site_packages)
 
-    assert not (site_packages / "babel").exists()
-    assert not (site_packages / "Babel-2.18.0.dist-info").exists()
+    assert (site_packages / "babel").exists()  # kokoro-onnx needs it at runtime (#881)
+    assert (site_packages / "Babel-2.18.0.dist-info").exists()
+    assert not (site_packages / "setuptools").exists()  # build-only, pruned
     assert (site_packages / "wx").exists()  # runtime package untouched
 
 
-def test_runtime_packages_never_import_babel() -> None:
-    """Invariant behind the Babel prune: no shipped runtime module imports babel.
-
-    If this ever fails, the Phase 1 Babel prune above would ship a broken runtime,
-    so the import must be removed or Babel must stop being pruned.
+def test_quill_own_modules_never_import_babel() -> None:
+    """QUILL's own i18n uses stdlib gettext, not babel (babel now ships only for
+    kokoro-onnx's transitive use). This documents that QUILL doesn't add a direct
+    babel dependency of its own.
     """
     repo_root = Path(__file__).resolve().parents[3]
     runtime_dirs = ["core", "ui", "io", "platform", "stability", "plugins"]
@@ -798,3 +802,16 @@ def test_file_association_launches_root_quill_exe_next_to_python_dll() -> None:
     assert r"{app}\python\{#AppExeName}" not in script
     assert r"{app}\python\quill.exe" not in script
     assert r"{app}\python\pythonw.exe" not in script
+
+
+def test_kokoro_is_not_bundled_and_installs_on_demand() -> None:
+    """Kokoro (kokoro-onnx + onnxruntime + phonemizer + babel) is large and
+    optional. It installs on demand via install_kokoro_onnx() into an engine-pack;
+    bundling it re-bloats the installer. Guard that it stays out of the bundled
+    dependency groups (the footprint fix behind #881)."""
+    from scripts.build_windows_distribution import DEFAULT_BUNDLED_DEPENDENCY_GROUPS
+
+    assert "kokoro" not in DEFAULT_BUNDLED_DEPENDENCY_GROUPS
+    # The engines users actually need offline stay bundled.
+    assert "speech" in DEFAULT_BUNDLED_DEPENDENCY_GROUPS
+    assert "ui" in DEFAULT_BUNDLED_DEPENDENCY_GROUPS

@@ -998,3 +998,30 @@ def test_kokoro_onnx_failure_is_logged_before_torch_fallback(monkeypatch, tmp_pa
             )
 
     assert any("Kokoro onnx synthesis failed" in r.getMessage() for r in caplog.records)
+
+
+def test_worker_python_prefers_embedded_python_over_launcher(tmp_path, monkeypatch) -> None:
+    """In a bundled build sys.executable is quill.exe (the launcher); the DECtalk
+    worker must run through the embedded pythonw.exe beside it, or QUILL opens the
+    worker .py as a document instead of running it."""
+    import sys as _sys
+
+    from quill.core import read_aloud
+
+    launcher = tmp_path / "quill.exe"
+    launcher.write_bytes(b"MZ")
+    pyw = tmp_path / "pythonw.exe"
+    pyw.write_bytes(b"MZ")
+    monkeypatch.setattr(_sys, "executable", str(launcher))
+    assert read_aloud._worker_python_executable() == str(pyw)
+
+
+def test_worker_python_uses_sys_executable_when_it_is_python(tmp_path, monkeypatch) -> None:
+    import sys as _sys
+
+    from quill.core import read_aloud
+
+    py = tmp_path / "python.exe"
+    py.write_bytes(b"MZ")
+    monkeypatch.setattr(_sys, "executable", str(py))
+    assert read_aloud._worker_python_executable() == str(py)

@@ -136,6 +136,8 @@ The QUILL key is its own tiny language: every chord is data-driven from the keym
 
 **Detection note.** On some keyboards or drivers, Windows reports the grave/back-tick key differently than expected. QUILL now uses three independent detection strategies (character code, Windows virtual key VK_OEM_3, and physical scan code 0x29) so the key is recognized on any layout.
 
+**macOS note.** Use the physical **Control** key, not Cmd, for the QUILL key on macOS: `Cmd+Shift+` `` is macOS's own reserved "cycle windows" shortcut and never reaches QUILL. If you'd rather use Cmd, reassign that system shortcut in **System Settings → Keyboard → Keyboard Shortcuts → Mission Control** first.
+
 **Reassigning chord commands.** Open **Preferences → Keyboard → Keymap Editor**, find the command you want to move, and type a new chord binding in the form `Ctrl+Shift+Grave, X` (replacing `X` with the key you want). The Keymap Editor stores chords in this `Ctrl+Shift+Grave, X` grammar; menus and the cheat sheet display them as `QUILL Key + X`. Conflict detection prevents accidental double-bindings.
 
 ### The Keyboard Manager: search, record, and diagnose
@@ -1170,8 +1172,11 @@ a plain-language description of what it enables and its impact.
 - **Test** proves an installed component works, so you can be confident before you
   rely on it: a voice speaks a short sample so you actually hear it; the offline
   speech engine transcribes a spoken phrase and tells you what it heard; tools
-  report their version. If a test fails, QUILL offers to send a bug report with
-  the technical details.
+  report their version. If a component just needs one more piece — an offline
+  speech **model**, or a **voice** for a voice engine — Test takes you straight to
+  Manage Speech Models or Manage Voices to get it, rather than treating a normal
+  not-yet-finished setup as an error. QUILL only offers to send a bug report when
+  a test genuinely fails.
 - **Remove** deletes QUILL's downloaded copy of an installed component and turns
   its features back off (removing a voice engine you were using, for example,
   switches Read Aloud back to the system voice). It only ever removes copies QUILL

@@ -2081,7 +2081,15 @@ ones, `[InstallDelete]` does not touch `kokoro-models`, and runtime resolution s
 checks `{app}\kokoro-models` (`read_aloud._bundled_kokoro_model_dir`) — so a user
 upgrading from a release that bundled Kokoro keeps their copy with nothing to
 re-download. Kokoro is in the "safe to unbundle" class (other read-aloud voices
-remain available offline if the download has not happened).
+remain available offline if the download has not happened). **The kokoro-onnx
+*package* is now also unbundled** (0.9.0 Beta 2): it was still shipped in the base
+runtime (dragging in onnxruntime, phonemizer, espeakng-loader, and babel) even
+though the models were on-demand. It now installs on first use via
+`install_kokoro_onnx()` into an engine-pack that `activate_engine_packs()` puts on
+`sys.path`, trimming the installer ~23 MB. Lesson banked (#881): the build's
+runtime-prune step must not drop `babel` — kokoro-onnx imports `babel.numbers`
+transitively, so pruning it broke Kokoro's onnx path on a clean build; the on-demand
+install now pulls babel with the rest of the tree.
 
 **DECtalk and eSpeak NG unbundled.** The classic DECtalk runtime (~2 MB) and the
 eSpeak NG engine with its voice data (~40 MB) are no longer shipped in the

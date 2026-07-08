@@ -16500,7 +16500,9 @@ class MainFrame(
             return first_item
 
         first_item = append_nodes(root, nodes)
-        tree.Expand(root)
+        # The root is hidden (TR_HIDE_ROOT), so its children are already
+        # shown at the top level; wx asserts if you try to Expand() it
+        # (#885: "Can't expand/collapse hidden root node!").
         if first_item is not None:
             tree.SelectItem(first_item)
             preview.ChangeValue(nodes[0].preview)
@@ -18060,7 +18062,7 @@ class MainFrame(
             target=_run, daemon=True
         ).start()
 
-    def _download_kokoro_models(self) -> None:
+    def _download_kokoro_models(self, *, on_done: Callable[[bool], None] | None = None) -> None:
         """Fetch the Kokoro ONNX model + voices from QUILL's verified release asset,
         then ensure the kokoro-onnx package is installed (Kokoro unbundle, PRD 10.2.4).
 
@@ -18155,7 +18157,12 @@ class MainFrame(
                 done_msg = "Kokoro is ready. Click OK to open Manage Voices and select a voice."
                 wx.CallAfter(self._set_status, "Kokoro ready.")
                 wx.CallAfter(self._announce, "Kokoro models downloaded.")
-                progress.switch_to_ok(done_msg, on_ok=self.choose_read_aloud_configuration)
+                progress.switch_to_ok(
+                    done_msg,
+                    on_ok=(lambda: on_done(True))
+                    if on_done
+                    else self.choose_read_aloud_configuration,
+                )
             else:
                 wx.CallAfter(progress.close)
                 wx.CallAfter(

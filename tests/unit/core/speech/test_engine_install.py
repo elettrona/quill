@@ -225,3 +225,23 @@ def test_kokoro_install_logs_runner_launch_failure(tmp_path: Path, caplog) -> No
                 dest_dir=tmp_path / "kok", python_executable="py.exe", runner=boom
             )
     assert any("pip runner could not start" in r.getMessage() for r in caplog.records)
+
+
+def test_install_mp3_support_builds_wheel_only_command(monkeypatch, tmp_path: Path) -> None:
+    monkeypatch.setattr(ei, "is_mp3_available", lambda: True)
+    captured: dict = {}
+    dest = tmp_path / "mp3"
+    out = ei.install_mp3_support(
+        dest_dir=dest, python_executable="py.exe", runner=_make_runner(captured)
+    )
+    cmd = captured["command"]
+    assert out == dest and dest.is_dir()
+    assert cmd[1:4] == ["-m", "pip", "install"]
+    assert "mutagen>=1.48.1" in cmd
+    assert str(dest) in sys.path  # activated on success
+
+
+def test_install_mp3_support_blocked_in_safe_mode(monkeypatch, tmp_path: Path) -> None:
+    monkeypatch.setenv("QUILL_SAFE_MODE", "1")
+    with pytest.raises(ei.EngineInstallError, match="Safe Mode"):
+        ei.install_mp3_support(dest_dir=tmp_path / "mp3", runner=_make_runner({}))

@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import re
 from pathlib import Path
+from types import MethodType
 
 from quill.ui.ai_hub_dialog import AIHubDialog
 
@@ -65,6 +66,11 @@ class _Stub:
         self._model_ctrl = _FakeCombo()
         self._test_label = _FakeLabel()
         self._list_models_btn = _FakeButton()
+        # Real instance methods bound onto the stub so higher-level methods
+        # (e.g. _on_hub_provider_changed) can call self._populate_hub_models
+        # / self._hub_provider through it, same as on the real dialog.
+        self._populate_hub_models = MethodType(AIHubDialog._populate_hub_models, self)
+        self._hub_provider = MethodType(AIHubDialog._hub_provider, self)
 
 
 def test_populate_hub_models_prefers_free_for_openrouter() -> None:
@@ -96,3 +102,54 @@ def test_hub_models_listed_surfaces_error() -> None:
     AIHubDialog._on_hub_models_listed(stub, [], "connection refused")
     assert "refused" in stub._test_label.text
     assert stub._list_models_btn.enabled is True
+
+
+class _FakeProviderChoice:
+    """Mimics wx.Choice, tracking focus state and SetFocus() calls."""
+
+    def __init__(self, *, focused: bool) -> None:
+        self._focused = focused
+        self.focus_calls = 0
+
+    def GetSelection(self) -> int:
+        return 1
+
+    def HasFocus(self) -> bool:
+        return self._focused
+
+    def SetFocus(self) -> None:
+        self.focus_calls += 1
+        self._focused = True
+
+
+class _StealingCombo(_FakeCombo):
+    def __init__(self, thief_target: _FakeProviderChoice) -> None:
+        super().__init__()
+        self._thief_target = thief_target
+
+    def Set(self, items: list[str]) -> None:
+        super().Set(items)
+        self._thief_target._focused = False
+
+
+def test_provider_changed_restores_focus_stolen_by_model_repopulation() -> None:
+    # #883: selecting a provider via arrow keys (no dropdown opened) lost
+    # focus to the model combo once its suggestions were repopulated.
+    stub = _Stub()
+    provider_choice = _FakeProviderChoice(focused=True)
+    stub._provider_choice = provider_choice
+    stub._model_ctrl = _StealingCombo(provider_choice)
+    AIHubDialog._on_hub_provider_changed(stub, None)
+    assert provider_choice.HasFocus() is True
+    assert provider_choice.focus_calls == 1
+
+
+def test_provider_changed_does_not_force_focus_when_choice_was_not_focused() -> None:
+    # If the provider choice never had focus (e.g. programmatic refresh),
+    # don't yank focus onto it.
+    stub = _Stub()
+    provider_choice = _FakeProviderChoice(focused=False)
+    stub._provider_choice = provider_choice
+    stub._model_ctrl = _FakeCombo()
+    AIHubDialog._on_hub_provider_changed(stub, None)
+    assert provider_choice.focus_calls == 0

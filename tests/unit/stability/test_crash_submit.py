@@ -338,6 +338,28 @@ def test_payload_metadata_has_platform_and_portable_flag() -> None:
     assert "error_code" not in payload.metadata
 
 
+def test_payload_metadata_local_crash_file_does_not_leak_username() -> None:
+    # #886: metadata is serialized verbatim into the public GitHub issue by
+    # feedback_hub, bypassing the body's redaction pass. A portable install
+    # living under the user's home directory must not leak their OS username
+    # via this field, even though the body already redacts the same path.
+    exc_type, exc_value, exc_tb = _raise_and_capture()
+    crash = Path("C:\\Users\\nblas\\Games and portable apps\\Quill portable\\data\\crash.txt")
+    payload = build_crash_report_payload(
+        exc_type=exc_type,
+        exc_value=exc_value,
+        exc_tb=exc_tb,
+        local_crash_file=crash,
+        app_version="0.9.0",
+        portable=True,
+        screen_reader_name=None,
+        recent_commands=(),
+        active_document=None,
+    )
+    assert "nblas" not in payload.metadata["local_crash_file"]
+    assert "[PATH]" in payload.metadata["local_crash_file"]
+
+
 def test_payload_metadata_includes_error_code_for_coded_errors() -> None:
     from quill.core.error_codes import CodedError
 

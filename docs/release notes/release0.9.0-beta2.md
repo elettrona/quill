@@ -1,99 +1,148 @@
-# QUILL 0.9.0 Beta 2 - Polish Release 1
+# QUILL 0.9.0 Beta 2
 
-## The screen-reader-first writing studio, built by the people who depend on it.
+## Polished by the people who use it.
 
 *From Community Access. Free. Optional by design. Private by default. Yours to make quiet.*
 
-This is the narrative companion to the **"0.9.0 Beta 2"** section of `CHANGELOG.md`
-(the canonical, append-as-you-go log). Per the commitment made at Beta 1, **no new
-features land in this release** - only bug fixes and polish, driven directly by
-beta tester reports. The same text appears in-app under **Help > What's New** and
-on **Check for Updates**.
+Every single line below started life as a message from a beta tester — a crash
+report, a "this felt weird," a voice that wouldn't speak, a language that wasn't
+there. You wrote in; we listened; this is the result. Keeping the promise made at
+Beta 1, there are **no new headline features here** — just your reports, turned
+into fixes and polish, especially around getting the optional pieces you want.
+
+This is the friendly companion to the **"0.9.0 Beta 2"** section of `CHANGELOG.md`.
+The same words appear in-app under **Help > What's New** and on **Check for Updates**.
+
+Grazie, thank you, and keep the reports coming. 💙
 
 ---
 
-## Fixed in this beta
+## Getting the extras you want, reimagined
 
-- **Non-UTF-8 text files no longer crash QUILL on open.** A `.txt`/`.md` file saved
-  in Windows-1252/Latin-1 - a curly quote, en-dash, or other high-byte character
-  without a UTF-8 BOM - used to throw an unhandled error the moment you opened it.
-  QUILL now falls back automatically and tells you when it did, in the status bar.
-- **A stalled GPU check could freeze the whole app.** The Speech and Dictation
-  options' hardware probe ran with no timeout, directly on the UI thread, every
-  time the dialog opened. It's now timeout-guarded and only ever runs once per
-  session.
-- **Whisper model downloads are more resilient.** They now go through the same
-  well-tested download library Faster Whisper already uses, so a future hiccup
-  on Hugging Face's side surfaces a clear, specific message instead of a
-  generic failure.
-- **Kokoro voices give you the real fix when something's missing**, instead of
-  two confusing, mostly-unrelated options: the message now points straight at
-  **Tools > Speech > Install Kokoro ONNX**.
-- **Previewing a downloaded Piper voice no longer errors.** After downloading a
-  Piper voice, previewing it failed with an internal "Settings object has no
-  attribute" message; the missing setting is now in place, so previewing and
-  saving audio with Piper work.
-- **Kokoro previews are more reliable - and honest when something is wrong.** If
-  a freshly downloaded Kokoro voice could not actually speak, QUILL used to fall
-  back to a confusing "requires either... or..." message that hid the real
-  reason. Now the download sets up everything Kokoro needs, and if synthesis ever
-  still fails the true cause is written to the diagnostics log (**Help > Save
-  Diagnostics**) instead of being swallowed - so we can pinpoint and fix it.
-- **Speech dialogs open with the right control focused** - Speech Hub, Manage
-  Speech Models, and Manage Voices no longer land on the OK/Cancel button.
-- **Downloading extras is now a warm, one-stop experience.** **Help > Download
-  Optional Components** was tidied into a proper hub: the things most people want
-  come first (Pandoc, then the braille pack), every row explains what it does and
-  how big it is, and the window opens instantly instead of pausing while it checks
-  what you have. For anything already installed you get two new buttons: **Test**,
-  which *proves it works* - a voice reads you a sample so you hear it, the offline
-  speech engine listens to a spoken phrase and shows you what it heard, and tools
-  report their version - and **Remove**, which deletes QUILL's copy and turns its
-  features back off. Piper voices and the Node.js runtime are now in the list too,
-  everything lands in your portable folder when you run QUILL portably, and if a
-  download or test ever fails, QUILL offers to send a bug report with the details.
-  For components that have their own picker - the speech engines (whisper.cpp,
-  Vosk) and the Read Aloud voices - a **Manage** button jumps you straight to
-  Manage Speech Models or Manage Voices to choose sizes and voices, so the hub is
-  the one place you start no matter which extra you're after.
-- **A simpler installer - no more component checkboxes.** Installing Beta 1
-  asked you to pick optional components (Pandoc, Node.js, Piper, Braille pack),
-  several of which did nothing because those parts are downloaded when you need
-  them, not shipped in the installer. The installer now just installs QUILL;
-  everything optional - the neural Piper voices, the braille pack, Pandoc,
-  Node.js, and the offline speech engines - downloads on demand the first time
-  you use it (Piper from Manage Voices; the braille pack and Pandoc from
-  **Help > Download Optional Components**).
-- **Tabbed dialogs land you on the first control, not the tab strip.** The AI
-  Hub (and the About and Quillin-preferences dialogs) used to open with focus on
-  the row of tabs. Your screen reader announced a tab while you heard the first
-  field's name, so arrowing down did nothing. These dialogs now open with focus
-  on the first real control inside the current tab - and because the fix lives in
-  the shared dialog machinery, every tabbed dialog behaves this way.
-- **Read Aloud no longer mispronounces Markdown formatting.** Headings, bold
-  text, and links in a Markdown document used to be read aloud as literal
-  symbols (sounding garbled, especially with Piper voices); they're now
-  converted to plain, speakable text first, live and on export.
-- **macOS: Pandoc installed from the pandoc.org installer is now found.** A
-  QUILL window opened from Finder doesn't see the same folders a Terminal
-  window does; QUILL now checks the common install locations directly.
-- **Fixed doubled ampersands in a few menu titles** - "Writing & Language,"
-  "Reading & Dictation," and others sometimes read back as "Writing &&
-  Language." They now spell out "and" instead.
-- **Added Danish to the Braille Translation menu.** It shipped with the
-  underlying engine all along but never made it into QUILL's language list.
-- **Fixed a crash opening Profiles and Features.** A translated profile name
-  wasn't being fully resolved before being handed to the list box, so opening
-  the dialog - from the Tools menu or the command palette - could crash.
-- **The status bar stopped saying "Status Bar" over and over.** Pressing F6 to
-  jump to the status bar and then arrowing across it made your screen reader
-  announce "Status Bar" before every cell. Now you hear it once, when you land
-  there; after that each cell just tells you what it is and what it says (for
-  example, "Position, Ln 12, Col 7"). Quieter, and the way it was meant to work.
-- **Errors now carry a short support code** (like
-  `[QUILL-SPEECH-WHISPER-DL-404]`) alongside the message, so if you paste an
-  error into a bug report we can pinpoint the exact cause faster. This now
-  covers every one of QUILL's internal error types, not just a handful, and the
-  code travels with the crash report automatically.
+QUILL stays small by downloading the big optional pieces only when you ask. Beta
+testers told us that experience was confusing — so **Help > Download Optional
+Components** was rebuilt into one warm, guided place.
 
-More fixes land in this file as they ship - check back before release day.
+- **One hub for everything optional.** Every component in a single list, the ones
+  most people reach for first (Pandoc, then the braille pack), each row saying in
+  plain language what it does and how big it is. The window opens instantly now
+  instead of pausing to check what you already have.
+- **Prove it works before you rely on it.** Anything installed gets a **Test**
+  button: a voice reads you a sample so you actually hear it, the offline speech
+  engine listens to a spoken phrase and tells you what it heard, and tools report
+  their version. There's a **Remove** button too, and a **Manage** button that
+  jumps you straight to the right picker (Manage Speech Models or Manage Voices).
+- **A guided setup for offline speech.** Choosing offline dictation used to mean
+  hunting through menus. Now one step walks you through it: pick your engine —
+  **Whisper.cpp** (light and fast, works on any computer) or **Faster Whisper**
+  (most accurate) — with a plain-language explanation of each, then pick a model,
+  with the smallest one ready to go so you're transcribing within a minute. It
+  installs the engine and the model together and drops you right back in the hub.
+- **You always land back where you started.** Downloading something used to fling
+  you off into the editor or another tab. Now every download — voices, engines,
+  Pandoc, the braille pack, FFmpeg, Node.js, MathCAT, MP3 support — finishes and
+  returns you to the hub.
+- **A gentler helping hand.** If you Test a piece before it's fully set up (an
+  offline engine with no model yet, a voice engine with no voice), QUILL walks you
+  over to finish rather than treating a perfectly normal situation as an error.
+  And if a download genuinely fails, it offers to send a report with the details.
+- **Runs portable, stays portable.** Everything installs into your portable data
+  folder when you run QUILL from a drive, so your whole setup travels with you.
+- **MP3 chapter markers**, so exported audiobooks let players jump between
+  sections, are now a one-click download here too.
+
+## A simpler installer, and a lighter one
+
+- **No more component checkboxes.** Beta 1's installer asked you to pick optional
+  parts — several of which did nothing, because they're fetched on demand anyway.
+  The installer now just installs QUILL; everything optional arrives when you first
+  reach for it.
+- **A smaller download.** Kokoro's neural-voice engine is now fetched on demand
+  with everything it needs, trimming the installer noticeably — you download
+  Kokoro only if and when you want those voices.
+
+## Speech that just works
+
+- **Kokoro voices really speak now.** Richard reported that after downloading
+  Kokoro, previewing a voice failed with a baffling "needs one more component"
+  message. His diagnostics log pointed straight at the culprit: a small support
+  library Kokoro quietly needs was being left out of the build. It's back — and
+  when anything speech-related does go wrong, the real reason is now written to the
+  diagnostics log (**Help > Save Diagnostics**) instead of vanishing behind a vague
+  message. Thank you, Richard.
+- **Piper voices preview cleanly.** Also from Richard: previewing a freshly
+  downloaded Piper voice failed with an internal error. Fixed — preview and saving
+  audio both work.
+- **DECtalk speaks instead of opening a file.** Testing a DECtalk voice in the
+  installed app used to pop open a program file rather than talk. It speaks as it
+  should now.
+- **Read Aloud stops reading the punctuation.** Headings, bold text, and links in
+  a Markdown document were being read aloud as literal `#` and `*` symbols
+  (especially garbled with Piper). They're turned into plain, speakable text first
+  now — live and on export.
+- **Whisper model downloads are sturdier**, going through the same well-tested
+  library Faster Whisper already uses, so a hiccup on the model host's side gives
+  you a clear message instead of a mystery failure.
+- **macOS: Pandoc from the pandoc.org installer is found.** A QUILL window opened
+  from Finder doesn't inherit a Terminal's folders, so a real Pandoc install could
+  look missing. QUILL now checks the usual locations directly.
+
+## Kinder to screen readers
+
+- **Dialogs open on the first real control**, not the OK/Cancel button or a tab
+  strip. The Speech Hub, Manage Speech Models, Manage Voices, the AI Hub, About,
+  and Quillin preferences all land you where you can start working — and because
+  the fix lives in the shared dialog machinery, every tabbed dialog behaves.
+- **The status bar stopped repeating itself.** Pressing F6 into the status bar and
+  arrowing across it made your screen reader say "Status Bar" before every cell.
+  Now you hear it once, on arrival; after that each cell just tells you what it is
+  and what it says — for example, "Position, Ln 12, Col 7."
+- **No more doubled ampersands.** "Writing & Language," "Reading & Dictation," and
+  friends sometimes read back as "Writing && Language." They spell out "and" now.
+- **AI Hub: choosing a provider stays where you put it.** Arrowing through the
+  Provider list without opening its dropdown could bounce focus over to the Model
+  field the moment its suggestions refreshed. Focus now stays put.
+- **macOS: the QUILL key answers to a real Ctrl+Shift+` press.** macOS reports the
+  Cmd key, not the physical Control key, through the check QUILL was using — so a
+  literal Ctrl+Shift+` press went unrecognized. It's recognized now. (Cmd+Shift+`
+  is macOS's own "cycle windows" shortcut and will keep going to the OS first;
+  reassign it in System Settings > Keyboard Shortcuts if you'd rather use Cmd.)
+
+## Language, stability, and support
+
+- **Italian is here to switch to.** Elena Brescacin's beautiful, complete Italian
+  translation shipped in Beta 1 — but a build step meant it never actually appeared
+  under Change Display Language. It does now, all 1,100-plus phrases of it. Grazie
+  mille, Elena. (Tools > Writing and Language > Change Display Language.)
+- **Danish joins the Braille Translation menu.** The grade 1 and grade 2 tables
+  shipped with the engine all along; Danish just never made it onto QUILL's list.
+- **Opening Profiles and Features no longer crashes** — a translated profile name
+  wasn't being fully resolved before the list was built.
+- **Non-UTF-8 text files open cleanly.** A `.txt` or `.md` saved in an older
+  Windows encoding (a curly quote or en-dash, no UTF-8 marker) used to crash on
+  open. QUILL now falls back gracefully and tells you in the status bar.
+- **A stalled graphics-card check can't freeze the app.** The speech options'
+  hardware probe ran with no timeout on the main thread every time you opened the
+  dialog; it's timeout-guarded and runs once per session now.
+- **The Outline Navigator (Ctrl+Shift+O) opens again.** It — and the EPUB and Quick
+  Nav surfaces that share the same dialog — could crash instead of opening, because
+  of an invalid call on the tree control's hidden root. Fixed.
+- **Crash reports no longer carry your Windows username.** If your portable copy
+  lived inside your home folder, the local crash-report file path was included
+  verbatim in a submitted report's metadata — the one place that path wasn't
+  already being scrubbed. It's redacted the same way as everywhere else now.
+- **Errors carry a short support code** (like `[QUILL-SPEECH-WHISPER-DL-404]`), and
+  it rides along in crash reports automatically — so if you paste an error to us,
+  we can pinpoint the exact cause. Every one of QUILL's internal error types now
+  has one.
+
+---
+
+## With gratitude
+
+Beta 2 is a community release in the truest sense. **Elena Brescacin**
+([elettrona](https://github.com/elettrona)) gave QUILL its first non-English voice.
+**Richard Wells** chased down the Kokoro and Piper voice issues with patient,
+detailed reports and diagnostics. And every tester who hit an odd crash, a stuck
+focus, a missing language, or a confusing download and took the time to tell us —
+this release is yours. Please keep it coming.
