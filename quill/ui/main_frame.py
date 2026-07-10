@@ -13713,7 +13713,12 @@ class MainFrame(
         if "warming up" in lowered:
             return "The AI provider is warming up. Try again in a moment."
         if "not running" in lowered:
-            return "The local AI server is not running. Start Ollama and try again."
+            return (
+                "QUILL can't reach a local AI server. If you use Ollama, start it "
+                "(run 'ollama serve') and try again. If you use a different local AI "
+                "such as LM Studio or GPT4All, choose the Custom provider in AI Hub "
+                "and enter its OpenAI-compatible endpoint."
+            )
         if "rate limited" in lowered:
             return "Rate limited by the AI provider. Wait a moment and try again."
         if "timed out" in lowered:

@@ -6554,6 +6554,22 @@ tree navigator, which groups entries by subdirectory. Select an entry
 and press Enter (or click "Open Entry") to open that file. For headings,
 <strong>Navigate &gt; Go to Heading in Notebook</strong> scans every
 entry file and presents a two-level tree.</p>
+<p><strong>Opening a Notebook from WSL or a network location.</strong>
+The Open Notebook dialog is the standard Windows file dialog, so it can
+reach anywhere Windows can — including the WSL filesystem and UNC
+network shares. There is no "WSL" button because Windows itself presents
+those locations. To open a notebook stored in WSL, type or paste the UNC
+path into the dialog's address bar, for example
+<code>\\wsl.localhost\Ubuntu\home\you\writing\my.quillnotebook</code>
+(the older <code>\\wsl$\Ubuntu\...</code> form also works). Quill stores
+whatever path you give it, so the notebook file and the documents it
+references can all live in the WSL filesystem. You do not need to
+connect over SSH to reach your own WSL files. Note that file I/O across
+the WSL bridge is slower than native Windows paths, and live file-watch
+refresh may behave differently there; for a notebook you edit heavily,
+keeping it on a native Windows path is snappier. SSH is the right tool
+only when the files live on a <em>separate</em> Linux machine you want
+to edit remotely.</p>
 <p><strong>Entries panel.</strong> Toggle <strong>View &gt; Show Entries
 Panel</strong> to slide a docked panel into the left side of the window.
 The panel shows the notebook name, today's goal progress, a live filter
