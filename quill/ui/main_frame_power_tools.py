@@ -24,7 +24,6 @@ session metadata).
 
 from __future__ import annotations
 
-import os
 import webbrowser
 from collections.abc import Callable
 from pathlib import Path
@@ -113,16 +112,11 @@ class PowerToolsActionsMixin:
 
     def _power_tools_clipboard_text(self) -> str:
         wx = self._wx
-        clipboard = getattr(wx, "TheClipboard", None)
-        if clipboard is None or not clipboard.Open():
+        if getattr(wx, "TheClipboard", None) is None:
             return ""
-        try:
-            data = wx.TextDataObject()
-            if clipboard.GetData(data):
-                return str(data.GetText())
-            return ""
-        finally:
-            clipboard.Close()
+        from quill.ui.clipboard_retry import read_clipboard_text
+
+        return read_clipboard_text(wx)
 
     def _power_tools_clipboard_html(self) -> str:
         """Return the clipboard's HTML payload, if any.
@@ -133,25 +127,42 @@ class PowerToolsActionsMixin:
         """
         wx = self._wx
         clipboard = getattr(wx, "TheClipboard", None)
-        if clipboard is None or not clipboard.Open():
+        if clipboard is None:
             return ""
-        try:
-            data_format = wx.DataFormat("HTML Format")
-            if not clipboard.IsSupported(data_format):
-                return ""
-            data = wx.CustomDataObject(data_format)
-            if not clipboard.GetData(data):
-                return ""
-            raw = data.GetData()
+        from quill.ui.clipboard_retry import with_clipboard_read_retry
+
+        payload = ""
+        fragment = ""
+
+        def _attempt() -> bool:
+            nonlocal payload
+            if not clipboard.Open():
+                return False
             try:
-                payload = bytes(raw).decode("utf-8", errors="replace")
-            except (TypeError, ValueError):
-                payload = str(raw)
-            return extract_cf_html_fragment(payload)
+                data_format = wx.DataFormat("HTML Format")
+                if not clipboard.IsSupported(data_format):
+                    # Not a retry-worthy failure: the clipboard opened fine,
+                    # it simply has no HTML flavour on it.
+                    return True
+                data = wx.CustomDataObject(data_format)
+                if not clipboard.GetData(data):
+                    return False
+                raw = data.GetData()
+                try:
+                    payload = bytes(raw).decode("utf-8", errors="replace")
+                except (TypeError, ValueError):
+                    payload = str(raw)
+                return True
+            finally:
+                clipboard.Close()
+
+        try:
+            with_clipboard_read_retry(wx, _attempt)
+            if payload:
+                fragment = extract_cf_html_fragment(payload)
         except Exception:
             return ""
-        finally:
-            clipboard.Close()
+        return fragment
 
     # ------------------------------------------- HTML clipboard -> Markdown
     def paste_html_as_markdown(self) -> None:
@@ -604,7 +615,7 @@ class PowerToolsActionsMixin:
             self._set_status("Refusing to launch an executable or script for safety")
             return
         try:
-            os.startfile(str(path))  # type: ignore[attr-defined]  # noqa: S606
+            self._open_with_default_app(path)
         except OSError as error:
             self._set_status(f"Could not run file: {error}")
             return
@@ -635,11 +646,109 @@ class PowerToolsActionsMixin:
             self._set_status(f"Path does not exist: {target.value}")
             return
         try:
-            os.startfile(str(path))  # type: ignore[attr-defined]  # noqa: S606
+            self._open_with_default_app(path)
         except OSError as error:
             self._set_status(f"Could not open path: {error}")
             return
         self._set_status(f"Opened {path.name}")
+
+    # ------------------------------------------- Send / Copy as Email (#900)
+
+    def _email_fragment(self) -> object:
+        """Build a Fragment from the current selection, or the whole document
+        when nothing is selected -- #900's "the document, a selection, or a
+        kept fragment" framing."""
+        from quill.core.fragment import Fragment
+
+        start, end = self.editor.GetSelection()
+        text = self.editor.GetValue()
+        markup = text[start:end] if start != end else text
+        title = getattr(self.document, "name", "") or "QUILL document"
+        return Fragment(markup=markup, title=title, source="Document")
+
+    def _email_format(self) -> object:
+        from quill.core.fragment import FragmentFormat
+
+        raw = str(getattr(self.settings, "content_handoff_format", "text"))
+        try:
+            return FragmentFormat(raw)
+        except ValueError:
+            return FragmentFormat.TEXT
+
+    def send_as_email(self) -> None:
+        """Open the user's mail client with the selection (or document) as the body."""
+        from quill.core.email_handoff import build_mailto
+
+        frag = self._email_fragment()
+        if not frag.markup.strip():
+            self._set_status("Nothing to send: the document is empty.")
+            return
+        url = build_mailto(frag, self._email_format(), subject=frag.title)
+        webbrowser.open(url)
+        self._set_status("Opened your mail client with this content as the body.")
+
+    def copy_as_email_body(self) -> None:
+        """Copy the selection (or document), rendered for email, to the clipboard.
+
+        The practical alternative to Send as Email: many mail clients silently
+        truncate or reject a long mailto: body, so this puts the same rendered
+        content straight on the clipboard to paste into a compose window.
+        """
+        import wx
+
+        from quill.core.fragment import render_fragment
+
+        frag = self._email_fragment()
+        if not frag.markup.strip():
+            self._set_status("Nothing to copy: the document is empty.")
+            return
+        text = render_fragment(frag, self._email_format())
+        if wx.TheClipboard.Open():
+            wx.TheClipboard.SetData(wx.TextDataObject(text))
+            wx.TheClipboard.Close()
+        self._set_status("Copied to the clipboard as an email body.")
+
+    # ------------------------------------------- AutoOutline (#894)
+
+    def apply_auto_outline_numbering(self) -> None:
+        """Number every heading by nesting level, as literal text (Format menu).
+
+        Always operates on the whole document -- heading numbering is only
+        meaningful with full document context, unlike most power-tools
+        transforms that fall back to the whole document only when nothing
+        is selected.
+        """
+        from quill.core.auto_outline import OutlineStyle, apply_auto_outline
+
+        if self._document_is_read_only():
+            self._set_status("Document is read-only")
+            return
+        style_raw = str(getattr(self.settings, "auto_outline_style", "numeric"))
+        style = OutlineStyle.LEGAL if style_raw == "legal" else OutlineStyle.NUMERIC
+        text = self.editor.GetValue()
+        updated = apply_auto_outline(text, style)
+        if updated == text:
+            self._set_status("No headings to number.")
+            return
+        self._replace_document_text(updated)
+        self.document.set_text(updated)
+        self._set_status("Outline numbering updated.")
+
+    def remove_auto_outline_numbering(self) -> None:
+        """Strip any AutoOutline numbers from headings (Format menu)."""
+        from quill.core.auto_outline import remove_outline_numbers
+
+        if self._document_is_read_only():
+            self._set_status("Document is read-only")
+            return
+        text = self.editor.GetValue()
+        updated = remove_outline_numbers(text)
+        if updated == text:
+            self._set_status("No outline numbering to remove.")
+            return
+        self._replace_document_text(updated)
+        self.document.set_text(updated)
+        self._set_status("Outline numbering removed.")
 
     # ------------------------------------------- EDS-20 rename/delete on disk
     def rename_current_file(self) -> None:

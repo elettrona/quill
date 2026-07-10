@@ -16,6 +16,7 @@ consent), keyed by :attr:`OptionalComponent.component_id`.
 from __future__ import annotations
 
 import logging
+import sys
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -44,10 +45,27 @@ class OptionalComponent:
     # Display priority: lower sorts higher in the dialog (importance order).
     # Left at the default for dictionaries, which are grouped and sorted by name.
     priority: int = 500
+    # None means "same as installed" for every ordinary single-download
+    # component. The Dictation row is the one exception: the engine binary
+    # alone isn't usable without a downloaded model, so it passes its own
+    # two-tier readiness here. Read via effective_ready, never this field
+    # directly, so every other call site keeps its current behavior for free.
+    ready: bool | None = None
 
     @property
     def status_label(self) -> str:
         return "Installed" if self.installed else "Available to download"
+
+    @property
+    def effective_ready(self) -> bool:
+        """Whether Download/Test should treat this component as fully usable.
+
+        Distinct from ``installed`` (which drives status_label/Manage/Remove):
+        for most components the two agree, but the Dictation row is installed
+        as soon as an engine binary is present even with no model downloaded
+        yet -- not actually usable, so Download/Test must not treat it as done.
+        """
+        return self.installed if self.ready is None else self.ready
 
 
 # Read Aloud engine id a voice component provides, so removing it can reset the
@@ -181,6 +199,10 @@ def _candidate_removable_path(component_id: str) -> Path | None:
             from quill.core.math.mathcat_engine import pack_dir
 
             return pack_dir()
+        if component_id == "pdf_ocr":
+            from quill.core.pdf_ocr_install import pdf_ocr_pack_dir
+
+            return pdf_ocr_pack_dir()
         if component_id.startswith("spell-"):
             from quill.core.spellcheck import managed_hunspell_dir
 
@@ -371,6 +393,7 @@ def verify_component(component_id: str) -> VerifyResult:
 
 
 def _verify_stt(component_id: str) -> VerifyResult:
+    import os
     import tempfile
 
     from quill.core.read_aloud import synthesize_to_file_with_sapi5
@@ -384,7 +407,9 @@ def _verify_stt(component_id: str) -> VerifyResult:
             "The engine is installed, but no speech model has been downloaded yet.",
             remedy="models",
         )
-    wav = Path(tempfile.mkstemp(prefix="quill_stt_test_", suffix=".wav")[1])
+    fd, wav_path = tempfile.mkstemp(prefix="quill_stt_test_", suffix=".wav")
+    os.close(fd)  # mkstemp's fd must be closed or SAPI's own Open() of the same path fails
+    wav = Path(wav_path)
     try:
         synthesize_to_file_with_sapi5(_STT_TEST_PHRASE, wav)
         result = transcribe_audio_file(wav, provider_id=component_id)
@@ -485,6 +510,26 @@ def _whisper_installed() -> bool:
     return resolve_whisper_executable() is not None
 
 
+def _dictation_ready() -> bool:
+    """True when some offline STT engine is installed AND has a downloaded
+    model -- the Dictation row's real "ready to dictate" state.
+
+    ``_whisper_installed`` (the row's ``installed`` detector) only checks for
+    the whisper.cpp binary, so it goes True the moment the engine is fetched
+    even with no model yet -- Download/Test must not treat that as "done"
+    (the Test button offered no way to tell it wasn't actually usable).
+    Checks all three guided-picker engines, not just whisper.cpp, so a user
+    who set up Faster Whisper or Vosk instead still reads as ready.
+    """
+    from quill.core.speech import guided_setup
+    from quill.core.speech.transcribe import provider_has_installed_model
+
+    for opt in guided_setup.offline_speech_engine_options():
+        if opt.installed and _safe(lambda pid=opt.engine_id: provider_has_installed_model(pid)):
+            return True
+    return False
+
+
 def _vosk_installed() -> bool:
     from quill.core.speech.engine_install import is_vosk_available
 
@@ -558,6 +603,12 @@ def _mp3_installed() -> bool:
     return is_mp3_available()
 
 
+def _pdf_ocr_installed() -> bool:
+    from quill.core.pdf_ocr_install import is_pdf_ocr_available
+
+    return is_pdf_ocr_available()
+
+
 def _audio_extras_installed() -> bool:
     """Both halves of the bundled audio-extras download: mpv playback and MP3
     chapter markers. Reports installed only once both are present, since the
@@ -588,6 +639,21 @@ def gather_optional_components() -> list[OptionalComponent]:
             priority=10,
         ),
         OptionalComponent(
+            "pdf_ocr",
+            "PDF and Office text extraction",
+            "Reads text out of PDFs and Office documents (Word/PowerPoint/Excel) "
+            "without Pandoc or LibreOffice installed -- MarkItDown for Office and "
+            "PDF, pdfplumber and pypdf as the PDF text floor. Scanned/image-only "
+            "PDFs still need OCR (File > Import > OCR) either way. Plain-text and "
+            "Markdown editing, and any format Pandoc already handles, work without it.",
+            TOOL,
+            _safe(_pdf_ocr_installed),
+            "~30 MB",
+            note="MarkItDown (MIT, microsoft/markitdown), pdfplumber (MIT), and pypdf "
+            "(BSD-3-Clause); fetched via pip from PyPI.",
+            priority=15,
+        ),
+        OptionalComponent(
             "braille",
             "Braille pack (translation and BRF export)",
             "liblouis translation tables and BRF profiles that power the Translation "
@@ -606,12 +672,17 @@ def gather_optional_components() -> list[OptionalComponent]:
             "Dictation (offline speech)",
             "Private, on-device dictation and transcription. Opens a guided setup "
             "where you choose an engine (Whisper, Faster Whisper, or Vosk) and a "
-            "model to match your computer, then test it. SAPI 5 dictation works "
-            "without any of this.",
+            "model to match your computer, then test it. "
+            + (
+                "SAPI 5 dictation works without any of this."
+                if sys.platform.startswith("win")
+                else "This is the only dictation path on macOS (there is no SAPI 5)."
+            ),
             SPEECH_ENGINE,
             _safe(_whisper_installed),
             "~8 MB",
             priority=30,
+            ready=_safe(_dictation_ready),
         ),
         OptionalComponent(
             "kokoro",
@@ -641,15 +712,6 @@ def gather_optional_components() -> list[OptionalComponent]:
             _safe(_espeak_installed),
             "~40 MB",
             priority=60,
-        ),
-        OptionalComponent(
-            "dectalk",
-            "DECtalk voices",
-            "The classic DECtalk Read Aloud voices.",
-            VOICES,
-            _safe(_dectalk_installed),
-            "~2 MB",
-            priority=70,
         ),
         OptionalComponent(
             "audio_extras",
@@ -695,6 +757,20 @@ def gather_optional_components() -> list[OptionalComponent]:
             priority=100,
         ),
     ]
+    # DECtalk's only backend is DECtalk.dll (Windows-only), so offering it as an
+    # installable component on macOS advertised a download that could never work.
+    if sys.platform.startswith("win"):
+        out.append(
+            OptionalComponent(
+                "dectalk",
+                "DECtalk voices",
+                "The classic DECtalk Read Aloud voices.",
+                VOICES,
+                _safe(_dectalk_installed),
+                "~2 MB",
+                priority=70,
+            )
+        )
     out.extend(_dictionary_components())
     out.sort(key=lambda c: (c.priority, c.name))
     return out

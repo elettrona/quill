@@ -67,9 +67,12 @@ _REVIEWED_EGRESS: dict[str, str] = {
     "core/mastodon/client.py::_http_json": (
         "Single egress site for the 'Post to Mastodon' feature. Reached only by an "
         "explicit user action -- adding an account (app registration + OAuth token "
-        "exchange) or pressing Post -- to the user's own instance. HTTPS-only over a "
-        "verified TLS context; the access token travels in the Authorization header, "
-        "never the URL."
+        "exchange), opening the compose dialog or switching accounts (a one-time "
+        "GET /api/v2/instance to read that instance's per-post character limit, "
+        "cached for the process lifetime), or pressing Post -- to the user's own "
+        "instance. HTTPS-only over a verified TLS context; the access token travels "
+        "in the Authorization header, never the URL. The instance-limit lookup is "
+        "unauthenticated and falls back to the default 500 on any failure."
     ),
     "core/dectalk_runtime.py::download_dectalk_runtime": (
         "User explicitly installs the optional DECTALK voice runtime; download "
@@ -206,9 +209,10 @@ _REVIEWED_EGRESS: dict[str, str] = {
         "User-initiated local AI model download; verified TLS for HTTPS, visible progress callback."
     ),
     "core/lexical.py::_http_get_json": (
-        "Consented online dictionary/thesaurus lookups (DICT-1: Free Dictionary "
-        "and Datamuse). Only runs when the user enables online lexical lookups; "
-        "HTTPS with a verified TLS context, no API key, graceful offline fallback."
+        "Consented online dictionary/thesaurus/encyclopedia lookups (DICT-1: Free "
+        "Dictionary and Datamuse; #897: Wikipedia's keyless REST summary endpoint). "
+        "Only runs when the user enables online lexical lookups; HTTPS with a "
+        "verified TLS context, no API key, graceful offline fallback."
     ),
     "core/publishing_clients.py::verify_connection": (
         "User-initiated publishing connection verification from the Publishing "
@@ -424,6 +428,14 @@ _REVIEWED_EGRESS: dict[str, str] = {
 #   (the AI engine switcher / Copilot onboarding dialog), visible progress,
 #   blocked in Safe Mode, no admin, no silent path. The SDKs are deliberately not
 #   bundled in the installer (large, fast-moving, one-of-three).
+#
+# quill/core/pdf_ocr_install.py::install_pdf_ocr_support
+#   On-demand install of the free PDF/Office text-extraction pack (MarkItDown,
+#   pdfplumber, pypdf; ~30 MB) into <app data>/engine-packs/pdf-ocr, wheel-only,
+#   same gating as the speech engines. Triggered: Help > Download Optional
+#   Components > "PDF and Office text extraction". #909's original bug (a build
+#   with no PDF/Office text extractor anywhere) is fixed by this being one click
+#   away on every install, not by forcing it onto installs that never need it.
 #
 # quill/core/speech/providers/whispercpp.py::_download_to_file
 #   whisper.cpp GGML model download (#617), fetched via

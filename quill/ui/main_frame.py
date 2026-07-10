@@ -279,6 +279,7 @@ from quill.core.snippets import (
     search_snippets,
     starter_pack_names,
 )
+from quill.core.sound_events import SoundEvent
 from quill.core.spellcheck import (
     Misspelling,
     add_word_to_scope,
@@ -401,15 +402,18 @@ from quill.ui.main_frame_braille_phase3 import BrailleProofingCommandsMixin
 from quill.ui.main_frame_braille_repair import BrailleRepairMixin
 from quill.ui.main_frame_browse import BrowseModeMixin
 from quill.ui.main_frame_classic_editor import ClassicEditorMixin
+from quill.ui.main_frame_clip_library import ClipLibraryMixin
 from quill.ui.main_frame_copy_tray import CopyTrayMixin
 from quill.ui.main_frame_devtools import DevToolsMixin
 from quill.ui.main_frame_dictation_hotkeys import DictationHotkeysMixin
 from quill.ui.main_frame_docconvert import DocConvertMixin
 from quill.ui.main_frame_format_codes import FormatCodesMixin
 from quill.ui.main_frame_github import GitHubRemoteMixin
+from quill.ui.main_frame_github_items import GitHubItemsMixin
 from quill.ui.main_frame_glow import GlowFileMixin
 from quill.ui.main_frame_hygiene import HygieneMixin
 from quill.ui.main_frame_image import ImageCaptureMixin
+from quill.ui.main_frame_image_alt import ImageAltMixin
 from quill.ui.main_frame_inline_notes import InlineNotesMixin
 from quill.ui.main_frame_intellisense import IntellisensePopupMixin
 from quill.ui.main_frame_language_detect import LanguageDetectMixin
@@ -419,6 +423,7 @@ from quill.ui.main_frame_menu import MenuBuilderMixin
 from quill.ui.main_frame_notebook import NotebookUIMixin
 from quill.ui.main_frame_power_tools import PowerToolsActionsMixin
 from quill.ui.main_frame_power_tools_menu import PowerToolsMenuMixin
+from quill.ui.main_frame_print import PrintMixin
 from quill.ui.main_frame_profile_picker import ProfilePickerMixin
 from quill.ui.main_frame_quill_key import QuillKeyMixin
 from quill.ui.main_frame_quillins import QuillinsMenuMixin
@@ -435,8 +440,10 @@ from quill.ui.main_frame_story_studio import StoryStudioMixin
 from quill.ui.main_frame_vault import VaultMixin
 from quill.ui.main_frame_verbosity import VerbosityCommandsMixin
 from quill.ui.main_frame_watch_profile import WatchProfileDialogMixin
+from quill.ui.main_frame_work_persona import WorkPersonaMixin
 from quill.ui.notebook_panel import NotebookEntriesPanel
 from quill.ui.rich_text_surface import RichTextSurface
+from quill.ui.sound_manager import post_sound
 from quill.ui.word_view import WordDocumentSurface
 
 
@@ -714,7 +721,14 @@ class _IntellisensePopup:
         self.frame.Hide()
 
     def is_visible(self) -> bool:
-        return bool(self.frame.IsShown())
+        # The popup's frame is a child of MainFrame's own frame; if that parent
+        # was torn down and rebuilt (e.g. a crash-recovery restart) without this
+        # popup object being recreated alongside it, self.frame is a deleted
+        # C/C++ object and IsShown() raises RuntimeError (#917/#918).
+        try:
+            return bool(self.frame.IsShown())
+        except RuntimeError:
+            return False
 
     def selection_index(self) -> int:
         return self.listbox.GetSelection()
@@ -772,9 +786,14 @@ class MainFrame(
     DictationHotkeysMixin,
     SectionMoveMixin,
     CopyTrayMixin,
+    ClipLibraryMixin,
+    ImageAltMixin,
+    PrintMixin,
+    WorkPersonaMixin,
     ProfilePickerMixin,
     SshEditingMixin,
     GitHubRemoteMixin,
+    GitHubItemsMixin,
     DevToolsMixin,
     PowerToolsActionsMixin,
     ClassicEditorMixin,
@@ -1286,6 +1305,14 @@ class MainFrame(
                 sound_manager.init(self.settings)
             except Exception:
                 self._report_startup_task_failure("sound manager init")
+            try:
+                from quill.core.ai import harness_credentials
+
+                # Bridges a key saved in an earlier session to the SDK's env-var
+                # auth before anything asks whether that harness is available.
+                harness_credentials.apply_all_stored_keys()
+            except Exception:
+                self._report_startup_task_failure("AI harness credential apply")
         # Construction is complete. Subsequent _refresh_contextual_menu_items
         # calls can read self.editor, self.notebook, etc. safely. Any refreshes
         # deferred from inside _build_menu() (e.g. when the first-run wizard
@@ -1397,6 +1424,7 @@ class MainFrame(
             ("first-run onboarding", self._maybe_run_first_run_onboarding),
             ("migration notice", self._surface_migration_notice),
             ("braille pack prompt", self._maybe_prompt_braille_pack_install),
+            ("kokoro package prompt", self._maybe_prompt_kokoro_package_install),
             ("startup profile prompt", self.run_startup_profile_prompt),
             ("watch-folder startup", self._maybe_start_watch_folder),
             # Apply the saved spell-check language before the cache warms so the
@@ -1574,6 +1602,12 @@ class MainFrame(
             None,
         )
         self.commands.register(
+            "file.open_github_items",
+            "Open GitHub Items...",
+            self.open_github_items_viewer,
+            None,
+        )
+        self.commands.register(
             "tools.open_python_console",
             "Open Python Console...",
             self.open_python_console,
@@ -1644,6 +1678,18 @@ class MainFrame(
             "Print...",
             self.print_document,
             self._binding_for("file.print"),
+        )
+        self.commands.register(
+            "file.print_studio",
+            "Print Studio...",
+            self.print_studio,
+            self._binding_for("file.print_studio"),
+        )
+        self.commands.register(
+            "file.header_footer",
+            "Header and Footer...",
+            self.edit_header_footer,
+            self._binding_for("file.header_footer"),
         )
         self.commands.register(
             "file.save_as_plain_text",
@@ -1827,7 +1873,7 @@ class MainFrame(
             "view.toggle_dark_mode",
             "Toggle Dark Mode",
             self.toggle_dark_mode,
-            None,
+            self._binding_for("view.toggle_dark_mode"),
         )
         self.commands.register(
             "view.toggle_persistent_undo",
@@ -2051,7 +2097,42 @@ class MainFrame(
             self.open_ai_toc,
             None,
         )
-        self.commands.register("tools.ai_thesaurus", "AI Thesaurus", self.open_ai_thesaurus, None)
+        self.commands.register(
+            "tools.ai_switch_engine",
+            "Switch AI Engine",
+            self.cycle_ai_engine,
+            self._binding_for("tools.ai_switch_engine"),
+        )
+        self.commands.register(
+            "tools.ai_spell_check",
+            "AI Spell Check...",
+            self.ai_spell_check,
+            self._binding_for("tools.ai_spell_check"),
+        )
+        self.commands.register(
+            "tools.ai_spell_check_interactive",
+            "AI Spell Check Interactive...",
+            self.ai_spell_check_interactive,
+            self._binding_for("tools.ai_spell_check_interactive"),
+        )
+        self.commands.register(
+            "tools.ai_grammar_style",
+            "AI Grammar and Style Check...",
+            self.ai_grammar_style_check,
+            self._binding_for("tools.ai_grammar_style"),
+        )
+        self.commands.register(
+            "tools.ai_translate_selection",
+            "Translate Selection...",
+            self.ai_translate_selection,
+            self._binding_for("tools.ai_translate_selection"),
+        )
+        self.commands.register(
+            "tools.ai_thesaurus",
+            "AI Thesaurus",
+            self.open_ai_thesaurus,
+            self._binding_for("tools.ai_thesaurus"),
+        )
         from quill.ui.agent_editor_host import register_agent_commands
 
         register_agent_commands(self)  # Run Agent palette entries (one per catalog agent)
@@ -2620,19 +2701,19 @@ class MainFrame(
             "tools.compare_next_difference",
             "Next Difference",
             self.compare_next_difference,
-            None,
+            self._binding_for("tools.compare_next_difference"),
         )
         self.commands.register(
             "tools.compare_previous_difference",
             "Previous Difference",
             self.compare_previous_difference,
-            None,
+            self._binding_for("tools.compare_previous_difference"),
         )
         self.commands.register(
             "tools.compare_announce_difference",
             "Announce Current Difference",
             self.compare_announce_difference,
-            None,
+            self._binding_for("tools.compare_announce_difference"),
         )
         self.commands.register(
             "tools.compare_difference_list",
@@ -3497,6 +3578,12 @@ class MainFrame(
             self._binding_for("tools.table_studio"),
         )
         self.commands.register(
+            "tools.work_personas",
+            "Work Personas...",
+            self.open_work_personas,
+            self._binding_for("tools.work_personas"),
+        )
+        self.commands.register(
             "tools.csv_studio",
             "Open CSV in Table Studio (Experimental)",
             self.open_csv_studio,
@@ -3670,7 +3757,11 @@ class MainFrame(
                 continue
             flags, key_code = parsed
             entries.append(wx.AcceleratorEntry(flags, key_code, menu_id))
-        entries.append(wx.AcceleratorEntry(wx.ACCEL_CTRL, wx.WXK_F4, self._id_close_document))
+        # Cmd+F4 close-document accelerator is a Windows convention; on macOS it
+        # becomes Cmd+F4 (not idiomatic) and Cmd+W already closes documents. Gate
+        # it to non-darwin so the Mac build doesn't get a redundant chord.
+        if sys.platform != "darwin":
+            entries.append(wx.AcceleratorEntry(wx.ACCEL_CTRL, wx.WXK_F4, self._id_close_document))
 
         self.frame.SetAcceleratorTable(wx.AcceleratorTable(entries))
 
@@ -3714,6 +3805,8 @@ class MainFrame(
             "file.restore_backup": self._id_restore_backup,
             "file.page_setup": self._id_page_setup,
             "file.print": self._id_print,
+            "file.print_studio": self._id_print_studio,
+            "file.header_footer": self._id_header_footer,
             "window.next_document": self._id_next_document,
             "window.previous_document": self._id_previous_document,
             "window.go_to_document_1": self._id_go_to_document[0],
@@ -3749,6 +3842,11 @@ class MainFrame(
             "tools.ask_quill_conversation": self._id_ask_quill_voice,
             "tools.ai_model": self._id_ai_model,
             "tools.ai_switch_engine": self._id_ai_switch_engine,
+            "tools.ai_spell_check": self._id_ai_spell_check,
+            "tools.ai_spell_check_interactive": self._id_ai_spell_check_interactive,
+            "tools.ai_grammar_style": self._id_ai_grammar_style,
+            "tools.ai_translate_selection": self._id_ai_translate_selection,
+            "tools.ai_thesaurus": self._id_ai_thesaurus,
             "tools.copilot_onboarding": self._id_ai_copilot_setup,
             "tools.validate_agents": self._id_ai_validate_agents,
             "tools.ai_session_browser": self._id_ai_session_browser,
@@ -3955,6 +4053,17 @@ class MainFrame(
                 flags |= wx.ACCEL_SHIFT
             elif lowered == "alt":
                 flags |= wx.ACCEL_ALT
+            elif lowered in ("cmd", "command"):
+                # "Cmd" is how DEFAULT_KEYMAP spells the macOS-only bindings
+                # (navigate.back_location/forward_location, and
+                # window.next_document/previous_document — see keymap.py).
+                # wx has no separate ACCEL_CMD flag: wx.ACCEL_CTRL is what
+                # already maps to the Command key in a wx.AcceleratorTable on
+                # macOS, so "Cmd" parses to the same flag as "Ctrl". Without
+                # this, a "Cmd+..." binding fell through to the "else: return
+                # None" branch below and silently never got an accelerator
+                # table entry at all on any platform.
+                flags |= wx.ACCEL_CTRL
             else:
                 return None
 
@@ -4001,6 +4110,16 @@ class MainFrame(
         self.statusbar.Bind(wx.EVT_CONTEXT_MENU, self._on_statusbar_context_menu)
         self.frame.Bind(wx.EVT_CONTEXT_MENU, self._on_frame_context_menu)
         self.frame.Bind(wx.EVT_CLOSE, self._on_close)
+        # #920: bind the OS session-end events to the clean-exit marker handler
+        # so a Windows shutdown/restart/logoff (which can end the process without
+        # the EVT_CLOSE path running) is recorded as a clean exit, not a crash.
+        # Guarded by getattr: not every wx build exposes these session events.
+        for _session_evt in (
+            getattr(wx, "EVT_QUERY_END_SESSION", None),
+            getattr(wx, "EVT_END_SESSION", None),
+        ):
+            if _session_evt is not None:
+                self.frame.Bind(_session_evt, self._on_session_end)
         self.frame.Bind(wx.EVT_ICONIZE, self._on_iconize)
         self.frame.Bind(wx.EVT_HOTKEY, self._on_global_hotkey)
         self._apply_soft_wrap(self.settings.soft_wrap)
@@ -4190,6 +4309,7 @@ class MainFrame(
         editor.Bind(wx.EVT_LEFT_UP, self._on_editor_caret_activity)
         editor.Bind(wx.EVT_SET_FOCUS, self._on_editor_caret_activity)
         editor.Bind(wx.EVT_CONTEXT_MENU, self._on_editor_context_menu)
+        editor.Bind(wx.EVT_TEXT_COPY, self._on_editor_text_copy)
 
     def _on_editor_char_hook(self, event: object) -> None:
         wx = self._wx
@@ -5934,6 +6054,19 @@ class MainFrame(
             self._select_tab(self._document_tabs.index(anchor_tab))
         self._set_status(f"Closed {closed} tab(s) to the right")
 
+    def _open_with_default_app(self, path: Path) -> None:
+        import subprocess
+
+        try:
+            if sys.platform.startswith("win"):
+                os.startfile(str(path))  # type: ignore[attr-defined]
+            elif sys.platform == "darwin":
+                subprocess.Popen(["open", str(path)])  # noqa: S603,S607
+            else:
+                subprocess.Popen(["xdg-open", str(path)])  # noqa: S603,S607
+        except OSError as error:
+            self._set_status(f"Could not open {path.name}: {error}")
+
     def _reveal_in_explorer(self, path: Path) -> None:
         # #25: this used to unconditionally shell out to "explorer", which
         # doesn't exist on macOS/Linux. Mirror _reveal_in_folder's platform
@@ -6123,6 +6256,33 @@ class MainFrame(
         call_after = getattr(wx, "CallAfter", None)
         if callable(exit_loop) and callable(call_after):
             call_after(exit_loop)
+
+    def _on_session_end(self, event: object) -> None:
+        """Mark the session clean on an OS-initiated session end (#920).
+
+        Windows fires ``EVT_QUERY_END_SESSION`` (whose default handler calls
+        ``Close()`` on top-level windows, so the full ``_on_close`` teardown
+        runs) and then the non-vetoable ``EVT_END_SESSION`` -- which has NO
+        default ``Close()``, so the process can end here without ``_on_close``
+        ever running. Either way an OS shutdown / restart / logoff is a CLEAN
+        exit, not a crash, but the crash-recovery marker (``recovery_state.json``
+        ``clean_exit``) is only ever set to True inside ``_on_close``. So a
+        normal shutdown that bypassed ``_on_close`` left the marker stale, and
+        the next launch falsely offered "Quill detected an unclean exit" with no
+        traceback in the prior log -- the exact #920 report. Mark the session
+        clean here, best-effort, so an OS shutdown is never misreported as a
+        crash. Never raise: during shutdown any error must be swallowed so the
+        process can still end; ``event.Skip()`` always runs.
+        """
+        try:
+            mark_clean_exit(self.session_id)
+        except Exception:  # noqa: BLE001 - shutdown-path best effort, never block
+            import logging
+
+            logging.getLogger(__name__).warning(
+                "Session-end clean-exit marker write failed", exc_info=True
+            )
+        event.Skip()
 
     def _on_iconize(self, event: object) -> None:
         if self.settings.tray_enabled and event.IsIconized():
@@ -6882,20 +7042,34 @@ class MainFrame(
         """§8.2: Inspect clipboard and offer format-aware paste options before inserting."""
         wx = self._wx
         clipboard = wx.TheClipboard
-        if not clipboard.Open():
+        from quill.ui.clipboard_retry import with_clipboard_read_retry
+
+        has_text = has_unicode = has_bitmap = False
+        raw_text = ""
+
+        def _attempt() -> bool:
+            nonlocal has_text, has_unicode, has_bitmap, raw_text
+            if not clipboard.Open():
+                return False
+            try:
+                has_text = clipboard.IsSupported(wx.DataFormat(wx.DF_TEXT))
+                has_unicode = clipboard.IsSupported(wx.DataFormat(wx.DF_UNICODETEXT))
+                has_bitmap = clipboard.IsSupported(wx.DataFormat(wx.DF_BITMAP))
+                if has_text or has_unicode:
+                    obj = wx.TextDataObject()
+                    if not clipboard.GetData(obj):
+                        # Clipboard opened but the read itself lost the race
+                        # (e.g. another process/AT briefly holds it) -- worth
+                        # retrying rather than failing this attempt outright.
+                        return False
+                    raw_text = obj.GetText()
+                return True
+            finally:
+                clipboard.Close()
+
+        if not with_clipboard_read_retry(wx, _attempt):
             self._set_status("Clipboard is unavailable")
             return
-        try:
-            has_text = clipboard.IsSupported(wx.DataFormat(wx.DF_TEXT))
-            has_unicode = clipboard.IsSupported(wx.DataFormat(wx.DF_UNICODETEXT))
-            has_bitmap = clipboard.IsSupported(wx.DataFormat(wx.DF_BITMAP))
-            raw_text = ""
-            if has_text or has_unicode:
-                obj = wx.TextDataObject()
-                if clipboard.GetData(obj):
-                    raw_text = obj.GetText()
-        finally:
-            clipboard.Close()
 
         # Detect clipboard content type.
         content_type = "plain text"
@@ -7912,6 +8086,12 @@ class MainFrame(
     ) -> None:
         self._background_task_count = max(0, getattr(self, "_background_task_count", 1) - 1)
         if error is not None:
+            # A failed background task never invokes on_success, so if this
+            # was a voice preview's synthesis raising (e.g. missing engine
+            # executable), _synth_done never runs to cancel its pending
+            # "generating preview" cue timer -- cancel it here instead so a
+            # stray cue can't fire after the failure was already reported.
+            self._cancel_preview_cue_timer()
             self._track_background_task_finish(task_id, "failed", str(error))
             # §8.2 Soft error recovery link: file-open and network background tasks get a hint.
             if label.startswith("Opening "):
@@ -8537,27 +8717,6 @@ class MainFrame(
             "document.created",
             {"file_path": "", "extension": "", "title": self.document.name},
         )
-
-    def _file_dialog_default_dir(self) -> str:
-        """Return the best initial directory for a file open/save dialog (#168).
-
-        Priority: session last-used dir → startup_folder setting → Documents → "".
-        startup_folder is the persistent user preference; _last_file_dir tracks the
-        most recent location within the current session and overrides it once set.
-        """
-        last = self._last_file_dir
-        if last and Path(last).is_dir():
-            return last
-        configured = getattr(self.settings, "startup_folder", "")
-        if configured and Path(configured).is_dir():
-            return configured
-        try:
-            docs = self._wx.StandardPaths.Get().GetDocumentsDir()
-            if docs and Path(docs).is_dir():
-                return docs
-        except Exception:
-            pass
-        return ""
 
     def _file_dialog_default_dir(self) -> str:
         """Return the best initial directory for a file open/save dialog (#168).
@@ -9497,7 +9656,7 @@ class MainFrame(
         if self.document.path is None:
             self.save_file_as()
             return
-        os.startfile(str(self.document.path.parent))
+        self._reveal_in_explorer(self.document.path.parent)
         self._set_status(f"Opened folder for {self.document.name}")
 
     def undo(self) -> None:
@@ -9867,85 +10026,6 @@ class MainFrame(
         self._replace_document_text(restored_text)
         self._refresh_title()
         self._set_status(f"Restored backup {backup_path.name}")
-
-    def _build_text_printout(self, title: str, text: str) -> object:
-        wx = self._wx
-
-        class _TextPrintout(wx.Printout):
-            def __init__(self, print_title: str, print_text: str) -> None:
-                super().__init__(print_title)
-                self._text = print_text
-
-            def OnPrintPage(self, _page: int) -> bool:
-                dc = self.GetDC()
-                if dc is None:
-                    return False
-                dc.SetFont(
-                    wx.Font(
-                        10,
-                        wx.FONTFAMILY_TELETYPE,
-                        wx.FONTSTYLE_NORMAL,
-                        wx.FONTWEIGHT_NORMAL,
-                    )
-                )
-                width, height = dc.GetSize()
-                margin = 50
-                y = margin
-                line_height = dc.GetTextExtent("A")[1] + 2
-                for line in self._text.splitlines() or [""]:
-                    dc.DrawText(line, margin, y)
-                    y += line_height
-                    if y > height - margin:
-                        break
-                return True
-
-            def HasPage(self, page: int) -> bool:
-                return page == 1
-
-            def GetPageInfo(self) -> tuple[int, int, int, int]:
-                return (1, 1, 1, 1)
-
-        return _TextPrintout(title, text)
-
-    def page_setup(self) -> None:
-        wx = self._wx
-        dialog = wx.PageSetupDialog(self.frame, self._page_setup_data)
-        try:
-            if self._show_modal_dialog(dialog, "Page Setup") != wx.ID_OK:
-                self._set_status("Page setup cancelled")
-                return
-            self._page_setup_data = dialog.GetPageSetupData()
-            self._print_data = self._page_setup_data.GetPrintData()
-            self._set_status("Page setup updated")
-        finally:
-            dialog.Destroy()
-
-    def print_document(self) -> None:
-        wx = self._wx
-        text = self.editor.GetValue()
-        printout = self._build_text_printout(self.document.name, text)
-        printer = wx.Printer(wx.PrintDialogData(self._print_data))
-        try:
-            success = bool(printer.Print(self.frame, printout, True))
-        except Exception as error:
-            printout.Destroy()
-            self._show_message_box(f"Printing failed: {error}", "Print", wx.ICON_ERROR | wx.OK)
-            return
-        if not success:
-            read_last_error = getattr(printer, "GetLastError", None)
-            last_error = read_last_error() if callable(read_last_error) else None
-            cancelled_code = getattr(wx, "PRINTER_CANCELLED", None)
-            no_error_code = getattr(wx, "PRINTER_NO_ERROR", None)
-            if last_error == cancelled_code or last_error in {None, no_error_code}:
-                self._set_status("Printing cancelled")
-                printout.Destroy()
-                return
-            self._show_message_box("Printing failed.", "Print", wx.ICON_ERROR | wx.OK)
-            printout.Destroy()
-            return
-        self._print_data = printer.GetPrintDialogData().GetPrintData()
-        printout.Destroy()
-        self._set_status("Printed document")
 
     # Save As wildcard filter index -> the extension that filter implies.
     _SAVE_FILTER_EXTENSIONS = {0: ".txt", 1: ".md", 2: ".html", 3: ".rtf", 4: ".docx"}
@@ -17679,6 +17759,70 @@ class MainFrame(
                     return candidate
         return None
 
+    def _purge_preview_playback(self) -> None:
+        """Best-effort: stop whatever voice-preview audio is currently sounding.
+
+        Covers both playback backends `_play_preview_asset` uses. Never raises --
+        called opportunistically whenever a new preview supersedes an old one.
+        """
+        if _winsound is not None:
+            try:
+                _winsound.PlaySound(None, _winsound.SND_PURGE)
+            except Exception:  # noqa: BLE001
+                pass
+        try:
+            import ctypes as _ct
+
+            _ct.windll.winmm.mciSendStringW("stop quill_preview", None, 0, None)  # type: ignore[attr-defined]
+            _ct.windll.winmm.mciSendStringW("close quill_preview", None, 0, None)  # type: ignore[attr-defined]
+        except Exception:  # noqa: BLE001
+            pass
+
+    def _stop_active_voice_preview(self) -> None:
+        """Stop/supersede whatever voice preview is currently active.
+
+        Bumps the generation counter first (so any in-flight callback from the
+        old generation becomes a no-op the instant it checks), then best-effort
+        stops the old preview's audio: SAPI5 goes through the ReadAloudController
+        it already owns; every other engine plays through `_play_preview_asset`,
+        stopped via `_purge_preview_playback`. Does NOT stop an old preview's
+        synthesis if it is still computing (e.g. a Piper/Kokoro call in
+        progress) -- that finishes in the background and its result is
+        discarded when the stale generation check fails.
+        """
+        self._preview_generation = getattr(self, "_preview_generation", 0) + 1
+        self._cancel_preview_cue_timer()
+        try:
+            self._read_aloud.stop()
+        except Exception:  # noqa: BLE001
+            pass
+        self._purge_preview_playback()
+
+    def _cancel_preview_cue_timer(self) -> None:
+        """Stop and clear any pending "generating preview" cue timer.
+
+        Called whenever a preview generation is superseded (Task 3) or
+        whenever its synthesis completes on its own -- success or error --
+        so a stray cue never fires after the preview it belonged to is
+        already over (see ``_synth_done`` and ``_finish_background_task``).
+        """
+        timer = getattr(self, "_preview_cue_timer", None)
+        if timer is not None:
+            try:
+                timer.Stop()
+            except Exception:  # noqa: BLE001
+                pass
+            self._preview_cue_timer = None
+
+    def _fire_generating_cue(self, generation: int) -> None:
+        """One-shot "still generating" cue -- fires only if *generation* is
+        still current (the ~400ms delay elapsed before synthesis finished)."""
+        if getattr(self, "_preview_generation", 0) != generation:
+            return
+        post_sound(SoundEvent.VOICE_PREVIEW_GENERATING)
+        if getattr(self.settings, "voice_preview_announce_generating", True):
+            self._announce("Generating preview, please wait.")
+
     def _play_preview_asset(self, sample_path: Path) -> None:
         suffix = sample_path.suffix.lower()
         if suffix == ".wav" and _winsound is not None:
@@ -17700,12 +17844,23 @@ class MainFrame(
             return
         except (AttributeError, OSError):
             pass
+        if sys.platform == "darwin":
+            import subprocess as _subprocess
+
+            _subprocess.Popen(["afplay", str(sample_path)])  # noqa: S603,S607
+            return
         import os as _os
 
         _os.startfile(str(sample_path))
 
     def _preview_voice(
-        self, engine: str, voice_id: str, *, live: bool = False, text: str | None = None
+        self,
+        engine: str,
+        voice_id: str,
+        *,
+        live: bool = False,
+        text: str | None = None,
+        on_state_change: Callable[[str], None] | None = None,
     ) -> None:
         """Preview *voice_id* through *engine* on a background thread.
 
@@ -17714,9 +17869,24 @@ class MainFrame(
         downloaded) plays the bundled pre-recorded sample instead, so the user
         can still hear what the voice sounds like before downloading; if no
         sample ships for it, we say so rather than failing silently.
+
+        Starting a preview always stops/supersedes whatever preview was
+        previously active (see ``_stop_active_voice_preview``): its playback is
+        cut short and its completion callback becomes a no-op, so two previews
+        started in quick succession never overlap.
         """
         import tempfile as _tmpfile
         from pathlib import Path as _Path
+
+        self._stop_active_voice_preview()
+        my_generation = self._preview_generation
+
+        def _still_current() -> bool:
+            return getattr(self, "_preview_generation", 0) == my_generation
+
+        def _report(state: str) -> None:
+            if on_state_change is not None and _still_current():
+                self._wx.CallAfter(on_state_change, state)
 
         sample = text or self._PREVIEW_TEXT
         s = self.settings
@@ -17730,13 +17900,23 @@ class MainFrame(
                 return
 
             def _play_sample(_progress: Callable[[str, int, int], None]) -> object:
-                self._play_preview_asset(preview_sample)
+                _report("playing")
+                try:
+                    self._play_preview_asset(preview_sample)
+                except Exception:
+                    _report("idle")
+                    raise
                 return None
+
+            def _sample_done(_r: object) -> None:
+                if _still_current():
+                    self._set_status("Preview finished")
+                _report("idle")
 
             self._run_background_task(
                 f"Previewing {engine} voice",
                 _play_sample,
-                lambda _r: self._set_status("Preview finished"),
+                _sample_done,
             )
             return
 
@@ -17744,6 +17924,7 @@ class MainFrame(
         # dedicated thread, avoiding the "started a loop" error from ThreadPoolExecutor.
         if engine == "sapi5":
             try:
+                _report("playing")
                 self._read_aloud.start(
                     sample,
                     0,
@@ -17753,13 +17934,14 @@ class MainFrame(
                     volume=s.read_aloud_volume / 100.0,
                     pitch=s.read_aloud_pitch,
                     on_state_change=lambda state: (
-                        self._wx.CallAfter(self._set_status, "Preview finished")
-                        if state in ("idle", "error")
+                        (self._wx.CallAfter(self._set_status, "Preview finished"), _report("idle"))
+                        if state in ("idle", "error") and _still_current()
                         else None
                     ),
                 )
             except Exception as exc:  # noqa: BLE001
                 self._set_status(f"Preview failed: {exc}")
+                _report("idle")
             return
 
         # ElevenLabs previews also cost quota, so gate them on the same per-session
@@ -17825,7 +18007,11 @@ class MainFrame(
                     )
                 else:
                     raise ReadAloudUnavailableError(f"Unknown engine: {engine}")
+                _report("playing")
                 self._play_preview_asset(wav)
+            except Exception:
+                _report("idle")
+                raise
             finally:
                 try:
                     wav.unlink(missing_ok=True)
@@ -17833,10 +18019,21 @@ class MainFrame(
                     pass
             return None
 
+        def _synth_done(_r: object) -> None:
+            # Synthesis reported success -- the pending cue is no longer
+            # relevant regardless of whether this generation is still
+            # current, so cancel it before anything else.
+            self._cancel_preview_cue_timer()
+            if _still_current():
+                self._set_status("Preview finished")
+            _report("idle")
+
+        _report("generating")
+        self._preview_cue_timer = self._wx.CallLater(400, self._fire_generating_cue, my_generation)
         self._run_background_task(
             f"Previewing {engine} voice",
             _work,
-            lambda _r: self._set_status("Preview finished"),
+            _synth_done,
         )
 
     def choose_read_aloud_configuration(self) -> None:
@@ -17857,9 +18054,7 @@ class MainFrame(
         )
         from quill.core.speech.engine_install import (
             is_faster_whisper_available,
-            is_kokoro_onnx_available,
             is_vosk_available,
-            kokoro_onnx_install_supported,
             vosk_install_supported,
         )
         from quill.core.speech.ffmpeg import ffmpeg_available
@@ -17910,6 +18105,7 @@ class MainFrame(
             "piper_model_dir": default_piper_model_dir(),
             "settings": self.settings,
             "preview_fn": self._preview_voice,
+            "preview_stop_fn": self._stop_active_voice_preview,
             "elevenlabs_api_key": self._get_elevenlabs_api_key() if elevenlabs_ready else "",
             "has_preview_sample": (
                 lambda eng, vid: self._voice_preview_sample_path(eng, vid) is not None
@@ -17947,8 +18143,6 @@ class MainFrame(
             "engine_ok": is_faster_whisper_available(),
             "vosk_ok": is_vosk_available(),
             "vosk_can_install": vosk_install_supported(),
-            "kokoro_ok": is_kokoro_onnx_available(),
-            "kokoro_can_install": kokoro_onnx_install_supported(),
             "all_providers": all_providers,
             "total_ram": total_ram,
             "has_gpu": has_gpu,
@@ -18079,8 +18273,6 @@ class MainFrame(
                 self.download_faster_whisper()
             elif dict_result.action == "vosk":
                 self.download_vosk()
-            elif dict_result.action == "kokoro_engine":
-                self.download_kokoro_engine()
             elif dict_result.action == "hf_token":
                 self.set_huggingface_token()
             elif dict_result.action == "test":
@@ -18370,6 +18562,12 @@ class MainFrame(
         engine = self.settings.read_aloud_engine.strip().lower() or "sapi5"
         s = self.settings
 
+        # Kokoro-only: models on disk but the kokoro_onnx package missing (e.g.
+        # upgraded from a build that bundled Kokoro). Set in the gate below and
+        # honored on the export worker so the small package install happens off
+        # the UI thread. (#kokoro-onnx)
+        kokoro_install_pkg = False
+
         # Resolve / prompt for engine-specific paths before background work
         if engine == "piper":
             exe = discover_piper_executable()
@@ -18423,17 +18621,25 @@ class MainFrame(
             espeak_exe_snap = exe
 
         elif engine == "kokoro":
-            from quill.core.read_aloud import kokoro_engine_ready
+            from quill.core.read_aloud import kokoro_engine_ready, kokoro_onnx_ready
 
             if not kokoro_engine_ready():
-                self._show_message_box(
-                    "Kokoro voices need one more component. Tools > Speech > "
-                    "Install Kokoro ONNX will fetch it before exporting.",
-                    _TITLE,
-                    wx.ICON_ERROR | wx.OK,
-                )
-                self._set_status("Speech generation cancelled")
-                return
+                if kokoro_onnx_ready():
+                    # Model files are present but the kokoro_onnx package is not
+                    # importable. The user already opted into Kokoro (downloaded
+                    # the voices and selected the voice), so onboard the small
+                    # (~20 MB) package on the export worker instead of dead-ending
+                    # with a "go install it yourself" dialog. (#kokoro-onnx)
+                    kokoro_install_pkg = True
+                else:
+                    self._show_message_box(
+                        "Kokoro voices are not installed yet. Use Manage Voices to "
+                        "download the Kokoro voices (~114 MB) before exporting.",
+                        _TITLE,
+                        wx.ICON_ERROR | wx.OK,
+                    )
+                    self._set_status("Speech generation cancelled")
+                    return
 
         save_settings(s)
         task_label = f"Generating speech audio ({output_path.name}) via {engine}"
@@ -18447,6 +18653,7 @@ class MainFrame(
         _dectalk_rate = s.read_aloud_dectalk_rate
         _kokoro_voice = s.read_aloud_kokoro_voice
         _kokoro_speed = s.read_aloud_kokoro_speed
+        _kokoro_install_pkg = kokoro_install_pkg
         _espeak_voice = s.read_aloud_espeak_voice
         _espeak_rate = s.read_aloud_espeak_rate
         _out = output_path
@@ -18486,6 +18693,17 @@ class MainFrame(
                     model_path=piper_model_snap,
                 )
             elif _engine == "kokoro":
+                if _kokoro_install_pkg:
+                    # GATE-40-OK: runs on the export worker (this callback is the
+                    # background task body), so the ~20 MB pip install stays off
+                    # the UI thread. A failure surfaces the real installer error
+                    # via notify_on_error, not the masked fallback. (#kokoro-onnx)
+                    from quill.core.speech.engine_install import install_kokoro_onnx
+
+                    progress("Installing Kokoro component", 0, 1)
+                    install_kokoro_onnx(
+                        progress=lambda frac, msg: progress(msg, int(frac * 100), 100)
+                    )
                 synthesize_with_kokoro(
                     _out_text, wav_target, voice=_kokoro_voice, speed=_kokoro_speed
                 )
@@ -20763,7 +20981,7 @@ class MainFrame(
             self._record_notification("Update install cancelled before closing documents", "update")
             return
         try:
-            os.startfile(str(target))  # type: ignore[attr-defined]  # noqa: S606
+            self._open_with_default_app(target)
         except Exception as exc:  # noqa: BLE001
             self._record_notification(f"Could not launch installer: {exc}", "update")
             self._set_status("Could not launch installer")
@@ -26821,6 +27039,73 @@ class MainFrame(
         )
         self.open_optional_components(preselect="braille")
 
+    def _maybe_prompt_kokoro_package_install(self) -> None:
+        """One-time prompt when the Kokoro models are present but the kokoro_onnx
+        package is not importable.
+
+        This is the "upgraded from a build that bundled Kokoro" gap: the ~114 MB
+        model files are on disk (so the user clearly set Kokoro up) but the pip
+        package that loads them was never installed in this runtime. Runs only in
+        a real (non-dev) install, never in Safe Mode, only once per user, and only
+        when that exact gap exists. Choosing 'Install Now' routes into the existing
+        Kokoro engine installer without a second confirmation. Declining is fine --
+        export also self-heals this on demand (#kokoro-onnx).
+        """
+        from quill.core.paths import _DEV_BUILD
+        from quill.core.read_aloud import kokoro_onnx_ready
+        from quill.core.speech.engine_install import (
+            is_kokoro_onnx_available,
+            kokoro_onnx_install_supported,
+        )
+
+        if _DEV_BUILD or self._safe_mode:
+            return
+        if getattr(self.settings, "upgrade_prompt_kokoro_onnx", False):
+            return
+        # Only the models-present / package-missing gap is worth a prompt: no
+        # models means the user never set Kokoro up (nothing to complete), and a
+        # present package means there is nothing to install.
+        if not kokoro_onnx_ready() or is_kokoro_onnx_available():
+            return
+        # If this build cannot install it (no pip), a prompt would dead-end.
+        if not kokoro_onnx_install_supported():
+            return
+
+        # Mark shown first so a crash during the dialog doesn't re-show it.
+        self.settings.upgrade_prompt_kokoro_onnx = True
+        save_settings(self.settings)
+
+        wx = self._wx
+        msg = (
+            "Your Kokoro voices are installed, but one small component is missing.\n\n"
+            "The Kokoro neural voices need the Kokoro ONNX engine (~20 MB) to speak. "
+            "Your voice files are already on this computer -- only this component is "
+            "left to install.\n\n"
+            "Choose 'Install Now' to add it (a quick download). Choose 'Not Now' to "
+            "skip; QUILL will install it automatically the next time you export with "
+            "a Kokoro voice, or you can re-download Kokoro any time from Help > "
+            "Download Optional Components."
+        )
+        with wx.MessageDialog(
+            self.frame,
+            msg,
+            "Finish Setting Up Kokoro",
+            wx.YES_NO | wx.NO_DEFAULT | wx.ICON_INFORMATION,
+        ) as dlg:
+            if hasattr(dlg, "SetYesNoLabels"):
+                dlg.SetYesNoLabels("Install Now", "Not Now")
+            apply_modal_ids(dlg, affirmative_id=wx.ID_YES, escape_id=wx.ID_NO)
+            result = self._show_modal_dialog(dlg, "Finish Setting Up Kokoro")
+
+        if result != wx.ID_YES:
+            self._set_status(
+                "Kokoro component skipped. QUILL installs it automatically on your "
+                "next Kokoro export."
+            )
+            return
+        # Consent already given by 'Install Now' -- do not ask again.
+        self.download_kokoro_engine(skip_confirm=True)
+
     def _find_cached_quill_installer(self):
         """Return the Path of a cached Quill-Setup-*.exe in the updates folder, or None."""
         try:
@@ -27131,10 +27416,16 @@ def run_app(
     safe_mode: bool = False,
     diagnostics_mode: bool = False,
     cold_import_seconds: float = 0.0,
+    persona_name: str | None = None,
 ) -> None:
-    import wx
+    from quill.ui.mac_open_file_app import MacOpenFileApp
 
-    app = wx.App(False)
+    # MacOpenFileApp is a plain wx.App subclass on every platform; the
+    # MacOpenFile/MacOpenFiles overrides it adds are only ever invoked by
+    # wx on macOS (Finder "Open With", drag-onto-Dock-icon, `open -a Quill
+    # file.txt` from Terminal all arrive as an Apple Event, not argv --
+    # without this override QUILL silently opened a blank document).
+    app = MacOpenFileApp(False)
     # #27: without an explicit app name, wx falls back to the running
     # executable/script's name for the macOS application-menu Hide/Quit
     # items ("Hide Mac_OS_app" / "Quit Mac_OS_app") instead of "QUILL".
@@ -27145,6 +27436,11 @@ def run_app(
     _t_construct = time.perf_counter()
     frame = MainFrame(safe_mode=safe_mode)
     _construct_seconds = time.perf_counter() - _t_construct
+    if persona_name:
+        try:
+            frame.apply_persona_by_name(persona_name)
+        except Exception:  # noqa: BLE001 - a bad persona must never block startup
+            pass
     heartbeat_state = HeartbeatState()
     frame._stability_heartbeat_state = heartbeat_state
     frame._stability_heartbeat_timer = WxHeartbeatTimer(frame.frame, heartbeat_state)
@@ -27156,6 +27452,10 @@ def run_app(
         path = getattr(request, "path", None)
         if isinstance(path, Path) and path.exists() and path.is_file():
             frame._handle_shell_request(request)
+    # Wire up the frame so any Apple Event that arrived (or arrives from
+    # here on) while the frame was still under construction gets dispatched.
+    app.main_frame = frame
+    app.flush_pending()
     # Cold-start timing (import + construction + the synchronous part of
     # show()) is recorded on the instance so _write_startup_timing can
     # prepend it ahead of the deferred-task timings it already collects,

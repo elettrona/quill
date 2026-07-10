@@ -74,8 +74,15 @@ DEFAULT_KEYMAP: dict[str, str] = {
     # Restore points: no default key (assignable); the File menu item is the
     # primary path.
     "file.restore_previous_version": "",
-    "window.next_document": "Ctrl+Tab",
-    "window.previous_document": "Ctrl+Shift+Tab",
+    # On macOS, wx's ACCEL_CTRL maps to Cmd (not the physical Control key) in
+    # the accelerator table, so "Ctrl+Tab" here becomes Cmd+Tab -- macOS's own
+    # reserved App Switcher shortcut, which never reaches the app. A literal
+    # physical Ctrl+Tab press does not match ACCEL_CTRL on macOS either, so it
+    # falls through to generic focus traversal instead of switching documents.
+    # Use the conventional macOS tab-cycling chord (matching Safari/Xcode,
+    # and pairing with the Cmd+[ / Cmd+] back/forward chord above) instead.
+    "window.next_document": "Cmd+Shift+]" if sys.platform == "darwin" else "Ctrl+Tab",
+    "window.previous_document": "Cmd+Shift+[" if sys.platform == "darwin" else "Ctrl+Shift+Tab",
     # Jump straight to the Nth open document. Alt+digit is otherwise unused and,
     # unlike Ctrl+Alt+ chords, is not screen-reader-hostile (§10.8). Alt+0 = 10th.
     "window.go_to_document_1": "Alt+1",
@@ -193,10 +200,15 @@ DEFAULT_KEYMAP: dict[str, str] = {
     "edit.say_selected": "",  # Shift+Space — conditional intercept in _on_editor_key_down
     "edit.read_all": "Alt+F8",
     "edit.find": "Ctrl+F",
-    "edit.find_next": "F3",
-    "edit.find_previous": "Shift+F3",
+    # macOS HIG: Find Next/Previous are Cmd+G / Cmd+Shift+G. The bare F3 /
+    # Shift+F3 defaults need the Fn key held on a stock MacBook (F-keys default
+    # to brightness/media), so the darwin alternates give a no-Fn path (#6).
+    "edit.find_next": "Cmd+G" if sys.platform == "darwin" else "F3",
+    "edit.find_previous": "Cmd+Shift+G" if sys.platform == "darwin" else "Shift+F3",
     "edit.find_all_matches": "Ctrl+Shift+F3",  # was Alt+F3 (now Reveal Codes)
-    "edit.replace": "Ctrl+H",
+    # Ctrl+H becomes Cmd+H on macOS (system Hide) -- dead by default. The darwin
+    # alternate Cmd+Alt+F mirrors the Mac/VS Code Replace convention (#30).
+    "edit.replace": "Cmd+Alt+F" if sys.platform == "darwin" else "Ctrl+H",
     "tools.search_in_files": "Ctrl+Shift+F",
     "tools.replace_in_files": "Ctrl+Shift+R",
     # Bare "N" after the QUILL-key prefix is intercepted for browse mode in
@@ -215,14 +227,20 @@ DEFAULT_KEYMAP: dict[str, str] = {
     "edit.insert_link": "Ctrl+K",
     "edit.follow_link": "Ctrl+Enter",
     "edit.word_prediction": "Ctrl+.",  # freed Ctrl+Space for select_chunk (§4.22)
-    "edit.select_chunk": "Ctrl+Space",  # §4.22 advanced-editor parity
+    # Ctrl+Space becomes Cmd+Space on macOS (Spotlight) -- dead by default. The
+    # darwin alternate Cmd+Alt+Space avoids the system shortcuts (#32).
+    "edit.select_chunk": "Cmd+Alt+Space"
+    if sys.platform == "darwin"
+    else "Ctrl+Space",  # §4.22 advanced-editor parity
     "view.preview": "Ctrl+Shift+V",
     "view.browser_preview": "Ctrl+Shift+Grave, V",  # §10.8.2: QUILL-key chord
     "view.split_preview": "Ctrl+Shift+Backslash",
     "view.focus_preview": "Ctrl+F6",
     "view.switch_editing_lens": "Ctrl+Shift+Grave, K",
     "edit.set_mark": "Ctrl+Shift+M",
-    "edit.pop_mark": "Ctrl+M",
+    # Ctrl+M becomes Cmd+M on macOS (system Minimize) -- dead by default. The
+    # darwin alternate Cmd+Alt+M avoids Minimize (#31).
+    "edit.pop_mark": "Cmd+Alt+M" if sys.platform == "darwin" else "Ctrl+M",
     "edit.exchange_point_mark": "Ctrl+Shift+X",
     "edit.list_marks": "Alt+M",
     "edit.select_paragraph": "",  # Ctrl+Alt+P removed (§10.8 screen-reader-hostile)
@@ -559,7 +577,8 @@ def merge_keymaps(raw: object) -> dict[str, str]:
         "edit.quote_lines": ("Ctrl+Q", "Ctrl+Shift+Q"),
         "edit.unquote_lines": ("Ctrl+Shift+Q", "Ctrl+Shift+K"),
         # window.next_document / previous_document: Ctrl+Tab restored as default
-        # in #190; no legacy rebinding needed.
+        # in #190; no cross-platform legacy rebinding needed (the macOS-only
+        # rewrite lives in the darwin block below).
         "view.send_to_tray": ("CTRL+ALT+T", "Ctrl+Shift+Grave, T"),
         "view.toggle_tab_control": ("CTRL+ALT+SHIFT+T", "Ctrl+Shift+Grave, Shift+T"),
         "navigate.heading_organizer": ("CTRL+ALT+SHIFT+H", "Ctrl+Shift+Grave, O"),
@@ -602,6 +621,12 @@ def merge_keymaps(raw: object) -> dict[str, str]:
     if sys.platform == "darwin":
         legacy_rebindings["navigate.back_location"] = ("Alt+Left", "Cmd+[")
         legacy_rebindings["navigate.forward_location"] = ("Alt+Right", "Cmd+]")
+        # A macOS user who saved the pre-Mac-fix Ctrl+Tab / Ctrl+Shift+Tab
+        # document-switch bindings has an entry that can never fire (Ctrl+Tab
+        # maps to Cmd+Tab, the reserved App Switcher shortcut). Rewrite it to
+        # the new macOS chord on first load.
+        legacy_rebindings["window.next_document"] = ("Ctrl+Tab", "Cmd+Shift+]")
+        legacy_rebindings["window.previous_document"] = ("Ctrl+Shift+Tab", "Cmd+Shift+[")
     for command_id, binding in raw.items():
         if isinstance(command_id, str) and isinstance(binding, str):
             # Reserved metadata keys (e.g. the epoch stamp) are not bindings.

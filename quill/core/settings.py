@@ -60,6 +60,9 @@ class Settings:
     docx_read_engine: str = "auto"
     docx_write_engine: str = "auto"
     plain_text_link_style: str = "text_url"
+    content_handoff_format: str = "text"
+    auto_outline_style: str = "numeric"
+    clip_library_autocapture: bool = False
     indent_with_tabs: bool = False
     indent_size: int = 4
     # On by default so signed safety advisories (the remote feature kill
@@ -457,6 +460,9 @@ class Settings:
     setup_wizard_wants_automation: bool = False
     # UPGRADE: True once we have shown the post-upgrade braille-pack install prompt.
     upgrade_prompt_braille_pack: bool = False
+    # UPGRADE: True once we have shown the post-upgrade Kokoro-ONNX package prompt
+    # (models present on disk but the kokoro_onnx package not importable).
+    upgrade_prompt_kokoro_onnx: bool = False
     # QDC: Developer Console settings.
     console_enabled: bool = True
     console_python_timeout: int = 30
@@ -466,6 +472,11 @@ class Settings:
     sound_pack_path: str = ""  # empty = bundled Ink pack
     sound_volume: int = 80  # 0-100; passed to sound_lib Output.set_volume()
     sound_events_disabled: str = ""  # comma-separated SoundEvent IDs to silence
+    # Speak "Generating preview, please wait" when a voice preview's synthesis
+    # is still running after the ~400ms cue delay (paired with the
+    # voice_preview_generating earcon, configured independently via the
+    # Sound Events dialog).
+    voice_preview_announce_generating: bool = True
     # Indent tone overlay: "" = off, else one of pentatonic/whole_tone/diatonic/chromatic.
     # When set, moving the caret across indent levels plays a pitched tone per level.
     indent_tone_scale: str = ""
@@ -616,6 +627,13 @@ class Settings:
         plain_text_link_style = str(data.get("plain_text_link_style", "text_url")).strip().lower()
         if plain_text_link_style not in {"text", "text_url", "url", "markdown"}:
             plain_text_link_style = "text_url"
+        content_handoff_format = str(data.get("content_handoff_format", "text")).strip().lower()
+        if content_handoff_format not in {"text", "markdown", "html"}:
+            content_handoff_format = "text"
+        auto_outline_style = str(data.get("auto_outline_style", "numeric")).strip().lower()
+        if auto_outline_style not in {"numeric", "legal"}:
+            auto_outline_style = "numeric"
+        clip_library_autocapture = bool(data.get("clip_library_autocapture", False))
         indent_with_tabs = bool(data.get("indent_with_tabs", False))
         try:
             indent_size = int(data.get("indent_size", 4))
@@ -1056,6 +1074,7 @@ class Settings:
         setup_wizard_wants_braille = bool(data.get("setup_wizard_wants_braille", False))
         setup_wizard_wants_automation = bool(data.get("setup_wizard_wants_automation", False))
         upgrade_prompt_braille_pack = bool(data.get("upgrade_prompt_braille_pack", False))
+        upgrade_prompt_kokoro_onnx = bool(data.get("upgrade_prompt_kokoro_onnx", False))
         console_enabled = bool(data.get("console_enabled", True))
         auto_ask_crash_submit = bool(data.get("auto_ask_crash_submit", True))
         try:
@@ -1078,6 +1097,9 @@ class Settings:
             sound_volume = 80
         sound_volume = max(0, min(100, sound_volume))
         sound_events_disabled = str(data.get("sound_events_disabled", ""))
+        voice_preview_announce_generating = bool(
+            data.get("voice_preview_announce_generating", True)
+        )
         indent_tone_scale = str(data.get("indent_tone_scale", ""))
         if indent_tone_scale not in ("", "pentatonic", "whole_tone", "diatonic", "chromatic"):
             indent_tone_scale = ""
@@ -1249,6 +1271,9 @@ class Settings:
             docx_read_engine=docx_read_engine,
             docx_write_engine=docx_write_engine,
             plain_text_link_style=plain_text_link_style,
+            content_handoff_format=content_handoff_format,
+            auto_outline_style=auto_outline_style,
+            clip_library_autocapture=clip_library_autocapture,
             indent_with_tabs=indent_with_tabs,
             indent_size=indent_size,
             auto_check_updates=auto_check_updates,
@@ -1458,6 +1483,7 @@ class Settings:
             setup_wizard_wants_braille=setup_wizard_wants_braille,
             setup_wizard_wants_automation=setup_wizard_wants_automation,
             upgrade_prompt_braille_pack=upgrade_prompt_braille_pack,
+            upgrade_prompt_kokoro_onnx=upgrade_prompt_kokoro_onnx,
             console_enabled=console_enabled,
             auto_ask_crash_submit=auto_ask_crash_submit,
             console_python_timeout=console_python_timeout,
@@ -1466,6 +1492,7 @@ class Settings:
             sound_pack_path=sound_pack_path,
             sound_volume=sound_volume,
             sound_events_disabled=sound_events_disabled,
+            voice_preview_announce_generating=voice_preview_announce_generating,
             indent_tone_scale=indent_tone_scale,
             abbreviation_backspace_behavior=abbreviation_backspace_behavior,
             braille_cells_per_line=braille_cells_per_line,

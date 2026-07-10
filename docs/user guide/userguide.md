@@ -345,7 +345,8 @@ What happens when you save formatted text as plain text is set by **Settings →
 A few things worth knowing: the Illumination travels as a *separate file*, so if you copy or e-mail only the `.txt`, the formatting won't come along — keep the pair together (or use Markdown/Word/RTF, which carry formatting inside one file). And if you edit the `.txt` in another program, Quill notices the text no longer matches the Illumination and opens it as plain text rather than re-applying formatting to the wrong words. If you'd rather a single self-contained file that preserves everything, save as **Markdown** (which keeps the formatting inline) or **Word/RTF** (which turn it into native formatting).
 - **Reload from Disk** throws away in-memory edits and reloads the file from storage after confirmation.
 - **Restore Backup...** lets you restore a saved backup version.
-- **Page Setup...** and **Print...** support paper and print workflows.
+- **Page Setup...** and **Print...** support paper and print workflows. **Print Studio...** goes one step further: it reports a spoken/textual preview — "3 pages, Letter, default margins" — the screen-reader equivalent of a visual print preview, then lets you choose **all, odd, or even pages**, **print in reverse order**, or **skip the first page** (handy if page 1 is pre-printed letterhead) before handing off to the same print dialog Print already uses.
+- **Header and Footer...** builds a header and footer for the current document from named presets — **Title left, page number right**, **Filename and date**, **Roman numerals for front matter** — or your own combination of a small set of tokens (title, filename, date, page number) placed left, center, or right. Turn on **Different first page** for its own separate header/footer, and choose **numeric or Roman** page numbering with a starting number of your choice. It's saved with the document and drawn on every printed page, whether you use Print or Print Studio.
 - **Run Current File** executes the saved file with its associated tool, and **Open Target at Cursor** opens the path or link under the caret.
 - **Rename Current File...** and **Delete Current File...** manage the file on disk from inside the editor.
 - **Close Document** closes the current tab.
@@ -777,7 +778,11 @@ You choose the engine on the **AI Hub → Engines** tab:
 2. Select **Set Up / Install...**. QUILL installs the small connector on demand
    (the first time only) and, for Copilot, signs you in to GitHub — using a
    short spoken device code in your browser when available, or the Copilot/GitHub
-   CLI sign-in otherwise.
+   CLI sign-in otherwise. **OpenAI Agents** and **Claude Agent** authenticate
+   differently — with your own API key rather than a sign-in — so once the
+   connector is installed, **Set Up** instead opens a small dialog to paste,
+   save, or remove that key. It applies immediately, with no restart, and the
+   dialog also reports whether a key is already saved.
 3. Select **Set as Active Engine**. From then on, Ask Quill and the agents run on
    your chosen engine, and a status line names it.
 
@@ -887,7 +892,8 @@ no text is sent until you invoke the command.
 
 `AI > AI Grammar and Style Check...` (`Ctrl+Alt+Shift+G`) analyses the document for grammar,
 punctuation, clarity, style, and word choice. Issues appear in a list grouped
-by category. You can:
+by category. The same proofread, translate, compare-navigation, and dark-mode
+shortcuts now reach the command they advertise instead of appearing inert. You can:
 
 - Filter to a single category (Grammar, Punctuation, Clarity, Style, Word Choice).
 - Accept or skip individual issues.
@@ -1156,9 +1162,13 @@ not need to enable Artificial Intelligence to use these features. They live unde
 To keep the installer small, QUILL fetches several large or optional pieces only
 when you want them. **Help > Download Optional Components...** is the single place
 to see, get, test, and remove them all. It lists each component — most important
-first: **Pandoc** (document conversion for Word, ODT, EPUB, and RTF), the
-**braille translation pack** (liblouis tables and BRF profiles for the Translation
-submenu and BRF/embossing export), **Dictation (offline speech)** (a guided setup
+first: **Pandoc** (document conversion for Word, ODT, EPUB, and RTF), **PDF and
+Office text extraction** (MarkItDown, pdfplumber, and pypdf — lets Import read
+text out of Word, PowerPoint, Excel, and PDF documents natively, without Pandoc
+or LibreOffice installed; scanned/image-only PDFs still need File > Import >
+OCR either way), the **braille translation pack** (liblouis tables and BRF
+profiles for the Translation submenu and BRF/embossing export), **Dictation
+(offline speech)** (a guided setup
 covering Whisper.cpp, Faster Whisper, and Vosk — see below), **Kokoro** and
 **Piper** neural voices, **eSpeak NG** and **DECtalk** voices, **Audio: export,
 playback & chapters** (FFmpeg for exporting compressed audio, the mpv playback
@@ -1700,8 +1710,10 @@ Customize & Support merges the former separate Support and Customize submenus. A
 
 The **Window** menu is small but useful.
 
-- **Next Document** (`Ctrl+Tab`) — move to the next open document.
-- **Previous Document** (`Ctrl+Shift+Tab`) — move to the previous open document.
+- **Next Document** (`Ctrl+Tab`; macOS: `Cmd+Shift+]`) — move to the next open document.
+- **Previous Document** (`Ctrl+Shift+Tab`; macOS: `Cmd+Shift+[`) — move to the
+  previous open document. macOS reserves `Cmd+Tab` for its own App Switcher, so
+  document switching there uses Safari/Xcode's tab-cycling convention instead.
 - **Go to Document 1–10** (`Alt+1` … `Alt+9`, and `Alt+0` for the tenth) — jump
   straight to a document by its position instead of cycling. If no document is
   open at that position, QUILL says so and stays where you are. Like every
@@ -1747,6 +1759,8 @@ Use this path when Quill is behaving unexpectedly or when you want to send the t
 4. Choose **Submit Issue**. The report is filed directly on the Community Access issue tracker — no browser, no copy-and-paste — and no account is required. Escape cancels without sending anything.
 
 If the form ever cannot be opened, QUILL copies a link to the online support form to your clipboard and tells you so, so you always have a path. Need to share more detail? **Help -> Save Diagnostics...** remains available as a standalone export you can attach to any issue.
+
+The in-app submit works on every install, including right after an upgrade: every build (Windows and macOS, release or beta) now bundles the reporting token, with no opt-out, so the "no token" message some of you saw after upgrading an earlier beta cannot recur.
 
 ### When QUILL crashes: the new crash-submit dialog
 
@@ -1864,6 +1878,45 @@ The dialog lists all twelve slots. Each row shows the slot number, an optional l
 - Double-press any paste chord to hear what is in that slot without pasting — useful when navigating your tray by memory.
 - Slots survive restarts. Build a small library of recurring fragments you reach for daily.
 - All bindings are reassignable in the Keymap Editor (`Tools > Customize & Support > Preferences > Keyboard`).
+
+### Look Up: dictionary, thesaurus, and encyclopedia
+
+Right-click a word (or select it and open the context menu) for **Look Up**, or **Tools > Thesaurus...** for synonyms. Look Up combines an offline dictionary/thesaurus with online sources when you have consented to online lookups (Free Dictionary and Datamuse for definitions and related words) — and now, a short **Wikipedia** summary alongside them, with a link back to the source article. A disambiguation page or a word with no real Wikipedia entry simply shows no encyclopedia section, rather than a list to sort through. Keep Look Up fully offline any time from its consent setting; nothing about the encyclopedia summary changes that choice.
+
+### Clip Library
+
+Copy Tray's twelve slots are deliberate and curated — things you explicitly chose to keep. **Clip Library** (`Edit` menu) is a second, complementary tier: a much bigger, searchable rolling history, up to 200 clips.
+
+- **Edit > Keep Selection in Clip Library** remembers the current selection. Keeping the same text again (from the same source) is a no-op — it is already there.
+- **Edit > Open Clip Library...** opens the dialog: search as you type, **Favorite** a clip so it is never evicted as the history fills up, **Remove** one you no longer need, **Copy to Clipboard**, or **Promote to Copy Tray...** to give a clip a permanent, labeled slot once it earns one.
+- **Automatic capture.** Turn on **Preferences > Editing > "Automatically keep everything you copy in the Clip Library"** (off by default) and every copy you make inside QUILL — the menu, its shortcut, or a right-click Copy — is remembered with no separate Keep step. It only ever sees copies made from within QUILL, never the system clipboard at large, and never anything copied before you turn it on.
+- **Format.** What "Copy to Clipboard" puts on the clipboard, and what Send/Copy as Email sends, both follow the same **Preferences > Editing > "Kept and sent content format"** setting (plain text, Markdown, or HTML) — change it once, and both features follow.
+
+### Send as Email / Copy as Email Body
+
+`File > Send as Email` opens your default mail client with the current selection — or the whole document if nothing is selected — as the message body. `File > Copy as Email Body` renders the same content and puts it on the clipboard instead, for the common case where a mail client truncates or refuses a very long pre-filled message. Both read the same content-format setting as the Clip Library.
+
+### AutoOutline: numbered headings
+
+`Format > Update Outline Numbering` numbers every heading in your document by its nesting level, written as literal text directly into the heading:
+
+- **Numeric** (default): `1`, `1.1`, `1.2`, `2`, `2.1`...
+- **Legal**: `I`, `I.A`, `I.B`, `II`...
+
+Choose the style in **Preferences > Editing > "AutoOutline numbering style."** Because the number is literal text — not a rendering overlay — it reads aloud, survives copy and paste, and exports cleanly with nothing extra to configure. Add, remove, or reorder headings, then run **Format > Update Outline Numbering** again: it replaces the old numbers rather than piling new ones on top. `Format > Remove Outline Numbering` takes them back out.
+
+### Work Personas
+
+A **Work Persona** is a named bundle: a feature profile, a default working folder, a set of favorite files, and (optionally) a keymap profile — everything that defines one context of your work (school, a freelance client, a novel-in-progress), reachable in one action.
+
+Open **Tools > Work Personas...** to manage them:
+
+- **New Persona**, fill in a name, pick a feature profile, browse to a working folder, add favorite files, and optionally choose a keymap profile, then **Save**.
+- **Apply Now** switches your feature profile, changes your working folder, reopens your favorite files, and applies the keymap (keymap changes take effect on your next restart) — all in the current session.
+- **Generate Shortcut...** writes a double-clickable launcher (a real Windows shortcut when possible, a `.bat` file otherwise) that opens QUILL directly into that persona, so a persona is reachable without QUILL already running.
+- From a terminal or another shortcut, `quill --persona "Persona Name"` does the same thing.
+
+Work Personas are convenience bundles for one person's different contexts — not multi-user accounts, and not a replacement for Story Studio, Notebooks, or Copy Tray, all of which a persona can point to.
 
 ### Saving in Different Formats — what happens to your file
 
@@ -2600,6 +2653,8 @@ The **Kokoro** voice models (~120 MB), the classic **DECtalk** runtime (~2 MB), 
 
 To audition a voice in **Manage Voices**, select it and use the **Preview** button. If the voice is already downloaded, Quill synthesises the preview phrase with that voice's real model; if it is not downloaded yet (for example a Kokoro voice), Quill plays a short pre-recorded sample so you can still hear it before deciding to download. The rate, volume, pitch, and speed controls apply to real synthesis, so they stay dimmed until the voice is downloaded.
 
+When you preview a voice, QUILL stops any preview already playing before starting the new one, so previews never overlap. If a voice takes a moment to synthesize (some neural voices do), QUILL plays a short earcon and, by default, says "Generating preview, please wait" so you know it's working — turn either off independently in **Tools → Reading & Dictation → Sound Events...** (the earcon) and **Preferences → Accessibility** (the announcement). While a preview is generating or playing, the Preview/Test button becomes a Stop button so you can cancel it at any time.
+
 **Manage Voices** is the **Speech (Offline)** tab of the Speech Settings dialog — SAPI 5, DECtalk, Piper, Kokoro, and eSpeak NG. ElevenLabs (the only cloud voice) lives on its own **Speech (Online)** tab instead of sharing this list, so local and cloud voices are never mixed together. A **Set as Default** button (and a right-click option on the voice list) applies your current engine and voice choice immediately, without needing to close the dialog with OK.
 
 **Read Aloud speaks more than English.** The Windows engine lists **every voice installed on your PC, in any language** — add a voice in Windows Settings under **Time & language > Speech > Manage voices** (for example Italian's Elsa, or a Spanish, French, German, or Japanese voice) and it appears in QUILL's voice list ready to use, no download from QUILL needed. The offline neural voices go beyond English too: the **Kokoro** engine includes **Spanish, French, Hindi, Italian, and Brazilian Portuguese** voices — they are part of the same voice pack you already downloaded, so picking one just works — and the **Piper** catalog includes Italian voices (Paola and Riccardo) you can download like any other. **eSpeak NG** also offers those languages from its built-in data. Pick the voice whose language matches your document and Read Aloud, audiobook export, and batch speech all speak it correctly.
@@ -2792,6 +2847,12 @@ The in-editor checks are always available. Structured-file audit and fix use the
 
 **Preferences > GLOW Accessibility** holds the engine toggle and the optional networked features (AI alt-text generation, PII redaction, WCAG language processing). All networked features are **off by default** and each use asks for explicit consent — the default GLOW workflow runs entirely on your machine.
 
+### Inserting images with alt text
+
+GLOW's audit above catches missing alt text after the fact. **Insert > Image...** is the proactive half: it requires you to either write alt text describing the image, or explicitly check **"This image is decorative"** — you can't insert without making one of those two deliberate choices. Decorative is the right choice for an image with no informational content (a divider line, a background flourish); it is not the same as an image nobody ever got around to describing, which is the problem this dialog exists to prevent.
+
+For any image already in your document — typed by hand, pasted, or brought in from another format — **Tools > Describe Image at Cursor** tells you exactly what a screen reader hears there: "Image: sunset.png, alt text: a sunset over the lake," or, just as clearly, "Image: sunset.png, alt text MISSING" if none was ever given.
+
 ## Verbosity and Announcements
 
 QUILL lets you control what it announces and when, so the editor is as quiet or
@@ -2957,9 +3018,14 @@ Quill runs on **macOS** as well as Windows, from one codebase, with feature pari
 
 - **VoiceOver-first.** On macOS, Quill routes its announcements to **VoiceOver** and never speaks over it. Headings, regions, and result messages behave the way they do on Windows with NVDA/JAWS.
 - **On-device AI.** Ask Quill uses **Apple Foundation Models** (Apple Intelligence) on a supported Mac — no model download and no cloud. The on-device GGUF/llama.cpp picker is hidden on macOS because Apple's model is used instead; you can still connect Ollama or a cloud endpoint if you prefer.
-- **Standard Mac behaviors.** Preferences and About use the standard macOS menu locations (`Quill -> Settings`, `Quill -> About Quill`).
+- **Standard Mac behaviors.** Preferences and About use the standard macOS menu locations (`Quill -> Settings`, `Quill -> About Quill`). The Preferences command is wired to the stock macOS menu entry so it appears in the Quill app menu as expected.
+- **macOS-safe launch paths.** Opening a file, revealing an enclosing folder, launching an installer, or previewing a voice sample now uses macOS-native launch behavior instead of relying on Windows-only `os.startfile` assumptions.
 - **Help menu registered as system Help.** The Help menu is registered as the macOS system Help menu, so the conventional `Cmd+?` Help shortcut works as expected (#613).
 - **Back / Forward Location on macOS** uses `Cmd+[` and `Cmd+]` so it does not collide with VoiceOver's word-by-word `Option+Left` / `Option+Right` reading (#609). Windows keeps `Alt+Left` / `Alt+Right`.
+- **Keymap profiles stay platform-aware.** The built-in keymap profiles no longer override the platform-aware defaults for quit, back/forward navigation, or document switching, so macOS users inherit the correct Cmd-based bindings instead of Windows-only overrides.
+- **Function keys and the Fn key.** Many of Quill's default shortcuts use the F-keys (F3 for Find Next, F7 for spell check, F8 for selection, F6 for region navigation). On a stock MacBook these keys default to system actions (brightness, Mission Control, media) unless you either hold **Fn** while pressing them, or enable **Use F1, F2, etc. keys as standard function keys** in **System Settings → Keyboard**. To spare you that, Find Next and Find Previous also bind to the macOS-standard **Cmd+G** and **Cmd+Shift+G**, which need no Fn key. You can reassign any binding in **Preferences → Keyboard → Keymap Editor**.
+- **macOS-specific shortcut defaults.** A few Windows defaults would have collided with macOS system shortcuts, so they have Mac-specific alternates: **Replace** is `Cmd+Alt+F` (not `Cmd+H`, which is Hide), **Pop Mark** is `Cmd+Alt+M` (not `Cmd+M`, which is Minimize), and **Select Chunk** is `Cmd+Alt+Space` (not `Cmd+Space`, which is Spotlight). These are provisional — if one collides with something on your setup, reassign it in the Keymap Editor and tell us via Help > Report a Bug.
+- **Read Aloud and earcons work on macOS.** Live Read Aloud plays through `afplay`, so Piper, Kokoro, ElevenLabs, and the system voices actually speak; the earcon volume slider also works on macOS (it was a silent no-op before).
 - **Signed and notarized.** Release Mac builds are code-signed with a Developer ID certificate and notarized by Apple, so Gatekeeper opens them without warnings. The app ships as a `.app` (and disk image).
 - **The accessible WebView** that powers the chat, the Markdown/HTML preview, the About box, and the update dialogs reads correctly under VoiceOver, just as it does under NVDA and JAWS on Windows.
 
@@ -3113,9 +3179,33 @@ Quill is serious about recovery and user control.
 - **WordPress publishing connections (experimental)** — lights the read-only publishing tools in the **File** menu: save a WordPress connection, verify it, browse your site's posts and pages, and open a remote item in the editor. Strictly inbound: the send/publish half remains locked while the providers framework is reviewed, so nothing can be published from QUILL regardless of this switch.
 - **Read the document aloud in your browser (experimental)** — the browser reader page described under Read Aloud.
 - **Table Studio — accessible table and CSV editing (experimental)** — lights **Table Studio** and **Open CSV in Table Studio** in the **Tools** menu (see "Table Studio" below). Takes effect on Apply, no restart.
-- **Enable experimental editor surfaces** — a *second* safety gate whose label carries its own warning: *features may degrade based on the control selected*. The editor surface is the control your document lives in, so this gate separately governs the **Editor surface** choice and the **Hide editor border** option beneath it, plus the live explainer that describes each surface. Both this gate and the master switch must be on before any surface override is applied, and while it is off those controls are disabled and skipped in the tab order.
+- **Enable experimental editor surfaces** — a *second* safety gate whose label carries its own warning: *features may degrade based on the control selected*. The editor surface is the control your document lives in, so this gate separately governs the **Editor surface** choice and the **Hide editor border** option beneath it, plus the live explainer that describes each surface. Both this gate and the master switch must be on before any surface override is applied, and while it is off those controls are disabled and skipped in the tab order. One of the choices is **QuillRichEdit (native Rich Edit + RTF, experimental)** — see below.
+- **QuillRichEdit: emulate a system edit control (braille test)** — a third checkbox, only meaningful when the Editor surface above is set to QuillRichEdit. See "QuillRichEdit (experimental)" below for what it does and why your feedback matters if you use a braille display.
 
 The pattern to remember: one master switch for the tab, one switch per experiment, and the editor-surface experiments behind a third acknowledgement of their own — consent in layers, never by accident.
+
+### QuillRichEdit (experimental) — and a request for braille display owners
+
+QuillRichEdit is a new experimental editor surface: the *same* native Rich Edit control QUILL already uses as its default editor, wrapped so QUILL can reach a few things underneath it that were previously out of reach — real RTF load/save, and a candidate fix for two long-standing braille reports:
+
+- **The braille "cell-two" offset**, where some displays start the first character of every line in cell 2 instead of cell 1 (a long-standing word-processor-control quirk, not specific to QUILL).
+- **Missing selection dots** — some displays do not show dots 7-8 under selected text when the caret is in QUILL's default editor.
+
+QuillRichEdit adds a switch that asks the same native control to behave more like a plain text-edit control for braille purposes, while keeping everything that makes it read correctly to JAWS and NVDA. **We do not yet know if this fixes the offset or the missing dots on real hardware — that is exactly what we need your help to find out.**
+
+**How to try it and give feedback:**
+
+1. Open **Preferences > Experimental**.
+2. Tick **Enable experimental features** (the master switch).
+3. Tick **Enable experimental editor surfaces**.
+4. Set **Editor surface** to **QuillRichEdit (native Rich Edit + RTF, experimental)**.
+5. Tick **QuillRichEdit: emulate a system edit control (braille test)**.
+6. Apply Settings, then **restart QUILL** — all three of these settings take effect on the next launch, not immediately.
+7. With your braille display attached, open or type into a document and check: Does text now start in cell 1, or still cell 2? Does selecting text now show dots 7-8 underneath it? Does JAWS/NVDA still read the editor's content correctly?
+
+Please tell us what you see — with which screen reader and which braille display — through **Help > Report a Bug** or your usual QUILL feedback channel either way, whether it helped, made no difference, or made things worse. This is genuinely still an open question and real-hardware reports are the only way to answer it.
+
+This surface also carries QUILL's first native RTF load/save and in-place bold/italic/underline/font/alignment formatting, as a first step toward a lighter-weight rich-text document mode — but the braille question above is the reason it needs your feedback most.
 
 ### Table Studio (experimental)
 
@@ -3241,6 +3331,8 @@ The first time you post, Quill offers to add an account; you can also open **Too
 You can add several accounts, give each its own nickname, **set a default**, or **remove** one (which deletes its saved sign-in from this computer). Your sign-in is stored securely in the Windows Credential Manager, never in a plain file.
 
 **Proofread posts before sending.** In **Mastodon Accounts...**, select an account and tick **Spell-check posts before sending** to turn on per-account proofreading (off by default). When it is on, pressing **Post** for that account first opens the Spelling Review (F7) on the post text so you can fix misspellings, and the post is sent only after you finish or skip the review. The setting is per account, so you can enable it for some accounts and not others; existing accounts are unaffected until you turn it on.
+
+**Post language and per-instance length (#922).** The compose window has a **Post language** picker next to the visibility choice. The default, "Default (instance)", sends no language field so your instance files the post under your account's default language; pick a language such as English or Italian to send its ISO 639-1 code, which keeps a post written in one language from being mis-shelved under another. The live character counter now reflects the selected account's real per-instance limit rather than the classic ceiling: Quill queries the instance once per session and reuses the result, so an instance that allows more (for example one with a 9999-character limit) shows the correct count and does not block a longer post.
 
 ## Working with Different Document Types
 
@@ -3390,6 +3482,26 @@ Use **File > Open from Remote > Manage GitHub Accounts...** to:
 - See your current GitHub identity.
 - Add or replace a token.
 - Sign out and clear your stored token.
+
+**Browsing a repository's issues, PRs, and history (#924)**
+
+**File > Open from Remote > GitHub Items...** opens a read-only viewer for a repository's issues, pull requests, branches, commits, tags, releases, and workflow runs — the same kind of overview the GitHub website gives you, but keyboard- and screen-reader-first. It is modeled on the open-source [GHManage](https://github.com/kellylford/GHManage) viewer. v1 is read-only: you can browse and open items in your browser, but you cannot close, reopen, or comment from inside QUILL.
+
+Type a repository in `owner/repo` form and press **Load**. If the document you are editing was itself opened from GitHub, the repository is already filled in, so you can review that repo in one step.
+
+Pick a **View** — Issues & PRs (the combined inbox), Branches, Commits, Tags, Releases, or Workflow Runs. The list shows one row per item; the **Details** box below shows the full text of the selected row. In the Issues & PRs view you can also filter by **Show** (Both / Issues / PRs), **State** (Open / Closed / All), and **Sort** (by number, title, last-updated, or comment count).
+
+**List mode (for screen readers).** Two ways to read the list: **Quick** shows compact cells as they appear in the columns. **Full** spells each cell as `field: value` (for example `number: 208, type: ISSUE, state: OPEN, title: Fix the thing`) so your screen reader reads a self-describing line per row instead of bare values with no field names. Switch with the **List mode** choice or by pressing **M** while in the list.
+
+**Reading comments.** When you select an issue or PR, the details show the body and then load the comment thread. Press **Alt+N** to jump to the next comment and **Alt+P** for the previous one; QUILL selects and scrolls to each and announces "Comment N of M" (and "first" / "last" at the bounds).
+
+**Keyboard shortcuts.**
+
+- **Enter** on a row opens it in your browser. On a **Branch** row, Enter drills into that branch's commits.
+- **Ctrl+R** refreshes the current view. **Ctrl+O** opens the selected item in the browser. **Ctrl+G** jumps to an issue or PR by number (in the Issues & PRs view).
+- **View More** loads the next page of results.
+
+The same gates apply as the other GitHub commands: it is disabled in Safe Mode, asks for first-run consent, and works anonymously for public repositories (with a lower rate limit) or with your stored token for private ones.
 
 **File size limit**
 
@@ -3889,7 +4001,7 @@ Everything you build in QUILL can be shared with the community through the **Qui
 
 Publication is handled through GitHub pull requests, so every submission is reviewed in the open. The Hub re-runs the same validation, scans any extension code for security and capability honesty, reads your manifest so you never retype your name, version, or description, and verifies the publisher signature on every sidecar uploaded with the submission.
 
-**Verifying installed Quillins.** The Quillin Manager shows a **Signature** line in the details pane for every Quillin — `verified` for a sidecar next to the manifest that matches the publisher key, `invalid` for a sidecar that does not match, or `unsigned` if no sidecar is shipped. The line is read aloud with the rest of the manifest details, so you can hear whether a Quillin is publisher-attested before enabling it. See `docs/signing.md` for the signing protocol.
+**Verifying installed Quillins.** The Quillin Manager shows a **Signature** line in the details pane for every Quillin — `verified` for a sidecar next to the manifest that matches the publisher key, `invalid` for a sidecar that does not match, or `unsigned` if no sidecar is shipped. The line is read aloud with the rest of the manifest details, so you can hear whether a Quillin is publisher-attested before enabling it. This check now works on every install (the PyNaCl cryptography library it needs is bundled with Quill, where it used to be a developer-only dependency that shipping builds never included — so the line used to always read "PyNaCl is not installed"). See `docs/signing.md` for the signing protocol.
 
 ### Authoring Quillins
 

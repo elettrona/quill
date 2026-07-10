@@ -83,6 +83,7 @@ class VoiceBrowserDialog:
         piper_model_dir: Path,
         settings: object,
         preview_fn: Callable[..., None],
+        preview_stop_fn: Callable[[], None] | None = None,
         engine_available: dict[str, bool] | None = None,
         elevenlabs_api_key: str = "",
         has_preview_sample: Callable[[str, str], bool] | None = None,
@@ -100,6 +101,8 @@ class VoiceBrowserDialog:
         self._settings = settings
         self._elevenlabs_api_key = elevenlabs_api_key
         self._preview_fn = preview_fn
+        self._preview_stop_fn = preview_stop_fn or (lambda: None)
+        self._previewing = False
         self._engine_available: dict[str, bool] = engine_available or {}
         # Whether a bundled pre-recorded preview clip exists for (engine, voice).
         self._has_preview_sample = has_preview_sample or (lambda _e, _v: False)
@@ -513,8 +516,10 @@ class VoiceBrowserDialog:
             detail = f"{detail} — {not_dl}" if detail else not_dl
         self._detail_lbl.SetLabel(detail)
         # Preview works when the voice is ready (real synthesis) or when a
-        # bundled sample clip exists for it.
-        self._preview_btn.Enable(ready or has_sample)
+        # bundled sample clip exists for it. Stays enabled whenever a preview
+        # is actually running, even if the newly-selected row isn't ready --
+        # otherwise the Stop button goes disabled out from under the user.
+        self._preview_btn.Enable(ready or has_sample or self._previewing)
         # Rate/volume/pitch/speed/character apply to real synthesis only.
         self._set_voice_settings_enabled(ready)
 
@@ -531,6 +536,9 @@ class VoiceBrowserDialog:
         return self._engine_available.get(eng, True) and bool(getattr(voice, "installed", True))
 
     def _do_preview(self) -> None:
+        if self._previewing:
+            self._stop_preview()
+            return
         idx = self._voice_lb.GetSelection()
         wx = self._wx
         if idx == wx.NOT_FOUND or idx >= len(self._displayed_voices):
@@ -543,7 +551,18 @@ class VoiceBrowserDialog:
         if not ready and not self._has_preview_sample(eng, v.id):
             return
         voice_id = self._espeak_combined_voice_id(v.id) if eng == "espeak" else v.id
-        self._preview_fn(eng, voice_id, live=ready)
+        self._preview_fn(eng, voice_id, live=ready, on_state_change=self._on_preview_state)
+
+    def _on_preview_state(self, state: str) -> None:
+        """Toggle the Preview button between its idle and Stop labels."""
+        self._previewing = state in ("generating", "playing")
+        label = "&Stop Preview" if self._previewing else "&Preview Selected Voice"
+        self._preview_btn.SetLabel(label)
+
+    def _stop_preview(self) -> None:
+        """Cancel the active preview via the same path a new preview would use."""
+        self._preview_stop_fn()
+        self._on_preview_state("idle")
 
     def _do_download(self) -> None:
         eng = self._current_engine_id()

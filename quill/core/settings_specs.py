@@ -595,6 +595,46 @@ SETTING_SPECS: tuple[SettingSpec, ...] = (
         keywords=("link", "url", "plain text", "export", "convert"),
     ),
     SettingSpec(
+        "content_handoff_format",
+        "Kept and sent content format",
+        "editing",
+        "choice",
+        "How content is formatted when you keep it in the Clip Library or send "
+        "it by email -- plain text, Markdown, or a rich HTML snippet. "
+        "Interchangeable at any time; nothing is baked in when you keep or "
+        "send it.",
+        choices=(("text", "Plain text"), ("markdown", "Markdown"), ("html", "HTML")),
+        keywords=("clip library", "email", "send", "format", "html", "markdown"),
+    ),
+    SettingSpec(
+        "auto_outline_style",
+        "AutoOutline numbering style",
+        "editing",
+        "choice",
+        "Numbering style used by Format > Update Outline Numbering: numeric "
+        "(1, 1.1, 1.1.1) or legal (I, A, 1). The number is inserted as literal "
+        "text, so it reads aloud, survives copy/paste, and exports cleanly.",
+        choices=(("numeric", "Numeric (1, 1.1, 1.1.1)"), ("legal", "Legal (I, A, 1)")),
+        keywords=("outline", "heading", "numbering", "legal", "agenda", "policy"),
+    ),
+    SettingSpec(
+        "clip_library_autocapture",
+        "Automatically keep everything you copy in the Clip Library",
+        "editing",
+        "bool",
+        (
+            "Off by default. When on, every selection you copy inside QUILL "
+            "(Edit > Copy, its keyboard shortcut, or a right-click Copy) is "
+            "remembered in the Clip Library automatically, with no separate "
+            "'Keep' action needed. This only sees copies made from within QUILL, "
+            "never the system clipboard at large, and never anything copied "
+            "before you turn this on. Because it means QUILL keeps a running "
+            "history of your copies rather than just what you explicitly choose "
+            "to keep, it stays off until you decide you want it."
+        ),
+        keywords=("clip library", "copy", "history", "automatic", "clipboard", "privacy"),
+    ),
+    SettingSpec(
         "autosave_interval_seconds",
         "Autosave interval (seconds)",
         "editing",
@@ -1051,6 +1091,19 @@ SETTING_SPECS: tuple[SettingSpec, ...] = (
         "text",
         "Comma-separated list of sound event IDs to silence, e.g. transcription_word_inserted.",
         keywords=("sound", "disable", "mute", "earcon", "events"),
+    ),
+    SettingSpec(
+        "voice_preview_announce_generating",
+        'Announce "Generating preview, please wait" for slow voice previews',
+        "accessibility",
+        "bool",
+        (
+            "When a voice preview (Voice Browser, or Test in Download Optional "
+            "Components) takes a moment to synthesize, speak a short heads-up "
+            "so it's clear something is happening. The matching earcon is "
+            "configured separately in the Sound Events dialog."
+        ),
+        keywords=("voice", "preview", "generating", "please wait", "announce", "sound"),
     ),
     SettingSpec(
         "verbosity_collapse_repeats",

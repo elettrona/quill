@@ -266,6 +266,7 @@ Feature profiles must be safe, explainable, reversible, and recoverable.
 - **Profile health check** validates feature IDs, dependencies, visibility paths, and profile JSON integrity.
 - **Feature-coverage gate** fails CI when commands, menus, cells, pages, or help topics lack a valid feature ID.
 - **Profile-aware keyboard reference** can filter to current profile, quiet features, off features, or diff views.
+- **Shortcut wiring is consistent across the product.** Commands exposed in menus, the command palette, and the keymap editor must all resolve to the same accelerator path, including proofread, translate, compare-navigation, and dark-mode commands.
 - **Profile-aware welcome guide** adapts onboarding to the active profile.
 - **Privacy and network labels** declare local-only, external-helper, metadata-only, and network-sending features.
 - **Feature maturity labels** distinguish core, stable, advanced, helper-required, and unavailable features.
@@ -2025,6 +2026,27 @@ Quill ships a read-aloud feature that uses a **secondary** voice the user picks 
 
 **Read Document in Browser (experimental, opt-in — `edge_read_aloud_enabled`).** The embedded WebView2 only exposes the local SAPI voices; a *real* browser exposes its full Web Speech voice set, including Edge's "Online (Natural)" voices. So, gated behind **Settings → Experimental** (and the experimental acknowledgement), QUILL can build a self-contained, accessible reader page (`quill/core/browser_reader.py`: labelled voice picker, Speed, Play/Pause/Stop, an `aria-live` status, keyboard focus on Play, the document text carrying its own `lang`) and open it in the user's chosen browser via the existing preview-open path. The page builder is wx-free and unit-tested. **Privacy contract:** QUILL itself makes no network call for this; on-device voices synthesize locally, but the browser's "Online (Natural)" voices synthesize in the vendor's cloud, so choosing one sends the selected text to that service. This is disclosed in the setting description and in the network-egress audit's documented (out-of-package) egress notes; the generated page carries the full document text as plaintext in app-data and is therefore **deleted on exit** (`browser_reader.remove_reader_pages`) so no copy lingers. Playback speaks chunk-by-chunk and treats Stop's `interrupted`/`canceled` events as normal teardown (never surfaced as errors).
 
+#### Voice preview feedback
+
+Voice preview (Voice Browser dialog and the Download Optional Components hub's Test button) reports its own state: starting a new preview always stops/supersedes a prior one (no overlapping audio or announcements), a one-shot "generating, please wait" cue (earcon + optional spoken announcement, `voice_preview_announce_generating`, default on) fires only when synthesis is still running after a short delay, and the Preview/Test button toggles to Stop while a preview is generating or playing. No true pause/resume; Stop cancels outright. An in-flight external synthesis call that gets superseded is not force-killed — it completes in the background and its result is discarded.
+
+#### Reliability fixes (2026-07-08)
+
+A batch of fixes from real user feedback and crash reports, landed alongside voice preview feedback:
+
+- **Sound backend on macOS.** `quill/platform/sound_player.py`'s `_detect_backend()` previously tried only `sound_lib` (a licensed engine excluded from every build) and `winsound` (Windows-only), so macOS had no audio backend at all and every earcon — including the bundled Ink pack, which *is* correctly included in the `.app` bundle — was silently unplayable. Added an AppKit `NSSound` backend via `pyobjc` (already a `macos` build extra, used elsewhere for screen-reader announcements).
+- **AI Setup Wizard stuck-active state.** `SdkHarness.is_available()` and `sdk_install.is_pack_importable()` only confirmed `importlib.util.find_spec()`, which a partially-written (crash-interrupted) `pip install --target` still satisfies. Both now attempt a real `importlib.import_module`, so an interrupted install correctly reports as not-installed and the existing Set Up retry path works.
+- **macOS file-open + keybinding gaps.** `run_app()` now constructs a `MacOpenFileApp` (`quill/ui/mac_open_file_app.py`) overriding `wx.App.MacOpenFile`/`MacOpenFiles`, since Finder/Dock/`open -a` file-open requests arrive via an Apple Event, not `argv`, and QUILL previously never saw them. `_parse_keybinding` gained `cmd`/`command` as `ACCEL_CTRL` aliases (any `Cmd+...` binding, including the already-shipped back/forward-location shortcuts, previously produced no accelerator table entry at all on any platform). Document switching gets a darwin-specific default (`Cmd+Shift+]`/`[`) since `Ctrl+Tab` maps to macOS's reserved App Switcher shortcut there.
+- **Clipboard read retry.** The literal "Failed to get data from the clipboard (error N: ...)" dialog is wxWidgets' own C++ `wxClipboard::GetData` error (`wxLogSysError`, not a Python exception QUILL's own `try`/`except` could catch), surfaced on the first transient `CLIPBRD_E_CANT_OPEN` contention with another process/AT holding the clipboard. `quill/ui/clipboard_retry.py` (`with_clipboard_read_retry`/`read_clipboard_text`) retries up to 10 attempts, 20ms apart, suppressing the dialog via `wx.LogNull()` on every attempt but the last; wired into every clipboard-read call site (`magic_paste`, abbreviation expansion, Copy Tray, Power Tools plain-text/HTML paste, Quillins).
+- **Four crash-report fixes (#915–#918):** a missing `label` argument on a `_show_modal_dialog` call (Spell Check Language chooser); `_IntellisensePopup.is_visible()` now catches `RuntimeError` from a deleted C/C++ `Frame` (a crash-recovery restart could rebuild `MainFrame` without recreating the popup, leaving a stale reference); and the AI Hub Engines tab's background-install completion callback now tolerates the panel having been closed/destroyed before the install finished.
+- **Crash opening the Quillins Manager when PyNaCl is not installed (#919).** PyNaCl is a dev/CI-only dependency (Quillin Hub artifact signing/publishing), never a shipping one, but `quill/tools/signing.py` imported it unconditionally at module level — so simply viewing a Quillin’s details (which checks its signature status) crashed with `ModuleNotFoundError` on every real build. The import is now lazy (`TYPE_CHECKING` + function-local), and `verify_artifact`/`signature_status` — whose own docstrings already promised "fail-closed, never raises" — now catch a missing `nacl` the same way they catch every other verification failure, reporting "PyNaCl is not installed" instead of crashing.
+- **Quillin signature verification is now real on shipping builds (#919 follow-up).** The #919 fix stopped the crash but left the feature inert: PyNaCl stayed a `[signing]`/`[dev]` extra no shipping build installed, so the Quillins Manager's "Signature: verified/unsigned" lines never ran for end users — only the "PyNaCl is not installed" fallback did. PyNaCl is now a runtime dependency (the `[ui]` extra, mirrored in `requirements.txt` and the macOS py2app `includes`), so `verify_artifact`/`signature_status` run on every install. The graceful missing-nacl path in `quill/tools/signing.py` stays as defense in depth. A regression guard (`test_pynacl_is_bundled_in_the_ui_extra_for_quillin_signature_verification`) locks PyNaCl into the bundled `[ui]` set so it can't silently revert to dev-only.
+- **The Report a Bug token is mandatory on every build (#919, hardened).** The bundled issues-only GitHub token (`quill/_feedback_token.py`, baked from `QUILL_FEEDBACK_GITHUB_TOKEN` by `tools/generate_feedback_token.py`) is what lets the in-app bug reporter file straight to the issue tracker instead of dead-ending. An earlier beta shipped it empty on Windows (only macOS baked it), so upgrades showed "no token"; a first fix made a missing token hard-fail the *release* build, but still left an `--allow-missing-feedback-token` escape hatch so an ad-hoc local or beta build could silently ship tokenless. The token is now required on **every** build, Windows and macOS, with no opt-out: `scripts/build_windows_distribution.py` always passes `--require-token` to the generator and `_assert_bundled_token_nonempty` asserts the file that actually lands in the bundled `quill/` package is non-empty (the exact "upgraded and got No token" symptom, locked out); `scripts/build_macos.sh` always runs the generator with `--require-token`. The `--require-feedback-token` flag is kept as an accepted no-op so the release workflow is unchanged. Regression guards in `tests/unit/scripts/test_build_windows_distribution.py` (`test_build_guard_refuses_an_empty_token`, `test_build_guard_refuses_a_missing_token_file`, `test_build_guard_accepts_a_real_token`) lock the guard.
+
+#### API-key onboarding for env-var-authenticated harnesses
+
+`openai_agents` and `claude_agent_sdk` both declare `requires_api_key=True` but, unlike GitHub Copilot's OAuth device flow, authenticate by reading `OPENAI_API_KEY`/`ANTHROPIC_API_KEY` directly from the process environment with no QUILL-specific hook — so a successfully installed harness previously had no in-app way to add a key at all. `quill/core/ai/harness_credentials.py` bridges this the same way `copilot_auth.py` bridges GitHub tokens: the key is persisted in QUILL's existing per-provider secure store (`assistant_ai.save_provider_api_key`, keyed by `pack_id`) and exported to the environment immediately so the SDK picks it up without a restart; `apply_all_stored_keys()` runs at startup so a key saved in an earlier session is already in place before anything checks harness availability. `HarnessApiKeyDialog` (`quill/ui/harness_api_key_dialog.py`, modeled on `CopilotOnboardingDialog` but simpler — one pasted key, no OAuth) is reached from the AI Hub Engines tab's **Set Up** action once a harness is installed.
+
 ### 5.25b Watch Folder automation
 
 Quill provides an optional watch-folder workflow under `Tools -> Watch Folder` for low-friction
@@ -3116,7 +3138,7 @@ Canonical event IDs are defined as a `StrEnum` in `quill/core/sound_events.py` (
 
 #### 5.70.4 Cross-platform backend
 
-`quill/platform/sound_player.py` auto-detects the best backend at startup: (1) `_SoundLibBackend` (BASS via the MIT-licensed `accessibleapps/sound_lib`, all platforms, native mixing); (2) `_WinsoundBackend` (Windows stdlib, serialising queue); (3) `_NullBackend`. `sound_lib` is an optional extra (`pip install quill[audio]`); absent it, QUILL falls back to `winsound` on Windows or stays silent elsewhere. Any object satisfying the `_WavBackend` protocol (`play_wav(bytes)`, `shutdown(timeout)`) can be injected, which is how tests use a synchronous recording backend.
+`quill/platform/sound_player.py` auto-detects the best backend at startup: (1) `_SoundLibBackend` (BASS via the MIT-licensed `accessibleapps/sound_lib`, all platforms, native mixing); (2) `_WinsoundBackend` (Windows stdlib, serialising queue); (3) `_NSSoundBackend` (AppKit `NSSound` via `pyobjc`, macOS fallback); (4) `_NullBackend`. `sound_lib` is an optional, licensed extra (`pip install quill[audio]`) never bundled by default; absent it, QUILL falls back to `winsound` on Windows or `NSSound` on macOS (both ship with their respective build extras already) before going silent. Any object satisfying the `_WavBackend` protocol (`play_wav(bytes)`, `shutdown(timeout)`) can be injected, which is how tests use a synchronous recording backend.
 
 #### 5.70.5 Module layout and posting
 
@@ -3146,7 +3168,8 @@ A deliberately small way to publish a status to Mastodon from the editor — not
 
 - **Compose flow.** `tools.post_to_mastodon` (default **QUILL Key + Shift+P**, also **Tools → Share → Post to Mastodon...**) takes the editor selection, or the whole document when nothing is selected, and opens `MastodonComposeDialog`: editable text, an account picker (by nickname), a visibility choice (public/unlisted/private/direct), a live character count, and Post. Disabled in Safe Mode. If no account exists, the accounts manager is offered first, then compose continues if one was added.
 - **Accounts.** `tools.manage_mastodon_accounts` opens `MastodonAccountsDialog` (add/remove/set-default). Adding registers an app named **QUILL** on the user's instance (so posts read "via QUILL") and uses the OAuth out-of-band flow: open the browser to authorize, paste the code back. Non-secret metadata (nickname, instance, `@handle`, client id) is stored in `mastodon-accounts.json`; the access token and client secret go to the Windows Credential Manager / DPAPI via `credential_store`, never the JSON.
-- **Implementation.** All API + account logic is wx-free in `quill/core/mastodon/` — `client.py` (a single audited `urllib` egress site `_http_json`, HTTPS-only over a verified TLS context: app registration, OAuth token exchange, `verify_credentials`, and status post) and `accounts.py`. Dialogs in `quill/ui/mastodon_dialogs.py`. The one egress site is recorded in `network_egress_audit.py`.
+- **Post language and per-instance character limit (#922).** `post_status` accepts an optional `language` (an ISO 639-1 code such as `"en"` or `"it"`); when given it is sent as the post's `language` field so the instance files the post under the right language preset instead of the account's default, and `None` omits the field. The compose dialog exposes this as a **Post language** `wx.Choice` next to visibility; the first entry ("Default (instance)") maps to `None`, the rest send their code. The live counter uses `instance_character_limit(instance_url)`, which fetches `GET /api/v2/instance`, reads `configuration.statuses.max_characters`, and falls back to `DEFAULT_CHARACTER_LIMIT`; the result is cached in-process per normalized instance URL (`clear_character_limit_cache` is the test hook) so the counter reflects an instance like one with a 9999-character limit without re-querying on every keystroke. `LANGUAGES` in `mastodon_dialogs.py` lists the presets, "Default (instance)" first.
+- **Implementation.** All API + account logic is wx-free in `quill/core/mastodon/` — `client.py` (a single audited `urllib` egress site `_http_json`, HTTPS-only over a verified TLS context: app registration, OAuth token exchange, `verify_credentials`, status post, and the `GET /api/v2/instance` character-limit lookup) and `accounts.py`. Dialogs in `quill/ui/mastodon_dialogs.py`. The egress sites are recorded in `network_egress_audit.py`.
 
 ### 5.71 Quiet mode
 
@@ -6756,12 +6779,13 @@ File > Open from Remote
   GitHub Repository...
   GitHub File URL...
   Save to GitHub...
+  GitHub Items...
   ---
   Manage Remote Sites...   (existing)
   Manage GitHub Accounts...
 ```
 
-All four GitHub commands are also available through the Command Palette.
+All five GitHub commands are also available through the Command Palette.
 
 ### §25.3 Feature Flag
 
@@ -6771,7 +6795,7 @@ Privacy: `network after confirmation`
 Dependencies: `core.remote`  
 Optional dep: `pip install "quill[github]"` (installs PyGithub >= 2.0)
 
-When the flag is off, all four GitHub menu items are absent. When PyGithub is not installed, QUILL shows a friendly message with the install command.
+When the flag is off, all five GitHub menu items are absent. When PyGithub is not installed, QUILL shows a friendly message with the install command.
 
 ### §25.4 Authentication
 
@@ -6854,6 +6878,10 @@ The tab's `source_label` is set to `GitHub: owner/repo (branch)` and shown in th
 | `quill/core/github/consent.py` | One-time consent state |
 | `quill/ui/github_dialogs.py` | Consent, sign-in, manage-accounts, repository browser dialogs |
 | `quill/ui/main_frame_github.py` | `GitHubRemoteMixin` — orchestration and threading |
+| `quill/core/github/items_provider.py` | `GitHubItemsProvider` (PyGithub) + read-only item models (#924) |
+| `quill/ui/github_items_view.py` | Wx-free view-model formatting: list cells, details, comment positions (#924) |
+| `quill/ui/github_items_dialog.py` | `GitHubItemsDialog` — modal list-over-detail viewer (#924) |
+| `quill/ui/main_frame_github_items.py` | `GitHubItemsMixin` — Safe Mode + consent + token gate (#924) |
 
 ### §25.11 Implementation Status
 
@@ -6863,6 +6891,88 @@ The tab's `source_label` is set to `GitHub: owner/repo (branch)` and shown in th
 - Phase 3: Repository browser dialog.
 - Phase 4: Remote document integration (origin metadata, title, save-back).
 - Phase 5: Gate compliance (banned patterns, dialog inventory, module size budget, mypy overrides).
+
+
+---
+
+### §25.12 GitHub Items Viewer (read-only repository browser, #924)
+
+**File > Open from Remote > GitHub Items...** opens a read-only, screen-reader-first
+browser for a repository's issues, pull requests, branches, commits, tags,
+releases, and workflow runs. It is modeled on the [GHManage](https://github.com/kellylford/GHManage)
+reference viewer (the same field set, list modes, and per-comment navigation),
+adapted to QUILL's PyGithub transport and dialog conventions. v1 is **read-only**;
+mutating actions (close / reopen / comment) are out of scope.
+
+**Views.** A single **View** switcher selects one of:
+
+| View | Columns | Detail pane |
+|------|---------|-------------|
+| Issues & PRs | number, type, state, title, author, updated, labels, comments | full issue/PR body + comment thread |
+| Branches | name, protected, author, date, commit | branch metadata; Enter drills into that branch's commits |
+| Commits | short_sha, author, date, message | full sha, author, date, diff stats, message |
+| Tags | name, commit_sha | tag + commit |
+| Releases | tag, name, draft, prerelease, created | release name, flags, body (release notes) |
+| Workflow Runs | name, status, conclusion, branch, event, run_number | run status + conclusion |
+
+The **Issues & PRs** view is the combined inbox from GHManage: two PyGithub
+calls (issues + pulls) merged and sorted in one place. It adds three filters the
+other views do not need: **Show** (Both / Issues / PRs), **State** (Open /
+Closed / All), and **Sort** (number, title, updated, comments — asc/desc).
+
+**List mode (accessibility, GHManage parity).** **Quick** shows compact cells
+exactly as they appear in the columns. **Full** spells each non-empty cell as
+`col: value` (e.g. `number: 208, type: ISSUE, state: OPEN`) so a screen reader
+reads a self-describing line per row instead of bare values with no field
+names. Toggle with the **List mode** choice or `M` in the list.
+
+**Detail pane + comment navigation.** Selecting an issue/PR shows the metadata
+and body immediately, then fetches the comment thread off-thread and appends it.
+**Alt+N** / **Alt+P** jump between comments, selecting and scrolling to each;
+the navigator announces "Comment N of M" and "first/last" at the bounds.
+
+**Repository field.** Prefilled from the active document's GitHub origin when
+the document was opened from GitHub (`RemoteOrigin.repository`), so a user
+editing a file from a repo can review that repo in one step. Otherwise the user
+types `owner/repo` and clicks Load.
+
+**Keyboard shortcuts.**
+
+- `Enter` on a row: open the item in the browser; on a **Branch** row, drill
+  into that branch's commits (switches the view to Commits scoped to it).
+- `Ctrl+R`: refresh the current view.
+- `Ctrl+O`: open the selected item in the browser.
+- `Ctrl+G`: go to an issue/PR by number (Issues & PRs view only).
+- `Alt+N` / `Alt+P`: next / previous comment in the details pane.
+- `M` (in the list): toggle Quick / Full list mode.
+- **View More**: load the next page (page cap = page * 30).
+
+**Threading and accessibility.** All fetches (list load, comment thread) run on
+daemon threads and update the UI via `wx.CallAfter` (`# GATE-40-OK`); the UI
+thread never blocks on the network. Every control has a `SetName`; the status
+label announces load state, counts, and the keyboard map. The dialog is shown
+through `show_modal_dialog` + `apply_modal_ids` (never `ShowModal`).
+
+**Gates (same as every GitHub entry point).**
+
+- **Safe Mode** refuses before any network or consent work
+  (`refuse_in_safe_mode` -> `GitHubItemsError` `QUILL-GITHUB-ITEMS-ERROR`).
+- **Consent + PyGithub availability** via the shared `_ensure_github_ready`
+  (first-run consent dialog; friendly message + install hint when PyGithub is
+  absent).
+- **Token** from the OS credential store (`quill-github-token`); the provider
+  is constructed in the mixin and handed to the dialog so the dialog never
+  touches secrets or consent. Anonymous (tokenless) access works for public
+  repositories at the lower rate limit.
+
+**Feature flag.** `core.github_remote` (off by default) gates the command via
+`feature_command_map` (`file.open_github_items`). When off, the menu item is
+absent.
+
+**Error mapping.** 404 -> "not found", 401 -> "invalid or expired token",
+403 -> "Access denied (check the token's `repo` scope)"; all surfaced as
+`GitHubItemsError(CodedError)` with the `QUILL-GITHUB-ITEMS-ERROR` code so they
+are greppable and never crash the dialog.
 
 
 ---
@@ -7695,6 +7805,19 @@ export NOTARY_PROFILE="quill-notary"
 - Route the app's announce handler to `macos.announce.announce` on macOS (ties to #29).
 - Migrate secret/high-contrast/screen-reader call sites to `quill.platform.dispatch`.
 - Verify the app launches under VoiceOver; keyboard-only QA.
+
+## macOS platform review (2026-07-09)
+
+A full-codebase audit of QUILL's macOS support landed a batch of fixes that close the highest-traffic macOS gaps without rebinding the still-unvalidated bare-F-key chords. The live backlog of remaining work is tracked in `add.md`. Completed this pass:
+
+- **Earcon volume on macOS.** `_NSSoundBackend` now applies `NSSound.setVolume_()` per active sound; the volume slider is no longer a no-op.
+- **Read Aloud speaks on macOS.** Live WAV playback now uses `afplay` on macOS (via a cross-platform `_LiveWavPlayer`) instead of falling through a `winsound`-only guard and silently deleting every synthesized WAV.
+- **VoiceOver announcements hardened.** `macos/announce.py` adds a main-thread guard (marshals off-main calls onto the main queue via libdispatch), a 4096-char payload cap with ellipsis truncation, and `interrupt=True/False` mapped to NSAccessibility priority high/low (matching `prism_bridge` `force_speech` semantics).
+- **macOS keymap chords.** Find Next/Previous (`Cmd+G`/`Cmd+Shift+G`), Replace (`Cmd+Alt+F`), Pop Mark (`Cmd+Alt+M`), and Select Chunk (`Cmd+Alt+Space`) now have darwin alternates that avoid collisions with Hide/Minimize/Spotlight. Provisional pending real-Mac validation (same caveat as the doc-switch chord).
+- **Atomic document writes.** `write_text_atomic` (temp + `fsync` + `os.replace`, mirroring `write_json_atomic`) now backs `autosave_document`, `write_text_document`, and `_write_brf_document`, so a crash mid-save can no longer corrupt the user's document or the recovery snapshot.
+- **Mac conventions.** The redundant `Cmd+F4` close-document accelerator and the Help-menu "About Quill" entry are hidden on macOS (the Application menu shows it via `wx.ID_ABOUT`); `Cmd+W` already closes documents.
+- **Cross-platform messaging.** The dictation "microphone unavailable" message and the "Dictation (offline speech)" component description now branch for macOS instead of citing Windows-only SAPI 5 / permission paths; `total_ram_gb()` reads real RAM via `sysctl` on macOS.
+- **Packaging and tests.** The `[macos]` extra's `py2app`/`setuptools<83` deps carry `sys_platform == 'darwin'` markers; a `test` job in `macos-release.yml` runs `pytest -m "not slow"` on `macos-26`; dependency tests assert macOS packaging deps are darwin-marked and Windows-only deps never appear in the `[macos]` extra; `test_high_contrast.py` now tests true/false/missing-CLI behavior rather than a bare `isinstance(bool)`.
 
 
 ---
@@ -9995,6 +10118,298 @@ troubleshooting/experimentation surface (users A/B against their own display;
 where the offset reproduces in Notepad itself, the cause is the braille display /
 screen-reader configuration, e.g. left status cells, not the control), and
 shipping docs must not claim the offset is fixed.
+
+### QuillRichEdit: a native Rich Edit wrapper for the cell-two offset and selection-dots investigation (shipped 0.9.0 Beta 2; braille testing pending)
+
+The control-type switch above changes *which* native control QUILL uses but
+gives no leverage *inside* the chosen control. **QuillRichEdit**
+(`quill/ui/richedit_rtf_surface.py`) is a thin wrapper over the *same*
+`RICHEDIT50W` control QUILL already ships as its default editor — same Win32
+window class, same `wx.TextCtrl(TE_RICH2 | TE_NOHIDESEL)`, so the full editor
+contract (value/caret/selection/undo/events) is inherited unchanged and no
+existing surface is affected. What it adds is a controlled handle on the
+control's **Text Object Model** (`ITextDocument`/`ITextSelection`, reached via
+`EM_GETOLEINTERFACE` → `QueryInterface(ITextDocument)`, no Python ctypes
+callback in the hot path — a callback-driven `EM_STREAMIN`/`EM_STREAMOUT`
+attempt was tried first and hard-crashes msftedit; see
+`docs/planning/editor-surface-experiments.md` §8 for the post-mortem) and its
+low-level edit-style messages (`EM_SETEDITSTYLE`/`EM_GETEDITSTYLE`).
+
+Three phases shipped:
+
+- **RTF load/save** through the TOM (`load_rtf`/`save_rtf`/`get_rtf`/`set_rtf`),
+  verified end-to-end against a real `RICHEDIT50W` (a bold run round-trips
+  through save and reload with no crash) — the first rung toward a
+  lightweight, accessible RTF document mode.
+- **Formatting on the selection** — bold/italic/underline (toggled via
+  `ITextFont` + `tomToggle`), font name/size, and paragraph alignment — all
+  through the same TOM, verified on-device (italic, font, size, and center
+  all appear correctly in the saved RTF).
+- **A braille instrument and a candidate fix for #616/#813.** A read-only
+  selection localizer compares the control's own selection
+  (`ITextSelection.Start/End`) against wx's `GetSelection`; on-device they
+  agree, which localizes #813 (JAWS braille not showing dots 7-8 on a
+  selection) to an assistive-technology rendering gap, not a control-tracking
+  one. The candidate fix, `set_emulate_system_edit`, applies
+  `SES_EMULATESYSEDIT` via `EM_SETEDITSTYLE` — asking the Rich Edit to behave
+  like the classic `EDIT` control (which testing showed renders from cell 1
+  *and* shows selection dots 7-8) while remaining a genuine Rich Edit, so its
+  correct `IAccessible` value reporting (the reason RichEdit is the default in
+  the first place, #616) is unchanged.
+
+**Gating (deliberately conservative — this changes the control your whole
+document lives in):** QuillRichEdit only exists when *both*
+`experimental_acknowledged` and `experimental_editor_surfaces_enabled` are on
+and `experimental_editor_surface` is set to `richedit_rtf`; the emulate-sysedit
+braille lever is a further, separate checkbox
+(`experimental_richedit_emulate_sysedit`) under the same double gate. Every
+path falls back to a plain `wx.TextCtrl` on any failure — selecting this
+surface can never brick the editor. All three settings are restart-based (new
+documents/relaunch), matching every other editor-surface option.
+
+**Status: needs on-device JAWS + braille-display testing.** The instrument and
+the lever both verify cleanly by direct `SendMessage`/COM inspection, but
+whether the lever actually fixes what a braille display shows — cell start
+position, selection dots 7-8, and whether JAWS still reads the editor's value
+correctly — can only be judged on real hardware. See the request for braille
+display owner feedback in the user guide's Experimental Features section, and
+`docs/planning/editor-surface-experiments.md` §8 for the full test protocol
+and the running record of results.
+
+### The Fragment spine, and five features built on it (shipped 0.9.0 Beta 2)
+
+`quill/core/fragment.py` introduces one small object, `Fragment` (`markup`,
+`title`, `source`, `source_url`, `kind`, `created_at`), and one pure function,
+`render_fragment(frag, fmt)`, rendering it as `TEXT` (via the existing
+`io.export.markdown_to_plain_text`), `MARKDOWN` (verbatim), or `HTML` (via
+`browser_preview.render_preview_body`). A new setting, `content_handoff_format`
+(Preferences > Editing > "Kept and sent content format"; text/markdown/html),
+is the one format choice every consumer below reads, so "interchangeable" is
+true in practice, not just in name.
+
+- **#897 — Wikipedia in Look Up.** `WikipediaProvider` (`quill/core/lexical.py`)
+  is a new keyless online `LexicalProvider`, in the same shape as
+  `FreeDictionaryProvider`/`DatamuseProvider`: same consented-online-lookup
+  gate, same HTTPS+verified-TLS `_http_get_json` helper (the existing
+  `network_egress_audit.py` entry for `core/lexical.py` already covers it).
+  `LexicalResult.encyclopedia` carries the summary; a disambiguation page or a
+  missing extract normalizes to no entry (a summary, not a list to sort
+  through). `show_lookup_dialog` is driven entirely by `render_lookup`/
+  `build_lookup_items`, both pure, so the new Encyclopedia section needed no
+  UI changes at all.
+- **#895 — Clip Library.** `ClipLibrary`/`ClipEntry` (`quill/core/clip_library.py`)
+  is a 200-entry ring buffer of Fragments, de-duplicated by
+  `(markup, source)`, with favorites protected from eviction and
+  `promote_to_tray(index, tray, slot)` as the bridge into a specific Copy Tray
+  slot — Copy Tray itself is untouched. `ClipLibraryDialog` (search, favorite,
+  remove, copy, promote) and `ClipLibraryMixin` (`keep_selection_in_clip_library`,
+  `open_clip_library`) follow the Copy Tray dialog/mixin shape exactly.
+  `clip_library_autocapture` (bool, default off) binds `wx.EVT_TEXT_COPY` —
+  the native control's own copy notification, so it fires for any trigger
+  (menu, shortcut, right-click) without guessing at individual call sites —
+  to remember every copy automatically when turned on; the handler always
+  calls `event.Skip()` so the native copy is never affected. Deferred:
+  non-text clips (images/files as described objects); `Fragment.kind` already
+  has a slot for when that becomes real work.
+- **#900 — Send as Email / Copy as Email Body.** `build_mailto(frag, fmt, subject)`
+  (`quill/core/email_handoff.py`) renders a Fragment and percent-encodes it
+  into a `mailto:` URL. File > Send as Email opens it via `webbrowser.open`
+  (the same mechanism `run_target_at_cursor` already uses for an in-document
+  mailto: link); File > Copy as Email Body renders the same content onto the
+  clipboard instead, for mail clients that truncate or reject a long
+  `mailto:` body. Both act on the current selection, or the whole document
+  when nothing is selected.
+- **#894 — Accessible AutoOutline.** `apply_auto_outline`/`remove_outline_numbers`
+  (`quill/core/auto_outline.py`) number every Markdown heading by nesting
+  level — numeric (1, 1.1, 1.1.1) or legal (I, A, 1; `auto_outline_style`
+  setting) — as literal text inserted into the heading line itself, built on
+  the existing `markdown_sections.parse_heading_blocks` (so fenced code
+  blocks are correctly skipped). Idempotent: an existing AutoOutline number
+  is stripped before renumbering, so re-running after adding/removing/
+  reordering headings replaces rather than stacks, and switching styles
+  replaces rather than appends. Format > Update/Remove Outline Numbering are
+  on-demand commands, deliberately not a live continuously-active mode —
+  rewriting the whole document on every keystroke would risk fighting typing
+  and undo in a screen-reader-first editor.
+- **#896 — Work Personas.** `WorkPersona`/`WorkPersonaStore`
+  (`quill/core/work_persona.py`) is a named bundle: a feature profile id, a
+  working folder, favorite files, and an optional keymap profile.
+  `WorkPersonaMixin.apply_persona` (`quill/ui/main_frame_work_persona.py`)
+  switches the feature profile (`self.features.switch_profile`), `os.chdir`s
+  into the working folder, applies the keymap (`save_keymap` +
+  `load_keymap_profile`, effective next restart), and opens every favorite
+  file that still exists — each step independently guarded so one stale
+  piece never blocks the rest. `quill/core/persona_launcher.py` builds the
+  right launch argv (frozen `quill.exe` vs. `python -m quill` from source)
+  and can write a real Windows `.lnk` via `pywin32`'s `WScript.Shell` COM
+  object, falling back to an equivalent `.bat` launcher on any failure —
+  never raising, so a persona always ends up with some double-clickable
+  launcher. `--persona NAME` on the command line applies a saved persona
+  right after `MainFrame` construction. Non-goals (per the issue): no
+  multi-user/access-control, and personas *use* Story Studio/Notebooks/Copy
+  Tray rather than replacing them.
+
+### Mandatory alt text at insertion, and inline image descriptions (#899, shipped 0.9.0 Beta 2)
+
+GLOW (`quill/core/glow.py`) already audits missing alt text, auto-fixes it,
+and can generate it via opt-in cloud AI — an accessible image object model
+already existed, but only as an after-the-fact repair pass. #899 asked for
+the proactive half: a document should not be able to *accrue* an
+un-alt-texted image in the first place, and a screen reader should announce
+when one is missing *as the caret passes it*, not just when an audit is run.
+
+`quill/core/inline_image_alt.py` is the pure core: `image_at_position(text, pos)`
+finds the Markdown (`![alt](src)`) or HTML (`<img src=... alt=...>`) image
+reference the caret is inside or touching — the same two patterns
+`link_inventory.py` already parses for GLOW's audit — and `describe_image(record)`
+renders "Image: {filename}, alt text: {alt}" or, just as loudly, "Image:
+{filename}, alt text MISSING". `build_image_markdown(path, alt, decorative=)`
+builds the Markdown for a newly inserted image; a *decorative* image (the
+correct accessible pattern for one with no informational content) gets
+deliberately empty alt text, distinct from an image nobody ever described.
+
+`InsertImageDialog` (`quill/ui/insert_image_dialog.py`) is QUILL's first
+dedicated image-insertion flow (**Insert > Image...**): a file picker, an alt
+text field, and a "this image is decorative" checkbox that disables the alt
+text field when checked. Insert is refused — with a status message, not a
+silent no-op — unless real alt text is present or decorative is explicitly
+checked. `ImageAltMixin` (`quill/ui/main_frame_image_alt.py`) wires this plus
+**Tools > Describe Image at Cursor**, which answers the "what does this image
+say" question for any image already in the document, however it got there
+(typed by hand, pasted, imported).
+
+Deliberately out of scope for this pass: non-image embeds (page breaks,
+equations, removed objects) as accessible placeholders. add.md's own spike
+note said to investigate a shared placeholder model before designing one —
+this covers the object model that already exists (images), not a new one.
+
+### Print Studio: accessible preview, odd/even/reverse/skip-first-page (#891, shipped 0.9.0 Beta 2)
+
+Real print plumbing already existed -- `_print_data` (`wx.PrintData`), a Page
+Setup item on `wx.PageSetupDialogData`, and `print_document()` driving
+`wx.Printer`. Two things were missing: any preview surface at all, and any
+odd/even/reverse/different-first-page options. The existing printout was
+also single-page-only (`HasPage` always `page == 1`) -- it drew whatever fit
+on one page and silently dropped the rest of the document.
+
+`quill/core/print_pagination.py` is the pure core: `paginate_lines(lines,
+lines_per_page)` splits a document into pages; `select_pages(page_count,
+page_set=, reverse=, skip_first_page=)` turns a page count and the chosen
+options into the concrete, ordered list of page numbers to print --
+`skip_first_page` is computed on the *original* page numbers before
+odd/even filtering, so "odd pages, skip first" on a 7-page document is
+3/5/7, not 1/3/5. `paper_name`/`margins_text`/`describe_preview` build the
+spoken/textual preview -- "3 pages, Letter, default margins" -- explicitly
+not a WYSIWYG renderer (the issue's own non-goal).
+
+`quill/ui/main_frame_print.py` (`PrintMixin`, extracted from `main_frame.py`
+along with the pre-existing `page_setup`/`print_document` to stay within
+GATE-11): `_compute_print_preview` uses a throwaway `wx.PrinterDC` for
+realistic font-metric-based pagination without starting an actual print
+job -- the same DC type the real job prints through, so Print Studio's page
+count matches what actually prints. The inner `wx.Printout` in
+`_build_text_printout` now paginates for real inside `OnPreparePrinting`
+(where wx attaches a live DC) and maps a requested page-set through an
+index indirection: wx is told there are `len(selected_pages)` "pages," and
+each `OnPrintPage(n)` resolves `n` back to the real document page it
+represents. This is the standard technique for custom page ordering in
+wx's printing API, which has no native odd/even/reverse concept of its own.
+
+**File > Print Studio...** shows the preview and options, then hands off to
+the identical `wx.Printer` flow **File > Print** already uses -- Print
+Studio is a step in front of the existing dialog, not a replacement for
+it. Header/footer authoring stays explicitly out of scope; that is #892.
+
+### Keyboard-first Header/Footer Builder (#892, shipped 0.9.0 Beta 2)
+
+No header/footer authoring existed at all beyond `wx.PageSetupDialogData`
+margins (which has no header/footer concept of its own). Per the issue's
+own framing, this is deliberately **named presets over a small, fixed
+token set** -- not a blank canvas, and not a general macro/field-code
+system.
+
+`quill/core/header_footer.py` (pure): `HeaderFooterSpec` holds six zones
+(header/footer × left/center/right), an optional different-first-page set
+of six more, a page-number style (`arabic`/`roman`), and a start page
+number. Each zone is a template string using `{title}`/`{filename}`/
+`{date}`/`{page}` tokens or literal text, rendered by `render_zone`. Four
+named presets cover the issue's own examples directly: "Title left, page
+number right," "Filename and date," "Roman numerals for front matter,"
+and "Blank."
+
+`quill/core/header_footer_store.py` persists a spec as **document
+metadata** -- keyed by the document's normalized path, the same
+`DocumentMemory.key_for` shape `core/bookmarks.py` already uses -- so it
+is part of the document's identity and survives save/reload; an unsaved
+document is simply never persisted.
+
+`quill/ui/header_footer_dialog.py` is the keyboard-first builder: a preset
+picker fills the six main zones, each independently editable from there; a
+"different first page" checkbox enables its own six fields; page-number
+style and start-number controls sit below. **File > Header and Footer...**
+(`quill/ui/main_frame_print.py`, extending #891's `PrintMixin`) opens it
+for the current document.
+
+Both **File > Print** and **File > Print Studio...** now draw the saved
+header/footer on every printed page -- the displayed page number accounts
+for `start_page_number` and whichever page-set Print Studio's odd/even/
+reverse/skip-first-page filtering selected, and a different first page
+applies correctly to the document's actual first page, not the first page
+of a filtered print run.
+
+**Deliberately out of scope for this pass, per the issue's own build
+order:** DOCX/RTF native header/footer XML export. The issue's own text
+says to confirm that round-trip before committing further, once real
+usage exists to validate against -- this ships the authoring + print-drawn
+half first.
+
+### Platform-aware keymap profiles and macOS Preferences placement (shipped 0.9.0 Beta 2)
+
+The built-in keymap profiles now defer to the platform-aware defaults for
+quit, back/forward navigation, and document switching rather than forcing
+Windows-style overrides into the shipped profile JSON. This keeps macOS users
+on the correct Cmd-based shortcuts while leaving Windows and other platforms
+unchanged. The Preferences command also uses the stock macOS app-menu id so it
+appears in the standard Quill app-menu location on macOS. The same pass also
+routes macOS file-open, folder-reveal, installer-launch, and voice-preview
+playback through native macOS launch behavior instead of Windows-only
+`os.startfile` assumptions.
+
+### PDF/Office text extraction unbundled to an on-demand download (#909 refinement, shipped 0.9.0 Beta 2)
+
+#909's original bug: `markitdown`/`pdfplumber`/`pypdf` (the free-first Tier-1
+Office+PDF text extractor, `quill/io/docconvert.py` + `quill/io/pdf.py`)
+lived nowhere the shipping build actually installed — not a base
+dependency, not in the extra a clean install pulled — so a fresh install
+had no PDF/Office text extractor at all. The fix that shipped first made
+them a base runtime dependency (present on every install, whether or not
+that install ever opens a PDF). This refines that to the more honest fix:
+the three packages move to a named pyproject extra (`pdf-ocr`) and become a
+one-click download via **Help > Download Optional Components > "PDF and
+Office text extraction"** (~30 MB) — matching how every other optional
+QUILL component (Kokoro, whisper.cpp, Pandoc, the braille pack, mpv)
+already works, and keeping the minimal-install footprint small for
+installs that never touch a PDF or Office document.
+
+`quill/core/pdf_ocr_install.py` is the on-demand installer, modeled
+directly on `speech/engine_install.py`'s MP3-support pack: wheel-only
+`pip install --target <app data>/engine-packs/pdf-ocr`, Safe Mode gated,
+activated on `sys.path` at startup (`activate_pdf_ocr_pack`, called from
+`__main__.py` alongside the speech-engine and AI-SDK pack activations). No
+import-safety changes were needed anywhere in `quill/` — every existing
+call site (`quill/io/pdf.py`, `markitdown_bridge.py`, `structured.py`,
+`pages.py`, `docconvert.py`, `action_builder_dialog.py`) already imports
+these three packages lazily inside a `try`/`except`, so "these packages
+might not be installed" was already a handled case; only the four stale
+"pip install ..." remedy messages needed updating to point at Download
+Optional Components instead.
+
+`tests/unit/test_packaging_dependencies.py`'s #909 guard now asserts the
+opposite of its original claim (not a base dependency) plus two new
+invariants: the packages are named in exactly one place (the `pdf-ocr`
+extra), and the installer's own pinned requirements are kept in sync with
+that extra — evolving the regression coverage rather than deleting it
+outright when the fix's shape changed.
 
 ### Self-voice fallback is logged, not announced (shipped 0.8.1 Beta 1)
 

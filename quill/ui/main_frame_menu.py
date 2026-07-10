@@ -60,7 +60,7 @@ class MenuBuilderMixin:
         self._id_save_as = wx.ID_SAVEAS
         self._id_exit = wx.ID_EXIT
         self._id_palette = wx.NewIdRef()
-        self._id_preferences = wx.NewIdRef()
+        self._id_preferences = wx.ID_PREFERENCES
         self._id_menu_editor = wx.NewIdRef()
         self._id_open_url = wx.NewIdRef()
         self._id_open_remote = wx.NewIdRef()
@@ -71,6 +71,7 @@ class MenuBuilderMixin:
         self._id_github_file_url = wx.NewIdRef()
         self._id_github_save_back = wx.NewIdRef()
         self._id_github_manage_accounts = wx.NewIdRef()
+        self._id_github_items = wx.NewIdRef()
         self._id_ssh_quick_connect = wx.NewIdRef()
         self._id_ssh_site_manager = wx.NewIdRef()
         self._id_close_document = wx.NewIdRef()
@@ -84,6 +85,8 @@ class MenuBuilderMixin:
         self._id_clear_recent_sessions = wx.NewIdRef()
         self._id_page_setup = wx.NewIdRef()
         self._id_print = wx.NewIdRef()
+        self._id_print_studio = wx.NewIdRef()
+        self._id_header_footer = wx.NewIdRef()
         self._id_save_plain_text = wx.NewIdRef()
         self._id_clear_recent = wx.NewIdRef()
         # #262: Pandoc Import / Export menu ids (one per Tier-1 format).
@@ -175,6 +178,10 @@ class MenuBuilderMixin:
         remote_menu.Append(
             self._id_github_save_back,
             self._menu_label(_("&Save to GitHub..."), "file.github_save_back"),
+        )
+        remote_menu.Append(
+            self._id_github_items,
+            self._menu_label(_("GitHub &Items..."), "file.open_github_items"),
         )
         remote_menu.AppendSeparator()
         remote_menu.Append(
@@ -425,6 +432,14 @@ class MenuBuilderMixin:
         # --- Print ---
         file_menu.Append(self._id_page_setup, _("Pa&ge Setup..."))
         file_menu.Append(self._id_print, self._menu_label(_("&Print..."), "file.print"))
+        file_menu.Append(
+            self._id_print_studio,
+            self._menu_label(_("Print &Studio..."), "file.print_studio"),
+        )
+        file_menu.Append(
+            self._id_header_footer,
+            self._menu_label(_("&Header and Footer..."), "file.header_footer"),
+        )
         file_menu.AppendSeparator()
         # --- Close ---
         file_menu.Append(
@@ -1576,6 +1591,7 @@ class MenuBuilderMixin:
         self._id_dev_copy_diagnostic = wx.NewIdRef()
         self._id_dev_restart_ts_worker = wx.NewIdRef()
         self._id_open_story_studio = wx.NewIdRef()
+        self._id_work_personas = wx.NewIdRef()
         self._id_vault_open = wx.NewIdRef()
         self._id_vault_follow_link = wx.NewIdRef()
         self._id_vault_backlinks = wx.NewIdRef()
@@ -1605,6 +1621,10 @@ class MenuBuilderMixin:
         tools_menu.Append(
             self._id_open_story_studio,
             self._menu_label(_("Story &Studio..."), "story.open_studio"),
+        )
+        tools_menu.Append(
+            self._id_work_personas,
+            self._menu_label(_("Work &Personas..."), "tools.work_personas"),
         )
         vault_menu = wx.Menu()
         vault_menu.Append(self._id_vault_open, self._menu_label(_("&Open Vault..."), "vault.open"))
@@ -2631,7 +2651,11 @@ class MenuBuilderMixin:
         help_menu.Append(self._id_whats_new, _("&What's New..."))
         if self._feature_enabled("core.glow"):
             help_menu.Append(self._id_check_glow_updates, _("Check for &GLOW Updates..."))
-        help_menu.Append(self._id_about_quill, _("&About Quill"))
+        # On macOS the Application menu already shows "About Quill" via the
+        # wx.ID_ABOUT binding below, so appending it to Help too produced a
+        # duplicate entry. Windows has no Application menu, so it stays here.
+        if sys.platform != "darwin":
+            help_menu.Append(self._id_about_quill, _("&About Quill"))
 
         # MENU-REORDER (menus.md Phase 1): every top-level menu is attached to the
         # bar here, in one place, in the conventional Windows order. Menu *content*
@@ -2736,6 +2760,10 @@ class MenuBuilderMixin:
         self.frame.Bind(wx.EVT_MENU, lambda _e: self.open_session(), id=self._id_open_session)
         self.frame.Bind(wx.EVT_MENU, lambda _e: self.page_setup(), id=self._id_page_setup)
         self.frame.Bind(wx.EVT_MENU, lambda _e: self.print_document(), id=self._id_print)
+        self.frame.Bind(wx.EVT_MENU, lambda _e: self.print_studio(), id=self._id_print_studio)
+        self.frame.Bind(
+            wx.EVT_MENU, lambda _e: self.edit_header_footer(), id=self._id_header_footer
+        )
         self.frame.Bind(
             wx.EVT_MENU,
             lambda _e: self.save_as_plain_text(),
@@ -2881,6 +2909,9 @@ class MenuBuilderMixin:
         )
         self.frame.Bind(
             wx.EVT_MENU, lambda _e: self.open_story_studio(), id=self._id_open_story_studio
+        )
+        self.frame.Bind(
+            wx.EVT_MENU, lambda _e: self.open_work_personas(), id=self._id_work_personas
         )
         self.frame.Bind(
             wx.EVT_MENU, lambda _e: self.open_general_preferences(), id=self._id_preferences

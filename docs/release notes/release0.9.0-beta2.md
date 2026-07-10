@@ -18,6 +18,93 @@ Grazie, thank you, and keep the reports coming. 💙
 
 ---
 
+## A favor to ask: braille display owners, please try QuillRichEdit
+
+We've been chasing two long-standing braille reports — text starting in cell 2
+instead of cell 1 on some displays, and selection dots (7-8) not showing up
+under selected text. This release ships the first real lever for both: a new
+experimental editor surface called **QuillRichEdit**, built on the *same*
+native control QUILL already uses every day, with a switch that asks it to
+behave more like a plain text control for braille purposes while still
+reading correctly to JAWS and NVDA.
+
+**We don't yet know if it actually helps on real hardware — that's genuinely
+what we need you for.** To try it: **Preferences > Experimental**, tick
+**Enable experimental features**, tick **Enable experimental editor
+surfaces**, set **Editor surface** to **QuillRichEdit**, and tick **QuillRichEdit:
+emulate a system edit control (braille test)**. Apply, then **restart QUILL** —
+all three settings need a fresh launch to take effect. Then, with your display
+attached: does text start in cell 1 now? Do selection dots show up? Does
+everything still read correctly? Tell us either way — helped, no difference,
+or worse — through **Help > Report a Bug**, with your screen reader and
+display model. Full walkthrough in the user guide's "QuillRichEdit
+(experimental)" section.
+
+This same surface also quietly picked up QUILL's first native RTF load/save
+and in-place bold/italic/underline/font/alignment formatting — a first step
+toward a lighter rich-text document mode — but the braille question above is
+why it needs you most.
+
+## Alt text you can't skip, and images that speak up when it's missing
+
+GLOW already catches missing alt text after the fact — this adds the
+proactive half. **Insert > Image...** is QUILL's first dedicated
+image-insertion flow: it won't let you insert without either real alt text
+or an explicit "this image is decorative" choice, so a document can no
+longer quietly pick up an un-alt-texted image. And for any image already
+in your document, however it got there, **Tools > Describe Image at
+Cursor** tells you exactly what's there: "Image: sunset.png, alt text: a
+sunset over the lake" — or just as clearly, "alt text MISSING" if nobody
+ever wrote one.
+
+## Print Studio: finally, a preview
+
+**File > Print Studio...** tells you what you're about to print before you
+print it — "3 pages, Letter, default margins" — read aloud or in braille,
+the way a visual print preview would show a sighted user. Then choose
+**all, odd, or even pages**, **reverse the order**, or **skip the first
+page** if it's pre-printed letterhead, before it hands off to the same
+Print dialog you already know. Printing itself also got more honest along
+the way — it used to draw whatever fit on one page and quietly drop the
+rest of a longer document; now it paginates properly.
+
+## And now, headers and footers
+
+**File > Header and Footer...** builds one from named presets — title on
+the left with the page number on the right, filename and date, Roman
+numerals for front matter — or your own mix of a handful of tokens
+(title, filename, date, page number) placed left, center, or right. Want
+a different header on page one? There's a checkbox for that. Numeric or
+Roman page numbers, starting wherever you like. It's saved with the
+document and shows up on every page you print, Print Studio or plain
+Print alike.
+
+## Five small things that add up
+
+- **Look Up now includes Wikipedia.** A short encyclopedia summary, with a
+  link to the source, appears alongside definitions and synonyms when you're
+  online — same consent and offline fallback as always.
+- **A bigger clip history, alongside Copy Tray.** Copy Tray's curated 12 slots
+  aren't going anywhere — **Clip Library** (Edit menu) is a second, rolling
+  history of everything you choose to keep, searchable, favoritable, and
+  promotable into a specific Copy Tray slot when one earns a permanent home.
+  Turn on automatic capture (off by default) and every copy inside QUILL is
+  remembered with no extra step.
+- **Send as Email, or just Copy as Email Body.** The File menu can now hand
+  your selection (or the whole document) straight to your mail client, or
+  copy it to the clipboard formatted for pasting into one — useful when a
+  mail client balks at a long message built the first way.
+- **AutoOutline numbers your headings for you.** Format > Update Outline
+  Numbering — numeric or legal style, your choice in Preferences > Editing —
+  writes the number straight into the heading text, so it reads aloud and
+  survives copy/paste and export with nothing extra to configure.
+- **Work Personas: one action into a whole context.** Tools > Work
+  Personas... bundles a feature profile, a working folder, your favorite
+  files, and a keymap profile under a name — "School," "Novel," a client's
+  name. Apply it instantly, launch straight into it with `quill --persona
+  NAME`, or generate a double-clickable shortcut so it's one click away
+  without QUILL already open.
+
 ## Getting the extras you want, reimagined
 
 QUILL stays small by downloading the big optional pieces only when you ask. Beta
@@ -73,6 +160,16 @@ Components** was rebuilt into one warm, guided place.
 - **Speech Settings now separates offline from online.** The Speech and Dictation
   tabs each split into **Offline** and **Online**, so your installed-once local
   engines and voices aren't mixed in with API-key cloud services in one long list.
+
+## Small but meaningful polish
+
+- **Built-in keymap profiles now stay platform-aware.** The shipped keymap profiles no longer override the platform-specific defaults for quit, back/forward location, and document switching, so macOS users get the correct Cmd-based shortcuts instead of Windows-only overrides.
+- **AI, compare, and dark-mode shortcuts now fire as advertised.** The proofread, translate, compare-navigation, and dark-mode commands now honor the keybindings shown in the UI and the keymap editor instead of silently ignoring them.
+- **Preferences now appears in the standard macOS app-menu location.** The Preferences command is wired to the stock macOS menu id, making it reachable in the Quill app menu alongside About and Quit.
+- **macOS launch paths are now platform-safe.** Opening a file, revealing a folder, launching an installer, or previewing a voice sample no longer relies on Windows-only `os.startfile` behavior on macOS; those flows use the native macOS launch path instead.
+- **QUILL no longer thinks it crashed when Windows shuts down or logs off with it open.** The OS session-end event now records a clean exit, so your next launch doesn't offer crash recovery for a session that ended normally. (#920)
+- **Windows shell-integration registration no longer crashes on the Python 3.13 runtime.** An empty binary registry value (the `OpenWithProgids` entry) that older Pythons silently accepted now gets the right type, so file associations register cleanly again. (#921)
+- **Posting to Mastodon: set a post's language, and the counter respects your instance's limit.** A post written in Italian can be filed under the Italian preset instead of your account default; and if your instance allows more (or fewer) than 500 characters, the live counter now knows — via a one-time lookup of the instance's own limit. (#922)
 
 ## A page number, honestly presented
 
@@ -138,8 +235,83 @@ on by default, right next to your line/column position.
 - **macOS: Pandoc from the pandoc.org installer is found.** A QUILL window opened
   from Finder doesn't inherit a Terminal's folders, so a real Pandoc install could
   look missing. QUILL now checks the usual locations directly.
+- **Voice preview feedback.** Previewing a voice no longer overlaps a previous
+  preview's audio or announcement. Slow voice synthesis now plays a short cue and
+  (by default) says "Generating preview, please wait," and the Preview/Test button
+  turns into a Stop button while a preview is active.
+- **macOS: earcons are no longer silent.** The app had no audio backend at all on
+  macOS, so sound notifications never played even with the bundled pack selected.
+  Fixed.
+- **macOS: opening a file from Finder, the Dock, or Terminal now actually opens
+  it**, instead of landing you in a blank document. Also fixed: any keyboard
+  shortcut using the Command key silently did nothing, and Ctrl+Tab/Ctrl+Shift+Tab
+  for switching between open documents landed on a toolbar button instead of
+  switching (macOS reserves that combination) — document switching on macOS is
+  now Cmd+Shift+]/[.
+- **The AI Setup Wizard no longer gets stuck** showing an engine like OpenAI as
+  "active" with no way to configure it after an interrupted install. Set Up works
+  again.
+- **"Failed to get data from the clipboard" errors during cut/paste are fixed.**
+  A screen reader or clipboard-history tool briefly holding the clipboard used to
+  show this error immediately; QUILL now gives it a brief moment before giving up.
+- **Fixed four crash reports sent in through user feedback:** the Spell Check
+  Language chooser, word prediction after recovering from a crash, and the AI
+  Hub's Engines tab closing mid-install.
+- **OpenAI Agents SDK and Claude Agent SDK now have a way to add an API key.**
+  Previously, once installed, there was no in-app way to configure either —
+  **Set Up** in the AI Hub's Engines tab now opens a small dialog to paste,
+  save, or remove the key, applied right away with no restart needed.
 
-## Kinder to screen readers
+## macOS: a full platform review
+
+A top-to-bottom audit of QUILL's macOS support landed ~24 fixes. The highlights
+for Mac users:
+
+- **Read Aloud finally speaks on macOS.** Every WAV-based voice engine (Piper,
+  Kokoro, ElevenLabs, SAPI5, DECtalk) was silent on macOS — the live playback path
+  only knew about Windows' `winsound` and silently threw each synthesized clip
+  away. It now plays through macOS's `afplay`.
+- **The earcon volume slider now works on macOS.** `NSSound` had no volume
+  control wired, so the slider was a silent no-op. It now sets the volume on
+  each played sound.
+- **Whisper recommends the right model for your Mac's actual RAM.** QUILL
+  reported a flat 8 GB on every Mac, so a 32 GB machine was told to use the
+  small model. It now reads real memory via `sysctl`.
+- **Three Mac keyboard collisions fixed.** `Ctrl+H` (Replace) became `Cmd+H`
+  (macOS Hide), `Ctrl+M` (pop mark) became `Cmd+M` (Minimize), and `Ctrl+Space`
+  (select chunk) became `Cmd+Space` (Spotlight) — all dead by default on macOS.
+  They now default to `Cmd+Alt+F`, `Cmd+Alt+M`, and `Cmd+Alt+Space`, and Find
+  Next/Previous now use the macOS-standard `Cmd+G` / `Cmd+Shift+G` (so you don't
+  have to hold Fn for F3). Provisional picks — tell us if a chord collides with
+  something on your setup.
+- **DECtalk is no longer offered as a download on macOS** (its only backend is
+  a Windows `.dll`), and the Dictation description no longer promises SAPI 5 on
+  macOS (it doesn't exist there — Whisper is the path).
+- **No more duplicate "About Quill," and no stray `Cmd+F4`.** macOS showed two
+  About entries (the Application menu and Help); the Help copy is gone. The
+  redundant `Cmd+F4` close shortcut was Windows-only and never idiomatic on Mac.
+- **VoiceOver announcements are gentler and bounded.** A runaway status message
+  is now capped so it can't become an unreadable wall of text, and routine
+  status no longer interrupts what you're already hearing (only narration that
+  has to interrupt does).
+- **Your documents are safer on a crash.** Saving a document and writing an
+  autosave recovery snapshot are now atomic (write to a temp file, fsync, then
+  rename) — a crash mid-write can no longer corrupt your real file or leave a
+  truncated snapshot as the thing you recover.
+- **The macOS build doesn't drag Windows-only packaging tools onto other
+  platforms**, the dictation "microphone unavailable" message no longer says
+  "Windows microphone permissions" verbatim, and the macOS release build now
+  actually runs the test suite in CI — so the macOS-only tests (Keychain,
+  high-contrast, screen-reader detection) finally run somewhere.
+- **Launch QUILL from source by double-clicking in Finder.** A new
+  `run-from-source.command` wrapper runs in Terminal on double-click (a `.sh`
+  would only open in a text editor), forwarding to `run-from-source.sh` — no
+  terminal needed. The first-run Gatekeeper prompt and its right-click → Open
+  workaround are documented in the file header. (#923)
+
+## Quillin signatures, verified for real
+
+- **The "Signature" line in the Quillins Manager now actually verifies.** It was always there — `verified`, `invalid`, or `unsigned` — but the cryptography library it needs (PyNaCl) was a developer-only dependency that no shipping build included, so on your install it always read "PyNaCl is not installed" and could never tell a publisher-signed Quillin from a tampered one. PyNaCl is now bundled with Quill, so the signature check is real on every install. The `.minisig` sidecars shipped with signed Quillins finally mean something at the detail view.
 
 - **Dialogs open on the first real control**, not the OK/Cancel button or a tab
   strip. The Speech Hub, Manage Speech Models, Manage Voices, the AI Hub, About,
@@ -206,21 +378,58 @@ on by default, right next to your line/column position.
 
 ---
 
-## Three fixes that unblock real work
+## Browse a repository without leaving your editor
 
-- **PDF and document import works out of the box again.** A tester on a clean
-  install hit "can't extract text from PDFs — no extraction engine available."
-  The free local converter and PDF text extractors were described in-app as
-  built-in, but weren't actually installed by the shipping build. They now ship
-  with QUILL on every install, so File → Import just works — and if a PDF has no
-  selectable text, QUILL now tells you it looks like a scanned document and points
-  you to OCR, instead of a confusing "no engine" message.
+QUILL could already open and save files from a GitHub repository. Now it can
+also **show you what's going on in one** — the issues, pull requests, branches,
+commits, tags, releases, and workflow runs — without leaving the editor or
+firing up a browser. **File > Open from Remote > GitHub Items...** opens a
+read-only viewer modeled on the open-source [GHManage](https://github.com/kellylford/GHManage)
+viewer, built keyboard- and screen-reader-first.
+
+Type `owner/repo` and load (if you're already editing a file you opened from
+GitHub, the repository is filled in for you). Pick a view — the combined
+Issues & PRs inbox, Branches, Commits, Tags, Releases, or Workflow Runs — and
+the list shows one row per item while a details box below shows the full text.
+In the Issues & PRs view you can also filter by issues/PRs/both, by open/closed/
+all, and sort by number, title, last-updated, or comment count.
+
+Two list modes matter for screen readers: **Quick** shows compact cells, and
+**Full** spells each one as `field: value` (`number: 208, type: ISSUE, state:
+OPEN`) so your reader announces a self-describing line per row instead of bare
+values. Select an issue or PR and the comment thread loads beneath it; **Alt+N**
+and **Alt+P** jump between comments, announcing "Comment N of M." **Enter**
+opens a row in your browser — and on a branch row, it drills into that branch's
+commits. **Ctrl+R** refreshes, **Ctrl+O** opens in the browser, **Ctrl+G**
+jumps to an issue or PR by number, and **View More** loads the next page.
+
+It's read-only for now — you can browse and open, but not close, reopen, or
+comment from inside QUILL. The same gates apply as the other GitHub commands:
+disabled in Safe Mode, first-run consent, and anonymous access for public
+repositories (lower rate limit) or your stored token for private ones. (#924)
+
+---
+
+## Four fixes that unblock real work
+
+- **PDF and document import works out of the box again — and it's now a
+  one-click download.** A tester on a clean install hit "can't extract text
+  from PDFs — no extraction engine available." The free local converter and
+  PDF text extractors were described in-app as built-in, but weren't actually
+  installed by the shipping build. Rather than bundling them whether or not
+  you ever open a PDF, **Help > Download Optional Components > "PDF and
+  Office text extraction"** (about 30 MB) now fetches them the moment you
+  need them, on any install — and if a PDF has no selectable text, QUILL
+  still tells you it looks like a scanned document and points you to OCR,
+  instead of a confusing "no engine" message.
 - **Report a Bug works even if you never signed in.** After upgrading, some of you
   found the bug reporter saying "no token." The Windows build wasn't including the
-  built-in reporting token, so it shipped empty. It's fixed at the source (and the
-  release now refuses to build without it, so this can't happen again), and if the
-  token is ever missing, QUILL now opens the online bug form for you — reading the
-  instructions aloud — instead of leaving you stuck.
+  built-in reporting token, so it shipped empty. It's fixed at the source, and now
+  **every build refuses to ship without it — release, beta, or a local test build,
+  on Windows and macOS alike, with no opt-out** — so a tokenless bug reporter can
+  never reach anyone again. If the token is ever missing at runtime, QUILL opens
+  the online bug form for you — reading the instructions aloud — instead of
+  leaving you stuck.
 - **"Casual Writer" finally just lets you write.** The profile was quietly leaving
   AI, GLOW review, remote files, analysis, watch folders, notebooks, and developer
   tools switched on. Choose Casual Writer now and those step out of the way, for a
@@ -228,6 +437,13 @@ on by default, right next to your line/column position.
   dictation, and braille stay right where they are, because a simpler profile
   should never be a less accessible one. Want any of it back? Preferences >
   Profiles and Features, one toggle each.
+- **The Quillins Manager no longer crashes on open.** A reporter hit this
+  right away: just viewing a Quillin's details crashed with a
+  `ModuleNotFoundError`. The signature-status check (is this Quillin
+  publisher-signed?) depended on a library that's only ever installed for
+  QUILL's own development and release process, never in the shipped app —
+  it now reports "signature check unavailable" instead of taking the
+  whole dialog down with it.
 
 ---
 
