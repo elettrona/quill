@@ -139,11 +139,98 @@ def test_instance_character_limit_caches_per_instance(monkeypatch: pytest.Monkey
     assert len(calls) == 1
 
 
-def test_instance_character_limit_falls_back_on_missing_configuration(
+def _stub_http_by_url(monkeypatch: pytest.MonkeyPatch, by_suffix: dict[str, object]) -> list[str]:
+    """Route _http_json responses by URL suffix; record the URLs hit, in order."""
+    calls: list[str] = []
+
+    def _fake(method, url, *, data=None, token=None):
+        calls.append(url)
+        for suffix, response in by_suffix.items():
+            if url.endswith(suffix):
+                if isinstance(response, Exception):
+                    raise response
+                return response
+        raise client.MastodonError(f"no stub for {url}")
+
+    monkeypatch.setattr(client, "_http_json", _fake)
+    return calls
+
+
+def test_instance_character_limit_falls_back_to_v1_max_toot_chars(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    # #922: an instance response without the configuration.statuses object must
-    # fall back to the default rather than raise or return a nonsense limit.
+    # A non-Mastodon fork (GoToSocial/Pleroma) that does NOT implement v2 must
+    # still get its real limit via /api/v1/instance -> max_toot_chars.
     client.clear_character_limit_cache()
-    _stub_http(monkeypatch, {"domain": "weird.example"})
-    assert client.instance_character_limit("weird.example") == client.DEFAULT_CHARACTER_LIMIT
+    calls = _stub_http_by_url(
+        monkeypatch,
+        {
+            "/api/v2/instance": client.MastodonError("404"),
+            "/api/v1/instance": {"max_toot_chars": 5000},
+        },
+    )
+    assert client.instance_character_limit("gotosocial.example") == 5000
+    assert calls == [
+        "https://gotosocial.example/api/v2/instance",
+        "https://gotosocial.example/api/v1/instance",
+    ]
+
+
+def test_instance_character_limit_falls_back_to_v1_when_v2_has_no_limit(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # v2 answers but carries no configuration.statuses.max_characters -- try v1.
+    client.clear_character_limit_cache()
+    _stub_http_by_url(
+        monkeypatch,
+        {
+            "/api/v2/instance": {"domain": "fork.example"},
+            "/api/v1/instance": {"max_toot_chars": 2048},
+        },
+    )
+    assert client.instance_character_limit("fork.example") == 2048
+
+
+def test_instance_character_limit_v1_reads_nested_configuration(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # Some forks put the limit under configuration.statuses.max_characters on v1
+    # rather than a top-level max_toot_chars.
+    client.clear_character_limit_cache()
+    _stub_http_by_url(
+        monkeypatch,
+        {
+            "/api/v2/instance": client.MastodonError("404"),
+            "/api/v1/instance": {"configuration": {"statuses": {"max_characters": 4096}}},
+        },
+    )
+    assert client.instance_character_limit("akkoma.example") == 4096
+
+
+def test_instance_character_limit_v2_preferred_over_v1(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # When both endpoints answer, the richer v2 value wins.
+    client.clear_character_limit_cache()
+    calls = _stub_http_by_url(
+        monkeypatch,
+        {
+            "/api/v2/instance": {"configuration": {"statuses": {"max_characters": 9999}}},
+            "/api/v1/instance": {"max_toot_chars": 500},
+        },
+    )
+    assert client.instance_character_limit("mastodon.example") == 9999
+    assert calls == ["https://mastodon.example/api/v2/instance"]  # v1 never queried
+
+
+def test_instance_character_limit_both_endpoints_fail(monkeypatch: pytest.MonkeyPatch) -> None:
+    # Neither v2 nor v1 available -> default 500, never raise.
+    client.clear_character_limit_cache()
+    _stub_http_by_url(
+        monkeypatch,
+        {
+            "/api/v2/instance": client.MastodonError("down"),
+            "/api/v1/instance": client.MastodonError("down"),
+        },
+    )
+    assert client.instance_character_limit("offline.example") == client.DEFAULT_CHARACTER_LIMIT

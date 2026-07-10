@@ -242,14 +242,44 @@ def post_status(
     return str(result.get("url") or result.get("uri") or "")
 
 
+def _max_characters_from_configuration(result: object) -> int | None:
+    """Read ``configuration.statuses.max_characters`` from an instance body.
+
+    Returns the value when present and positive, otherwise ``None`` so the
+    caller can try another endpoint rather than assuming the default. The
+    ``configuration.statuses`` shape is shared by ``/api/v2/instance`` (Mastodon
+    4.0+, glitch-soc) and some forks' ``/api/v1/instance`` responses.
+    """
+    if not isinstance(result, dict):
+        return None
+    configuration = result.get("configuration")
+    if not isinstance(configuration, dict):
+        return None
+    statuses = configuration.get("statuses")
+    if not isinstance(statuses, dict):
+        return None
+    try:
+        value = int(statuses.get("max_characters") or 0)
+    except (TypeError, ValueError):
+        return None
+    return value if value > 0 else None
+
+
 def instance_character_limit(instance_url: str) -> int:
     """Return the per-instance max post length, falling back to the default.
 
-    Fetches ``GET /api/v2/instance`` and reads
-    ``configuration.statuses.max_characters`` (#922). The result is cached per
-    normalized base URL for the process lifetime, so the compose dialog's live
-    counter reflects an instance like poliversity.it (9999) without re-querying
-    on every keystroke. Any network/API/parse failure falls back to
+    Mastodon 4.0+ (and glitch-soc) answer ``GET /api/v2/instance`` with
+    ``configuration.statuses.max_characters`` (#922; e.g. poliversity.it returns
+    9999). Non-Mastodon forks such as GoToSocial and Pleroma/Akkoma often do NOT
+    implement ``/api/v2/instance`` -- they answer ``GET /api/v1/instance`` with a
+    top-level ``max_toot_chars`` (and sometimes the same nested
+    ``configuration.statuses.max_characters``). So this tries v2 first, then v1,
+    so the compose counter reflects a fork's real limit instead of wrongly
+    capping at the 500 default.
+
+    The result is cached per normalized base URL for the process lifetime, so
+    the counter refreshes without re-querying on every keystroke. Any
+    network/API/parse failure (both endpoints unreachable) falls back to
     :data:`DEFAULT_CHARACTER_LIMIT` so posting never breaks because the limit
     lookup failed.
     """
@@ -257,20 +287,44 @@ def instance_character_limit(instance_url: str) -> int:
     cached = _CHARACTER_LIMIT_CACHE.get(base)
     if cached is not None:
         return cached
-    try:
-        result = _http_json("GET", f"{base}/api/v2/instance")
-    except MastodonError:
-        _CHARACTER_LIMIT_CACHE[base] = DEFAULT_CHARACTER_LIMIT
-        return DEFAULT_CHARACTER_LIMIT
+
     limit = DEFAULT_CHARACTER_LIMIT
-    configuration = result.get("configuration")
-    if isinstance(configuration, dict):
-        statuses = configuration.get("statuses")
-        if isinstance(statuses, dict):
-            try:
-                limit = int(statuses.get("max_characters") or DEFAULT_CHARACTER_LIMIT)
-            except (TypeError, ValueError):
-                limit = DEFAULT_CHARACTER_LIMIT
+    # Primary: /api/v2/instance -> configuration.statuses.max_characters.
+    value: int | None = None
+    try:
+        v2 = _http_json("GET", f"{base}/api/v2/instance")
+        value = _max_characters_from_configuration(v2)
+        if value is not None:
+            limit = value
+    except MastodonError:
+        value = None
+
+    # Fallback: /api/v1/instance -> max_toot_chars (or nested configuration),
+    # for non-Mastodon forks that do not implement v2. Tried only when v2 did
+    # not yield a usable limit (404/missing field).
+    if value is None:
+        try:
+            v1 = _http_json("GET", f"{base}/api/v1/instance")
+        except MastodonError:
+            v1 = None
+        if isinstance(v1, dict):
+            raw = v1.get("max_toot_chars")
+            if raw is not None:
+                try:
+                    parsed = int(raw)
+                except (TypeError, ValueError):
+                    parsed = 0
+                if parsed > 0:
+                    limit = parsed
+                else:
+                    nested = _max_characters_from_configuration(v1)
+                    if nested is not None:
+                        limit = nested
+            else:
+                nested = _max_characters_from_configuration(v1)
+                if nested is not None:
+                    limit = nested
+
     _CHARACTER_LIMIT_CACHE[base] = limit
     return limit
 
