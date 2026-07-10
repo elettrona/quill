@@ -163,10 +163,6 @@ Components** was rebuilt into one warm, guided place.
 
 ## Small but meaningful polish
 
-- **Built-in keymap profiles now stay platform-aware.** The shipped keymap profiles no longer override the platform-specific defaults for quit, back/forward location, and document switching, so macOS users get the correct Cmd-based shortcuts instead of Windows-only overrides.
-- **AI, compare, and dark-mode shortcuts now fire as advertised.** The proofread, translate, compare-navigation, and dark-mode commands now honor the keybindings shown in the UI and the keymap editor instead of silently ignoring them.
-- **Preferences now appears in the standard macOS app-menu location.** The Preferences command is wired to the stock macOS menu id, making it reachable in the Quill app menu alongside About and Quit.
-- **macOS launch paths are now platform-safe.** Opening a file, revealing a folder, launching an installer, or previewing a voice sample no longer relies on Windows-only `os.startfile` behavior on macOS; those flows use the native macOS launch path instead.
 - **QUILL no longer thinks it crashed when Windows shuts down or logs off with it open.** The OS session-end event now records a clean exit, so your next launch doesn't offer crash recovery for a session that ended normally. (#920)
 - **Windows shell-integration registration no longer crashes on the Python 3.13 runtime.** An empty binary registry value (the `OpenWithProgids` entry) that older Pythons silently accepted now gets the right type, so file associations register cleanly again. (#921)
 - **Posting to Mastodon: set a post's language, and the counter respects your instance's limit.** A post written in Italian can be filed under the Italian preset instead of your account default; and if your instance allows more (or fewer) than 500 characters, the live counter now knows — via a one-time lookup of the instance's own limit. (#922)
@@ -232,22 +228,10 @@ on by default, right next to your line/column position.
 - **Whisper model downloads are sturdier**, going through the same well-tested
   library Faster Whisper already uses, so a hiccup on the model host's side gives
   you a clear message instead of a mystery failure.
-- **macOS: Pandoc from the pandoc.org installer is found.** A QUILL window opened
-  from Finder doesn't inherit a Terminal's folders, so a real Pandoc install could
-  look missing. QUILL now checks the usual locations directly.
 - **Voice preview feedback.** Previewing a voice no longer overlaps a previous
   preview's audio or announcement. Slow voice synthesis now plays a short cue and
   (by default) says "Generating preview, please wait," and the Preview/Test button
   turns into a Stop button while a preview is active.
-- **macOS: earcons are no longer silent.** The app had no audio backend at all on
-  macOS, so sound notifications never played even with the bundled pack selected.
-  Fixed.
-- **macOS: opening a file from Finder, the Dock, or Terminal now actually opens
-  it**, instead of landing you in a blank document. Also fixed: any keyboard
-  shortcut using the Command key silently did nothing, and Ctrl+Tab/Ctrl+Shift+Tab
-  for switching between open documents landed on a toolbar button instead of
-  switching (macOS reserves that combination) — document switching on macOS is
-  now Cmd+Shift+]/[.
 - **The AI Setup Wizard no longer gets stuck** showing an engine like OpenAI as
   "active" with no way to configure it after an interrupted install. Set Up works
   again.
@@ -262,7 +246,86 @@ on by default, right next to your line/column position.
   **Set Up** in the AI Hub's Engines tab now opens a small dialog to paste,
   save, or remove the key, applied right away with no restart needed.
 
-## macOS: a full platform review
+## macOS
+
+QUILL's macOS support got a top-to-bottom review across several passes this
+release. Everything Mac-specific lives here in one place: the polish that
+touches the whole app, the four review passes, and — most importantly — a short
+list of things we'd love Mac users to help us confirm on real hardware. We
+develop on Windows, so every Mac fix below was made without a Mac in front of
+us, and a few genuinely need your eyes to close out.
+
+### A favor to ask Mac users
+
+If you use QUILL on macOS, three things would help us enormously. Each is
+fixed in code in this release but needs a Mac to confirm, so please try the
+fix and leave a short comment — *helped*, *no difference*, or *worse* — so we
+can close it out or reopen it.
+
+- **Diacriticals no longer stolen by shortcuts.** In a Polish or other
+  diacritical layout, Option+Z / +Q / +M / +I now type their character instead
+  of firing a QUILL command. Does typing those characters work for you now?
+  Please comment on
+  [support#67](https://github.com/Community-Access/support/issues/67).
+- **Settings speech controls are labelled for VoiceOver.** The Rate, Volume,
+  and Pitch number boxes now announce their label alongside their value. Does
+  VoiceOver read them clearly? Please comment on
+  [support#69](https://github.com/Community-Access/support/issues/69).
+- **Are the new Mac shortcuts comfortable?** Three old shortcuts collided with
+  macOS system ones (Cmd+H hides, Cmd+M minimizes, Cmd+Space is Spotlight), so
+  we moved them to Cmd+Alt+F, Cmd+Alt+M, and Cmd+Alt+Space, and Find
+  Next/Previous now use Cmd+G / Cmd+Shift+G. These are our best guess from a
+  Windows box — if any collides with something on your setup or just feels
+  awkward, tell us and we'll pick a better chord together.
+
+A handful of other fixes are marked *tester results wanted* in the passes
+below — each says exactly what to check and asks you to tell us through
+**Help > Report a Bug** if a symptom persists. Thank you for being our Mac eyes.
+
+### Other macOS polish
+
+- **Built-in keymap profiles now stay platform-aware.** The shipped keymap
+  profiles no longer override the platform-specific defaults for quit,
+  back/forward location, and document switching, so macOS users get the correct
+  Cmd-based shortcuts instead of Windows-only overrides.
+- **AI, compare, and dark-mode shortcuts now fire as advertised.** The
+  proofread, translate, compare-navigation, and dark-mode commands now honor
+  the keybindings shown in the UI and the keymap editor instead of silently
+  ignoring them.
+- **Preferences now appears in the standard macOS app-menu location.** The
+  Preferences command is wired to the stock macOS menu id, making it reachable
+  in the Quill app menu alongside About and Quit.
+- **macOS launch paths are now platform-safe.** Opening a file, revealing a
+  folder, launching an installer, or previewing a voice sample no longer relies
+  on Windows-only `os.startfile` behavior on macOS; those flows use the native
+  macOS launch path instead.
+- **macOS: Pandoc from the pandoc.org installer is found.** A QUILL window
+  opened from Finder doesn't inherit a Terminal's folders, so a real Pandoc
+  install could look missing. QUILL now checks the usual locations directly.
+- **macOS: earcons are no longer silent.** The app had no audio backend at all
+  on macOS, so sound notifications never played even with the bundled pack
+  selected. Fixed.
+- **macOS: opening a file from Finder, the Dock, or Terminal now actually opens
+  it**, instead of landing you in a blank document. Also fixed: any keyboard
+  shortcut using the Command key silently did nothing, and
+  Ctrl+Tab/Ctrl+Shift+Tab for switching between open documents landed on a
+  toolbar button instead of switching (macOS reserves that combination) —
+  document switching on macOS is now Cmd+Shift+]/[.
+- **macOS: the QUILL key answers to a real Ctrl+Shift+` press.** macOS reports
+  the Cmd key, not the physical Control key, through the check QUILL was using
+  — so a literal Ctrl+Shift+` press went unrecognized. It's recognized now.
+  (Cmd+Shift+` is macOS's own "cycle windows" shortcut and will keep going to
+  the OS first; reassign it in System Settings > Keyboard Shortcuts if you'd
+  rather use Cmd.)
+- **Windows-only UI strings no longer render verbatim on macOS (#37).** Strings
+  that named a Windows-only mechanism now adapt to the platform: the credential
+  vault is "macOS Keychain" instead of "Windows Credential Manager" in API-key,
+  publish, and forget-key messages; the dictation status says "System dictation"
+  instead of "Windows dictation"; the setup wizard says "In my user profile"
+  instead of "In my Windows user profile"; and help text that examples a
+  "Ctrl+Alt" chord says "Cmd+Alt" on macOS.
+
+### A full platform review
 
 A top-to-bottom audit of QUILL's macOS support landed ~24 fixes. The highlights
 for Mac users:
@@ -330,7 +393,7 @@ for Mac users:
   found even when it genuinely exists. The paths now use forward slashes, which
   compose correctly on both platforms.
 
-## macOS: a second pass of small fixes
+### A second pass of small fixes
 
 A follow-up sweep over the platform review closed a few more items. Two are
 fully fixed; three are code-complete and unit-tested here but only show their
@@ -364,7 +427,7 @@ tell us through Help > Report a Bug if a symptom persists and we'll reopen it.
   characters) is now piped to eSpeak via `--stdin` instead. Please confirm a
   very long Read Aloud span synthesizes fully without truncation. (#64/#77)
 
-## macOS: a third pass of small fixes
+### A third pass of small fixes
 
 The platform review's third sweep closed seven more items. Four are fully fixed
 and unit-tested here; three are code-complete but only show their real effect on
@@ -405,12 +468,14 @@ Help > Report a Bug if a symptom persists and we'll reopen it.
 
 *Tester results wanted:*
 
-- **Dark Mode and Reduce Motion are now detected from the OS.** QUILL can now read
-  macOS's *Increase Contrast*, *Reduce Motion*, and *Dark Mode* (the
-  `AppleInterfaceStyle` default) settings via `defaults read`, so a future theme
-  sync can follow the system instead of being manual-only. Please confirm QUILL
-  reports the right state when you toggle Dark Mode / Increase Contrast / Reduce
-  Motion in System Settings. (#6)
+- **Dark Mode and high-contrast detection use the right source (#6).** QUILL
+  reads Dark Mode through wx's system-appearance API
+  (`SystemSettings.GetAppearance().IsDark()`), which modern wx reports correctly
+  on macOS, and detects Increase Contrast through the OS default — so a theme
+  can follow the system instead of being manual-only. The earlier custom
+  `defaults read`-based Dark Mode and Reduce Motion helpers had no UI consumer
+  (dead code) and were removed. Please confirm QUILL's theme follows Dark Mode
+  when you toggle it in System Settings.
 - **The speech self-test works on macOS.** Verifying a downloaded speech engine
   used to depend on Windows SAPI 5 to synthesize a test clip — so "Test" always
   failed on a Mac. It now synthesizes the test clip with the built-in `say`
@@ -423,7 +488,7 @@ Help > Report a Bug if a symptom persists and we'll reopen it.
   cursor now stays at the sentence start when you pause mid-sentence, so resume
   re-reads the partial sentence. (#65/#78)
 
-## macOS: a fourth pass of small fixes
+### A fourth pass of small fixes
 
 The platform review's fourth sweep closed six more items. Three are fully fixed
 and unit-tested here; three are code-complete but only show their real effect on
@@ -466,16 +531,15 @@ Help > Report a Bug if a symptom persists and we'll reopen it.
   Zoom, Bring All to Front, and the live window list — alongside QUILL's own
   entries. Please confirm the Window menu sits in the right place and shows the
   standard Mac items. (#76)
-
-*Help wanted (deferred for Mac-hardware validation):*
-
-- **A first-class "macOS (system voice)" Read Aloud engine.** The native TTS
-  backend that powers the self-voicing fallback (#2) is in place, but wiring it
-  as a selectable engine in Speech Hub — the voice picker, preview, and
-  export-to-file across the Read Aloud dispatch sites — is deferred until it can
-  be validated on real Mac hardware rather than shipped half-wired. The
-  settings engine-choices list still shows the Windows-era options on macOS for
-  now. (#21/#75)
+- **"macOS (system voice)" is now a first-class Read Aloud engine (#21/#75).**
+  The native TTS backend that powers the self-voicing fallback (#2) is now wired
+  as a selectable engine: it appears in the Speech Hub engine list and the
+  settings engine-choices on macOS, the voice picker lists system voices, the
+  Preview button speaks a sample, Read Aloud reads with pause/stop, and batch
+  export produces audio — all through the built-in `say` command, so it works
+  even on a Mac without pyobjc. Please confirm the voice picker lists your
+  system voices, Preview speaks, Read Aloud reads with pause/stop, and
+  export-to-file produces audio.
 
 ## Quillin signatures, verified for real
 
@@ -498,11 +562,6 @@ Help > Report a Bug if a symptom persists and we'll reopen it.
 - **AI Hub: choosing a provider stays where you put it.** Arrowing through the
   Provider list without opening its dropdown could bounce focus over to the Model
   field the moment its suggestions refreshed. Focus now stays put.
-- **macOS: the QUILL key answers to a real Ctrl+Shift+` press.** macOS reports the
-  Cmd key, not the physical Control key, through the check QUILL was using — so a
-  literal Ctrl+Shift+` press went unrecognized. It's recognized now. (Cmd+Shift+`
-  is macOS's own "cycle windows" shortcut and will keep going to the OS first;
-  reassign it in System Settings > Keyboard Shortcuts if you'd rather use Cmd.)
 
 ## Language, stability, and support
 
