@@ -71,6 +71,47 @@ def test_resolve_executable_rejects_disallowed_basename(tmp_path: Path) -> None:
     assert whispercpp.resolve_whisper_executable(str(evil)) is None
 
 
+def test_resolve_executable_rejects_openai_whisper_cli(tmp_path: Path) -> None:
+    # Issue #931: the bare ``whisper.exe`` is the openai-whisper PyPI package
+    # CLI, not whisper.cpp. Accepting it made QUILL feed whisper.cpp flags
+    # (-m/-f/-oj/-of) to a program that speaks --model/--output_format, so its
+    # argparse exited with code 2 ("Transcription failed (code 2)"). It must be
+    # rejected on the configured path, in bundled dirs, and on PATH.
+    fake = tmp_path / "whisper.exe"
+    fake.write_text("", encoding="utf-8")
+    assert whispercpp.resolve_whisper_executable(str(fake)) is None
+    bare = tmp_path / "whisper"
+    bare.write_text("", encoding="utf-8")
+    assert whispercpp.resolve_whisper_executable(str(bare)) is None
+
+
+def test_resolve_executable_does_not_pick_openai_whisper_in_engine_dir(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    # A bare ``whisper.exe`` sitting in the QUILL-managed engine dir must not be
+    # mistaken for whisper.cpp (issue #931). Only whisper-cli / main qualify.
+    monkeypatch.setattr(whispercpp.shutil, "which", lambda _name: None)
+    monkeypatch.delenv("QUILL_APP_ROOT", raising=False)
+    engine_dir = tmp_path / "speech-engine"
+    engine_dir.mkdir(parents=True)
+    (engine_dir / "whisper.exe").write_text("", encoding="utf-8")
+    assert whispercpp.resolve_whisper_executable() is None
+
+
+def test_resolve_executable_does_not_pick_openai_whisper_on_path(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    # If only the openai-whisper ``whisper``/``whisper.exe`` is on PATH, QUILL
+    # reports "not installed" rather than running the wrong CLI (issue #931).
+    monkeypatch.setattr(
+        whispercpp.shutil,
+        "which",
+        lambda name: str(tmp_path / "whisper.exe") if name in ("whisper", "whisper.exe") else None,
+    )
+    monkeypatch.delenv("QUILL_APP_ROOT", raising=False)
+    assert whispercpp.resolve_whisper_executable() is None
+
+
 def test_resolve_executable_finds_bundled_under_app_root(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:

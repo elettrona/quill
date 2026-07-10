@@ -49,12 +49,19 @@ PROVIDER_ID = "whispercpp"
 
 # Narrow security allowlist for the whisper.cpp CLI basename (with/without the
 # Windows .exe suffix). QUILL never runs an arbitrary executable for speech.
+#
+# Note: the bare ``whisper`` / ``whisper.exe`` name is deliberately EXCLUDED. It
+# belongs to the openai-whisper PyPI package CLI (``pip install openai-whisper``),
+# which is a *different* program with an incompatible flag dialect (--model /
+# --output_format / --output_dir, not whisper.cpp's -m / -f / -oj / -of).
+# Accepting it made QUILL find ``whisper.EXE`` on PATH when a user had the
+# Python package installed but not whisper.cpp, then feed it whisper.cpp flags
+# that its argparse rejected with exit code 2 ("Transcription failed (code 2)",
+# issue #931). whisper.cpp ships as ``whisper-cli`` (newer) or ``main`` (older).
 _ALLOWED_BASENAMES = frozenset({
     "whisper-cli",
-    "whisper",
     "main",
     "whisper-cli.exe",
-    "whisper.exe",
     "main.exe",
 })
 
@@ -174,15 +181,13 @@ def resolve_whisper_executable(configured_path: str | None = None) -> str | None
         "whisper-cli",
         "main.exe",
         "main",
-        "whisper.exe",
-        "whisper",
     )
     for directory in engine_search_dirs():
         for name in bundled_names:
             probe = directory / name
             if probe.is_file() and probe.name.lower() in _ALLOWED_BASENAMES:
                 return str(probe)
-    for name in ("whisper-cli", "whisper", "main"):
+    for name in ("whisper-cli", "main"):
         found = shutil.which(name)
         if found and Path(found).name.lower() in _ALLOWED_BASENAMES:
             return found
