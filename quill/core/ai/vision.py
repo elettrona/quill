@@ -40,65 +40,6 @@ DEFAULT_IMAGE_DESCRIPTION_PROMPT = (
     "transcribe it verbatim. Be concise but complete."
 )
 
-#: Ollama model-name fragments that denote a multimodal (vision) model -- one
-#: that can accept image input via ``/api/chat``. Checked before the text-only
-#: set so a name such as ``llama3.2-vision`` is not mistaken for text-only
-#: ``llama3.2``.
-_VISION_MODEL_FRAGMENTS: tuple[str, ...] = (
-    "llava",
-    "bakllava",
-    "moondream",
-    "llama3.2-vision",
-    "llama3-vision",
-    "qwen2.5-vl",
-    "qwen2-vl",
-    "qwen-vl",
-    "minicpm-v",
-    "cogvlm",
-    "internvl",
-    "glm4v",
-    "ovis",
-    "gemma3",
-    "pixtral",
-)
-
-#: Ollama model-name fragments that denote a confirmed text-only model (the
-#: defaults / recommended text set). Used only to give a precise, actionable
-#: error *before* a doomed request; unrecognized models are left to the server,
-#: whose error body is now surfaced by ``_detail_from_http_error``.
-_TEXT_ONLY_MODEL_FRAGMENTS: tuple[str, ...] = (
-    "llama3.2:1b",
-    "llama3.2:3b",
-    "qwen2.5:",
-    "qwen2:",
-    "llama3.1:8b",
-    "llama3:8b",
-    "phi3",
-    "phi-3",
-    "mistral:7b",
-    "gemma2:",
-)
-
-
-def ollama_model_supports_vision(model: str) -> bool | None:
-    """Whether an Ollama model can describe images, judged by its name.
-
-    Returns ``True`` for a known multimodal model, ``False`` for a known
-    text-only model, and ``None`` when the name is unrecognized -- the caller
-    should then proceed and let the server respond, because its error body is
-    surfaced by the shared POST path (``_detail_from_http_error``). Vision
-    fragments are checked first so ``llama3.2-vision`` is not mistaken for the
-    text-only ``llama3.2``.
-    """
-    name = (model or "").strip().lower()
-    if not name:
-        return None
-    if any(frag in name for frag in _VISION_MODEL_FRAGMENTS):
-        return True
-    if any(frag in name for frag in _TEXT_ONLY_MODEL_FRAGMENTS):
-        return False
-    return None
-
 
 def _heic_to_jpeg_bytes(path: Path) -> bytes:
     """Convert a HEIC/HEIF file to JPEG bytes in memory (requires pillow-heif).
@@ -239,16 +180,24 @@ def describe_image(
     if policy_error:
         return None, policy_error
     model = (settings.model or "").strip() or default_model_for_provider(provider)
-    # Pre-flight: Ollama ships text-only defaults (e.g. llama3.2:1b) that cannot
-    # read images. Blocking only *known* text-only models avoids false-negatives
-    # -- vision and unrecognized models proceed and let the server answer (its
-    # error body is surfaced by _detail_from_http_error).
-    if provider == "ollama" and ollama_model_supports_vision(model) is False:
-        return None, (
-            f"Your local model '{model}' cannot read images. Install a "
-            "vision-capable model (for example, run 'ollama pull llava') and "
-            "select it in AI Hub > AI Model & Connection, then try again."
-        )
+    # Pre-flight (dynamic, no hardcoded model list): ask Ollama /api/show for the
+    # model's real capabilities. If it confirms the model lacks "vision", fail
+    # fast with an actionable message before a doomed request. If capabilities
+    # are unknown (Ollama down, old version without the capabilities field), do
+    # NOT guess -- proceed and let the server answer; its error body is surfaced
+    # by _detail_from_http_error. This stays correct as models are added/renamed.
+    if provider == "ollama":
+        from quill.core.ai.ollama_capabilities import fetch_model_capabilities
+
+        caps = fetch_model_capabilities(host, model)
+        if caps is not None and not any(c.lower() == "vision" for c in caps):
+            badge = ", ".join(caps) if caps else "text only"
+            return None, (
+                f"Your local model '{model}' cannot read images (capabilities: "
+                f"{badge}). Install a vision-capable model (for example, run "
+                "'ollama pull llava') and select it in AI Hub > AI Model & "
+                "Connection, then try again."
+            )
     if image_path.suffix.lower() in {".heic", ".heif"}:
         try:
             raw = _heic_to_jpeg_bytes(image_path)

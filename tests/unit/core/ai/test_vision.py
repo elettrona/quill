@@ -10,8 +10,8 @@ from quill.core.ai.vision import (
     DEFAULT_IMAGE_DESCRIPTION_PROMPT,
     _heic_to_jpeg_bytes,
     build_image_description_body,
+    describe_image,
     image_mime_for_path,
-    ollama_model_supports_vision,
 )
 
 _B64 = "aGVsbG8="  # "hello"
@@ -112,92 +112,108 @@ def test_heic_to_jpeg_bytes_returns_jpeg_magic(tmp_path: Path) -> None:
     assert result[:2] == b"\xff\xd8", "Expected JPEG SOI marker"
 
 
-# --- Ollama vision pre-flight ---
+# --- Ollama vision pre-flight (dynamic /api/show capability check) ---
 
 
-def test_vision_known_multimodal_models_return_true() -> None:
-    for model in (
-        "llava:7b",
-        "llava-llama3",
-        "bakllava",
-        "moondream:1.8b",
-        "llama3.2-vision",
-        "qwen2.5-vl:7b",
-        "minicpm-v",
-        "gemma3:12b",
-        "pixtral",
-    ):
-        assert ollama_model_supports_vision(model) is True, model
-
-
-def test_vision_known_text_only_models_return_false() -> None:
-    for model in (
-        "llama3.2:1b-instruct-q4_K_M",
-        "llama3.2:3b",
-        "qwen2.5:7b",
-        "qwen2:7b",
-        "llama3.1:8b",
-        "phi3",
-        "mistral:7b",
-        "gemma2:9b",
-    ):
-        assert ollama_model_supports_vision(model) is False, model
-
-
-def test_vision_unknown_model_returns_none() -> None:
-    assert ollama_model_supports_vision("totally-made-up-model") is None
-    assert ollama_model_supports_vision("") is None
-
-
-def test_vision_vision_fragment_wins_over_text_only_prefix() -> None:
-    # "llama3.2-vision" must be multimodal even though "llama3.2" alone is
-    # text-only -- the vision allowlist is checked first.
-    assert ollama_model_supports_vision("llama3.2-vision:11b") is True
-
-
-def test_vision_predicate_is_case_insensitive() -> None:
-    assert ollama_model_supports_vision("LLAVA:7b") is True
-    assert ollama_model_supports_vision("  Moondream:1.8b  ") is True
-
-
-def test_describe_image_blocks_text_only_ollama_with_actionable_message(tmp_path: Path) -> None:
-    from quill.core.ai.vision import describe_image
-    from quill.core.assistant_ai import AssistantConnectionSettings
-
+def _png(tmp_path: Path) -> Path:
     img = tmp_path / "selfie.png"
     img.write_bytes(b"\x89PNG\r\n\x1a\n" + b"\x00" * 32)  # a non-empty dummy image
+    return img
 
+
+def test_describe_image_blocks_text_only_ollama_with_actionable_message(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from quill.core.assistant_ai import AssistantConnectionSettings
+
+    monkeypatch.setattr(
+        "quill.core.ai.ollama_capabilities.fetch_model_capabilities",
+        lambda host, model, **kw: ["completion"],
+    )
     settings = AssistantConnectionSettings(
         provider="ollama",
         host="http://localhost:11434",
-        model="llama3.2:1b-instruct-q4_K_M",
+        model="llama3.2:1b",
     )
-    text, error = describe_image(settings, "", img)
+    text, error = describe_image(settings, "", _png(tmp_path))
     assert text is None
     assert error is not None
-    # The message must steer the user toward a vision model and AI Hub.
+    # The message must name the model, state it cannot read images, and steer
+    # the user toward a vision model + AI Hub.
+    assert "llama3.2:1b" in error
     assert "llava" in error.lower()
     assert "ai hub" in error.lower()
 
 
-def test_describe_image_proceeds_for_unknown_ollama_model(tmp_path: Path) -> None:
-    # An unrecognized model is not blocked pre-flight; it reaches the network
-    # layer, which is mocked here so no real egress happens.
-    from quill.core.ai.vision import describe_image
+def test_describe_image_proceeds_for_vision_ollama(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     from quill.core.assistant_ai import AssistantConnectionSettings
 
-    img = tmp_path / "selfie.png"
-    img.write_bytes(b"\x89PNG\r\n\x1a\n" + b"\x00" * 32)
-
+    monkeypatch.setattr(
+        "quill.core.ai.ollama_capabilities.fetch_model_capabilities",
+        lambda host, model, **kw: ["completion", "vision"],
+    )
     settings = AssistantConnectionSettings(
         provider="ollama",
         host="http://localhost:11434",
-        model="some-unknown-model",
+        model="llava:7b",
+    )
+    with unittest.mock.patch(
+        "quill.core.ai.vision._post_chat",
+        return_value=("a description", None),
+    ) as posted:
+        text, error = describe_image(settings, "", _png(tmp_path))
+    assert error is None
+    assert text == "a description"
+    assert posted.called  # the request was actually sent
+
+
+def test_describe_image_proceeds_when_capabilities_unknown(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # Unknown capabilities (Ollama down / old version without the field) must
+    # NOT block -- proceed and let the server answer. No false negatives.
+    from quill.core.assistant_ai import AssistantConnectionSettings
+
+    monkeypatch.setattr(
+        "quill.core.ai.ollama_capabilities.fetch_model_capabilities",
+        lambda host, model, **kw: None,
+    )
+    settings = AssistantConnectionSettings(
+        provider="ollama",
+        host="http://localhost:11434",
+        model="some-model",
     )
     with unittest.mock.patch(
         "quill.core.ai.vision._post_chat",
         return_value=("a description", None),
     ):
-        text, error = describe_image(settings, "", img)
+        text, error = describe_image(settings, "", _png(tmp_path))
     assert error is None
     assert text == "a description"
+
+
+def test_describe_image_does_not_probe_capabilities_for_non_ollama(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from quill.core.assistant_ai import AssistantConnectionSettings
+
+    probed: list[tuple[str, str]] = []
+
+    def _probe(host, model, **kw):
+        probed.append((host, model))
+        return ["completion", "vision"]
+
+    monkeypatch.setattr("quill.core.ai.ollama_capabilities.fetch_model_capabilities", _probe)
+    settings = AssistantConnectionSettings(
+        provider="openai",
+        host="https://api.openai.com",
+        model="gpt-4o-mini",
+    )
+    with unittest.mock.patch(
+        "quill.core.ai.vision._post_chat",
+        return_value=("a description", None),
+    ):
+        describe_image(settings, "key", _png(tmp_path))
+    assert probed == []  # the /api/show probe is Ollama-only

@@ -71,6 +71,9 @@ class _Stub:
         # / self._hub_provider through it, same as on the real dialog.
         self._populate_hub_models = MethodType(AIHubDialog._populate_hub_models, self)
         self._hub_provider = MethodType(AIHubDialog._hub_provider, self)
+        # Auto-probe is a live network call on the real dialog; stub it out so
+        # provider-change tests stay hermetic.
+        self._auto_probe_ollama = lambda: None
 
 
 def test_populate_hub_models_prefers_free_for_openrouter() -> None:
