@@ -29,7 +29,7 @@ from quill.core.tagging import (
     build_span_insertion,
 )
 from quill.io.rtf_model import format_at_markdown_offset
-from quill.platform.windows.sr_announce import announce
+from quill.platform.sr_announce import announce
 
 # Menu presets. Leaf items use plain Append (no keymap command), so they stay
 # clear of the menu_lint binding/label gate while remaining keyboard-navigable.

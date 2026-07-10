@@ -211,6 +211,7 @@ from quill.core.onboarding import (
 )
 from quill.core.outline import OutlineEntry, extract_outline_entries
 from quill.core.paths import app_data_dir, ensure_app_directories
+from quill.core.platform_nouns import credential_store_name, primary_command_chord_label
 from quill.core.publishing_linkage import (
     apply_publishing_linkage_to_source_metadata,
     get_publishing_linkage,
@@ -238,6 +239,7 @@ from quill.core.read_aloud import (
     synthesize_to_file_with_sapi5,
     synthesize_with_espeak,
     synthesize_with_kokoro,
+    synthesize_with_macos,
     synthesize_with_piper,
 )
 from quill.core.recent import (
@@ -367,8 +369,14 @@ from quill.io.pandoc import (
     convert_file_with_pandoc,
 )
 from quill.io.text import read_text_document
+from quill.platform.announce_engine import AnnouncementEngine, prewarm_tts_engine
+from quill.platform.sr_announce import (
+    announce,
+    enable_transcript_capture,
+    set_announce_handler,
+    set_transcript_path,
+)
 from quill.platform.windows.high_contrast import is_high_contrast_enabled
-from quill.platform.windows.prism_bridge import AnnouncementEngine, prewarm_tts_engine
 from quill.platform.windows.shell_integration import (
     apply_shell_verb_settings,
     build_shell_integration_plan,
@@ -377,12 +385,6 @@ from quill.platform.windows.shell_integration import (
     remove_context_menu,
     remove_shell_integration,
 )
-from quill.platform.windows.sr_announce import (
-    announce,
-    enable_transcript_capture,
-    set_announce_handler,
-    set_transcript_path,
-)
 from quill.platform.windows.sr_detect import detect_screen_reader
 from quill.stability.memory_watch import should_trace_memory, start_memory_tracing
 from quill.stability.task_manager import TaskManager
@@ -390,7 +392,12 @@ from quill.stability.ui_responsiveness import mark_wx_main_thread
 from quill.stability.wx_heartbeat import HeartbeatState, WxHeartbeatTimer, WxHeartbeatWatchdog
 from quill.ui.context_help import ContextHelpMixin, warm_help_topics
 from quill.ui.csv_grid import CsvGridSurface
-from quill.ui.dialog_contract import apply_modal_ids, focus_primary_control, show_modal_dialog
+from quill.ui.dialog_contract import (
+    apply_modal_ids,
+    focus_primary_control,
+    ok_cancel_platform_order,
+    show_modal_dialog,
+)
 from quill.ui.editor_surface import PLAIN, RICH, surface_kind
 from quill.ui.html_paste_cleaner import analyze_paste
 from quill.ui.keymap_editor import KeymapEditorMixin
@@ -3775,7 +3782,20 @@ class MainFrame(
         self._unregister_global_hotkeys()
         binding = self._binding_for("tools.sticky_note_capture")
         parsed = self._parse_keybinding(binding)
-        if parsed is None or not hasattr(self.frame, "RegisterHotKey"):
+        if parsed is None:
+            return
+        if not hasattr(self.frame, "RegisterHotKey"):
+            # #18/#54: RegisterHotKey is Windows-only; on macOS the system-wide
+            # sticky-note hotkey cannot be registered. Say so instead of silently
+            # dropping the binding -- the in-app Tools > Sticky Note command and
+            # the QUILL-key chord still work. Only message when the user actually
+            # configured a single-keystroke global binding (a chord parses to None
+            # above and never reaches here).
+            if sys.platform == "darwin" and binding:
+                self._set_status(
+                    "System-wide sticky-note hotkey is not available on macOS; "
+                    "use the Tools menu or the QUILL-key chord instead."
+                )
             return
         flags, key_code = parsed
         try:
@@ -5155,14 +5175,28 @@ class MainFrame(
             return True
 
         target = caret
-        if event.ControlDown() and key_code == wx.WXK_HOME:
+        # macOS text semantics (#7/#8): Option (Alt) is the word-movement
+        # modifier and Cmd (wx ControlDown on darwin) is the line/document
+        # bounds modifier. Windows uses Ctrl for both. Branching here keeps
+        # the extend-selection caret movement matching native Mac muscle memory
+        # instead of using Cmd for word movement.
+        is_darwin = sys.platform == "darwin"
+        word_mod = event.AltDown() if is_darwin else event.ControlDown()
+        cmd_down = event.ControlDown()  # Cmd on darwin, Ctrl on Windows
+        if cmd_down and key_code == wx.WXK_HOME:
             target = 0
-        elif event.ControlDown() and key_code == wx.WXK_END:
+        elif cmd_down and key_code == wx.WXK_END:
             target = len(text)
-        elif event.ControlDown() and key_code == wx.WXK_LEFT:
+        elif word_mod and key_code == wx.WXK_LEFT:
             return move_word(reverse=True)
-        elif event.ControlDown() and key_code == wx.WXK_RIGHT:
+        elif word_mod and key_code == wx.WXK_RIGHT:
             return move_word(reverse=False)
+        elif is_darwin and cmd_down and key_code == wx.WXK_LEFT:
+            # Cmd+Left -> start of line (macOS HIG line-bound movement).
+            target = line_starts[line_index_for_position(caret)]
+        elif is_darwin and cmd_down and key_code == wx.WXK_RIGHT:
+            # Cmd+Right -> end of line (macOS HIG line-bound movement).
+            target = line_limit(line_index_for_position(caret))
         elif key_code == wx.WXK_LEFT:
             target = max(0, caret - 1)
         elif key_code == wx.WXK_RIGHT:
@@ -6162,10 +6196,16 @@ class MainFrame(
             try:
                 if self.settings.tray_enabled:
                     self._ensure_tray_icon()
-                    self.frame.Hide()
-                    self._set_status(f"Quill is running in the {_TRAY_NOUN}")
-                    event.Veto()
-                    return
+                    # _ensure_tray_icon refuses on macOS (no menu-bar tray icon
+                    # is created), so _tray_icon stays None. Hiding with no icon
+                    # to restore from would leave the window non-restorable (#39);
+                    # fall through to a normal close instead. The refusal already
+                    # announced the limitation via the status bar.
+                    if self._tray_icon is not None:
+                        self.frame.Hide()
+                        self._set_status(f"Quill is running in the {_TRAY_NOUN}")
+                        event.Veto()
+                        return
             except Exception:  # noqa: BLE001 - a tray failure must not block exit
                 log.warning("Tray hide failed during close; closing instead", exc_info=True)
 
@@ -6850,7 +6890,7 @@ class MainFrame(
             f"Go to line: {_b('navigate.go_to_line')}",
             f"Command palette: {_b('app.command_palette')}",
             f"Go to anything: {_b('navigate.go_to_anything')}",
-            "QUILL browse mode: Ctrl+Alt+Q or Ctrl+Shift+Grave comma Q",
+            f"QUILL browse mode: {primary_command_chord_label()}+Q or Ctrl+Shift+Grave comma Q",
             f"Document summary: {_b('document.summary')}",
             f"Context help: {_b('help.context_help')} (this message)",
         ]
@@ -7143,8 +7183,10 @@ class MainFrame(
         ok_btn = wx.Button(dialog, id=wx.ID_OK, label="Paste")
         cancel_btn = wx.Button(dialog, id=wx.ID_CANCEL, label="Cancel")
         btn_row.AddStretchSpacer(1)
-        btn_row.Add(ok_btn, 0, wx.RIGHT, 6)
-        btn_row.Add(cancel_btn, 0)
+        # #53: native button order -- Cancel-left/OK-right on macOS.
+        first_btn, second_btn = ok_cancel_platform_order(ok_btn, cancel_btn)
+        btn_row.Add(first_btn, 0, wx.RIGHT, 6)
+        btn_row.Add(second_btn, 0)
         root.Add(btn_row, 0, wx.ALL | wx.EXPAND, 8)
         dialog.SetSizer(root)
         apply_modal_ids(dialog, affirmative_id=wx.ID_OK, escape_id=wx.ID_CANCEL)
@@ -12594,7 +12636,7 @@ class MainFrame(
                 _ps.Add(wx.StaticText(_p, label="Data location"), 0, wx.LEFT | wx.TOP, 6)
 
                 _portable_root = _storage_mode.portable_root_dir()
-                _mode_labels = ["In my Windows user profile (recommended)"]
+                _mode_labels = ["In my user profile (recommended)"]
                 _mode_values = ["appdata"]
                 if _portable_root is not None:
                     _mode_labels.append("Next to QUILL, on this portable drive")
@@ -17632,6 +17674,8 @@ class MainFrame(
                 espeak_executable=self.settings.read_aloud_espeak_executable,
                 espeak_voice=self.settings.read_aloud_espeak_voice,
                 espeak_rate=self.settings.read_aloud_espeak_rate,
+                macos_voice=self.settings.read_aloud_macos_voice,
+                macos_rate=self.settings.read_aloud_macos_rate,
                 sentence_pause_ms=self.settings.read_aloud_sentence_pause_ms,
                 punctuation_level=self.settings.announce_punctuation_level,
                 pronunciation_dictionaries=self._active_read_aloud_pronunciations(
@@ -18013,6 +18057,13 @@ class MainFrame(
                             sample, el_key, voice=voice_id, model=el_model
                         )
                     )
+                elif engine == "macos":
+                    synthesize_with_macos(
+                        sample,
+                        wav,
+                        voice=voice_id,
+                        rate=s.read_aloud_macos_rate,
+                    )
                 else:
                     raise ReadAloudUnavailableError(f"Unknown engine: {engine}")
                 _report("playing")
@@ -18059,6 +18110,7 @@ class MainFrame(
             discover_espeak_executable,
             discover_piper_executable,
             kokoro_engine_ready,
+            macos_say_available,
         )
         from quill.core.speech.engine_install import (
             is_faster_whisper_available,
@@ -18090,6 +18142,9 @@ class MainFrame(
             ("Kokoro (neural, offline)", "kokoro"),
             ("eSpeak-NG (many languages)", "espeak"),
         ]
+        if macos_say_available():
+            # macOS system voice via the say CLI — only offered on macOS (#21/#75).
+            offline_engine_options.append(("macOS (system voice)", "macos"))
         online_engine_options: list[tuple[str, str]] = [
             ("ElevenLabs (premium cloud)", "elevenlabs"),
         ]
@@ -18101,6 +18156,7 @@ class MainFrame(
             "kokoro": kokoro_engine_ready(),
             "espeak": discover_espeak_executable(self.settings.read_aloud_espeak_executable)
             is not None,
+            "macos": macos_say_available(),
         }
         online_engine_available = {"elevenlabs": elevenlabs_ready}
         configured_engine = self.settings.read_aloud_engine.strip().lower() or "sapi5"
@@ -18234,6 +18290,8 @@ class MainFrame(
                         self.settings.read_aloud_kokoro_voice = ra_result.voice_id
                     elif eng == "espeak":
                         self.settings.read_aloud_espeak_voice = ra_result.voice_id
+                    elif eng == "macos":
+                        self.settings.read_aloud_macos_voice = ra_result.voice_id
                     elif eng == "elevenlabs":
                         self.settings.read_aloud_elevenlabs_voice = ra_result.voice_id
                     else:
@@ -18246,6 +18304,8 @@ class MainFrame(
                     self.settings.read_aloud_dectalk_rate = ra_result.dectalk_rate
                 elif eng == "espeak":
                     self.settings.read_aloud_espeak_rate = ra_result.espeak_rate
+                elif eng == "macos":
+                    self.settings.read_aloud_macos_rate = ra_result.macos_rate
                 elif eng == "kokoro":
                     self.settings.read_aloud_kokoro_speed = ra_result.kokoro_speed
                 save_settings(self.settings)
@@ -18776,7 +18836,7 @@ class MainFrame(
         state = self._dictation.state
         if state == "listening":
             self._dictation.stop()
-            self._set_status("Windows dictation stopped")
+            self._set_status("System dictation stopped")
             return
 
         self.editor.SetFocus()
@@ -18784,12 +18844,12 @@ class MainFrame(
             self._dictation.start(DictationSettings())
         except DictationUnavailableError:
             self._show_message_box(
-                "Windows dictation is unavailable on this system.",
+                "System dictation is unavailable on this system.",
                 "Dictation",
                 wx.ICON_INFORMATION | wx.OK,
             )
             return
-        self._set_status("Windows dictation started. Speak into the editor.")
+        self._set_status("System dictation started. Speak into the editor.")
 
     def show_bw_model_status(self) -> None:
         from quill.core.bw_speech import (
@@ -19977,12 +20037,12 @@ class MainFrame(
 
     def _on_dictation_state_change(self, state: str) -> None:
         if state == "listening":
-            self._set_status("Windows dictation started. Speak into the editor.")
+            self._set_status("System dictation started. Speak into the editor.")
         else:
-            self._set_status("Windows dictation stopped")
+            self._set_status("System dictation stopped")
 
     def _on_dictation_error(self, error_msg: str) -> None:
-        self._set_status("Windows dictation error")
+        self._set_status("System dictation error")
 
     def install_shell_integration(self) -> None:
         wx = self._wx
@@ -23937,8 +23997,8 @@ class MainFrame(
 
         wx = self._wx
         result = self._show_message_box(
-            "Forget the stored AI provider API key? This removes it from the "
-            "Windows Credential Manager and the encrypted fallback file. You "
+            f"Forget the stored AI provider API key? This removes it from the "
+            f"{credential_store_name()} and the encrypted fallback file. You "
             "will need to re-enter the key to use cloud providers again.",
             "Forget API Key",
             wx.YES_NO | wx.ICON_WARNING,
@@ -27180,13 +27240,19 @@ class MainFrame(
         wx = self._wx
         status = getattr(self, "_trust_consent_status", None)
         reconsent = bool(status is not None and status.accepted and status.needs_reconsent)
+        if sys.platform == "darwin":
+            _key_storage_clause = "API keys are stored in the macOS Keychain."
+        else:
+            _key_storage_clause = (
+                "API keys are stored in Windows Credential Manager when available, "
+                "with DPAPI-encrypted fallback storage."
+            )
         message = (
             "By selecting I accept, you confirm that:\n\n"
             "1. You are responsible for how AI outputs are used, reviewed, and shared.\n"
             "2. Cloud AI requests are user-initiated and subject to provider terms.\n"
             "3. Quill does not persist chat session transcripts from AI interactions.\n"
-            "4. API keys are stored in Windows Credential Manager when available, "
-            "with DPAPI-encrypted fallback storage.\n\n"
+            f"4. {_key_storage_clause}\n\n"
             "Do you accept and want to continue?"
         )
         if reconsent:

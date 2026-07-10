@@ -3061,7 +3061,7 @@
   {
     "id": "view.send_to_tray",
     "title": "Send to Tray",
-    "body": "Hide QUILL to the system tray, keeping it running in the background. Restore it from the tray icon.",
+    "body": "Hide QUILL to the background, keeping it running. Restore it from the tray icon (Windows) or menu-bar item (macOS).",
     "keystrokes": [
       "Ctrl+Shift+Grave, T"
     ],

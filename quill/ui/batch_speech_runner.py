@@ -14,6 +14,7 @@ sounder, gaps, sentence/tail pauses and spoken headings.
 from __future__ import annotations
 
 import shutil
+import sys
 import tempfile
 from pathlib import Path
 from typing import Any
@@ -36,6 +37,9 @@ _ENGINE_OPTIONS = [
     ("Kokoro (neural, offline)", "kokoro"),
     ("eSpeak-NG (many languages)", "espeak"),
 ]
+if sys.platform == "darwin":
+    # macOS system voice via the say CLI — only offered on macOS (#21/#75).
+    _ENGINE_OPTIONS.append(("macOS (system voice)", "macos"))
 
 
 def _voices_for(engine: str) -> list[tuple[str, str]]:
@@ -51,6 +55,8 @@ def _voices_for(engine: str) -> list[tuple[str, str]]:
             voices = ra.list_espeak_voices()
         elif engine == "dectalk":
             voices = ra.list_dectalk_voices()
+        elif engine == "macos":
+            voices = ra.list_macos_voices()
         else:  # sapi5
             voices = ra.list_voices()
     except Exception:  # noqa: BLE001 - a missing engine yields an empty list
@@ -65,6 +71,7 @@ def _defaults(frame: Any) -> BatchSpeechRequest:
         "kokoro": s.read_aloud_kokoro_voice,
         "dectalk": s.read_aloud_dectalk_voice,
         "espeak": s.read_aloud_espeak_voice,
+        "macos": s.read_aloud_macos_voice,
     }.get(engine, s.read_aloud_voice)
     if engine == "piper" and s.read_aloud_piper_model:
         voice = Path(s.read_aloud_piper_model).stem
@@ -103,6 +110,7 @@ def _engine_available(frame: Any) -> dict[str, bool]:
         discover_espeak_executable,
         discover_piper_executable,
         kokoro_onnx_ready,
+        macos_say_available,
     )
 
     s = frame.settings
@@ -112,6 +120,7 @@ def _engine_available(frame: Any) -> dict[str, bool]:
         "piper": discover_piper_executable() is not None,
         "kokoro": kokoro_onnx_ready(),
         "espeak": discover_espeak_executable(s.read_aloud_espeak_executable) is not None,
+        "macos": macos_say_available(),
     }
 
 
@@ -479,6 +488,8 @@ def _persist_choices(frame: Any, req: BatchSpeechRequest) -> None:
             s.read_aloud_dectalk_voice = req.voice
         elif req.engine == "espeak":
             s.read_aloud_espeak_voice = req.voice
+        elif req.engine == "macos":
+            s.read_aloud_macos_voice = req.voice
         elif req.engine == "sapi5":
             s.read_aloud_voice = req.voice
     s.read_aloud_rate = req.rate

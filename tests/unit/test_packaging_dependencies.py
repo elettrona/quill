@@ -202,3 +202,61 @@ def test_windows_only_deps_are_excluded_from_macos_install(project: dict, dist: 
     for req in matches:
         marker = _marker(req)
         assert "win32" in marker, f"Windows-only {dist} is declared without a win32 marker: {req!r}"
+
+
+def _macos_bundle_includes() -> list[str]:
+    """The ``OPTIONS["includes"]`` list from ``scripts/setup_macos.py``, parsed
+    statically (the module executes ``setup()`` at import, so it cannot be
+    imported in a test)."""
+    import ast
+
+    setup_path = pathlib.Path(__file__).resolve().parents[2] / "scripts" / "setup_macos.py"
+    tree = ast.parse(setup_path.read_text("utf-8"))
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.Assign):
+            continue
+        for target in node.targets:
+            if isinstance(target, ast.Name) and target.id == "OPTIONS":
+                assert isinstance(node.value, ast.Dict)
+                for key, value in zip(node.value.keys, node.value.values, strict=True):
+                    if isinstance(key, ast.Constant) and key.value == "includes":
+                        assert isinstance(value, ast.List)
+                        return [
+                            elt.value
+                            for elt in value.elts
+                            if isinstance(elt, ast.Constant) and isinstance(elt.value, str)
+                        ]
+    return []
+
+
+def test_macos_bundle_includes_feedback_hub_for_report_a_bug() -> None:
+    """#11: ``feedback_hub`` is imported lazily (function-local) by
+    ``quill.core.issue_submit`` / ``quill.core.feedback_token`` /
+    ``main_frame.report_bug``, so py2app's import tracer cannot discover it. It
+    must be listed explicitly in ``setup_macos.py OPTIONS["includes"]`` or the
+    macOS ``.app`` ships without the Report-a-Bug direct-submission dialog -- the
+    bundled issues-only token is present, but the library that consumes it is
+    absent, so Report a Bug silently falls back to the bare web-link path."""
+    includes = _macos_bundle_includes()
+    assert "feedback_hub" in includes, (
+        "feedback_hub must be in setup_macos.py OPTIONS['includes'] so the macOS "
+        ".app bundles the Report-a-Bug dialog (#11); it is imported lazily so "
+        "py2app's import tracer cannot find it."
+    )
+    # nacl is the precedent (same lazy-import reason); keep it as a regression
+    # anchor so a future edit doesn't drop either explicit include.
+    assert "nacl" in includes
+
+
+def test_macos_release_workflow_installs_the_feedback_extra() -> None:
+    """#11: the ``[feedback]`` extra (``feedback-hub``) must be installed in the
+    macOS build and test jobs, or there is nothing for py2app to trace/include."""
+    yml = (
+        pathlib.Path(__file__).resolve().parents[2] / ".github" / "workflows" / "macos-release.yml"
+    ).read_text("utf-8")
+    assert ".[ui,spellcheck,macos,feedback]" in yml, (
+        "macos-release.yml build job must install the [feedback] extra (#11)"
+    )
+    assert ".[ui,spellcheck,macos,dev,feedback]" in yml, (
+        "macos-release.yml test job must install the [feedback] extra (#11)"
+    )

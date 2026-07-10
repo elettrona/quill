@@ -11,12 +11,15 @@ from quill.core.read_aloud import (
     list_dectalk_voices,
     list_espeak_english_voices,
     list_kokoro_voices,
+    list_macos_voices,
     list_piper_voices,
     list_voices,
+    macos_say_available,
     sentence_spans,
     synthesize_to_file_with_dectalk,
     synthesize_to_file_with_sapi5,
     synthesize_with_espeak,
+    synthesize_with_macos,
     synthesize_with_piper,
 )
 from quill.core.voice_catalog import (
@@ -1278,3 +1281,145 @@ def test_espeak_completed_sentence_advances_cursor(monkeypatch, tmp_path) -> Non
         on_progress=None,
     )
     assert controller._cursor == 12
+
+
+# ---------------------------------------------------------------------------
+# macOS ``say`` engine (#21/#75). Off-darwin (this dev box), the availability
+# and catalog functions must be inert and synthesis must raise rather than shell
+# out. On-darwin behavior is exercised by forcing ``sys.platform``/``shutil.which``
+# and stubbing ``subprocess.run``.
+# ---------------------------------------------------------------------------
+
+
+def _force_macos(monkeypatch) -> None:
+    """Pretend we are on macOS with the ``say`` CLI on PATH."""
+    monkeypatch.setattr(read_aloud_module.sys, "platform", "darwin")
+    monkeypatch.setattr(read_aloud_module.shutil, "which", lambda name: "/usr/bin/say")
+
+
+class _SayCompleted:
+    returncode = 0
+    stderr = b""
+    stdout = b""
+
+
+def test_macos_say_available_inert_off_darwin() -> None:
+    # This dev box is Windows; the guard must not claim ``say`` is present.
+    if read_aloud_module.sys.platform == "darwin":
+        return  # no-op on a real Mac runner
+    assert macos_say_available() is False
+
+
+def test_list_macos_voices_inert_off_darwin() -> None:
+    if read_aloud_module.sys.platform == "darwin":
+        return
+    assert list_macos_voices() == []
+
+
+def test_synthesize_with_macos_raises_off_darwin(tmp_path: Path) -> None:
+    if read_aloud_module.sys.platform == "darwin":
+        return
+    try:
+        synthesize_with_macos("Hi", tmp_path / "out.wav", voice="Alex")
+    except ReadAloudUnavailableError:
+        return
+    raise AssertionError("expected ReadAloudUnavailableError off-darwin")
+
+
+def test_synthesize_with_macos_empty_text_raises(monkeypatch, tmp_path: Path) -> None:
+    _force_macos(monkeypatch)
+    try:
+        synthesize_with_macos("   ", tmp_path / "out.wav")
+    except ReadAloudUnavailableError:
+        return
+    raise AssertionError("expected ReadAloudUnavailableError for empty text")
+
+
+def test_synthesize_with_macos_calls_say(monkeypatch, tmp_path: Path) -> None:
+    _force_macos(monkeypatch)
+    output = tmp_path / "speech.wav"
+    called: dict[str, object] = {}
+
+    def fake_run(command, **kwargs):
+        called["command"] = command
+        called["kwargs"] = kwargs
+        return _SayCompleted()
+
+    monkeypatch.setattr(read_aloud_module.subprocess, "run", fake_run)
+    synthesize_with_macos("Hello world", output, voice="Alex", rate=200)
+    cmd = called["command"]
+    assert cmd[0] == "say"
+    assert "-r" in cmd and "200" in cmd
+    assert "-v" in cmd and "Alex" in cmd
+    assert "-o" in cmd and str(output) in cmd
+    assert "Hello world" in cmd  # short text stays in argv
+
+
+def test_synthesize_with_macos_clamps_rate(monkeypatch, tmp_path: Path) -> None:
+    _force_macos(monkeypatch)
+    called: dict[str, object] = {}
+
+    def fake_run(command, **kwargs):
+        called["command"] = command
+        return _SayCompleted()
+
+    monkeypatch.setattr(read_aloud_module.subprocess, "run", fake_run)
+    synthesize_with_macos("Hi", tmp_path / "out.wav", rate=9999)
+    cmd = called["command"]
+    rate = int(cmd[cmd.index("-r") + 1])
+    assert rate == 450
+
+
+def test_synthesize_with_macos_pipes_long_text_via_file(monkeypatch, tmp_path: Path) -> None:
+    _force_macos(monkeypatch)
+    output = tmp_path / "speech.wav"
+    long_text = "word " * 4000  # ~20k chars, over the 8000 threshold
+    called: dict[str, object] = {}
+
+    def fake_run(command, **kwargs):
+        called["command"] = command
+        return _SayCompleted()
+
+    monkeypatch.setattr(read_aloud_module.subprocess, "run", fake_run)
+    synthesize_with_macos(long_text, output, voice="Alex")
+    cmd = called["command"]
+    assert "-f" in cmd
+    # the long text must NOT be passed as an argv element
+    assert long_text not in cmd
+    # the temp file path follows -f
+    file_arg = cmd[cmd.index("-f") + 1]
+    assert not Path(file_arg).exists()  # cleaned up after run
+
+
+def test_synthesize_with_macos_raises_on_failure(monkeypatch, tmp_path: Path) -> None:
+    _force_macos(monkeypatch)
+
+    class _Bad:
+        returncode = 1
+        stderr = b"voice not found"
+        stdout = b""
+
+    monkeypatch.setattr(read_aloud_module.subprocess, "run", lambda *_a, **_kw: _Bad())
+    try:
+        synthesize_with_macos("Hi", tmp_path / "out.wav", voice="Nope")
+    except ReadAloudUnavailableError as exc:
+        assert "voice not found" in str(exc)
+        return
+    raise AssertionError("expected ReadAloudUnavailableError on say failure")
+
+
+def test_make_synthesizer_macos_raises_off_darwin() -> None:
+    from quill.core.speech.document_speech import (
+        DocumentSpeechError,
+        SynthesisSpec,
+        make_synthesizer,
+    )
+
+    if read_aloud_module.sys.platform == "darwin":
+        return
+    spec = SynthesisSpec(engine="macos", voice="Alex", rate=175)
+    try:
+        make_synthesizer(spec)
+    except DocumentSpeechError:
+        return
+    raise AssertionError("expected DocumentSpeechError off-darwin")

@@ -86,7 +86,13 @@ OPTIONS = {
     # native libsodium binding (cffi); if notarization fails on its .so,
     # build_macos.sh's native-binary-out-of-zip lift (the protobuf path)
     # should cover it -- verify on a real build.
-    "includes": ["wx", "nacl"],
+    # feedback_hub is imported lazily/function-locally by
+    # quill.core.issue_submit / quill.core.feedback_token / main_frame.report_bug,
+    # so the tracer misses it too -- list it explicitly so the macOS build
+    # bundles the Report-a-Bug direct-submission dialog (#11; the [feedback]
+    # extra is installed in macos-release.yml). Without this, a Mac .app falls
+    # back to the bare web-link path even though the bundled token is present.
+    "includes": ["wx", "nacl", "feedback_hub"],
     "plist": {
         "CFBundleName": APP_DISPLAY_NAME,
         "CFBundleDisplayName": APP_DISPLAY_NAME,

@@ -143,6 +143,11 @@ class Settings:
     read_aloud_espeak_executable: str = ""
     read_aloud_espeak_voice: str = "en"
     read_aloud_espeak_rate: int = 175
+    # macOS system voice for Read Aloud (#21/#75): the say CLI voice id. Blank
+    # uses the system default voice. The say CLI ships with macOS, so no
+    # executable path field is needed (unlike espeak/piper/dectalk).
+    read_aloud_macos_voice: str = ""
+    read_aloud_macos_rate: int = 175
     # ElevenLabs premium cloud voice for Read Aloud (opt-in, per-session consent,
     # billed to the user's ElevenLabs quota). Blank ids use the module defaults.
     read_aloud_elevenlabs_voice: str = ""
@@ -696,6 +701,7 @@ class Settings:
             "piper",
             "kokoro",
             "espeak",
+            "macos",
             "elevenlabs",
         }
         if read_aloud_engine not in _valid_engines:
@@ -748,6 +754,12 @@ class Settings:
             read_aloud_espeak_rate = 80
         if read_aloud_espeak_rate > 450:
             read_aloud_espeak_rate = 450
+        read_aloud_macos_voice = str(data.get("read_aloud_macos_voice", "")).strip()
+        read_aloud_macos_rate = int(data.get("read_aloud_macos_rate", 175))
+        if read_aloud_macos_rate < 80:
+            read_aloud_macos_rate = 80
+        if read_aloud_macos_rate > 450:
+            read_aloud_macos_rate = 450
         ai_tts_provider = str(data.get("ai_tts_provider", "openai")).strip().lower()
         if ai_tts_provider not in {"openai", "gemini", "elevenlabs"}:
             ai_tts_provider = "openai"
@@ -1324,6 +1336,8 @@ class Settings:
             read_aloud_espeak_executable=read_aloud_espeak_executable,
             read_aloud_espeak_voice=read_aloud_espeak_voice,
             read_aloud_espeak_rate=read_aloud_espeak_rate,
+            read_aloud_macos_voice=read_aloud_macos_voice,
+            read_aloud_macos_rate=read_aloud_macos_rate,
             read_aloud_elevenlabs_voice=read_aloud_elevenlabs_voice,
             read_aloud_elevenlabs_model=read_aloud_elevenlabs_model,
             ai_tts_provider=ai_tts_provider,

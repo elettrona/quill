@@ -325,6 +325,9 @@ extend-exclude = [
     # lived here was retired once its learnings shipped (roadmap §5, §7). Not
     # first-party; excluded from lint/format.
     "docs/planning/source",
+    # One-off dispatch helper that drove the podcast episode reorg. Not
+    # first-party app code; long literal brief strings are intentional.
+    "docs/podcast/dispatch_main.py",
 ]
 
 [tool.ruff.format]

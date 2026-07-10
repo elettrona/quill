@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from quill.core.keymap import load_keymap
-from quill.platform.windows.sr_announce import (
+from quill.platform.sr_announce import (
     announce,
     clear_transcript,
     enable_transcript_capture,

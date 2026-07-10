@@ -101,7 +101,13 @@ DEFAULT_KEYMAP: dict[str, str] = {
     "navigate.speak_full_path": "Ctrl+Shift+Grave, P",
     "navigate.speak_status_summary": "Ctrl+Shift+Grave, Q",
     "view.send_to_tray": "Ctrl+Shift+Grave, T",
-    "view.toggle_soft_wrap": "Alt+Z",
+    # support#67: bare Alt+<letter> is a macOS Option deadkey (Alt+Z would
+    # steal a diacritical the user types). The pack guard
+    # (_is_macos_reserved_runtime_chord) already drops bare Alt+letter on
+    # darwin; apply the same policy to DEFAULT_KEYMAP -- disable on darwin
+    # so Option+Z types its character. The command stays available via the
+    # command palette and menu; a Mac-validated remap is the follow-up.
+    "view.toggle_soft_wrap": "" if sys.platform == "darwin" else "Alt+Z",
     "view.reveal_codes_toggle": "Alt+F3",  # WordPerfect Reveal Codes
     "view.toggle_tab_control": "Ctrl+Shift+Grave, Shift+T",
     "app.command_palette": "Ctrl+Shift+P",
@@ -127,7 +133,9 @@ DEFAULT_KEYMAP: dict[str, str] = {
     "navigate.previous_structure": "Alt+Up",
     "navigate.heading_organizer": "Ctrl+Shift+Grave, O",
     "navigate.list_bookmarks": "Alt+Shift+B",
-    "tools.ask_quill_chat": "Alt+Q",
+    # support#67: bare Alt+Q is a macOS Option deadkey -- disable on darwin
+    # (see view.toggle_soft_wrap above). Reachable via the command palette.
+    "tools.ask_quill_chat": "" if sys.platform == "darwin" else "Alt+Q",
     "tools.word_count": "Ctrl+Shift+W",
     "tools.spell_check_dialog": "F7",
     "tools.next_misspelling": "Ctrl+F7",
@@ -243,7 +251,9 @@ DEFAULT_KEYMAP: dict[str, str] = {
     # darwin alternate Cmd+Alt+M avoids Minimize (#31).
     "edit.pop_mark": "Cmd+Alt+M" if sys.platform == "darwin" else "Ctrl+M",
     "edit.exchange_point_mark": "Ctrl+Shift+X",
-    "edit.list_marks": "Alt+M",
+    # support#67: bare Alt+M is a macOS Option deadkey -- disable on darwin
+    # (see view.toggle_soft_wrap above). Reachable via the command palette.
+    "edit.list_marks": "" if sys.platform == "darwin" else "Alt+M",
     "edit.select_paragraph": "",  # Ctrl+Alt+P removed (§10.8 screen-reader-hostile)
     "edit.select_block": "Ctrl+Shift+B",
     # PR1 (EdSharp port): section move takes the Alt+Shift+Up/Down slot. The
@@ -354,7 +364,9 @@ DEFAULT_KEYMAP: dict[str, str] = {
     # Alt+H is reserved for the Help menu mnemonic; Ctrl+Shift+H is edit.replace_all;
     # Ctrl+Alt+ is banned by §10.8 (screen-reader-hostile). Use the QUILL-key chord.
     "help.context_help": "Ctrl+Shift+Grave, Shift+H",
-    "document.summary": "Alt+I",
+    # support#67: bare Alt+I is a macOS Option deadkey -- disable on darwin
+    # (see view.toggle_soft_wrap above). Reachable via the command palette.
+    "document.summary": "" if sys.platform == "darwin" else "Alt+I",
     # §8.2 — universal "Go to anything" palette (Quill+G).
     "navigate.go_to_anything": "Ctrl+Shift+Grave, G",
     # §8.1 — QUILL-key cheatsheet overlay (Alt+?).

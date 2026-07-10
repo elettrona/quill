@@ -1,16 +1,21 @@
-"""Report macOS appearance / accessibility preferences.
+"""Report macOS accessibility preferences.
 
 Counterpart to ``quill.platform.windows.high_contrast.is_high_contrast_enabled``.
-Reads Universal Access and appearance preferences via the ``defaults`` CLI;
-returns False when a value can't be read. Extended (#6) to also report Dark
-Mode (``AppleInterfaceStyle``) and Reduce Motion (``reduceMotion``) so QUILL can
-offer to sync its theme to the OS instead of being manual-only on macOS.
+Reads the Universal Access ``increaseContrast`` preference via the ``defaults``
+CLI and returns False when the value can't be read.
+
+Dark Mode is reported by wx's ``SystemSettings.GetAppearance().IsDark()``
+(see ``MainFrame._system_appearance_is_dark``), so a separate ``defaults``-CLI
+probe here would be redundant. There are no visual animations or transitions in
+this wxPython app to gate on a Reduce Motion preference, so no motion probe is
+exposed either. Both were prototyped under #6 and removed as dead code with no
+consumer; the ``defaults``-CLI reads are trivial to reintroduce if a future
+OS-sync feature needs them.
 """
 
 from __future__ import annotations
 
 import subprocess
-from dataclasses import dataclass
 
 
 def _read_defaults(domain: str, key: str) -> str | None:
@@ -36,40 +41,3 @@ def _affirmative(value: str | None) -> bool:
 
 def is_high_contrast_enabled() -> bool:
     return _affirmative(_read_defaults("com.apple.universalaccess", "increaseContrast"))
-
-
-def is_reduce_motion_enabled() -> bool:
-    """Report the macOS Reduce Motion accessibility preference (#6).
-
-    ``com.apple.universalaccess reduceMotion`` is ``1`` when enabled. Absent
-    (the default) reads as disabled, not an error.
-    """
-    return _affirmative(_read_defaults("com.apple.universalaccess", "reduceMotion"))
-
-
-def is_dark_mode_enabled() -> bool:
-    """Report the macOS Dark Mode appearance preference (#6).
-
-    ``-g AppleInterfaceStyle`` returns ``Dark`` only while Dark Mode is active;
-    the key is absent (nonzero exit) under Light Mode, which reads as disabled.
-    """
-    value = _read_defaults("-g", "AppleInterfaceStyle")
-    return value is not None and value.lower() == "dark"
-
-
-@dataclass(frozen=True, slots=True)
-class MacOSAppearance:
-    """Snapshot of the macOS appearance / motion preferences QUILL can sync to."""
-
-    high_contrast: bool
-    dark_mode: bool
-    reduce_motion: bool
-
-
-def macos_appearance() -> MacOSAppearance:
-    """Read all three appearance/motion preferences in one call (#6)."""
-    return MacOSAppearance(
-        high_contrast=is_high_contrast_enabled(),
-        dark_mode=is_dark_mode_enabled(),
-        reduce_motion=is_reduce_motion_enabled(),
-    )

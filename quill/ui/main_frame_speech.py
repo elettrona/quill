@@ -2134,14 +2134,15 @@ class SpeechCommandsMixin:
             self._start_dictation()
 
     def _start_dictation(self) -> None:
+        from quill.core.platform_nouns import primary_command_chord_label
         from quill.core.speech.capture import MicRecorder, capture_available
 
         wx = self._wx
         if not capture_available():
             self._show_message_box(
                 "Offline dictation needs microphone-capture support (the optional "
-                "'sounddevice' package). You can also use Windows dictation with "
-                "Ctrl+Alt+V.",
+                "'sounddevice' package). You can also use system dictation with "
+                f"{primary_command_chord_label()}+V.",
                 "Dictate (Offline)",
                 wx.ICON_INFORMATION | wx.OK,
             )

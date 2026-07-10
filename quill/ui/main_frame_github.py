@@ -29,6 +29,7 @@ from quill.core.github.token_store import (
     save_github_token,
 )
 from quill.core.paths import app_data_dir
+from quill.core.platform_nouns import credential_store_name
 
 if TYPE_CHECKING:
     from quill.core.github.models import BrowseResult, RemoteFile
@@ -262,7 +263,7 @@ class GitHubRemoteMixin:
                 self._set_status("GitHub token saved")
             else:
                 self._show_message_box(
-                    "Could not save the token. The Windows Credential Manager "
+                    f"Could not save the token. The {credential_store_name()} "
                     "may not be available.",
                     "GitHub Sign In",
                     self._wx.ICON_WARNING | self._wx.OK,

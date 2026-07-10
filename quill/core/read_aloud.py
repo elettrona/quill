@@ -728,6 +728,84 @@ def synthesize_with_espeak(
         )
 
 
+def macos_say_available() -> bool:
+    """True when the macOS ``say`` CLI is present (the macOS engine backend).
+
+    ``say`` ships with macOS, so this is a Darwin + ``shutil.which`` check rather
+    than the pyobjc ``NSSpeechSynthesizer`` probe used by the announcement
+    fallback -- the read-aloud engine shells out to ``say`` so it works even on a
+    Mac without pyobjc installed.
+    """
+    return sys.platform == "darwin" and shutil.which("say") is not None
+
+
+def synthesize_with_macos(
+    text: str,
+    output_path: Path,
+    *,
+    voice: str = "",
+    rate: int = 175,
+) -> None:
+    """Synthesize ``text`` to an audio file via the macOS ``say`` CLI (#21/#75).
+
+    ``say -v <voice> -r <rate> -o <output>`` writes audio in the format implied
+    by ``output_path``'s extension (WAV for ``.wav``), which the shared WAV
+    runner plays via ``afplay``. A blank ``voice`` uses the system default.
+    Very long input is fed via a temp file (``-f``) to avoid argv-length overflow,
+    mirroring the eSpeak ``--stdin`` guard (#64/#77). Inert off-darwin.
+    """
+    if not text.strip():
+        raise ReadAloudUnavailableError("Cannot generate speech from empty text")
+    if not macos_say_available():
+        raise ReadAloudUnavailableError("macOS system speech (say) is not available")
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    bounded_rate = max(80, min(450, int(rate)))
+    command = ["say", "-r", str(bounded_rate)]
+    voice_id = (voice or "").strip()
+    if voice_id:
+        command += ["-v", voice_id]
+    command += ["-o", str(output_path)]
+    use_file = len(text) > 8000
+    if use_file:
+        with tempfile.NamedTemporaryFile(
+            suffix=".txt", delete=False, mode="w", encoding="utf-8"
+        ) as fh:
+            fh.write(text)
+            input_file = Path(fh.name)
+        command += ["-f", str(input_file)]
+    else:
+        command.append(text)
+    try:
+        completed = subprocess.run(
+            command,
+            capture_output=True,
+            check=False,
+            timeout=_MAX_SYNTHESIS_SECONDS,
+        )
+    except subprocess.TimeoutExpired as exc:
+        raise ReadAloudUnavailableError(
+            f"macOS say did not complete within {_MAX_SYNTHESIS_SECONDS:.0f} seconds."
+        ) from exc
+    finally:
+        if use_file:
+            try:
+                input_file.unlink(missing_ok=True)
+            except OSError:
+                pass
+    if completed.returncode != 0:
+        raw = completed.stderr or completed.stdout or b""
+        detail = (
+            raw.decode("utf-8", errors="replace").strip()
+            if isinstance(raw, bytes)
+            else str(raw).strip()
+        )
+        raise ReadAloudUnavailableError(
+            f"macOS say failed: {detail}"
+            if detail
+            else f"macOS say exited with code {completed.returncode}."
+        )
+
+
 def sapi5_available() -> bool:
     """True when Windows SAPI 5 speech can be reached on this machine."""
     try:
@@ -886,6 +964,52 @@ def list_voices() -> list[VoiceOption]:
     ]
 
 
+def list_macos_voices() -> list[VoiceOption]:
+    """The macOS system voices as read-aloud options, or ``[]`` off-mac (#21/#75).
+
+    The voice id is the string ``say -v`` accepts. PyObjC's
+    ``NSSpeechSynthesizer.availableVoices()`` (via ``quill.platform.macos.tts``)
+    is the rich source; when it is unavailable the ``say -v ?`` CLI listing is
+    parsed so the picker is populated even on a Mac without pyobjc. Both are
+    inert (return ``[]``) off-darwin.
+    """
+    if sys.platform != "darwin":
+        return []
+    # Prefer the pyobjc catalog (names + language metadata) when available.
+    try:
+        from quill.platform.macos import tts as macos_tts
+
+        voices = macos_tts.list_voices()
+    except Exception:  # noqa: BLE001 - catalog must never raise into the UI
+        voices = []
+    if voices:
+        return [
+            VoiceOption(id=v.id, name=v.name, language=v.language, installed=True) for v in voices
+        ]
+    # Fallback: parse ``say -v ?`` (lines of "VoiceName<spaces>lang_code").
+    try:
+        completed = subprocess.run(
+            ["say", "-v", "?"],
+            capture_output=True,
+            check=False,
+            text=True,
+            errors="replace",
+            timeout=10,
+        )
+    except Exception:  # noqa: BLE001
+        return []
+    if completed.returncode != 0:
+        return []
+    options: list[VoiceOption] = []
+    for line in completed.stdout.splitlines():
+        parts = line.split(None, 2)
+        if len(parts) < 2:
+            continue
+        name, lang = parts[0], parts[1]
+        options.append(VoiceOption(id=name, name=name, language=lang, installed=True))
+    return options
+
+
 def list_elevenlabs_voices(api_key: str) -> list[VoiceOption]:
     """The ElevenLabs account's voices as read-aloud options, or ``[]``.
 
@@ -962,6 +1086,8 @@ class ReadAloudController:
         espeak_executable: str = "",
         espeak_voice: str = "en",
         espeak_rate: int = 175,
+        macos_voice: str = "",
+        macos_rate: int = 175,
         elevenlabs_api_key: str = "",
         elevenlabs_voice: str = "",
         elevenlabs_model: str = "",
@@ -982,6 +1108,7 @@ class ReadAloudController:
             "piper",
             "kokoro",
             "espeak",
+            "macos",
             "elevenlabs",
         }
         if normalized_engine == "sapi5" and not sapi5_available():
@@ -999,6 +1126,10 @@ class ReadAloudController:
             raise ReadAloudUnavailableError(
                 "eSpeak-NG executable was not found. "
                 "Install eSpeak-NG or configure the path in Read Aloud Settings."
+            )
+        if normalized_engine == "macos" and not macos_say_available():
+            raise ReadAloudUnavailableError(
+                "macOS system speech (the say command) is not available on this platform."
             )
         if normalized_engine == "elevenlabs":
             from quill.core.ai import elevenlabs_tts
@@ -1080,6 +1211,14 @@ class ReadAloudController:
                         or Path(espeak_executable).expanduser(),
                         voice=espeak_voice,
                         rate=espeak_rate,
+                        on_progress=on_progress,
+                    )
+                elif normalized_engine == "macos":
+                    self._run_macos_live(
+                        spans,
+                        text,
+                        voice=macos_voice,
+                        rate=macos_rate,
                         on_progress=on_progress,
                     )
                 elif normalized_engine == "elevenlabs":
@@ -1311,6 +1450,28 @@ class ReadAloudController:
         self._cache_seed = ("kokoro", voice, speed)
         self._run_wav_sentences(spans, text, on_progress=on_progress, generate_sentence_wav=gen)
 
+    def _run_macos_live(
+        self,
+        spans: list[SentenceSpan],
+        text: str,
+        *,
+        voice: str,
+        rate: int,
+        on_progress: Callable[[int, int], None] | None,
+    ) -> None:
+        """macOS system voice: synthesize each sentence via ``say`` then play it.
+
+        Reuses the cached WAV runner + the afplay playback path, so a repeated
+        sentence is not re-synthesized and stop/pause interrupts between
+        sentences exactly as for the other WAV-based engines (#21/#75).
+        """
+
+        def gen(sentence: str, out: Path) -> None:
+            synthesize_with_macos(sentence, out, voice=voice, rate=rate)
+
+        self._cache_seed = ("macos", voice, rate)
+        self._run_wav_sentences(spans, text, on_progress=on_progress, generate_sentence_wav=gen)
+
     def _run_elevenlabs_live(
         self,
         spans: list[SentenceSpan],
@@ -1375,12 +1536,30 @@ class ReadAloudController:
             if on_progress is not None:
                 on_progress(span.start, span.end)
             bounded_rate = max(80, min(450, int(rate)))
+            # #64/#77: pipe very long input via --stdin to avoid OS command-line
+            # length overflow (Windows ~32,767) -- same guard as the batch synth
+            # path. A long utterance as a trailing argv element can fail or truncate.
+            use_stdin = len(sentence) > 8000
+            command = [str(executable), "-v", voice, "-s", str(bounded_rate)]
+            if use_stdin:
+                command.append("--stdin")
+            else:
+                command.append(sentence)
             process = subprocess.Popen(
-                [str(executable), "-v", voice, "-s", str(bounded_rate), sentence],
+                command,
+                stdin=subprocess.PIPE if use_stdin else subprocess.DEVNULL,
                 stdout=subprocess.DEVNULL,
                 stderr=subprocess.DEVNULL,
                 creationflags=create_no_window,
             )
+            if use_stdin and process.stdin is not None:
+                try:
+                    process.stdin.write(sentence.encode("utf-8"))
+                    process.stdin.close()
+                except (BrokenPipeError, OSError):
+                    # eSpeak exited before reading all input; the poll loop
+                    # observes the exit code and raises as appropriate.
+                    pass
             self._active_process = process
             start = time.monotonic()
             while process.poll() is None:

@@ -24,6 +24,7 @@ session metadata).
 
 from __future__ import annotations
 
+import sys
 import webbrowser
 from collections.abc import Callable
 from pathlib import Path
@@ -139,8 +140,23 @@ class PowerToolsActionsMixin:
             if not clipboard.Open():
                 return False
             try:
-                data_format = wx.DataFormat("HTML Format")
-                if not clipboard.IsSupported(data_format):
+                # Windows exposes HTML as the CF_HTML "HTML Format" flavour;
+                # macOS exposes it as the public.html UTI (no CF_HTML header,
+                # so extract_cf_html_fragment returns the raw HTML as-is). Try
+                # the platform-native flavour(s) and use the first supported
+                # one (#52). The Windows single-flavour path is unchanged.
+                candidate_formats = (
+                    ("public.html", "Apple HTML pasteboard type", "HTML Format")
+                    if sys.platform == "darwin"
+                    else ("HTML Format",)
+                )
+                data_format = None
+                for name in candidate_formats:
+                    fmt = wx.DataFormat(name)
+                    if clipboard.IsSupported(fmt):
+                        data_format = fmt
+                        break
+                if data_format is None:
                     # Not a retry-worthy failure: the clipboard opened fine,
                     # it simply has no HTML flavour on it.
                     return True

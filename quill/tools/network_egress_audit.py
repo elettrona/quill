@@ -18,7 +18,11 @@ provider-wiring work (AI-13), where that call path first exists.
 from __future__ import annotations
 
 import ast
+from dataclasses import dataclass
+from functools import lru_cache
 from pathlib import Path
+
+from quill.tools.platform_guard import build_parent_map, platform_for_node
 
 _PACKAGE_ROOT = Path(__file__).resolve().parents[1]
 
@@ -42,8 +46,9 @@ _REVIEWED_EGRESS: dict[str, str] = {
         "credit check, production upload/start, status poll, result download. "
         "Reached only from the publish dialog's explicit buttons and the AI Hub "
         "Services tab's 'Check Account and Credits' button. "
-        "Requires the user's own API token from the Windows Credential Manager "
-        "(never settings); every use is an explicit publish action in a dialog "
+        "Requires the user's own API token from the OS credential vault "
+        "(Windows Credential Manager / macOS Keychain; never settings); every "
+        "use is an explicit publish action in a dialog "
         "that names the service; absent in Safe Mode. HTTPS-only, verified TLS, "
         "bounded timeout."
     ),
@@ -470,12 +475,31 @@ def _callee_name(call: ast.Call) -> str | None:
     return None
 
 
-def discover_egress_sites() -> dict[str, str]:
-    """Return {"<rel path>::<function>": "<source line text>"} for every call."""
-    sites: dict[str, str] = {}
+@dataclass(frozen=True)
+class EgressSite:
+    """One discovered egress call site: its enclosing function and platform tag."""
+
+    function: str
+    #: ``"darwin"`` when the call sits inside a ``sys.platform == "darwin"``
+    #: branch (Mac-only, never exercised on the Windows dev box); ``""`` otherwise.
+    platform: str
+
+
+@lru_cache(maxsize=1)
+def _scan_egress() -> dict[str, EgressSite]:
+    """Scan the package once, returning ``{site: EgressSite}`` for every call.
+
+    ``discover_egress_sites`` (the function-to-name map the gate enforces on) and
+    ``discover_egress_platforms`` (the Mac-only tagging the review surfaces) both
+    derive from this single pass so the two views cannot drift apart. Cached for
+    the process lifetime: the scan parses every module in the package, and a
+    single gate run or test session calls the derived views several times.
+    """
+    sites: dict[str, EgressSite] = {}
     for path in sorted(_PACKAGE_ROOT.rglob("*.py")):
         source = path.read_text(encoding="utf-8")
         tree = ast.parse(source, filename=str(path))
+        parents = build_parent_map(tree)
         for node in ast.walk(tree):
             if isinstance(node, ast.Call) and _callee_name(node) in _EGRESS_CALLEES:
                 rel = path.relative_to(_PACKAGE_ROOT).as_posix()
@@ -485,9 +509,30 @@ def discover_egress_sites() -> dict[str, str]:
                 # the same enclosing function are not possible by construction
                 # (one entry per function). Two egress calls in the same function
                 # would share the key, so keep the first to preserve the prior
-                # behavior and surface the collision via _first_seen_at().
-                sites.setdefault(site, func_name)
+                # behavior.
+                sites.setdefault(site, EgressSite(func_name, platform_for_node(parents, node)))
     return sites
+
+
+def discover_egress_sites() -> dict[str, str]:
+    """Return ``{"<rel path>::<function>": "<enclosing function name>"}``.
+
+    The gate enforces that every key here is reviewed in ``_REVIEWED_EGRESS``.
+    The value is the enclosing function name (kept for parity with prior
+    behaviour; the platform tag lives in :func:`discover_egress_platforms`).
+    """
+    return {site: record.function for site, record in _scan_egress().items()}
+
+
+def discover_egress_platforms() -> dict[str, str]:
+    """Return ``{site: platform}`` -- ``"darwin"`` for Mac-only sites, ``""`` else.
+
+    Informational, not enforcement: the reviewed-set gate is key-based and
+    unaffected by platform. A Mac-only egress site cannot be exercised on the
+    Windows dev box or in Windows CI, so surfacing it here lets a reviewer see
+    which reviewed entries only show their real behaviour on a Mac.
+    """
+    return {site: record.platform for site, record in _scan_egress().items()}
 
 
 def find_unreviewed_egress() -> tuple[set[str], set[str]]:

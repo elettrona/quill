@@ -19,7 +19,11 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
-from quill.ui.dialog_contract import apply_modal_ids, focus_primary_control
+from quill.ui.dialog_contract import (
+    apply_modal_ids,
+    focus_primary_control,
+    ok_cancel_platform_order,
+)
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -40,6 +44,7 @@ class VoiceBrowserResult:
     dectalk_rate: int = 200
     kokoro_speed: float = 1.0
     espeak_rate: int = 175
+    macos_rate: int = 175
 
 
 class VoiceBrowserDialog:
@@ -187,6 +192,13 @@ class VoiceBrowserDialog:
             sb, min=75, max=650, initial=getattr(s, "read_aloud_rate", 175)
         )
         self._rate_spin.SetName("Rate (words per minute)")
+        # support#69: a wx.SpinCtrl is a composite; VoiceOver focuses the inner
+        # TextCtrl, which does not inherit the parent's SetName. Name the child
+        # too so the number box is announced with its label (mirrors kok_spin).
+        for _child in self._rate_spin.GetChildren():
+            if isinstance(_child, wx.TextCtrl):
+                _child.SetName("Rate (words per minute)")
+                break
         rate_row.Add(self._rate_lbl, 0, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, 8)
         rate_row.Add(self._rate_spin, 1, wx.EXPAND)
         settings_box.Add(rate_row, 0, wx.EXPAND | wx.ALL, 4)
@@ -196,7 +208,11 @@ class VoiceBrowserDialog:
         self._vol_spin = wx.SpinCtrl(
             sb, min=0, max=100, initial=getattr(s, "read_aloud_volume", 100)
         )
-        self._vol_spin.SetName("Volume")
+        self._vol_spin.SetName("Volume (0 to 100)")
+        for _child in self._vol_spin.GetChildren():
+            if isinstance(_child, wx.TextCtrl):
+                _child.SetName("Volume (0 to 100)")
+                break
         vol_row.Add(self._vol_lbl, 0, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, 8)
         vol_row.Add(self._vol_spin, 1, wx.EXPAND)
         settings_box.Add(vol_row, 0, wx.EXPAND | wx.ALL, 4)
@@ -206,7 +222,11 @@ class VoiceBrowserDialog:
         self._pitch_spin = wx.SpinCtrl(
             sb, min=0, max=100, initial=getattr(s, "read_aloud_pitch", 50)
         )
-        self._pitch_spin.SetName("Pitch")
+        self._pitch_spin.SetName("Pitch (0 to 100)")
+        for _child in self._pitch_spin.GetChildren():
+            if isinstance(_child, wx.TextCtrl):
+                _child.SetName("Pitch (0 to 100)")
+                break
         pitch_row.Add(self._pitch_lbl, 0, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, 8)
         pitch_row.Add(self._pitch_spin, 1, wx.EXPAND)
         settings_box.Add(pitch_row, 0, wx.EXPAND | wx.ALL, 4)
@@ -267,8 +287,10 @@ class VoiceBrowserDialog:
             ok_btn = wx.Button(parent, id=wx.ID_OK)
             cancel_btn = wx.Button(parent, id=wx.ID_CANCEL)
             btn_row.AddStretchSpacer()
-            btn_row.Add(ok_btn, 0, wx.RIGHT, 6)
-            btn_row.Add(cancel_btn, 0)
+            # #53: native button order -- Cancel-left/OK-right on macOS.
+            first_btn, second_btn = ok_cancel_platform_order(ok_btn, cancel_btn)
+            btn_row.Add(first_btn, 0, wx.RIGHT, 6)
+            btn_row.Add(second_btn, 0)
             apply_modal_ids(parent, affirmative_id=wx.ID_OK, escape_id=wx.ID_CANCEL)
 
         root.Add(btn_row, 0, wx.EXPAND | wx.LEFT | wx.RIGHT | wx.BOTTOM, 10)
@@ -310,6 +332,7 @@ class VoiceBrowserDialog:
             list_elevenlabs_voices,
             list_espeak_voices,
             list_kokoro_voices,
+            list_macos_voices,
             list_piper_catalog_voices,
             list_voices,
         )
@@ -322,6 +345,8 @@ class VoiceBrowserDialog:
             return list_kokoro_voices()
         if eng == "espeak":
             return list_espeak_voices()
+        if eng == "macos":
+            return list_macos_voices()
         if eng == "elevenlabs":
             return list_elevenlabs_voices(self._elevenlabs_api_key)
         # sapi5 — every installed system voice, whatever its language, so a
@@ -342,6 +367,8 @@ class VoiceBrowserDialog:
         if eng == "espeak":
             raw = str(getattr(s, "read_aloud_espeak_voice", "") or "en-gb")
             return raw.split("+")[0]  # strip stored variant for list matching
+        if eng == "macos":
+            return str(getattr(s, "read_aloud_macos_voice", "") or "")
         if eng == "elevenlabs":
             return str(getattr(s, "read_aloud_elevenlabs_voice", "") or "")
         return str(getattr(s, "read_aloud_voice", "") or "")
@@ -396,7 +423,7 @@ class VoiceBrowserDialog:
 
     def _update_settings_panel(self, eng: str) -> None:
         s = self._settings
-        has_rate = eng in {"sapi5", "dectalk", "espeak"}
+        has_rate = eng in {"sapi5", "dectalk", "espeak", "macos"}
         has_vol_pitch = eng == "sapi5"
         has_kokoro = eng == "kokoro"
         has_any = has_rate or has_vol_pitch or has_kokoro
@@ -410,6 +437,9 @@ class VoiceBrowserDialog:
         elif eng == "espeak":
             self._rate_spin.SetRange(80, 450)
             self._rate_spin.SetValue(getattr(s, "read_aloud_espeak_rate", 175))
+        elif eng == "macos":
+            self._rate_spin.SetRange(80, 450)
+            self._rate_spin.SetValue(getattr(s, "read_aloud_macos_rate", 175))
 
         if has_vol_pitch:
             self._vol_spin.SetValue(getattr(s, "read_aloud_volume", 100))
@@ -648,6 +678,11 @@ class VoiceBrowserDialog:
                 self._rate_spin.GetValue()
                 if eng == "espeak"
                 else getattr(s, "read_aloud_espeak_rate", 175)
+            ),
+            "macos_rate": (
+                self._rate_spin.GetValue()
+                if eng == "macos"
+                else getattr(s, "read_aloud_macos_rate", 175)
             ),
         }
 

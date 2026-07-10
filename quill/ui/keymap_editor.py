@@ -30,6 +30,7 @@ from quill.core.keymap import (
     save_keymap,
 )
 from quill.core.keymap_query import bindings_equivalent, parse_binding
+from quill.core.platform_nouns import primary_command_chord_label
 from quill.ui.dialog_contract import apply_modal_ids
 
 #: Commands that take part in the QUILL Quick Nav single-key browse layer. They
@@ -109,9 +110,9 @@ class KeymapEditorMixin:
                 dialog,
                 label=(
                     "Search by command name, or type or record a shortcut such as "
-                    "Ctrl+Alt+M to see what it does. You can write control, ctrl, or "
-                    "ctl, in any order. Select a command and choose Edit to change "
-                    "its key."
+                    f"{primary_command_chord_label()}+M to see what it does. You can "
+                    "write control, ctrl, or ctl, in any order. Select a command and "
+                    "choose Edit to change its key."
                 ),
             ),
             0,

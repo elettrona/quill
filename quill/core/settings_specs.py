@@ -156,11 +156,11 @@ SETTING_SPECS: tuple[SettingSpec, ...] = (
     ),
     SettingSpec(
         "tray_enabled",
-        "Enable system tray mode",
+        "Enable background mode",
         "general",
         "bool",
-        "Keep QUILL available from the system tray.",
-        keywords=("tray", "notification area", "minimize"),
+        "Keep QUILL available from the system tray (Windows) or menu bar (macOS).",
+        keywords=("tray", "notification area", "menu bar", "minimize"),
     ),
     SettingSpec(
         "show_tab_control",
@@ -1232,6 +1232,7 @@ SETTING_SPECS: tuple[SettingSpec, ...] = (
             ("piper", "Piper"),
             ("kokoro", "Kokoro"),
             ("espeak", "eSpeak"),
+            ("macos", "macOS (system voice)"),
             ("elevenlabs", "ElevenLabs (premium cloud)"),
         ),
         feature_id="core.read_aloud",

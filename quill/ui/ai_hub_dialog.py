@@ -15,6 +15,7 @@ from __future__ import annotations
 from collections.abc import Callable
 
 from quill.core.i18n import _, lazy_gettext
+from quill.core.platform_nouns import credential_store_name
 from quill.ui.dialog_contract import apply_modal_ids
 
 _PROVIDER_CHOICES: tuple[tuple[str, object], ...] = (
@@ -565,10 +566,10 @@ class AIHubDialog:
                     "Auphonic masters finished audiobooks and podcast episodes "
                     "(leveling, noise reduction, encoding). QUILL uses it from the "
                     "Audio Studio's Chapter Workbench: Publish > Send to Auphonic. "
-                    "The API token is stored in the Windows Credential Manager, "
+                    "The API token is stored in the {store}, "
                     "never in a settings file, and nothing is ever uploaded "
                     "without a per-book confirmation."
-                )
+                ).format(store=credential_store_name())
             ),
         )
         auphonic_note.Wrap(640)

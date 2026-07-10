@@ -743,7 +743,7 @@ class _DataLocationPage(_WizardPage):
 
         self._appdata_radio = wx.RadioButton(
             self,
-            label=_("In my Windows user profile (recommended)"),
+            label=_("In my user profile (recommended)"),
             name="wizard.data_location_appdata",
             style=wx.RB_GROUP,
         )
