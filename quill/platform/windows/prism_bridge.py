@@ -338,9 +338,25 @@ class AnnouncementEngine:
             # earlier force_speech bypass made the SAPI self-voice talk right
             # over it (One Core reading the control while QUILL's SAPI voice
             # repeated the announcement). A live reader now always wins:
-            # force_speech only matters when no reader is running at all,
-            # where both operands pass anyway. Internal-state narration for an
-            # unbridged reader lands in the status bar instead of double talk.
+            # first QUILL asks the reader itself to speak the message (a UIA
+            # notification event — Narrator's own announcement channel, in the
+            # user's own One Core voice), and failing that the message lands
+            # in the status bar. Never the SAPI self-voice over a live reader.
+            if sys.platform == "win32" and _screen_reader_active():
+                try:
+                    from quill.platform.windows import narrator_announce
+
+                    if narrator_announce.announce(message, important=force_speech):
+                        self._state = replace(
+                            self._state,
+                            active_backend="uia_notification",
+                            backend_name="Screen reader (UIA notification)",
+                            last_error="",
+                        )
+                        return None
+                except Exception as exc:  # noqa: BLE001 - fall through to status bar
+                    logger.debug("UIA notification announce failed: %s", exc)
+                return None  # status bar only; no double talk (#966)
             if (
                 self._state.requested_backend in {"auto", "prism"}
                 and not _tts_engine_failed

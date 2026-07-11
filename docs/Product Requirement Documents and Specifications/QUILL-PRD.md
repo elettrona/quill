@@ -10567,9 +10567,25 @@ bridge could be acquired (Prism/accessible_output2 drive JAWS/NVDA before
 this point), so a detected-but-unbridged reader there is Narrator — and the
 bypass made QUILL's SAPI voice talk over One Core. The contract is now
 unconditional: **a running screen reader always suppresses the self-voice**,
-force_speech included; unbridged-reader announcements land in the status bar.
-``force_speech`` retains its purpose on the bridged paths (interrupting the
-reader's current utterance) and for users with no reader running.
+force_speech included. ``force_speech`` retains its purpose on the bridged
+paths (interrupting the reader's current utterance) and for users with no
+reader running.
+
+**Narrator as an announcement target (same release):** two additions make
+Narrator first-class rather than merely not-talked-over:
+
+- *API-level liveness* — ``sr_detect.narrator_event_present()`` reads the
+  named ``NarratorRunning`` Win32 event (one ``OpenEventW``), a second
+  signal behind the process scan, so Narrator detection cannot miss.
+- *Direct speech* — ``quill/platform/windows/narrator_announce.py`` raises
+  **UIA notification events** (``UiaRaiseNotificationEvent`` over a provider
+  wrapped from the frame's ``IAccessible`` via ``UiaProviderFromIAccessible``)
+  so the running UIA reader speaks QUILL's announcements in its own voice.
+  ``announce()`` tries this channel for any live-but-unbridged reader before
+  degrading to status-bar-only; ``important``/``force_speech`` maps to
+  interrupting notification processing. Every step degrades to False —
+  the channel can never crash or self-voice. Needs on-device Narrator
+  verification (the Beta 3 release notes solicit it).
 
 ### System-wide Clipboard Collector (shipped 0.9.0 Beta 3, #964)
 

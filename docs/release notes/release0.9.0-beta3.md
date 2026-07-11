@@ -98,9 +98,15 @@ A user asked a very reasonable question after downloading an update and restarti
 
 "Go to Entry in Notebook" and its sibling tree-navigator dialogs could crash with a `wxAssertionError` on open. We traced this to a fix that had already landed on the development branch before Beta 2's code froze but is worth confirming here for anyone who hit it on a Beta 2 build: the dialog no longer tries to expand its (intentionally hidden) root node.
 
-### Narrator users: no more double speech
+### Narrator becomes a first-class citizen: no more double speech, and QUILL now speaks *through* Narrator
 
-George Kerscher reported that running Narrator, QUILL's self-voicing spoke at the same time as Narrator — most audibly in the command palette. The cause: QUILL *did* detect Narrator, but it has no way to route announcements through Narrator the way it does for JAWS and NVDA, so its own SAPI voice filled the gap — right on top of One Core. The rule is now absolute: when a screen reader is running, QUILL never self-voices. If it can't hand the announcement to your reader, the message goes to the status bar instead, where Narrator can read it on your terms.
+George Kerscher reported that with Narrator running, QUILL's self-voicing spoke at the same time as Narrator — most audibly in the command palette. Beta 3 fixes this at two levels.
+
+**Detection, by API.** Alongside its process check, QUILL now reads the marker Windows itself maintains while Narrator runs (the named `NarratorRunning` system event — one cheap call, no process scanning). Narrator can no longer slip past detection under any elevation or timing condition.
+
+**Speech, directly to Narrator.** QUILL's announcements are now raised as **UI Automation notification events** — the announcement channel Narrator has listened on since Windows 10 1709. That means status changes, palette narration, and all of QUILL's spoken feedback arrive in *your* One Core voice, spoken by Narrator itself, exactly as they arrive in JAWS's or NVDA's voice through their dedicated bridges. If the channel is unavailable on a given system, the message lands in the status bar instead — and the old behavior, QUILL's own SAPI voice talking over your reader, is gone unconditionally: a running screen reader always silences the self-voice, "forced" announcements included.
+
+One honest caveat: the direct-Narrator channel is verified in code and tests but needs real Narrator listening to confirm the experience end to end. If you use Narrator, please try Beta 3 and tell us — through **Help > Report a Bug** — whether announcements now arrive in One Core, once, in the right voice.
 
 ### Install Starter Snippet Packs works properly with a screen reader
 
