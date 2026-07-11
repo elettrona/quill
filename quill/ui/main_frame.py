@@ -12571,6 +12571,16 @@ class MainFrame(
                             s.SetRange(int(_spec.minimum), int(_spec.maximum))
                         s.SetValue(_cur)
                         s.SetName(_spec.label)
+                        # support#69: VoiceOver reads a SpinCtrl's inner TextCtrl
+                        # child, not the outer control's Name -- naming only the
+                        # outer control (as this did) left every "int" setting
+                        # (Read Aloud rate/volume/pitch and friends) announced with
+                        # no label on macOS. Mirrors the "float" kind's fix below
+                        # and voice_browser_dialog.py's Rate/Volume/Pitch fix.
+                        for _child in s.GetChildren():
+                            if isinstance(_child, wx.TextCtrl):
+                                _child.SetName(_spec.label)
+                                break
                         return s
 
                     spin = _add_field_row(parent_panel, sizer, spec.label, _make_spin_int)
