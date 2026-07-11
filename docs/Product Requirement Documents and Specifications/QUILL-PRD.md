@@ -4603,7 +4603,9 @@ and services surfaces) so OCR-less profiles stay clean.
 **Goal.** Close the gap the bundled math-equations Quillin always had: an
 equation could be typed in, but nothing rendered it, nothing let a
 screen-reader user explore its structure, and Word never saw a real
-equation object. Full plan of record: `docs/planning/math.md`.
+equation object. This section is now the canonical record; the original
+planning doc (`docs/planning/math.md`) is retired now that the feature has
+shipped in full.
 
 **Canonical model (`quill/core/math/`, wx-free, unit-tested).**
 `mathml.py` holds the canonical in-memory representation — MathML, the same

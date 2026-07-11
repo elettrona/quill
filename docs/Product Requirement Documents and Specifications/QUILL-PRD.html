@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="generator" content="pandoc 3.10" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
-  <title>QUILL-PRD</title>
+  <title>QUILL PRD</title>
   <style>
     /* Default styles provided by pandoc.
     ** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
@@ -241,6 +241,9 @@
   </style>
 </head>
 <body>
+<header id="title-block-header">
+<h1 class="title">QUILL PRD</h1>
+</header>
 <h1 id="quill-product-requirements-document">Quill: Product Requirements
 Document</h1>
 <h2
@@ -8867,7 +8870,9 @@ and services surfaces) so OCR-less profiles stay clean.
 **Goal.** Close the gap the bundled math-equations Quillin always had: an
 equation could be typed in, but nothing rendered it, nothing let a
 screen-reader user explore its structure, and Word never saw a real
-equation object. Full plan of record: `docs/planning/math.md`.
+equation object. This section is now the canonical record; the original
+planning doc (`docs/planning/math.md`) is retired now that the feature has
+shipped in full.
 
 **Canonical model (`quill/core/math/`, wx-free, unit-tested).**
 `mathml.py` holds the canonical in-memory representation — MathML, the same
