@@ -77,6 +77,14 @@ ui = [
     "PyNaCl>=1.6.2",
 ]
 spellcheck = ["pyenchant>=3.3.0"]
+# macOS native rich text (One Editor, Every Format, Phase 6): PyObjC lets
+# QuillMacRichText drive the editor's NSTextView (RTF via NSAttributedString).
+# The shipped Mac .app BUNDLES this (the [macos] build extra installs the full
+# pyobjc and scripts/setup_macos.py lists objc/AppKit/Foundation in the py2app
+# includes, since the imports are lazy and the tracer misses them) — nothing
+# for end users to install. This extra covers source/pip installs on a Mac.
+# The code path still degrades to converted rich if the bridge is ever absent.
+mac = ["pyobjc-framework-Cocoa>=10.3; sys_platform == 'darwin'"]
 # Direct GitHub issue submission for Report a Bug (#210): feedback_hub provides
 # the accessible FeedbackDialog driven by quill/core/schemas/feedback.json and
 # files the issue via the GitHub API. Ships in every build (this is the only
@@ -123,9 +131,10 @@ mp3 = ["mutagen>=1.48.1"]
 signing = ["PyNaCl>=1.6.2"]
 # Native Word (.docx) export with full formatting fidelity (font family, point
 # size, color, highlight, paragraph alignment) for the hidden-codes feature
-# (docs/planning/rich-text-formatting-hidden-codes-design.md). Optional: when absent,
+# (QUILL PRD hidden-codes appendix), and — since One Editor, Every Format —
+# the docx rich reader (quill/io/docx_reader.py). Optional: when absent,
 # write_docx_document falls back to the Pandoc path (which drops those run/
-# paragraph attributes), so docx export still works without this extra.
+# paragraph attributes) and .docx opens read-extract instead of rich.
 docx = ["python-docx>=1.1.0"]
 # Premium cloud TTS via the official ElevenLabs SDK (roadmap §4.1, audio export).
 # Optional: the ElevenLabs AI Voice provider is inert unless this is installed and

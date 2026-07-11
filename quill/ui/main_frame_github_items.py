@@ -66,22 +66,54 @@ class GitHubItemsMixin:
             provider,
             initial_repo=initial_repo,
             announce_cb=self._announce,
+            ai_acquire_cb=self._github_ai_summarizer,
         ).show()
         try:
             provider.close()
         except Exception:  # noqa: BLE001 - close is best-effort cleanup
             pass
 
+    def _github_ai_summarizer(self):
+        """Resolve QUILL's AI connection for a thread summary, on demand.
+
+        Called by the dialog on the UI thread when the user presses Summarize
+        — never earlier, so opening the viewer alone can never prompt for AI
+        setup. Returns a ``summarize(text) -> str`` closure that is safe to
+        run off-thread (one bounded completion through the same connection
+        and consent gates as every other keyed AI feature), or None when AI
+        is off/declined.
+        """
+        result = self._ai_require_connection()
+        if result is None:
+            return None
+        connection, api_key = result
+
+        def summarize(thread_text: str) -> str:
+            from quill.core.github.thread_summary import summarize_thread
+
+            return summarize_thread(connection, api_key, thread_text)
+
+        return summarize
+
     def _github_items_initial_repo(self) -> str:
-        """Return the current document's ``owner/repo`` origin, or empty."""
+        """The current document's ``owner/repo``, from either origin source.
+
+        Prefers the tracked Open-from-GitHub origin; falls back to the
+        document's own git checkout (local git sync — a file opened from disk
+        inside a clone with a GitHub ``origin`` remote prefills too).
+        """
+        path = getattr(getattr(self, "document", None), "path", None)
         try:
             origins = self._gh_state().origins
+            if path:
+                origin = origins.get(path)
+                if origin is not None and origin.provider == "github":
+                    return origin.repository
         except Exception:  # noqa: BLE001 - _gh_state must never crash the command
+            pass
+        try:
+            from quill.core.github.local_repo import detect_github_repo
+
+            return detect_github_repo(path)
+        except Exception:  # noqa: BLE001 - detection is best-effort
             return ""
-        path = getattr(self.document, "path", None)
-        if not path:
-            return ""
-        origin = origins.get(path)
-        if origin is None or origin.provider != "github":
-            return ""
-        return origin.repository

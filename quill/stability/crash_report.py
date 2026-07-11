@@ -34,6 +34,19 @@ from quill.stability.redaction import (
 logger = logging.getLogger(__name__)
 
 
+def _display_version() -> str:
+    """The channel-annotated version ("0.9.0 Beta 2"), never the bare number.
+
+    Falls back to ``__version__`` when build metadata is absent (dev runs).
+    """
+    try:
+        from quill.build_info import get_short_version
+
+        return str(get_short_version())
+    except Exception:  # noqa: BLE001 - version lookup must never break a report
+        return __version__
+
+
 def _collect_macos_diagnostic_reports(
     *, max_files: int = 5, max_age_days: int = 7, max_file_chars: int = 200_000
 ) -> dict[str, str]:
@@ -112,7 +125,11 @@ def build_diagnostic_bundle(
     redaction_stats: dict[str, BundleRedactionStats] = {}
 
     payload: dict[str, Any] = {
-        "quill_version": __version__,
+        # #967/#968 triage lesson: bare __version__ says "0.9.0" for every
+        # beta, so a crash from Beta 1 was indistinguishable from Beta 2 and a
+        # fixed bug looked like a regression. Use the channel-annotated
+        # display version ("0.9.0 Beta 2") everywhere reports carry a version.
+        "quill_version": _display_version(),
         "python_version": sys.version.splitlines()[0],
         "platform": platform.platform(),
         "system": platform.system(),

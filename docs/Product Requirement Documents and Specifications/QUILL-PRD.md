@@ -1759,6 +1759,9 @@ QUILL ships **its own spell checking engine**, built on Hunspell dictionaries, d
 
 - **`F7`** opens the **Spelling Review** dialog — a guided, modal, fully keyboard-operable review of every misspelling in the document or active selection. The dialog surfaces each issue inside a readable, navigable, sentence-level context window. See §6.4 for the complete specification. **Implemented in 0.7.0 Beta 2.**
 - **`Ctrl+F7` / `Ctrl+Shift+F7`** jump to the next or previous misspelling without leaving the editor.
+- **`Alt+F7`** (`tools.spell_check_word_at_cursor`) — **Spell Check Word, shipped 0.9.0 Beta 3.** Checks only the word at the caret (or the current selection), with no full-document scan. A correctly spelled word is announced and nothing else happens; a misspelling opens the same suggestions/Add to Dictionary/Ignore choices as the right-click spelling context menu (reusing `suggest_words`/`misspelling_at_position` from the spell-check core), in a lightweight `wx.SingleChoiceDialog` rather than the full Spelling Review dialog. The keyboard equivalent of pressing F7 on a focused word in Microsoft Office.
+- **`Ctrl+Shift+L`** (`tools.misspelling_list_ranked`) — **Ranked spelling, shipped 0.9.0 Beta 3, community feature request (Kurzweil 1000 parity).** Opens the same tree-navigator dialog as the existing document-order `tools.misspelling_list` (`Alt+Shift+L`), but ordered by `rank_misspellings_by_frequency()` (new, pure, in `core/spellcheck.py`): most-recurring word first, case-insensitive grouping, ties broken by first-occurrence position for a stable/reproducible order. Each entry's label includes its occurrence count (`_build_misspelling_navigator_nodes(..., show_counts=True)`). Rationale: a single OCR misread or repeated typo often accounts for the bulk of a long misspelling list, so fixing the most-frequent entry first clears the most ground fastest. Pure reordering — every occurrence still appears in the result, nothing is deduplicated or hidden.
+- **`Alt+Shift+F7`** (`tools.spell_check_ranked`) — **Ranked Spelling Review, shipped 0.9.0 Beta 3, same community request.** The other half of ranked spelling: the *full* guided F7 workflow (Change/Change All/Ignore/Ignore All/Add to Dictionary/Undo, `SpellingReviewDialog`/`ReviewSession`), not just a jump-to-occurrence list, walked in ranked order. `ReviewSession` gained a `ranked: bool` constructor flag; `_rescan()` (called after every action) re-applies `rank_misspellings_by_frequency()` and, in ranked mode, always resets to the freshly-ranked list's top entry rather than "next by position" — so as `Change All` clears the current top offender, the next-most-frequent word rises to the front automatically instead of the ranking going stale mid-session. `open_spell_check_dialog`/`spell_check_ranked` share one `_open_spelling_review(ranked=...)` implementation in `MainFrame`.
 - As-you-type checking is on by default. Misspellings are tracked in a sidecar model (not visual squiggles) and announced gently on word boundary if the user opts in.
 - Suggestions come from Hunspell plus an n-gram reranker trained on the user's writing for personalised top suggestions.
 - Personal dictionary persists per user; per-document dictionary persists in a sidecar file.
@@ -1779,6 +1782,14 @@ QUILL ships **its own spell checking engine**, built on Hunspell dictionaries, d
 - `Ctrl+Shift+G` opens Bookmarks Manager.
 - On jump: if the stored line still contains the surrounding text, go there. If not, search for the surrounding text and update the bookmark. If still not found, fall back to line number and announce "approximate position."
 - Bookmarks for saved documents persist in `%APPDATA%\Quill\bookmarks\<hash>.json`.
+
+**Note:** the section above predates the shipped implementation and describes an earlier design (`Ctrl+B`, surrounding-text fuzzy resolution); the as-shipped named-bookmark commands (`navigate.set_bookmark`/`go_to_bookmark`/`list_bookmarks`, default `Alt+Shift+B` for List Bookmarks) live in `quill/core/bookmarks.py` and `MainFrame`, storing name→position pairs per document via `DocumentMemory`. Reconciling this section with the shipped design is a separate follow-up; the two additions below are accurate as of 0.9.0 Beta 3.
+
+**Temporary bookmark — shipped 0.9.0 Beta 3.** A single unnamed, one-shot jump point, distinct from named bookmarks: `Ctrl+Shift+K` sets it at the cursor with no dialog; `Alt+Shift+K` jumps to it with no picker. Session-only by design (never written to `DocumentMemory`) — it is disposable scratch state, not a durable anchor. Implemented as `MainFrame.set_temp_bookmark`/`go_to_temp_bookmark`, aliased per-tab exactly like the named-bookmark dict.
+
+**Numbered quick bookmarks — shipped 0.9.0 Beta 3.** Ten fixed slots (0-9). The original design (see the now-superseded PRD draft in `x.md`) proposed routing set/jump through Quick Nav's "press a letter, then a qualifier" grammar; direct user feedback during review asked for one-keystroke access with no sub-mode, so the shipped implementation instead intercepts `Alt+Shift+<digit>` (set) and `Ctrl+Alt+Shift+<digit>` (jump) directly in `MainFrame._on_char_hook`, alongside the existing frame-level `Ctrl+K`/`Ctrl+W` handling — the declarative keymap table has no "any digit" wildcard, so these 20 chords are intercepted rather than declared. Deliberately *not* a parallel storage system: `quick_slot_name(slot)` in `core/bookmarks.py` generates a reserved name (`"Quick 3"`) that reuses the existing named-bookmark store, so numbered bookmarks get persistence, save/load, and crash-safety for free rather than needing a new `DocumentMemory` schema field.
+
+**Favorite folders — shipped 0.9.0 Beta 3, community feature request.** A short, user-curated list of folders (`quill/core/favorite_folders.py`, wx-free, modeled on `BookmarkVault`), distinct from Windows' recency-based recent-folders. `Ctrl+Alt+Shift+A`/`Ctrl+Alt+Shift+R` add/remove the current document's folder; `Ctrl+Alt+Shift+O` opens **Open From Favorite Folder** — a VSCode-Quick-Open-style type-to-filter dialog (`list_files_in_favorites`/`filter_favorite_files`, both pure and unit-tested) scanning every favorite folder's top-level files (non-recursive by design, to keep the filter instant) and matching by case-insensitive filename substring. Quill has no single-project-root "workspace" concept to scan the way VSCode does, so this is intentionally scoped to the curated favorites list rather than the whole disk.
 
 ### 5.11 Selection helpers and Where Am I
 
@@ -2922,16 +2933,19 @@ The first shipped slice of the QUILL Sync plan (`docs/planning/quill-sync-plan.m
 - When the underlying document is moved or renamed, Quill detects the orphan note next time the document is opened and offers `Re-attach note to current document?` (Yes / No / Show note).
 - Scratchpads use the same spell-check stack as their parent document but are excluded from accessibility audits.
 
-### 5.45 Section folding (announce-only)
+### 5.45 Section folding (announce-only) — shipped 0.9.0 Beta 3
 
-A folding model designed for screen-reader users: folded ranges are summarised aloud and never visually hidden in a way that confuses the cursor.
+A folding model designed for screen-reader users: fold state is spoken metadata, never visual line-hiding, and the document text is never mutated. Implemented in `quill/core/code_folding.py` (pure region detection, wx-free) plus `MainFrame` command wiring; see `x.md`'s original "PRD: Code Folding" for the accessibility rationale behind the design decisions below.
 
-- `Ctrl+Shift+[` folds the section starting at the heading on or above the current line into a single summary line: `Section "Background" — 14 lines hidden`.
-- `Ctrl+Shift+]` unfolds the section at the cursor.
-- `Ctrl+Shift+K Ctrl+Shift+0` folds all sections to a given level (chord sequence); `Ctrl+Shift+K Ctrl+Shift+J` unfolds all.
-- Folding state is per-session and never written to file.
-- Find still finds matches inside folded ranges and automatically unfolds on jump.
-- Outline Navigator (5.16) is the primary navigation tool; folding is the in-editor companion.
+Two kinds of foldable region are detected, both reusing existing infrastructure rather than adding a new parser: **heading sections** (via the existing `extract_outline_entries`, so a heading's region runs to the next heading at the same-or-higher level) and **fenced code blocks** (` ``` `...` ``` `, each complete fence is one atomic region). The original spec above called for heading-only folding with a fold-to-level chord sequence; the shipped version covers headings and code fences with a simpler single-toggle model, and does not yet implement fold-to-level or Find auto-unfold — both remain open follow-ups (see below).
+
+- **Ctrl+Alt+Shift+F** (`edit.toggle_fold`) — folds or unfolds the smallest foldable region containing the cursor, announcing `"Folded: 14 lines under 'Background'"` / `"Unfolded: 'Background'"`. (The original spec's `Ctrl+Shift+[`/`Ctrl+Shift+]` were reused for other bindings by the time this shipped; a single toggle command was chosen over a separate fold/unfold pair for a smaller keymap footprint.)
+- **Alt+Shift+]** / **Alt+Shift+[** (`navigate.next_fold` / `navigate.previous_fold`) — jump between foldable region *boundaries*, folded or not, announcing the region's label, fold state, and line count on arrival. This is the safe, honest version of "skip folded content": it only fires on a command that already jumps by structural unit, never on literal arrow-key movement, which is never intercepted.
+- **Ctrl+Alt+Shift+L** (`tools.list_folds`) — the accessible equivalent of scanning gutter fold triangles: a dialog (reusing the same tree-navigator pattern as `list_bookmarks`/Outline Navigator) listing every foldable region with its fold state and line count, letting a user jump or toggle without ever needing to encounter a region by scrolling past it.
+- Folding state is per-tab and session-only, never written to file or `DocumentMemory` — deliberately, since persisting it would need edit-resilient position tracking (like `InlineNote`'s quote-anchoring) for a feature whose entire value is "reduce clutter right now."
+- Outline Navigator (5.16) remains the primary navigation tool; folding is the in-editor companion, and `List Folds` is folding's own navigator-style surface.
+
+**Not yet implemented** (open follow-ups from the original spec): fold-to-level chord sequences (`Ctrl+Shift+K Ctrl+Shift+0`/`J`); Find auto-unfolding a region it matches inside (moot today since folding never hides text from Find or any other text-reading operation — only the four commands above are fold-aware); per-function/indentation-based folding for real source files edited via a Quillin (fenced-block granularity is the right scope for a writing app with embedded code, not an IDE, and was an explicit scope decision, not an oversight).
 
 ### 5.46 Spell-check ignore directives and manual bilingual flag
 
@@ -3034,6 +3048,14 @@ When Quill detects an autosave snapshot newer than the on-disk file on launch:
 - **Compare with on-disk** opens the diff view (5.22) immediately.
 - The dialog is screen-reader-friendly first: every value is a separate labelled `wx.StaticText` so it reads cleanly.
 - Choosing Recover writes the snapshot as a new unsaved document; the on-disk file is **never** overwritten without an explicit Save.
+
+**Offer suppression on inconclusive exits — shipped 0.9.0 Beta 3 (#940/#948).** `begin_session()` in `core/recovery.py` now calls `_log_shows_actionable_error(logs_dir)` before appending a `RecoveryOffer`: it scans the tail (last 256 KB) of `quill.log` for `ERROR`/`CRITICAL`/`Traceback` markers, and suppresses the offer entirely when none are found -- an exit with no error evidence in the log is indistinguishable from an external termination (OS shutdown, forced close) and gets no "Quill detected an unclean exit" prompt. A missing log file fails open (still offers recovery) since an absent log is inconclusive, not evidence of nothing having happened. The autosave snapshot itself is untouched either way; only the *offer* is gated.
+
+### 5.59a Application Status page (`Help → Status Page`)
+
+`HelpStatusDialog` (`quill/ui/status_dialog.py`) is a non-modal `wx.Notebook` of four tabs -- **Status** (Overview/Whisperer/Speech key-value rows), **Tasks & Downloads**, **Features**, and **Actions** -- each backed by a `wx.ListCtrl` (except Actions, a read-only text box) so screen readers get native column navigation instead of Browse-mode HTML table traversal. While the dialog is open, a `wx.Timer` calls `refresh()` every two seconds so background-task progress and downloads stay live without the user pressing the **Refresh** button.
+
+**Live-refresh focus loss, fixed 0.9.0 Beta 3 (#969).** `refresh()` rebuilds each `wx.ListCtrl` from scratch (`DeleteAllItems()` then re-`InsertItem()` every row) so the displayed data always matches `_build_help_status_data()` exactly -- but the rebuild silently dropped the list's focused-row marker too. With the timer firing every two seconds, a user arrowing down the list got returned to the top (or to no focused row at all) before they could act on where they had navigated, reported verbatim as "Move down through the list. The focus will be put back at the top of the list." `refresh()` now captures each list's focused row index before the rebuild (`_capture_focus`) and restores it afterward (`_restore_focus`, clamped to the new row count in case it shrank), independently per list -- so a live-update tick can never undo the user's own navigation. Covered by `tests/unit/ui/test_status_dialog.py` against a real `wx.ListCtrl`, not a fake.
 
 ### 5.60 Read-only document mode
 
@@ -4587,7 +4609,9 @@ and services surfaces) so OCR-less profiles stay clean.
 **Goal.** Close the gap the bundled math-equations Quillin always had: an
 equation could be typed in, but nothing rendered it, nothing let a
 screen-reader user explore its structure, and Word never saw a real
-equation object. Full plan of record: `docs/planning/math.md`.
+equation object. This section is now the canonical record; the original
+planning doc (`docs/planning/math.md`) is retired now that the feature has
+shipped in full.
 
 **Canonical model (`quill/core/math/`, wx-free, unit-tested).**
 `mathml.py` holds the canonical in-memory representation — MathML, the same
@@ -5905,6 +5929,7 @@ All JSON files validate against schemas in `quill/core/schemas/`. All writes are
 - **Provenance**: GitHub Actions runs with OIDC; artefacts are signed with Sigstore `cosign` and the `cosign.bundle` is published next to each release artefact.
 - **Update channel**: a signed JSON manifest (Ed25519 signature; key pinned in the app) lists current stable, beta, and security-only releases with SHA-256s. Quill checks on launch only when the user has opted in (manual `Check for Updates` is always available).
 - **Footprint**: realistic target is 180–220 MB installed with English Tesseract data and English/UK + Spanish/French/German Hunspell dictionaries. A **Quill Lite** option ships at ~90 MB and downloads dictionaries and Tesseract on first use.
+- **Offline Edition** (`scripts/build_windows_distribution.py --bundle-offline`, 0.9.0 Beta 3): most optional components (Pandoc, DECtalk, eSpeak-NG, whisper.cpp's binary, the braille pack) install on demand from a verified source by default, to keep the regular installer small; `--bundle-offline` instead lifts every one of them into the compiled `.exe`, and auto-stages Kokoro's model files and whisper.cpp's default GGML model with no `--*-dir` flag needed. As of Beta 3, `--bundle-offline` combined with `--bundle-python` also `pip download`s the full on-demand-package dependency tree (Kokoro, Faster Whisper, Vosk, MP3 chapter-marker support) into `{app}/wheels/<name>/`, using the exact embedded interpreter that will later install from it — so `install_kokoro_onnx`/`install_faster_whisper`/`install_vosk`/`install_mp3_support` (`quill/core/speech/engine_install.py`) resolve entirely from local disk (`pip install --no-index --find-links`) instead of PyPI when a bundled wheelhouse is present, and whisper.cpp (`quill/core/speech/providers/whispercpp.py::_bundled_whisper_model_path`) transcribes with its bundled model immediately, no download step at all. **Known gap, tracked, not yet closed:** Piper voices and Node.js-based Quillins have no bundling mechanism (`--piper-dir` does not exist; Node.js is explicitly excluded regardless of `--bundle-offline`) and still require network access on first use even under the Offline Edition. No CI workflow currently produces an Offline Edition build; it is a manual, ad hoc invocation of the build script today.
 
 ### 10.7 Build and dev environment
 
@@ -5969,7 +5994,8 @@ All JSON files validate against schemas in `quill/core/schemas/`. All writes are
 - The download is verified (SHA-256) and Sigstore-attested; the installer is signed; the user runs it.
 - The asset download streams in fixed-size chunks and reports progress through an accessible callback, so screen-reader users hear coarse, non-spammy progress announcements (for example 25/50/75 percent) instead of a silent wait.
 - After a successful download Quill presents an **Update downloaded** dialog offering, as available, **Install now…** (Windows `.exe`/`.msi`), **Open the containing folder**, or **Close**. Install-now runs the in-app pre-update health check first.
-- **Portable installs update to the portable build, not the installer.** When QUILL is running as a verified portable bundle (`quill.core.updates.running_portable()`), Check for Updates skips the signed-manifest path (that feed carries only the installer URL) and uses the GitHub releases path, where `_pick_asset` selects the portable `.zip` asset — matched by name so the unrelated delta `*-update-windows.zip` is never chosen. The downloaded `.zip` is non-runnable, so the Update downloaded dialog offers **Open the containing folder** rather than Install now. Installed copies continue to receive the installer exactly as before.
+- **Portable installs update to the portable build, not the installer.** When QUILL is running as a verified portable bundle (`quill.core.updates.running_portable()`), Check for Updates skips the signed-manifest path (that feed carries only the installer URL) and uses the GitHub releases path, where `_pick_asset` selects the portable `.zip` asset — matched by name so the unrelated delta `*-update-windows.zip` is never chosen. Installed copies continue to receive the installer exactly as before.
+- **Extract now — shipped 0.9.0 Beta 3 (community report).** A downloaded portable `.zip` was previously treated as non-actionable by the Update downloaded dialog (only `.exe`/`.msi` were recognized as something the dialog could act on), leaving the user to find and unzip the archive themselves with only "Open folder"/"Close" on offer — reported directly by a community member on Mastodon. `_offer_post_download_actions` now also recognizes a `.zip` target as `extractable` and offers **Extract now**, which calls the new `quill.core.updates.extract_portable_update()` (zip-slip-guarded, decompression-bomb-limited via `safe_archive.open_zip`) to unzip into a ready-to-run sibling folder (`<downloads>/Quill-Portable-<version>/`), then reveals that folder instead of the raw archive. Does not attempt to replace the currently-running portable bundle's own files in place (they may be locked while Quill is running) — the user still copies their `data` folder over and swaps folders manually, matching how any portable app update works; the fix removes only the "figure out how to unzip this" step, not the "swap the folder" step.
 - The update-available dialog includes a **Skip this version** action; a skipped version is remembered and suppressed on silent launch checks until a newer version appears or the user checks manually.
 - **Token self-heal (#919 runtime complement).** The update offer is gated on token presence, not version alone: if a running build is missing its bundled bug-report token (`quill.core.feedback_token.github_token_present()` is false), Check for Updates offers the latest release even at the same version, with a dialog whose header reads "Restore the bug-report token: {version}" and whose notes explain the reinstall restores the token (so "update to the version you already have" is not confusing). A silent background check does **not** auto-download the same version — it records a notification ("A build that restores the bug-report token is available. Use Check for Updates to install it.") and sets the status to "Update available (restores bug-report token)", leaving the reinstall to an explicit Check for Updates. **Skip this version** silences the offer, and it stops the moment the token is present again. This is the runtime complement to the build-time "every build ships the token, no opt-out" hardening (§5.x, #919): the build gate prevents a new tokenless ship, and the update offer recovers a build that already slipped through tokenless.
 - Silent launch checks are throttled to at most once per 24 hours (recorded via the last-check timestamp); a manual `Check for Updates` always runs regardless of the throttle.
@@ -6883,6 +6909,8 @@ The tab's `source_label` is set to `GitHub: owner/repo (branch)` and shown in th
 | `quill/ui/github_items_view.py` | Wx-free view-model formatting: list cells, details, comment positions (#924) |
 | `quill/ui/github_items_dialog.py` | `GitHubItemsDialog` — modal list-over-detail viewer (#924) |
 | `quill/ui/main_frame_github_items.py` | `GitHubItemsMixin` — Safe Mode + consent + token gate (#924) |
+| `quill/core/github/saved_items.py` | Pinned repositories + favorited items store (Unified GitHub Management) |
+| `quill/core/github/local_repo.py` | Local git sync: `owner/repo` from the document's own checkout |
 
 ### §25.11 Implementation Status
 
@@ -6902,8 +6930,54 @@ The tab's `source_label` is set to `GitHub: owner/repo (branch)` and shown in th
 browser for a repository's issues, pull requests, branches, commits, tags,
 releases, and workflow runs. It is modeled on the [GHManage](https://github.com/kellylford/GHManage)
 reference viewer (the same field set, list modes, and per-comment navigation),
-adapted to QUILL's PyGithub transport and dialog conventions. v1 is **read-only**;
-mutating actions (close / reopen / comment) are out of scope.
+adapted to QUILL's PyGithub transport and dialog conventions. **Read-only
+against GitHub**; mutating actions (close / reopen / comment) are out of scope,
+and the only writes are the local pins/favorites store below.
+
+**Unified GitHub Management additions (0.9.0 Beta 3, merged from the
+GHManage + fastgh review):**
+
+- **Pinned repositories** (`quill/core/github/saved_items.py`): the
+  **Pinned...** menu pins/unpins the loaded repo and jumps to any pinned one.
+  Case-insensitive dedup; atomic JSON under the app data dir.
+- **Favorites**: `Ctrl+D` bookmarks the selected row (issue/PR/branch/commit/
+  tag/release/run) with repo, type, URL, title, and timestamp; the
+  **Favorites...** menu reopens any bookmark in the browser, across repos.
+- **Advanced search** (`GitHubItemsProvider.search_items`): `Ctrl+F` focuses a
+  search box taking full GitHub search syntax, passed to the issue-search API
+  with a pinned `repo:` qualifier so results never leave the loaded
+  repository. Empty search (or loading a different repo) restores the list.
+- **Local git sync** (`quill/core/github/local_repo.py`): the repository field
+  also prefills from the document's own checkout — the nearest `.git`
+  (worktree pointers followed) whose `origin` remote parses as a GitHub URL —
+  covering files opened from disk, not just through Open-from-GitHub.
+
+**Tranche 2 (same release):**
+
+- **PR diff viewer** (`quill/ui/github_pr_diff_dialog.py` +
+  `render_pull_file_diff` in the view-model): the **Diff...** button lists a
+  PR's changed files (`fetch_pull_diff`) and renders each file's base/head
+  content (`fetch_file_text` at the PR shas) through
+  `quill.core.compare_service` — the Compare Documents difference walk, not a
+  unified patch. 404 at a ref → empty side (added/deleted files read
+  plainly); binary/oversized content fails closed to +/- counts and GitHub's
+  patch text.
+- **Batch operations** (`GitHubItemsProvider.update_items`): multi-select
+  close/reopen/add-label — the one deliberate write path, requiring an
+  authenticated session (anonymous stays read-only), gated by a consent
+  dialog naming the exact action and item numbers, with per-item error
+  collection. No deletions, no content edits.
+- **AI thread summaries** (`quill/core/github/thread_summary.py`): the
+  **Summarize** button flattens the thread (middle-out truncation at 24k
+  chars) and runs one bounded completion through
+  `generate_assistant_response`, resolved on demand via the same
+  `_ai_require_connection` gate as every keyed AI feature — opening the
+  viewer never prompts for AI setup.
+
+The review's remaining items (branch comparison, notifications, wiki
+browser, vault linking, a `gh`-CLI hybrid engine, metadata caching, an
+in-viewer command palette, context sharing) stay deferred; see the roadmap's
+"Unified GitHub Management — deferred" list.
 
 **Views.** A single **View** switcher selects one of:
 
@@ -6944,6 +7018,7 @@ types `owner/repo` and clicks Load.
 - `Ctrl+R`: refresh the current view.
 - `Ctrl+O`: open the selected item in the browser.
 - `Ctrl+G`: go to an issue/PR by number (Issues & PRs view only).
+- `Ctrl+F`: focus the GitHub-syntax search box; `Ctrl+D`: favorite the row.
 - `Alt+N` / `Alt+P`: next / previous comment in the details pane.
 - `M` (in the list): toggle Quick / Full list mode.
 - **View More**: load the next page (page cap = page * 30).
@@ -9706,10 +9781,13 @@ safer path is offered.
 
 ## Part One: Native RTF Editing as an Optional Surface
 
-> **What shipped (0.8.1 Beta 1) — hidden-codes first.** The plan of record for this
-> work became **hidden-codes formatting** rather than a WYSIWYG editing surface;
-> the full design and phasing are in
-> [`docs/planning/rtf.md`](../planning/rtf.md). What is delivered: real document
+> **What shipped (0.8.1 Beta 1) — hidden-codes first; rich mode followed in
+> 0.9.0 Beta 3.** The plan of record for this work became **hidden-codes
+> formatting** rather than a WYSIWYG editing surface (the planning docs
+> `rtf.md` and `rich-text-formatting-hidden-codes-design.md` are retired; this
+> appendix and "One Editor, Every Format" above are the canonical record, and
+> the deferred P5 clean-on-disk overlay stays a deliberate backlog item,
+> revisited only on field demand). What is delivered: real document
 > formatting (font family/size, colour, highlight, underline, strikethrough,
 > super/subscript; paragraph alignment, line spacing, indent, named styles, page
 > breaks) applied from the **Format** menu and the accessible **Font…** dialog,
@@ -10019,9 +10097,10 @@ group) governs what happens when a formatted document is saved as plain text:
 `.txt` and the formatting does not travel — the UI and docs say so, and steer
 writers who want one self-contained file to Markdown (inline codes) or Word/RTF
 (native formatting). The fully out-of-band, clean-on-disk-everywhere variant (no
-visible codes even in a saved `.md`) remains the deferred "Option B" end-state in
-[`docs/planning/rtf.md`](../planning/rtf.md); Illumination delivers the clean-text
-round-trip now without that larger overlay rebuild.
+visible codes even in a saved `.md`) remains the deferred "Option B" end-state —
+a deliberate backlog item, revisited only on field demand (the rtf.md planning
+doc retired with One Editor, Every Format); Illumination delivers the
+clean-text round-trip now without that larger overlay rebuild.
 
 ### Spoken Echo: re-read the last announcement (shipped 0.8.1 Beta 1)
 
@@ -10138,7 +10217,7 @@ control's **Text Object Model** (`ITextDocument`/`ITextSelection`, reached via
 `EM_GETOLEINTERFACE` → `QueryInterface(ITextDocument)`, no Python ctypes
 callback in the hot path — a callback-driven `EM_STREAMIN`/`EM_STREAMOUT`
 attempt was tried first and hard-crashes msftedit; see
-`docs/planning/editor-surface-experiments.md` §8 for the post-mortem) and its
+`docs/engineering/editor-surface-history.md` for the post-mortem) and its
 low-level edit-style messages (`EM_SETEDITSTYLE`/`EM_GETEDITSTYLE`).
 
 Three phases shipped:
@@ -10163,24 +10242,91 @@ Three phases shipped:
   correct `IAccessible` value reporting (the reason RichEdit is the default in
   the first place, #616) is unchanged.
 
-**Gating (deliberately conservative — this changes the control your whole
-document lives in):** QuillRichEdit only exists when *both*
-`experimental_acknowledged` and `experimental_editor_surfaces_enabled` are on
-and `experimental_editor_surface` is set to `richedit_rtf`; the emulate-sysedit
-braille lever is a further, separate checkbox
-(`experimental_richedit_emulate_sysedit`) under the same double gate. Every
-path falls back to a plain `wx.TextCtrl` on any failure — selecting this
-surface can never brick the editor. All three settings are restart-based (new
-documents/relaunch), matching every other editor-surface option.
+**Status: CONFIRMED and promoted (0.9.0 Beta 3).** Live JAWS + braille
+hardware testing verified the fix — text renders from cell 1, selections show
+dots 7-8, and JAWS reads the editor's value correctly — with one addition the
+testing surfaced: the visible editor border itself pushes braille output out
+of cell 1, so a borderless frame is part of the fix. See **One Editor, Every
+Format** below for the shipped design; the experimental gating this section
+originally specified is retired, and the surface-experiment record lives in
+`docs/engineering/editor-surface-history.md`.
 
-**Status: needs on-device JAWS + braille-display testing.** The instrument and
-the lever both verify cleanly by direct `SendMessage`/COM inspection, but
-whether the lever actually fixes what a braille display shows — cell start
-position, selection dots 7-8, and whether JAWS still reads the editor's value
-correctly — can only be judged on real hardware. See the request for braille
-display owner feedback in the user guide's Experimental Features section, and
-`docs/planning/editor-surface-experiments.md` §8 for the full test protocol
-and the running record of results.
+### One Editor, Every Format (shipped 0.9.0 Beta 3)
+
+The QuillRichEdit promotion: every document tab on Windows is built through
+`create_richedit_rtf(...)` (`quill/ui/richedit_rtf_surface.py`) — no surface
+choice anywhere — and the braille fix ships on by default as two plain
+checkboxes on **Preferences > Braille**, forced on for upgraders (the settings
+delta store drops the retired surface-override keys on load, with a one-time
+migration notice):
+
+- `braille_editor_system_edit_fix` (default True) — `SES_EMULATESYSEDIT`, the
+  cell-1 + dots-7-8 fix (#616/#813).
+- `braille_editor_hide_border` (default True) — the borderless frame; the
+  border demonstrably breaks cell alignment, so unchecking warns specifically
+  and re-checks unless confirmed.
+
+**Two document modes, one control** (`quill/ui/main_frame_rich_mode.py`,
+`_DocumentTab.editor_mode`):
+
+- **Plain-markup mode** (`"markup"`): byte-for-byte the classic behavior —
+  canonical markup buffer, format-native tag insertion, hidden codes.
+- **Rich mode** (`"rich"`): an .rtf loads natively through the TOM (sanitized
+  first — `read_rtf_sanitized`, the same `rtf_safety` gate as the conversion
+  path); formatting commands apply real formatting via `ITextFont`/`ITextPara`
+  (`set_heading` maps QUILL's levels to a Word-tracking point-size + bold
+  ladder shared across platforms); save writes real RTF via the TOM. The
+  buffer and `Document.text` mirror the plain text, so search / spell / AI /
+  read-aloud / braille are unchanged. TOM formatting fires no `EVT_TEXT`, so
+  commands mark content changed explicitly (`Document.mark_content_changed`),
+  and autosave snapshots RTF bytes (`.rtfsnap` sidecars,
+  `autosave_rich_document`) so crash recovery restores formatting.
+- **Converted rich** (`"rich_converted"`): the permanent failsafe floor when
+  the TOM is unavailable (comtypes missing, macOS without PyObjC, any COM
+  failure) — the classic converted open + RTF-writer save. Never a blank
+  editor.
+
+**Mode-polymorphic commands:** one command id, one shortcut — the effect
+follows the document format (rich → TOM; markdown/html → today's insertion;
+plain text → a once-per-document transition prompt). Native Ctrl+B/I/U are
+intercepted in rich mode and routed through QUILL's commands so formatting is
+announced, dirty-marked, and remappable. Describe Formatting at Cursor reads
+the live TOM in rich mode.
+
+**The Document Format switcher** (`format.switch_document_format`,
+Ctrl+Shift+Grave, K): Format menu, command palette, keyboard chord, and the
+interactive `document_format` status bar cell all dispatch one handler — a
+native popup radio menu (screen readers get the items and checked state for
+free). Transitions run through the `RichDocument` bridge with
+`scan_rtf_features` honest-fidelity warnings before anything lossy, and a
+switched document retargets its file type on the next Save As (never a silent
+in-place rewrite).
+
+**Editable rich Word (.docx)** is reconstructive — no control hosts docx
+natively — so safety is procedural: `quill/io/docx_reader.py` reads exactly
+the vocabulary `docx_writer.py` emits (symmetric by construction through
+`RichDocument`); `scan_docx_features` inventories out-of-vocabulary features
+(tables, images, comments, tracked changes, headers/footers, footnotes) and
+drives a three-way open choice (read-extract default / rich with named losses
+/ edit a copy); the first rich save over a flagged original writes a
+timestamped backup alongside. python-docx stays a soft dependency — absent,
+docx opens read-extract exactly as before.
+
+**macOS:** `quill/ui/nstextview_rtf_surface.py` (`QuillMacRichText`) mirrors
+the Windows wrapper method-for-method over Cocoa's text model (the editor is
+an `NSTextView` underneath). **The Mac .app bundles the PyObjC bridge**: the
+`[macos]` build extra installs the full `pyobjc`, and
+`scripts/setup_macos.py` lists `objc`/`AppKit`/`Foundation` in the py2app
+`includes` because every AppKit import in the codebase is lazy and the
+import tracer misses them (the same fix makes the #616 VoiceOver
+editor-role pin actually ship in the .app — it was a silent no-op when
+AppKit was absent from the bundle). Source installs use the `mac` extra
+(`pyobjc-framework-Cocoa`). The code path still degrades to converted rich
+if the bridge is ever absent — the floor and the fallback are permanent —
+and on-device VoiceOver verification remains the promotion gate for the
+native path, mirroring the Windows braille A/B; the Beta 3 release notes
+ask Mac users to report results via Help > Report a Bug, positive or
+negative.
 
 ### The Fragment spine, and five features built on it (shipped 0.9.0 Beta 2)
 
@@ -10431,6 +10577,46 @@ cache is redirected to a writable per-user dir so SAPI initialises under a
 read-only install, and screen-reader detection enumerates processes through the
 Windows Toolhelp API (ctypes) rather than spawning ``tasklist``, so it never
 creates a console window a screen reader or braille display would announce.
+
+**Strengthened in 0.9.0 Beta 3 (#966, Narrator double-speech):** the
+``announce()`` SAPI branch previously let ``force_speech`` bypass the
+live-reader suppression. That branch is only reachable when *no* speech
+bridge could be acquired (Prism/accessible_output2 drive JAWS/NVDA before
+this point), so a detected-but-unbridged reader there is Narrator — and the
+bypass made QUILL's SAPI voice talk over One Core. The contract is now
+unconditional: **a running screen reader always suppresses the self-voice**,
+force_speech included. ``force_speech`` retains its purpose on the bridged
+paths (interrupting the reader's current utterance) and for users with no
+reader running.
+
+**Narrator as an announcement target (same release):** two additions make
+Narrator first-class rather than merely not-talked-over:
+
+- *API-level liveness* — ``sr_detect.narrator_event_present()`` reads the
+  named ``NarratorRunning`` Win32 event (one ``OpenEventW``), a second
+  signal behind the process scan, so Narrator detection cannot miss.
+- *Direct speech* — ``quill/platform/windows/narrator_announce.py`` raises
+  **UIA notification events** (``UiaRaiseNotificationEvent`` over a provider
+  wrapped from the frame's ``IAccessible`` via ``UiaProviderFromIAccessible``)
+  so the running UIA reader speaks QUILL's announcements in its own voice.
+  ``announce()`` tries this channel for any live-but-unbridged reader before
+  degrading to status-bar-only; ``important``/``force_speech`` maps to
+  interrupting notification processing. Every step degrades to False —
+  the channel can never crash or self-voice. Needs on-device Narrator
+  verification (the Beta 3 release notes solicit it).
+
+### System-wide Clipboard Collector (shipped 0.9.0 Beta 3, #964)
+
+The EDS-11 Clipboard Collector (Power Tools) originally captured only copies
+made inside QUILL (an ``EVT_TEXT_COPY`` bind on the editor). Per the EdSharp
+parity request, it is now system-wide: while toggled on, a 750 ms timer polls
+the OS clipboard **change counter** (``GetClipboardSequenceNumber`` on
+Windows, ``NSPasteboard.changeCount`` on macOS — one cheap call, no clipboard
+open unless it changed) and appends each *distinct* new clipboard text to the
+open document, autosaving as before. The in-app bind stays for instant
+response; a last-collected guard deduplicates the two paths and QUILL's own
+writes. See ``_clipboard_change_counter`` /
+``_start_collector_watch`` in ``quill/ui/main_frame_power_tools.py``.
 
 ---
 

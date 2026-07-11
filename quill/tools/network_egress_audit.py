@@ -423,9 +423,8 @@ _REVIEWED_EGRESS: dict[str, str] = {
 #
 # quill/core/speech/engine_install.py::install_kokoro_onnx
 #   Installs kokoro-onnx>=0.5.0 and soundfile>=0.14.0 (~20 MB + onnxruntime transitive).
-#   Triggered automatically after the Kokoro model files are downloaded
-#   (Manage Voices > Download Kokoro), or explicitly from Manage Speech Models >
-#   Install Kokoro ONNX, or Tools > Speech > Install Kokoro ONNX.
+#   Triggered automatically alongside the Kokoro model files via
+#   Help > Download Optional Components.
 #
 # quill/core/ai/sdk_install.py::install_pack
 #   On-demand install of an optional agentic SDK pack (GitHub Copilot SDK,

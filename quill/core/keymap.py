@@ -138,9 +138,19 @@ DEFAULT_KEYMAP: dict[str, str] = {
     "tools.ask_quill_chat": "" if sys.platform == "darwin" else "Alt+Q",
     "tools.word_count": "Ctrl+Shift+W",
     "tools.spell_check_dialog": "F7",
+    "tools.spell_check_ranked": "Alt+Shift+F7",
+    "tools.spell_check_word_at_cursor": "Alt+F7",
     "tools.next_misspelling": "Ctrl+F7",
     "tools.previous_misspelling": "Ctrl+Shift+F7",
     "tools.misspelling_list": "Alt+Shift+L",
+    "tools.misspelling_list_ranked": "Ctrl+Shift+L",
+    "file.open_from_favorite_folder": "Ctrl+Alt+Shift+O",
+    "file.add_favorite_folder": "Ctrl+Alt+Shift+A",
+    "file.remove_favorite_folder": "Ctrl+Alt+Shift+R",
+    "edit.toggle_fold": "Ctrl+Alt+Shift+F",
+    "navigate.next_fold": "Alt+Shift+]",
+    "navigate.previous_fold": "Alt+Shift+[",
+    "tools.list_folds": "Ctrl+Alt+Shift+L",
     "tools.thesaurus": "Shift+F7",
     # Inline notes (sticky, content-anchored annotations).
     "notes.add_inline_note": "Alt+Shift+I",
@@ -245,7 +255,9 @@ DEFAULT_KEYMAP: dict[str, str] = {
     "view.browser_preview": "Ctrl+Shift+Grave, V",  # §10.8.2: QUILL-key chord
     "view.split_preview": "Ctrl+Shift+Backslash",
     "view.focus_preview": "Ctrl+F6",
-    "view.switch_editing_lens": "Ctrl+Shift+Grave, K",
+    # The Document Format switcher (One Editor, Every Format): took over the
+    # chord the retired Rich text lens command held.
+    "format.switch_document_format": "Ctrl+Shift+Grave, K",
     "edit.set_mark": "Ctrl+Shift+M",
     # Ctrl+M becomes Cmd+M on macOS (system Minimize) -- dead by default. The
     # darwin alternate Cmd+Alt+M avoids Minimize (#31).

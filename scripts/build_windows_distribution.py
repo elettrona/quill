@@ -166,6 +166,19 @@ KOKORO_VOICES_URL = (
 )
 KOKORO_VOICES_SHA256 = "bca610b8308e8d99f32e6fe4197e7ec01679264efed0cac9140fe9c29f1fbf7d"
 
+# Pip package trees for every on-demand engine engine_install.py can install.
+# Each is `pip download`ed into portable/wheels/<name>/ under --bundle-offline
+# using the same embedded Python that will later `pip install --no-index` from
+# them at runtime (see _stage_pip_wheelhouse and
+# engine_install._bundled_wheelhouse_dir), so the wheel tags always match and
+# the Offline Edition never needs PyPI for any of these. Kept in sync with the
+# matching _*_REQUIREMENTS tuples in quill.core.speech.engine_install and the
+# pyproject extras.
+KOKORO_WHEELHOUSE_REQUIREMENTS = ("kokoro-onnx>=0.5.0", "soundfile>=0.14.0")
+FASTER_WHISPER_WHEELHOUSE_REQUIREMENTS = ("faster-whisper>=1.0", "huggingface_hub>=0.20")
+VOSK_WHEELHOUSE_REQUIREMENTS = ("vosk>=0.3.45",)
+MP3_WHEELHOUSE_REQUIREMENTS = ("mutagen>=1.48.1",)
+
 # GLOW is hidden for 0.5.0 (the core.glow feature is locked off), so the heavy
 # `glow` extra (quill-glow-core[glow], not yet on a public index) is NOT bundled
 # in the shipping build. The vendored contract wheel (see _install_vendored_glow)
@@ -251,8 +264,14 @@ def main() -> int:
         help=(
             "Optional local directory holding the Kokoro model files "
             "(kokoro-v1.0.int8.onnx, voices-v1.0.bin) to stage under "
-            "portable\\kokoro-models. When omitted the files are downloaded from "
-            "the pinned kokoro-onnx release and SHA-256 verified."
+            "portable\\kokoro-models. When omitted, --bundle-offline stages them "
+            "anyway -- downloaded from the pinned kokoro-onnx release and SHA-256 "
+            "verified -- so an Offline Edition build never needs this flag. The "
+            "Kokoro Python package (kokoro-onnx, onnxruntime, ...) is staged "
+            "separately and automatically under --bundle-offline (see "
+            "_stage_pip_wheelhouse); there is no matching --*-dir override for it. "
+            "Faster Whisper, Vosk, and MP3 support get the same automatic pip "
+            "wheelhouse treatment -- none of the four need a --*-dir flag."
         ),
     )
     parser.add_argument(
@@ -298,6 +317,30 @@ def main() -> int:
         default=None,
         help="Optional explicit path to ISCC.exe for installer compilation.",
     )
+    parser.add_argument(
+        "--bundle-offline",
+        action="store_true",
+        help=(
+            "Build a fully self-contained 'Offline Edition' installer: any optional "
+            "component staged via --pandoc-dir/--dectalk-dir/--espeak-dir/"
+            "--whisper-dir/--kokoro-dir/--braille-pack-dir is INCLUDED in the "
+            "compiled .exe instead of being stripped by the default [Files] "
+            "Excludes. Without this flag (the default, smaller/regular installer), "
+            "any locally staged copy is still written to the portable bundle for "
+            "the ZIP output, but excluded from the .exe -- optional components "
+            "always download on demand in that installer, matching the standard "
+            "release. Has no effect on the portable ZIP, which always includes "
+            "whatever was staged. Also auto-stages Kokoro's model files and "
+            "whisper.cpp's default GGML model (no --kokoro-dir/--whisper-dir "
+            "needed for either) and, when --bundle-python is also set, the pip "
+            "package wheelhouse for every on-demand engine (Kokoro, Faster "
+            "Whisper, Vosk, MP3 support) -- installing any of them, and "
+            "transcribing with whisper.cpp itself, needs zero network access "
+            "under a genuine Offline Edition build. Piper and Node.js have no "
+            "bundling mechanism yet and still require network on first use "
+            "even here (tracked gap)."
+        ),
+    )
     args = parser.parse_args()
 
     bundle = build_windows_distribution(
@@ -306,6 +349,7 @@ def main() -> int:
         bundle_python=args.bundle_python,
         source_root=args.source_root,
         braille_pack_dir=args.braille_pack_dir,
+        bundle_offline=args.bundle_offline,
         bundled_tool_dirs={
             tool_id: path
             for tool_id, path in {
@@ -337,6 +381,7 @@ def build_windows_distribution(
     bundled_tool_dirs: dict[str, Path] | None = None,
     kokoro_dir: Path | None = None,
     braille_pack_dir: Path | None = None,
+    bundle_offline: bool = False,
     compile_installer: bool = False,
     iscc_path: Path | None = None,
 ) -> dict[str, str]:
@@ -391,10 +436,28 @@ def build_windows_distribution(
     # Kokoro is NO LONGER bundled by default (PRD 10.2.4 unbundle): fresh installs
     # download it on demand from QUILL's pinned, SHA-256-verified release asset, and
     # the runtime prefers the %APPDATA% copy. A build may still opt to stage a local
-    # copy into the portable bundle by passing --kokoro-dir. Upgraders keep their
-    # existing {app}/kokoro-models (Inno never removes it).
-    if kokoro_dir is not None:
+    # copy into the portable bundle by passing --kokoro-dir. bundle_offline stages it
+    # automatically (auto-download + SHA-256 verify, same as a plain --kokoro-dir-less
+    # build already does) so the Offline Edition never requires a manual staging step;
+    # the model-file pip wheelhouse is staged separately below, once the embedded
+    # runtime's python.exe exists to guarantee matching wheel tags. Upgraders keep
+    # their existing {app}/kokoro-models (Inno never removes it).
+    if kokoro_dir is not None or bundle_offline:
         _stage_kokoro(portable_dir, kokoro_dir)
+    # whisper.cpp is the default, REQUIRED offline engine (not opt-in like the
+    # above), so bundle_offline stages its default model unconditionally --
+    # otherwise the Offline Edition would ship the engine binary (once
+    # --whisper-dir is given) with nothing to transcribe with, requiring a
+    # network call the very first time the "offline" build tries to transcribe
+    # anything. No --*-dir override exists for this; see _stage_whisper_model.
+    if bundle_offline:
+        _stage_whisper_model(portable_dir)
+        # Piper closes the last tracked speech gap in the Offline Edition:
+        # the engine zip (SHA-256-verified at stage time AND re-verified by
+        # install_piper at install time) plus starter voice models, so
+        # choosing Piper never needs the internet. See
+        # quill/core/speech/piper_install.py (bundled_piper_offline_dir).
+        _stage_piper_offline(portable_dir)
 
     readme = portable_dir / "README.txt"
     readme.write_text(
@@ -442,6 +505,7 @@ def build_windows_distribution(
         product_name=identity.product_name,
         publisher=identity.publisher,
         bundle_braille_pack=braille_pack_staged,
+        bundle_offline_components=bundle_offline,
         numeric_version=iss_numeric_version,
     )
     installer_script.write_text(installer_script_text, encoding="utf-8")
@@ -489,6 +553,35 @@ def build_windows_distribution(
             shutil.move(str(entry), str(dest))
         staged_runtime.rmdir()
         python_runtime_dir = portable_dir
+
+        # Stage every on-demand engine's pip wheelhouse now that the embedded
+        # runtime's own python.exe is at its final location -- using that
+        # exact interpreter guarantees the downloaded wheel tags match what
+        # will later `pip install --no-index` from them at runtime (see
+        # engine_install._bundled_wheelhouse_dir). Only meaningful for an
+        # Offline Edition build; a regular build skips this entirely so it
+        # stays fast and small.
+        if bundle_offline:
+            python_exe = portable_dir / "python.exe"
+            _stage_pip_wheelhouse(
+                portable_dir, python_exe, "kokoro", KOKORO_WHEELHOUSE_REQUIREMENTS
+            )
+            _stage_pip_wheelhouse(
+                portable_dir,
+                python_exe,
+                "faster-whisper",
+                FASTER_WHISPER_WHEELHOUSE_REQUIREMENTS,
+            )
+            _stage_pip_wheelhouse(portable_dir, python_exe, "vosk", VOSK_WHEELHOUSE_REQUIREMENTS)
+            _stage_pip_wheelhouse(portable_dir, python_exe, "mp3", MP3_WHEELHOUSE_REQUIREMENTS)
+    elif bundle_offline:
+        print(
+            "Warning: --bundle-offline without --bundle-python cannot stage any "
+            "pip wheelhouse (no embedded interpreter to match wheel tags "
+            "against); model/binary files still stage, but installing "
+            "Kokoro, Faster Whisper, Vosk, or MP3 support will still require "
+            "PyPI on first use."
+        )
 
     result = {
         "portable_dir": str(portable_dir),
@@ -748,6 +841,7 @@ def build_inno_setup_script(
     product_name: str = APP_DISPLAY_NAME,
     publisher: str = APP_ORGANIZATION,
     bundle_braille_pack: bool = False,
+    bundle_offline_components: bool = False,
     numeric_version: str | None = None,
 ) -> str:
     """Return a production-quality Inno Setup script for the portable bundle.
@@ -837,6 +931,13 @@ def build_inno_setup_script(
         'Name: "shellverbs"; Description: "Add ""Send to Quill"" actions'
         ' (OCR, Open, Read aloud) to the file right-click menu";'
         ' GroupDescription: "File associations:"; Flags: unchecked',
+        # community#941: launching "quill" from a terminal or a shortcut's Target
+        # field needs the install directory on PATH. Opt-in (unchecked), same as
+        # the other Tasks above -- PATH is shared system/user state, so this is
+        # never silently applied.
+        'Name: "addtopath"; Description: "Add Quill to PATH (lets you run'
+        ' ""quill"" from a terminal or a shortcut Target field without the full'
+        ' path)"; GroupDescription: "Command line:"; Flags: unchecked',
         "",
         "; No [Types] or [Components] section: every optional component is fetched",
         "; on demand from its verified source, so the installer shows no setup-type",
@@ -885,17 +986,67 @@ def build_inno_setup_script(
         "; needed now that migration protects the data.",
         "",
         "[Files]",
-        'Source: "..\\portable\\*"; DestDir: "{app}";'
+    ]
+    # Optional-component excludes. Node.js has no --nodejs-dir staging flag on this
+    # build script (it is not part of the offline-speech/braille bundle) and is
+    # excluded regardless of --bundle-offline (a Node-based Quillin still needs a
+    # separately installed Node.js either way; see quill/core/node_install.py).
+    # The build-artifact/dev-only entries are excluded
+    # either way. The remaining five (Pandoc, DECtalk, eSpeak-NG, whisper.cpp's binary,
+    # and the braille pack) are only excluded for the regular/smaller installer;
+    # --bundle-offline lifts the exclusion so a locally staged copy (via --pandoc-dir/
+    # --dectalk-dir/--espeak-dir/--whisper-dir/--braille-pack-dir) ships inside the
+    # compiled .exe. Kokoro's model files (kokoro-models\*) are handled the same way
+    # but auto-stage under --bundle-offline with no flag required (see the
+    # kokoro_dir/_stage_kokoro call site above), as does whisper.cpp's default GGML
+    # model and Piper's engine zip + starter voices (speech-models-bundled\*,
+    # see _stage_whisper_model / _stage_piper_offline -- auto-staged, so there
+    # is no matching --*-dir override for either). Every
+    # on-demand engine's pip package tree (wheels\<name>\*: kokoro, faster-whisper,
+    # vosk, mp3 -- see _stage_pip_wheelhouse) auto-stages the same way. Together
+    # these mean whisper.cpp (the default), Kokoro, Piper, Faster Whisper, Vosk,
+    # and MP3 support all work with zero network access under a genuine Offline
+    # Edition. (tools\speech\piper\* stays excluded: that path is only ever a
+    # legacy locally-staged binary; the offline bundle lives under
+    # speech-models-bundled\piper and installs to user data on demand.)
+    _always_excluded = "docs\\QUILL-PRD.md,tools\\nodejs\\*,tools\\speech\\piper\\*,_tool-download\\*,_speech-download\\*,*\\__pycache__\\*"
+    _optional_component_excludes = (
+        "tools\\pandoc\\*,tools\\speech\\dectalk\\*,tools\\speech\\espeak-ng\\*,"
+        "tools\\speech\\whispercpp\\*,vendor\\braille-pack\\*,kokoro-models\\*,"
+        "speech-models-bundled\\*,"
+        "wheels\\kokoro\\*,wheels\\faster-whisper\\*,wheels\\vosk\\*,wheels\\mp3\\*"
+    )
+    _files_excludes = (
+        _always_excluded
+        if bundle_offline_components
+        else f"{_always_excluded},{_optional_component_excludes}"
+    )
+    lines += [
+        f'Source: "..\\portable\\*"; DestDir: "{{app}}";'
         " Flags: ignoreversion recursesubdirs createallsubdirs;"
-        ' Excludes: "docs\\QUILL-PRD.md,tools\\pandoc\\*,tools\\speech\\dectalk\\*,tools\\speech\\espeak-ng\\*,tools\\speech\\piper\\*,tools\\speech\\whispercpp\\*,tools\\nodejs\\*,vendor\\braille-pack\\*,kokoro-models\\*,_tool-download\\*,_speech-download\\*,*\\__pycache__\\*"',
-        "; Only Quill's core bundle is installed. Every optional component --",
-        "; Pandoc, Piper, Node.js, the braille pack, whisper.cpp, Kokoro, DECtalk,",
-        "; and eSpeak-NG -- is fetched on demand to %APPDATA%\\Quill (verified,",
-        "; pinned release assets or official builds), which the app's resolvers",
-        "; prefer. The Excludes above keep any locally staged copy (from a --*-dir",
-        "; dev build) out of the shipped installer; [InstallDelete] never touches",
-        "; an upgrader's existing {app} copies.",
-        "",
+        f' Excludes: "{_files_excludes}"',
+    ]
+    if bundle_offline_components:
+        lines += [
+            "; Offline Edition: every optional component (Pandoc, Piper, whisper.cpp,",
+            "; Kokoro, DECtalk, eSpeak-NG, the braille pack) staged via --*-dir flags",
+            "; ships inside this installer, so no internet connection is ever needed",
+            "; after install. [InstallDelete] never touches an upgrader's existing",
+            "; {app} copies.",
+            "",
+        ]
+    else:
+        lines += [
+            "; Only Quill's core bundle is installed. Every optional component --",
+            "; Pandoc, Piper, Node.js, the braille pack, whisper.cpp, Kokoro, DECtalk,",
+            "; and eSpeak-NG -- is fetched on demand to %APPDATA%\\Quill (verified,",
+            "; pinned release assets or official builds), which the app's resolvers",
+            "; prefer. The Excludes above keep any locally staged copy (from a --*-dir",
+            "; dev build) out of the shipped installer; [InstallDelete] never touches",
+            "; an upgrader's existing {app} copies.",
+            "",
+        ]
+    lines += [
         "[Icons]",
         'Name: "{group}\\{#AppName}"; Filename: "{code:BundledLauncherPath}"; Parameters: "-m quill"; WorkingDir: "{app}"; Check: HasBundledLauncher',
         'Name: "{group}\\{#AppName}"; Filename: "{app}\\{#AppExeName}"; WorkingDir: "{app}"; Check: not HasBundledLauncher',
@@ -934,6 +1085,14 @@ def build_inno_setup_script(
     ]
     lines += build_shell_verb_registry_lines()
     lines += [
+        "",
+        "; community#941: opt-in PATH registration (addtopath task) so",
+        "; quill resolves from a terminal or a shortcut Target field without",
+        "; the full install path. Per-user only (HKCU) -- no elevation needed and",
+        "; no other account is touched. NeedsAddPath (in [Code]) guards against",
+        "; duplicate entries on repeat installs/repairs.",
+        'Root: HKCU; Subkey: "Environment"; ValueType: expandsz; ValueName: "Path";'
+        " ValueData: \"{olddata};{app}\"; Tasks: addtopath; Check: NeedsAddPath('{app}')",
         "",
         "[Run]",
         'Filename: "{app}\\README.txt"; Description: "View the Quill README";'
@@ -982,6 +1141,23 @@ def build_inno_setup_script(
         "function HasBundledLauncher(): Boolean;",
         "begin",
         "  Result := BundledLauncherPath('') <> '';",
+        "end;",
+        "",
+        "// -- community#941: opt-in PATH registration --------------------------------",
+        "// True when {app} is not already present in the user's PATH, so the",
+        "// [Registry] addtopath entry above only appends once per machine even",
+        "// across repeat installs/repairs (a missing PATH value is treated as",
+        "// empty, so the very first install still adds it).",
+        "function NeedsAddPath(Param: string): boolean;",
+        "var",
+        "  OrigPath: string;",
+        "begin",
+        "  if not RegQueryStringValue(HKEY_CURRENT_USER, 'Environment', 'Path', OrigPath) then",
+        "  begin",
+        "    Result := True;",
+        "    exit;",
+        "  end;",
+        "  Result := Pos(';' + Param + ';', ';' + OrigPath + ';') = 0;",
         "end;",
         "",
         "// -- Post-install: write the new-install marker -----------------------------",
@@ -1662,6 +1838,142 @@ def _stage_kokoro(portable_dir: Path, source_dir: Path | None) -> bool:
     return True
 
 
+#: The model whisper.cpp -- Quill's default, required offline transcription
+#: engine -- transcribes with immediately after an Offline Edition install.
+#: "tiny" (the smallest tier) is also what guided_setup.default_model_id
+#: preselects on a first-run guided setup ("meet people where they are"), so
+#: bundling it matches the model a fresh install would reach for anyway.
+DEFAULT_BUNDLED_WHISPER_MODEL_ID = "tiny"
+
+
+def _stage_whisper_model(
+    portable_dir: Path, model_id: str = DEFAULT_BUNDLED_WHISPER_MODEL_ID
+) -> bool:
+    """Auto-download + SHA-256 verify a whisper.cpp GGML model into
+    portable/speech-models-bundled/whispercpp/.
+
+    Unlike the optional engines (Kokoro, Faster Whisper, Vosk, MP3 support),
+    whisper.cpp ships no --*-dir override -- it is the default, required
+    offline engine, not an opt-in one, so this always fetches from the same
+    pinned, verified Hugging Face source the runtime's own on-demand download
+    already uses (quill.core.speech.catalog), the same way _stage_kokoro
+    auto-fetches when no local --kokoro-dir is given. An Offline Edition build
+    can then transcribe with zero network access immediately after install --
+    not even the smallest model requires a first-use download. An
+    already-staged model is reused. Returns True when the model file is
+    present after staging.
+    """
+    from quill.core.speech.catalog import model_by_id
+
+    info = model_by_id(model_id)
+    if info is None or not info.download_url or not info.hf_filename:
+        raise RuntimeError(f"No whisper.cpp catalog entry for model {model_id!r}")
+
+    target = portable_dir / "speech-models-bundled" / "whispercpp" / f"ggml-{model_id}.bin"
+    target.parent.mkdir(parents=True, exist_ok=True)
+    if target.exists():
+        print(f"whisper.cpp {model_id!r} model already staged; skipping.")
+        return True
+
+    revision = info.revision or "main"
+    url = f"https://huggingface.co/{info.download_url}/resolve/{revision}/{info.hf_filename}"
+    print(f"Downloading whisper.cpp {model_id!r} model from {url}...")
+    _download_with_verification(url, target, expected_sha256=info.sha256)
+    return target.exists()
+
+
+#: Starter Piper voices staged under --bundle-offline: one good default per
+#: catalog accent family keeps the bundle small while making Piper genuinely
+#: usable offline out of the box (more voices install from the bundle-free
+#: HuggingFace path whenever the user is online).
+DEFAULT_BUNDLED_PIPER_VOICES: tuple[str, ...] = ("en_US-lessac-medium",)
+
+
+def _stage_piper_offline(
+    portable_dir: Path, voice_ids: tuple[str, ...] = DEFAULT_BUNDLED_PIPER_VOICES
+) -> bool:
+    """Stage the Piper engine zip + starter voices into portable/speech-models-bundled/piper/.
+
+    The engine zip is fetched from the pinned rhasspy release and SHA-256
+    verified against ``PIPER_DOWNLOAD_SHA256`` (the runtime's ``install_piper``
+    re-verifies the same hash before extracting, so a tampered bundle still
+    fails closed). Voice models come from the pinned
+    ``rhasspy/piper-voices`` HuggingFace repo over HTTPS — the exact URLs the
+    runtime's own on-demand voice download uses
+    (``quill.core.voice_catalog.piper_voice_download_urls``); their SHA-256s
+    are printed for the build log. Already-staged files are reused. Returns
+    True when the engine zip and every requested voice are present.
+    """
+    from quill.core.speech.piper_install import PIPER_DOWNLOAD_SHA256, PIPER_DOWNLOAD_URL
+    from quill.core.voice_catalog import piper_voice_download_urls
+
+    root = portable_dir / "speech-models-bundled" / "piper"
+    zip_target = root / "piper_windows_amd64.zip"
+    if zip_target.exists():
+        print("Piper engine zip already staged; skipping.")
+    else:
+        print(f"Downloading Piper engine from {PIPER_DOWNLOAD_URL}...")
+        _download_with_verification(
+            PIPER_DOWNLOAD_URL, zip_target, expected_sha256=PIPER_DOWNLOAD_SHA256
+        )
+
+    voices_dir = root / "voices"
+    all_present = zip_target.exists()
+    for voice_id in voice_ids:
+        urls = piper_voice_download_urls(voice_id)
+        if urls is None:
+            raise RuntimeError(f"No Piper voice URL derivable for {voice_id!r}")
+        for url, name in zip(urls, (f"{voice_id}.onnx", f"{voice_id}.onnx.json"), strict=True):
+            target = voices_dir / name
+            if target.exists():
+                print(f"Piper voice file {name} already staged; skipping.")
+                continue
+            print(f"Downloading Piper voice file {name} from {url}...")
+            _download_with_verification(url, target, expected_sha256=None)
+            print(f"  staged {name} sha256={hashlib.sha256(target.read_bytes()).hexdigest()}")
+            all_present = all_present and target.exists()
+    return all_present
+
+
+def _stage_pip_wheelhouse(
+    portable_dir: Path, python_exe: Path, name: str, requirements: tuple[str, ...]
+) -> bool:
+    """``pip download`` an on-demand engine's package tree into portable/wheels/<name>/.
+
+    Model/binary files alone are not enough to use some engines offline: Kokoro,
+    Faster Whisper, Vosk, and MP3 support each also need a pip package (pulling
+    in onnxruntime, ctranslate2, cffi, ... transitively) that normally installs
+    on demand from PyPI. Downloading the wheels here, with the *same* embedded
+    Python that will later install them (see
+    engine_install._bundled_wheelhouse_dir), guarantees the wheel tags match, so
+    an Offline Edition install can resolve the engine entirely from local disk
+    (``pip install --no-index --find-links``) with no PyPI reachability
+    required. An already-staged wheelhouse is reused. Returns True when at
+    least one wheel is present after staging.
+    """
+    target = portable_dir / "wheels" / name
+    target.mkdir(parents=True, exist_ok=True)
+    if any(target.glob("*.whl")):
+        print(f"{name} wheelhouse already staged; skipping.")
+        return True
+
+    command = [
+        str(python_exe),
+        "-m",
+        "pip",
+        "download",
+        "--no-input",
+        "--disable-pip-version-check",
+        "--only-binary=:all:",
+        "--dest",
+        str(target),
+        *requirements,
+    ]
+    print(f"Downloading {name} wheelhouse to {target}...")
+    subprocess.run(command, check=True)
+    return any(target.glob("*.whl"))
+
+
 def _speech_asset_manifest(
     portable_dir: Path, bundled_tools: list[str]
 ) -> dict[str, dict[str, object]]:
@@ -1691,6 +2003,33 @@ def _speech_asset_manifest(
         "bundled": kokoro_ready,
         "path": str(kokoro_dir) if kokoro_ready else "",
         "exists": kokoro_ready,
+        "downloadable": True,
+    }
+    # The pip package tree (kokoro-onnx + onnxruntime + ...) is a separate
+    # staging step from the model files above -- both are required for Kokoro
+    # to work with zero network access; see _stage_pip_wheelhouse.
+    wheelhouse_dir = portable_dir / "wheels" / "kokoro"
+    wheelhouse_ready = wheelhouse_dir.is_dir() and any(wheelhouse_dir.glob("*.whl"))
+    manifest["kokoro_wheelhouse"] = {
+        "bundled": wheelhouse_ready,
+        "path": str(wheelhouse_dir) if wheelhouse_ready else "",
+        "exists": wheelhouse_ready,
+        "downloadable": True,
+    }
+    # whisper.cpp's default GGML model, like Kokoro's model files, lives outside
+    # tools/speech/whispercpp/ (that dir is the engine binary only) -- see
+    # _stage_whisper_model.
+    whisper_model_path = (
+        portable_dir
+        / "speech-models-bundled"
+        / "whispercpp"
+        / f"ggml-{DEFAULT_BUNDLED_WHISPER_MODEL_ID}.bin"
+    )
+    whisper_model_ready = whisper_model_path.is_file()
+    manifest["whispercpp_model"] = {
+        "bundled": whisper_model_ready,
+        "path": str(whisper_model_path) if whisper_model_ready else "",
+        "exists": whisper_model_ready,
         "downloadable": True,
     }
     return manifest

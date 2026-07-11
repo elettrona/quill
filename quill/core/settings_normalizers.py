@@ -27,6 +27,9 @@ STATUS_BAR_ITEMS: tuple[str, ...] = (
     # Tab key behaviour: "Indent" (smart line indent) or "Tab char" (literal
     # tab insertion). Toggled with QUILL Key + U.
     "tab_mode",
+    # One Editor, Every Format: the Document Format switcher cell. Shows the
+    # current format ("Format: Markdown"); activating it opens the switcher.
+    "document_format",
     "selection",
     "encoding",
     "line_endings",

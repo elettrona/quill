@@ -92,9 +92,15 @@ class _FakeRepo:
 class _FakeGithubClient:
     def __init__(self, repo: _FakeRepo) -> None:
         self._repo = repo
+        self.searches: list[str] = []
+        self.search_results: list[Any] = []
 
     def get_repo(self, full_name: str) -> _FakeRepo:
         return self._repo
+
+    def search_issues(self, query: str) -> list[Any]:
+        self.searches.append(query)
+        return self.search_results
 
     def close(self) -> None:
         pass
@@ -439,3 +445,149 @@ def test_fetch_surfaces_api_failure_as_coded_error(
     repo.get_issues = _boom  # type: ignore[method-assign]
     with pytest.raises(GitHubItemsError, match="Could not list issues"):
         provider.fetch_issues("owner/repo")
+
+
+# ---------------------------------------------------------------------------
+# Advanced search (Unified GitHub Management: full GitHub search syntax)
+# ---------------------------------------------------------------------------
+
+
+def test_search_items_pins_the_repo_qualifier(
+    provider: GitHubItemsProvider, repo: _FakeRepo
+) -> None:
+    client = provider._gh
+    client.search_results = [_issue_row(42, title="Found")]
+    items = provider.search_items("owner/repo", "label:bug is:open crash")
+    assert client.searches == ["repo:owner/repo label:bug is:open crash"]
+    assert [item.number for item in items] == [42]
+    # A PR-shaped search row (pull_request link present) maps as a PR.
+    client.search_results = [_issue_row(7, is_pr=True)]
+    assert provider.search_items("owner/repo", "is:pr")[0].is_pr is True
+
+
+def test_search_items_with_a_blank_query_is_a_no_op(
+    provider: GitHubItemsProvider,
+) -> None:
+    assert provider.search_items("owner/repo", "   ") == []
+
+
+def test_search_items_maps_failures_to_coded_errors(
+    provider: GitHubItemsProvider,
+) -> None:
+    def _boom(_query: str):
+        raise RuntimeError("rate limited")
+
+    provider._gh.search_issues = _boom
+    with pytest.raises(GitHubItemsError, match="Search failed"):
+        provider.search_items("owner/repo", "label:bug")
+
+
+# ---------------------------------------------------------------------------
+# PR diff inventory + file content + batch updates (Unified GitHub Management)
+# ---------------------------------------------------------------------------
+
+
+def test_fetch_pull_diff_maps_files_and_refs(
+    provider: GitHubItemsProvider, repo: _FakeRepo
+) -> None:
+    file_row = SimpleNamespace(
+        filename="quill/core/x.py",
+        status="modified",
+        additions=4,
+        deletions=1,
+        changes=5,
+        previous_filename=None,
+        patch="@@ -1 +1 @@",
+    )
+    repo.get_pull = lambda number: SimpleNamespace(  # type: ignore[attr-defined]
+        title="Fix x",
+        base=SimpleNamespace(ref="main", sha="b" * 40),
+        head=SimpleNamespace(ref="fix-x", sha="h" * 40),
+        get_files=lambda: [file_row],
+    )
+    diff = provider.fetch_pull_diff("owner/repo", 42)
+    assert diff.number == 42 and diff.title == "Fix x"
+    assert diff.base_ref == "main" and diff.head_ref == "fix-x"
+    assert diff.base_sha.startswith("b") and diff.head_sha.startswith("h")
+    assert diff.files[0].filename == "quill/core/x.py"
+    assert diff.files[0].additions == 4 and diff.files[0].deletions == 1
+
+
+def test_fetch_file_text_decodes_and_maps_missing_to_empty(
+    provider: GitHubItemsProvider, repo: _FakeRepo
+) -> None:
+    repo.get_contents = lambda path, ref: SimpleNamespace(  # type: ignore[attr-defined]
+        decoded_content=b"hello\nworld\n"
+    )
+    assert provider.fetch_file_text("owner/repo", "a.md", "sha") == "hello\nworld\n"
+
+    def _missing(path, ref):
+        raise _FakeGithubException(404, "not found")
+
+    repo.get_contents = _missing  # type: ignore[attr-defined]
+    assert provider.fetch_file_text("owner/repo", "gone.md", "sha") == ""
+
+
+def test_fetch_file_text_rejects_binary_clearly(
+    provider: GitHubItemsProvider, repo: _FakeRepo
+) -> None:
+    repo.get_contents = lambda path, ref: SimpleNamespace(  # type: ignore[attr-defined]
+        decoded_content=b"\x00\xff\xfe binary"
+    )
+    with pytest.raises(GitHubItemsError, match="not a text file"):
+        provider.fetch_file_text("owner/repo", "img.png", "sha")
+
+
+def test_update_items_requires_a_token() -> None:
+    anonymous_repo = _FakeRepo()
+    fake_module = SimpleNamespace(
+        Github=lambda auth=None: _FakeGithubClient(anonymous_repo),
+        Auth=SimpleNamespace(Token=lambda token: ("token", token)),
+        GithubException=_FakeGithubException,
+    )
+    import sys as _sys
+
+    _sys.modules["github"] = fake_module
+    try:
+        import quill.core.github.items_provider as ip
+
+        original = ip._get_gh_module
+        ip._get_gh_module = lambda: fake_module
+        try:
+            anonymous = GitHubItemsProvider(token=None)
+            assert anonymous.is_authenticated is False
+            with pytest.raises(GitHubItemsError, match="read-only"):
+                anonymous.update_items("owner/repo", [1], state="closed")
+        finally:
+            ip._get_gh_module = original
+    finally:
+        _sys.modules.pop("github", None)
+
+
+def test_update_items_applies_state_and_labels_collecting_errors(
+    provider: GitHubItemsProvider, repo: _FakeRepo
+) -> None:
+    edited: list[tuple[int, str]] = []
+    labeled: list[tuple[int, tuple]] = []
+
+    def get_issue(number: int):
+        if number == 13:
+            raise RuntimeError("no such issue")
+        return SimpleNamespace(
+            edit=lambda state: edited.append((number, state)),
+            add_to_labels=lambda *labels: labeled.append((number, labels)),
+        )
+
+    repo.get_issue = get_issue  # type: ignore[attr-defined]
+    assert provider.is_authenticated is True
+    errors = provider.update_items(
+        "owner/repo", [7, 13, 9], state="closed", add_labels=("wontfix",)
+    )
+    assert edited == [(7, "closed"), (9, "closed")]
+    assert labeled == [(7, ("wontfix",)), (9, ("wontfix",))]
+    assert len(errors) == 1 and errors[0].startswith("#13:")
+
+
+def test_update_items_rejects_unknown_state(provider: GitHubItemsProvider) -> None:
+    with pytest.raises(GitHubItemsError, match="Unknown state"):
+        provider.update_items("owner/repo", [1], state="merged")

@@ -177,3 +177,34 @@ def write_text_atomic(
     except BaseException:
         temp_path.unlink(missing_ok=True)
         raise
+
+
+def write_bytes_atomic(path: Path, data: bytes, *, base: Path | None = None) -> None:
+    """Atomically write raw *data* to *path* (temp file + ``os.replace``).
+
+    The binary counterpart to :func:`write_text_atomic`, added for rich-mode
+    autosave snapshots (RTF bytes): a truncated newest snapshot must never
+    become the recovery source.
+    """
+    if base is not None:
+        resolve_within(base, path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    fd, raw_temp = tempfile.mkstemp(
+        prefix=f".{path.name}.",
+        suffix=f".{uuid.uuid4().hex}.tmp",
+        dir=path.parent,
+    )
+    temp_path = Path(raw_temp)
+    try:
+        with os.fdopen(fd, "wb") as file_handle:
+            file_handle.write(data)
+            file_handle.flush()
+            os.fsync(file_handle.fileno())
+    except BaseException:
+        temp_path.unlink(missing_ok=True)
+        raise
+    try:
+        _atomic_replace(temp_path, path)
+    except BaseException:
+        temp_path.unlink(missing_ok=True)
+        raise

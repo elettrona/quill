@@ -517,7 +517,7 @@ def test_synthesize_with_kokoro_raises_when_package_missing(monkeypatch, tmp_pat
         message = str(exc)
         # Names the actual fix first (#2 beta-2 fix pass), not just the
         # alternative pip+torch path.
-        assert "Tools > Speech > Install Kokoro ONNX" in message
+        assert "Help > Download Optional Components" in message
     else:
         raise AssertionError("Expected ReadAloudUnavailableError")
 

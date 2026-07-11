@@ -1,0 +1,860 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+  <meta charset="utf-8" />
+  <meta name="generator" content="pandoc 3.10" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+  <title>0.9.0 Beta 3 Release Notes</title>
+  <style>
+    /* Default styles provided by pandoc.
+    ** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
+    */
+    html {
+      color: #1a1a1a;
+      background-color: #fdfdfd;
+    }
+    body {
+      margin: 0 auto;
+      max-width: 36em;
+      padding-left: 50px;
+      padding-right: 50px;
+      padding-top: 50px;
+      padding-bottom: 50px;
+      hyphens: auto;
+      overflow-wrap: break-word;
+      text-rendering: optimizeLegibility;
+      font-kerning: normal;
+    }
+    @media (max-width: 600px) {
+      body {
+        font-size: 0.9em;
+        padding: 12px;
+      }
+      h1 {
+        font-size: 1.8em;
+      }
+    }
+    @media print {
+      html {
+        background-color: white;
+      }
+      body {
+        background-color: transparent;
+        color: black;
+        font-size: 12pt;
+      }
+      p, h2, h3 {
+        orphans: 3;
+        widows: 3;
+      }
+      h2, h3, h4 {
+        page-break-after: avoid;
+      }
+    }
+    p {
+      margin: 1em 0;
+    }
+    a {
+      color: #1a1a1a;
+    }
+    a:visited {
+      color: #1a1a1a;
+    }
+    img {
+      max-width: 100%;
+    }
+    svg {
+      height: auto;
+      max-width: 100%;
+    }
+    h1, h2, h3, h4, h5, h6 {
+      margin-top: 1.4em;
+    }
+    h5, h6 {
+      font-size: 1em;
+      font-style: italic;
+    }
+    h6 {
+      font-weight: normal;
+    }
+    ol, ul {
+      padding-left: 1.7em;
+      margin-top: 1em;
+    }
+    li > ol, li > ul {
+      margin-top: 0;
+    }
+    blockquote {
+      margin: 1em 0 1em 1.7em;
+      padding-left: 1em;
+      border-left: 2px solid #e6e6e6;
+      color: #606060;
+    }
+    code {
+      white-space: pre-wrap;
+      font-family: Menlo, Monaco, Consolas, 'Lucida Console', monospace;
+      font-size: 85%;
+      margin: 0;
+      hyphens: manual;
+    }
+    pre {
+      margin: 1em 0;
+      overflow: auto;
+    }
+    pre code {
+      padding: 0;
+      overflow: visible;
+      overflow-wrap: normal;
+    }
+    .sourceCode {
+     background-color: transparent;
+     overflow: visible;
+    }
+    hr {
+      border: none;
+      border-top: 1px solid #1a1a1a;
+      height: 1px;
+      margin: 1em 0;
+    }
+    table {
+      margin: 1em 0;
+      border-collapse: collapse;
+      width: 100%;
+      overflow-x: auto;
+      display: block;
+      font-variant-numeric: lining-nums tabular-nums;
+    }
+    table caption {
+      margin-bottom: 0.75em;
+    }
+    tbody {
+      margin-top: 0.5em;
+      border-top: 1px solid #1a1a1a;
+      border-bottom: 1px solid #1a1a1a;
+    }
+    th {
+      border-top: 1px solid #1a1a1a;
+      padding: 0.25em 0.5em 0.25em 0.5em;
+    }
+    td {
+      padding: 0.125em 0.5em 0.25em 0.5em;
+    }
+    header {
+      margin-bottom: 4em;
+      text-align: center;
+    }
+    #TOC li {
+      list-style: none;
+    }
+    #TOC ul {
+      padding-left: 1.3em;
+    }
+    #TOC > ul {
+      padding-left: 0;
+    }
+    #TOC a:not(:hover) {
+      text-decoration: none;
+    }
+    span.smallcaps{font-variant: small-caps;}
+    div.columns{display: flex; gap: 1.5em;}
+    div.column{flex: auto;}
+    @media screen {
+    div.columns{gap: min(4vw, 1.5em);}
+    div.column{overflow-x: auto;}
+    }
+    div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+    /* The extra [class] is a hack that increases specificity enough to
+       override a similar rule in reveal.js */
+    ul.task-list[class]{list-style: none;}
+    ul.task-list li input[type="checkbox"] {
+      font-size: inherit;
+      width: 0.8em;
+      margin: 0 0.8em 0.2em -1.6em;
+      vertical-align: middle;
+    }
+    .display.math{display: block; text-align: center; margin: 0.5rem auto;}
+  </style>
+</head>
+<body>
+<header id="title-block-header">
+<h1 class="title">0.9.0 Beta 3 Release Notes</h1>
+</header>
+<h1 id="quill-0.9.0-beta-3">QUILL 0.9.0 Beta 3</h1>
+<h2
+id="one-editor-every-format-and-the-braille-fix-is-on-for-everyone.">One
+editor, every format — and the braille fix is on for everyone.</h2>
+<p><em>From Community Access. Free. Optional by design. Private by
+default.</em></p>
+<p>Beta 3 carries one big story and a stack of community-driven fixes.
+The big story: <strong>One Editor, Every Format</strong>. The braille
+fix you helped us test in Beta 2 is confirmed and now on by default for
+every user, QUILL gains true rich text editing for RTF and Word
+documents, and one Document Format switcher moves any document between
+plain text, Markdown, HTML, Rich Text, and Word mid-session. Alongside
+it: fix what Beta 2 testers found, close out every open community bug
+report, and ship eight small accessibility-first features that were
+ready to go. This document explains every new keystroke in full, step by
+step — no feature here requires you to guess at a shortcut.</p>
+<p>This is the friendly companion to the <strong>“0.9.0 Beta 3”</strong>
+section of <code>CHANGELOG.md</code>. The shorter text under
+<strong>Help &gt; What’s New</strong> and <strong>Check for
+Updates</strong> comes from that changelog; this document tells the
+fuller story.</p>
+<hr />
+<h2 id="the-highlight-one-editor-every-format">The highlight: One
+Editor, Every Format</h2>
+<h3 id="the-braille-fix-is-on-for-everyone-by-default">The braille fix
+is on — for everyone, by default</h3>
+<p>In Beta 2 we asked braille display owners to try an experimental
+setting and tell us what they saw. You did, and it works: text now
+starts in braille cell 1 (the long-standing “cell two” quirk that
+RichEdit controls share with Microsoft Word is gone), and selecting text
+shows dots 7-8 on the display.</p>
+<p>So in Beta 3 it simply ships on. There is nothing to enable, no
+Experimental tab to navigate, no restart dance. Every document opens in
+the one QUILL editor — the same native Windows control you have always
+typed in, now carrying the fix out of the box.</p>
+<p>Two plain checkboxes on <strong>Preferences &gt; Braille</strong> own
+the whole fix, both checked by default:</p>
+<ul>
+<li><strong>Fix braille cell alignment and selection dots
+(recommended)</strong> — the system-edit emulation that makes the
+display start at cell 1 and show selection dots.</li>
+<li><strong>Hide editor border (required for braille cell
+alignment)</strong> — testing showed the visible window border itself
+pushes braille output out of cell 1, so the borderless editor frame is
+part of the fix, not a cosmetic preference. If you uncheck it, QUILL
+warns you — specifically — that braille cell alignment will break,
+before anything changes.</li>
+</ul>
+<p>If you experimented with editor surfaces in earlier betas, your old
+experimental settings are retired automatically on upgrade and you land
+on the new default; QUILL tells you once, in plain language, that your
+editor settings were simplified.</p>
+<h3 id="rich-text-is-real-now-rtf-documents">Rich text is real now: RTF
+documents</h3>
+<p>Open an .rtf and it is <em>formatted</em> — genuinely, in the editor.
+Bold text is bold. Headings are sized. Ctrl+B applies real bold,
+<strong>Insert &gt; Heading 2</strong> applies a real heading, and
+<strong>Describe Formatting at Cursor</strong> answers from the live
+document: “Arial, 14 point, bold, centered.”</p>
+<p>The rule to hold onto: <strong>bold means bold — QUILL speaks your
+document’s language.</strong> In a Markdown file, Ctrl+B still wraps
+your selection in <code>**</code> exactly as it always has. In HTML,
+<code>&lt;strong&gt;</code>. In an RTF, it is real bold. Same key, same
+command, the right effect for the format you are writing.</p>
+<p>Everything else keeps working, because rich mode changes
+presentation, not plumbing: search, spell check, AI commands, read
+aloud, bookmarks, inline notes, and braille all read the same text they
+always have. Autosave protects the formatting too — rich documents
+snapshot their full formatting alongside the text, so crash recovery
+brings back your bold and headings, not just your words.</p>
+<p>In a plain .txt file, the first time you press a formatting key QUILL
+asks — once — what you want: treat the document as Markdown, convert it
+to Rich Text, or stay plain. Answer “stay plain” and it never nags
+again.</p>
+<h3 id="editable-word-documents-with-your-original-protected">Editable
+Word documents — with your original protected</h3>
+<p>A .docx can now open for real rich editing and save back as a genuine
+Word file. Because Word documents can carry things QUILL’s editor cannot
+— tables, images, comments, tracked changes, headers and footers — QUILL
+is honest about it at the door:</p>
+<ul>
+<li>A <strong>clean</strong> Word file (nothing QUILL can’t carry) opens
+rich, directly.</li>
+<li>A file <strong>with</strong> those features asks first, naming them
+specifically: open for reading and plain editing (the safe default),
+edit as Rich Text knowing exactly what a save cannot keep, or edit a
+copy and leave the original untouched.</li>
+<li>The first rich save over a flagged original writes a
+<strong>timestamped backup</strong> next to it, automatically. QUILL
+never silently rewrites your Word file.</li>
+</ul>
+<h3 id="the-document-format-switcher">The Document Format switcher</h3>
+<p><strong>Format &gt; Document Format…</strong> — or Ctrl+Shift+Grave,
+K; or the command palette; or the new <strong>Format</strong> cell on
+the status bar, which shows your current format and opens the switcher
+when you press Enter on it — moves the current document between Plain
+text, Markdown, HTML, Rich Text (RTF), and Word (.docx),
+mid-session.</p>
+<p>Switching a Markdown draft to Rich Text turns your
+<code># headings</code> into real headings. Switching a rich document to
+Markdown warns first — with the specific list of anything that will not
+survive — before converting. And a switched document never silently
+overwrites its old file: the next save proposes the new name
+(<code>notes.md</code> becomes <code>notes.rtf</code>) so the format on
+disk always matches the extension.</p>
+<h3 id="on-the-mac">On the Mac</h3>
+<p>Rich mode ships ready to use. The macOS editor is the same native
+text view it has always been, and the Mac app now <strong>bundles
+everything rich mode needs</strong> — there is nothing to install and
+nothing to configure. Open any .rtf (or Word document) and it opens
+formatted: Ctrl+B applies genuine bold and announces “Bold,”
+<strong>Insert &gt; Heading 2</strong> applies a real heading, and
+<strong>Describe Formatting at Cursor</strong> reads the live formatting
+back (“Helvetica, 14 point, bold”). If the bridge were ever unavailable
+on a particular system, the same document simply opens converted to
+editable text with a status message saying so — nothing breaks, nothing
+is lost, and VoiceOver keeps reading the same native control it always
+has.</p>
+<p><strong>What we need from you: try it and tell us — good or
+bad.</strong> Open an .rtf, format something, save it, reopen it. If you
+use VoiceOver: does the editor still read normally (typing echo,
+arrow-key review, selection announcements)? Does formatted text — a bold
+word, a sized heading — read and navigate correctly? Then send what you
+found through <strong>Help &gt; Report a Bug</strong>, naming your macOS
+version. “It works perfectly” is exactly as valuable to us as a failure
+report — real-hardware reports in both directions are the promotion
+gate, just as your braille reports were for the Windows fix in Beta
+2.</p>
+<hr />
+<h2 id="fixes">Fixes</h2>
+<h3
+id="portable-updates-left-you-with-an-unopened-.zip-and-no-in-app-way-to-use-it">Portable
+updates left you with an unopened .zip and no in-app way to use it</h3>
+<p>A community member on Mastodon reported that updating a portable
+install ended with a dialog offering only “Open folder” or “Close” — no
+way to actually apply the update — so they had to hit Open Folder, find
+the downloaded ZIP themselves, and extract it by hand. We dug in and
+confirmed the underlying portable-vs-installed detection was already
+working correctly (a portable install does download the portable ZIP,
+not the Windows installer), but the post-download dialog only ever
+recognized <code>.exe</code>/<code>.msi</code> as something it could act
+on — a <code>.zip</code> fell through to the bare “Open folder” path
+with nothing more helpful on offer. Quill now shows an <strong>Extract
+now</strong> button for a downloaded portable update, which unzips it
+into a ready-to-run sibling folder and reveals that instead of the raw
+archive. Quill still doesn’t replace its own running files while it’s
+open — you copy your <code>data</code> folder over and swap folders
+yourself, the same as any portable app update — but the archaeology of
+finding and unzipping the download is gone.</p>
+<h3
+id="pandoc-imports-epub-and-others-could-silently-produce-an-empty-document">Pandoc
+imports (EPUB and others) could silently produce an empty document</h3>
+<p>A community member reported — and correctly root-caused — a serious
+one: importing an EPUB via <strong>File &gt; Import &gt; EPUB
+Book</strong> could leave you with a completely empty document while
+Quill reported success. The cause was a subtle encoding mismatch:
+Quill’s subprocess helper decoded Pandoc’s output using the system’s
+default locale encoding rather than an explicit one, and on a Windows
+machine whose locale defaults to a legacy code page instead of UTF-8,
+Pandoc’s UTF-8 output could fail to decode — silently leaving Quill with
+nothing, while still reporting success. Output is now always decoded as
+UTF-8 (with a safe fallback so even a genuinely non-UTF-8 byte never
+crashes or blanks the result), and the Pandoc import path now explicitly
+fails loudly if it ever gets no output, instead of quietly handing you a
+blank page. This affected every tool that goes through Quill’s
+subprocess helper, not just EPUB import, so this is a broader
+reliability fix than it first appears.</p>
+<h3 id="speech-and-dictation-crashed-on-open">Speech and Dictation
+crashed on open</h3>
+<p>Four testers independently reported the same crash: opening
+<strong>Tools &gt; Speech &gt; Speech and Dictation</strong> raised a
+<code>TypeError</code> instead of showing the dialog, on both the
+Offline and Online tabs. The dialog’s constructor had grown two new
+required arguments (<code>kokoro_ok</code>,
+<code>kokoro_can_install</code>) that the one place calling it was never
+updated to supply. Both are now populated the same way the existing Vosk
+availability flags already are, and the dialog opens normally again.</p>
+<h3
+id="the-kokoro-unavailable-error-pointed-at-a-menu-item-that-doesnt-exist">The
+Kokoro-unavailable error pointed at a menu item that doesn’t exist</h3>
+<p>The same tester who hit the Speech and Dictation crash above also
+found this while checking Kokoro voices: trying to speak with Kokoro
+before its extra component was installed said “Tools &gt; Speech &gt;
+Install Kokoro ONNX will fetch it” — but that item was folded into
+<strong>Help &gt; Download Optional Components</strong> in an earlier
+release, and the error text never caught up. It now points to the right
+place.</p>
+<h3
+id="a-rare-crash-when-a-keystroke-arrived-before-the-first-document-existed">A
+rare crash when a keystroke arrived before the first document
+existed</h3>
+<p>On macOS, a very early or very late keystroke — before the first
+document tab finished setting up, or after the last one closed — could
+raise
+<code>AttributeError: 'MainFrame' object has no attribute 'editor'</code>
+from the global keyboard hook. One of the three checks in that code path
+read the editor directly where its neighbors already defended against
+exactly this case; all three are now consistent.</p>
+<h3 id="on-macos-the-g-key-stopped-typing-and-opened-find-instead">On
+macOS, the G key stopped typing and opened Find instead</h3>
+<p>A tester reported the strangest thing: in a completely blank
+document, pressing G — upper or lower case — opened a Find dialog
+instead of typing the letter. Every other key worked normally. We traced
+it to how Quill builds the little keyboard-shortcut hint shown at the
+right edge of each menu item. Find Next is Cmd+G on macOS, and that hint
+text is embedded after a literal tab character in the menu label — which
+wxWidgets (the toolkit Quill is built on) parses as a second,
+independent keyboard shortcut, entirely separate from Quill’s own
+shortcut handling. wxWidgets recognizes the words “Ctrl”, “Alt”, and
+“Shift” in that hint text, but not the word “Cmd” — so instead of
+rejecting the whole hint as invalid, it silently dropped “Cmd” and kept
+the bare “G”, accidentally registering plain G as a real system-level
+shortcut for Find Next. That shortcut then intercepted every G keystroke
+everywhere in the app, before it could ever reach whatever you were
+typing into. This affected every macOS-only “Cmd+something” shortcut in
+Quill, not just Find Next — the fix changes how that one hint is built
+so wxWidgets always sees a modifier word it understands, while the
+shortcut you actually see on screen still reads “Cmd+G” exactly as
+before.</p>
+<h3 id="the-portable-update-next-launch-confusion">The portable-update
+“next launch” confusion</h3>
+<p>A user asked a very reasonable question after downloading an update
+and restarting: why did Quill still show the old version? The short
+answer is that a portable update has never applied itself automatically,
+on any release — the downloaded ZIP has always needed a manual step from
+you (previously “Open folder” and unzip it yourself; as of the Extract
+Now button above, Quill now does the unzip for you). If our own wording
+anywhere implied it happens on the next launch, that was the actual bug
+— nothing was silently failing, the automatic step just never existed.
+We’ve tightened the wording in this document and in Quill’s own update
+dialog so “swap it into place” reads as the manual step it has always
+been.</p>
+<h3 id="a-shared-dialog-crash-already-fixed-before-beta-2-shipped">A
+shared dialog crash, already fixed before Beta 2 shipped</h3>
+<p>“Go to Entry in Notebook” and its sibling tree-navigator dialogs
+could crash with a <code>wxAssertionError</code> on open. We traced this
+to a fix that had already landed on the development branch before Beta
+2’s code froze but is worth confirming here for anyone who hit it on a
+Beta 2 build: the dialog no longer tries to expand its (intentionally
+hidden) root node.</p>
+<h3
+id="narrator-becomes-a-first-class-citizen-no-more-double-speech-and-quill-now-speaks-through-narrator">Narrator
+becomes a first-class citizen: no more double speech, and QUILL now
+speaks <em>through</em> Narrator</h3>
+<p>George Kerscher reported that with Narrator running, QUILL’s
+self-voicing spoke at the same time as Narrator — most audibly in the
+command palette. Beta 3 fixes this at two levels.</p>
+<p><strong>Detection, by API.</strong> Alongside its process check,
+QUILL now reads the marker Windows itself maintains while Narrator runs
+(the named <code>NarratorRunning</code> system event — one cheap call,
+no process scanning). Narrator can no longer slip past detection under
+any elevation or timing condition.</p>
+<p><strong>Speech, directly to Narrator.</strong> QUILL’s announcements
+are now raised as <strong>UI Automation notification events</strong> —
+the announcement channel Narrator has listened on since Windows 10 1709.
+That means status changes, palette narration, and all of QUILL’s spoken
+feedback arrive in <em>your</em> One Core voice, spoken by Narrator
+itself, exactly as they arrive in JAWS’s or NVDA’s voice through their
+dedicated bridges. If the channel is unavailable on a given system, the
+message lands in the status bar instead — and the old behavior, QUILL’s
+own SAPI voice talking over your reader, is gone unconditionally: a
+running screen reader always silences the self-voice, “forced”
+announcements included.</p>
+<p>One honest caveat: the direct-Narrator channel is verified in code
+and tests but needs real Narrator listening to confirm the experience
+end to end. If you use Narrator, please try Beta 3 and tell us — through
+<strong>Help &gt; Report a Bug</strong> — whether announcements now
+arrive in One Core, once, in the right voice.</p>
+<h3
+id="install-starter-snippet-packs-works-properly-with-a-screen-reader">Install
+Starter Snippet Packs works properly with a screen reader</h3>
+<p>Reported against Beta 2: the pack list needed a Space press on an
+invisible checkbox — with no feedback — before Enter would do anything.
+It’s now a plain multi-select list: arrow to <code>daily-writing</code>,
+press Enter, it installs. Hold Shift or Ctrl to pick several; your
+screen reader announces what’s selected as you move.</p>
+<h3 id="the-application-status-page-is-navigable-again">The Application
+Status page is navigable again</h3>
+<p>Reported with exact repro steps that made this an easy fix: open
+<strong>Help &gt; Status Page</strong>, arrow down through any of its
+lists, and focus jumped back to the top before you could act on where
+you’d navigated. The page refreshes itself every two seconds to keep
+download and task progress current, and that refresh was rebuilding
+every list from scratch without remembering which row you were on. Each
+list now holds onto its focused row across a refresh, so you can arrow
+through the Status, Tasks &amp; Downloads, and Features tabs the way any
+accessible list should work.</p>
+<h3 id="a-macos-crash-while-creating-a-notebook">A macOS crash while
+creating a Notebook</h3>
+<p>Shannon Dyer hit a hard crash (“SystemError: ActivateEvent returned a
+result with an exception set”) while creating a Notebook on macOS — a
+window-activation handler ran into a wx assertion while dialogs were
+tearing down, and the whole app went with it. Window activation only
+exists to put focus back in your document; it is now fully contained and
+can never take the process down.</p>
+<h3 id="crash-reports-now-say-which-beta-youre-on">Crash reports now say
+which beta you’re on</h3>
+<p>Two crash reports arrived this week for a bug that was already fixed
+in Beta 2 — and they looked like regressions because every 0.9.0 beta
+reported itself as just “0.9.0.” Crash and feedback reports now carry
+the full version (“0.9.0 Beta 2”), so a report from an older install is
+recognizable at a glance. If you see the Profiles and Features crash
+(<code>_LazyString</code>), please update to the current beta: it was
+fixed there.</p>
+<h3
+id="quill-no-longer-offers-crash-recovery-for-exits-with-nothing-to-diagnose">Quill
+no longer offers crash recovery for exits with nothing to diagnose</h3>
+<p>Two automatic crash-recovery submissions showed logs with only
+routine background activity right up to the moment QUILL stopped — no
+exception, no error, nothing actionable. That pattern is consistent with
+the process being closed externally (a forced shutdown, a killed task)
+rather than a bug inside QUILL. This is now a real fix, not just an
+observation: Quill checks the log for genuine error evidence (an
+<code>ERROR</code>, <code>CRITICAL</code>, or a traceback) before
+offering crash recovery at all. An inconclusive exit no longer shows the
+“Quill detected an unclean exit” dialog — there’s simply nothing to
+prompt you about. A real crash still logs an error and still offers
+recovery exactly as it always has; only the no-evidence case changed.
+Your autosave snapshot is never touched by this — it’s still on disk
+either way, this just controls whether Quill asks you about it.</p>
+<hr />
+<h2
+id="github-items-grows-up-pins-favorites-real-search-and-local-git-sync">GitHub
+Items grows up: pins, favorites, real search, and local git sync</h2>
+<p>Beta 2 introduced the read-only GitHub Items viewer. Beta 3 merges
+the first tranche of the GHManage/fastgh unification into it — four
+features, all keyboard-first:</p>
+<ul>
+<li><strong>Pinned repositories.</strong> The <strong>Pinned…</strong>
+button keeps a short, curated list of the repos you actually work in.
+Pick one from the menu to load it instantly; pin or unpin the loaded
+repo from the same menu. No more retyping <code>owner/repo</code>.</li>
+<li><strong>Favorites.</strong> Press <strong>Ctrl+D</strong> on any
+selected row — an issue, a PR, a branch, a release — to bookmark it. The
+<strong>Favorites…</strong> menu lists every bookmark across all your
+repos and opens any of them in your browser. Bookmarks live only on your
+machine.</li>
+<li><strong>Search with full GitHub syntax.</strong> Press
+<strong>Ctrl+F</strong>, type any GitHub search query —
+<code>label:bug is:open crash</code>, <code>author:alice is:pr</code> —
+and press Enter. Results are scoped to the loaded repository; clearing
+the search restores the normal list.</li>
+<li><strong>Local git sync.</strong> The repository field now fills
+itself in when the document you are editing lives inside a git clone
+whose origin points at GitHub — any file, however you opened it, not
+just files opened through QUILL’s own GitHub commands.</li>
+</ul>
+<p>And the second tranche landed in this same release:</p>
+<ul>
+<li><strong>PR diffs, read the QUILL way.</strong> Select a pull
+request, press <strong>Diff…</strong>, and browse its changed files in
+an accessible list. Each file’s before-and-after content runs through
+the same compare engine as <strong>Compare Documents</strong>, so what
+you hear is a numbered difference walk — “Difference 2 of 5. Text
+changed at line 41. main: … this PR: …” — with the actual changed words
+described, never a wall of plus and minus signs. A brand-new file reads
+as its content; a deleted file says exactly that; a binary or oversized
+file falls back honestly to its change counts.</li>
+<li><strong>Batch operations, behind real consent.</strong> Select
+several rows (the list is multi-select now), press
+<strong>Batch…</strong>, and close, reopen, or add a label to all of
+them at once. This is the one deliberate exception to the viewer’s
+read-only rule, and it is fenced accordingly: it only works signed in —
+the anonymous viewer stays fully read-only — and a confirmation names
+the exact action and the exact item numbers before anything changes on
+GitHub. If some items fail, you hear which ones and why; the rest still
+go through.</li>
+<li><strong>AI thread summaries.</strong> A hundred-comment issue at 11
+pm is nobody’s friend. Press <strong>Summarize</strong> on any issue or
+PR and QUILL’s AI condenses the whole discussion into a short,
+plain-prose TL;DR — what it’s about, where it stands, what’s still open,
+and the apparent next step — read into the details pane and announced.
+It uses the same AI connection and consent gates as every other QUILL AI
+feature, and nothing runs until you press the button.</li>
+</ul>
+<p>The viewer otherwise stays read-only against GitHub, behind the same
+consent, token, and Safe Mode gates as every other GitHub feature. The
+rest of the unification review — branch comparison, notifications, a
+wiki browser, and more — is on the roadmap.</p>
+<h2
+id="headers-and-footers-now-live-inside-your-word-and-rtf-files">Headers
+and footers now live inside your Word and RTF files</h2>
+<p>The Header/Footer Builder from Beta 2 wrote headers and footers when
+<em>printing</em>; the files themselves didn’t carry them. Now they do:
+save as <strong>.docx</strong> and your header/footer becomes a real
+Word header and footer — with a live page-number field Word keeps
+renumbering as the document changes — and save as <strong>.rtf</strong>
+writes the equivalent native header/footer groups. Roman numerals, a
+custom starting page number, and a different first page all carry
+through. A blank spec changes nothing, and a header can never be the
+reason a save fails.</p>
+<h2 id="new-eight-small-accessibility-first-additions">New: eight small,
+accessibility-first additions</h2>
+<h3 id="the-clipboard-collector-went-system-wide">The Clipboard
+Collector went system-wide</h3>
+<p>Dean Martineau asked for the EdSharp behavior: turn on the collector,
+then copy anywhere — a browser, an email, a terminal — and it all lands
+in your QUILL document. That’s exactly what it does now. While
+<strong>Toggle Clipboard Collector</strong> is on, QUILL watches the
+system clipboard (a single cheap check, about once a second, that
+touches the clipboard only when something actually changed) and appends
+each new copy to the open document, saving as it goes. Copies made
+inside QUILL still collect instantly, and each distinct copy is
+collected exactly once.</p>
+<h3 id="quill-as-thunderbirds-external-editor">QUILL as Thunderbird’s
+external editor</h3>
+<p>Martin Courcelles asked to write his email in QUILL. Good news: it
+already works — QUILL’s one-process-per-file behavior is exactly what
+Thunderbird’s “External Editor Revived” add-on expects — and the user
+guide now has a step-by-step “Using QUILL as an external editor”
+section: install the add-on, point it at <code>quill.exe</code>, press
+Ctrl+E in a compose window, write with every QUILL feature, save and
+close, and the text drops back into Thunderbird.</p>
+<h3 id="quill-can-add-itself-to-your-path">Quill can add itself to your
+PATH</h3>
+<p>The Windows installer now offers an opt-in <strong>“Add Quill to
+PATH”</strong> task (unchecked by default, next to the existing
+file-association tasks in the installer’s task list). Turn it on and
+<code>quill</code> resolves from any terminal, or from a shortcut’s
+Target field, without typing the full install path. Per-user only — no
+elevation, no other account touched. If you’ve already installed Beta 2
+or earlier, re-run the installer and tick the box to add it
+retroactively.</p>
+<h3 id="temporary-bookmark-one-keystroke-no-dialog">Temporary bookmark —
+one keystroke, no dialog</h3>
+<p>Sometimes you just want to mark “right here” and come straight back,
+without naming anything or picking from a list.</p>
+<ul>
+<li><strong>Ctrl+Shift+K</strong> sets a single, unnamed jump point at
+the cursor. Nothing is asked — you’ll hear “Temporary bookmark set” and
+that’s it.</li>
+<li><strong>Alt+Shift+K</strong> jumps back to it. No picker, no dialog
+— you’ll hear “Jumped to temporary bookmark.”</li>
+</ul>
+<p>Setting a new one silently replaces the old one — there is only ever
+one temporary bookmark at a time. It does <strong>not</strong> persist
+between sessions: closing and reopening Quill forgets it. That’s by
+design, not a bug — it’s disposable scratch state for the next few
+minutes of work, distinct from Quill’s existing named bookmarks
+(<strong>Set Bookmark…</strong>, <strong>Go To Bookmark…</strong>,
+<strong>List Bookmarks…</strong>, still on their usual keys), which are
+unlimited and do persist per document across restarts.</p>
+<h3
+id="numbered-quick-bookmarks-0-9-direct-keystrokes-no-menu-or-sub-mode">Numbered
+quick bookmarks (0-9) — direct keystrokes, no menu or sub-mode</h3>
+<p>Ten fixed jump slots, one per digit, each reachable in a single
+keystroke with nothing in between:</p>
+<ul>
+<li><strong>Alt+Shift+0</strong> through <strong>Alt+Shift+9</strong>
+sets the jump point for that slot at the cursor. You’ll hear “Quick
+bookmark 3 set” (for example).</li>
+<li><strong>Ctrl+Alt+Shift+0</strong> through
+<strong>Ctrl+Alt+Shift+9</strong> jumps straight to that slot. You’ll
+hear “Jumped to quick bookmark 3,” or “Quick bookmark 3 is not set” if
+you haven’t set it yet.</li>
+</ul>
+<p>These are direct chords, not a menu item and not a sub-mode you have
+to enter first — press the keystroke from anywhere in the document and
+it fires immediately, the same one-step rhythm as the temporary bookmark
+above. Under the hood they’re stored as ordinary named bookmarks (with
+generated names like “Quick 3”), so they persist per document across
+restarts exactly like your named bookmarks already do — nothing new to
+configure, nothing new to lose.</p>
+<h3 id="spell-check-word-altf7-instant-single-word-spelling-check">Spell
+Check Word (Alt+F7) — instant, single-word spelling check</h3>
+<p><strong>Alt+F7</strong> checks just the word at your cursor. If it’s
+spelled correctly, Quill says so and nothing else happens. If it’s
+misspelled, a small list opens with the same choices you’d get from the
+right-click spelling menu: suggested corrections at the top, then
+<strong>Add to Dictionary</strong>, then <strong>Ignore</strong>. Arrow
+to your choice and press Enter (or Escape to cancel without changing
+anything) — you’re back to typing in one step, without launching a
+full-document Spell Check pass.</p>
+<p>If you’ve used the “press F7 on a focused word” workflow in Microsoft
+Office, this is that, for Quill. Use <strong>F7</strong> (Spelling
+Review) when you want to work through a whole document systematically;
+use <strong>Alt+F7</strong> when you just want to check the one word
+you’re looking at right now.</p>
+<h3
+id="ranked-spelling-ctrlshiftl-misspellings-sorted-by-how-often-they-recur">Ranked
+spelling (Ctrl+Shift+L) — misspellings sorted by how often they
+recur</h3>
+<p><strong>Ctrl+Shift+L</strong> opens the misspelling list just like
+<strong>Alt+Shift+L</strong> (the existing <strong>Misspelling
+List</strong>) already does, but in a different order: instead of the
+order the words appear in your document, the word that recurs the
+<em>most</em> comes first. Each entry also shows how many times it
+occurs, e.g. “teh (Ln 12, Col 4, 8 occurrences).”</p>
+<p>This is a Kurzweil-1000-style feature, requested directly by a
+longtime user: a single OCR misread or a repeated typo (<code>teh</code>
+for <code>the</code>, say) is usually the fastest way to clear the bulk
+of a long misspelling list, since fixing one entry — mentally, or via
+Add to Dictionary — effectively resolves every occurrence of that word
+at once. Arrow through the ranked list, press Enter to jump to any
+occurrence, same as the regular list. The document-order
+<strong>Misspelling List</strong> on <strong>Alt+Shift+L</strong> is
+unchanged and stays the default for anyone who prefers reviewing
+top-to-bottom.</p>
+<h3
+id="ranked-spelling-review-altshiftf7-the-full-guided-f7-experience-in-ranked-order">Ranked
+Spelling Review (Alt+Shift+F7) — the full guided F7 experience, in
+ranked order</h3>
+<p>Where <strong>Ctrl+Shift+L</strong> above is a quick
+jump-to-occurrence list, <strong>Alt+Shift+F7</strong> is the other half
+of the same request: the <em>entire</em> guided F7 Spelling Review —
+<strong>Change</strong>, <strong>Change All</strong>, <strong>Ignore
+Once</strong>, <strong>Ignore All</strong>, <strong>Add to
+Dictionary</strong>, <strong>Undo Last</strong>, all of it — but walking
+issues most-frequent-word-first instead of top-to-bottom.</p>
+<p>This is the version built for genuinely messy documents — a rough OCR
+scan, a document with a systematic autocorrect error, or anything with
+the same handful of mistakes repeated many times. Press <strong>Change
+All</strong> on the top entry and the ranking re-evaluates immediately:
+whatever word is now most frequent among what’s left rises to the front
+automatically, so you keep working through the document’s worst
+offenders first instead of hunting for them one at a time in reading
+order. <strong>F7</strong> (document order) and
+<strong>Alt+Shift+F7</strong> (ranked order) use the exact same dialog
+and the exact same set of actions — only the order issues are presented
+in differs.</p>
+<h3
+id="favorite-folders-a-short-curated-list-for-instant-access">Favorite
+folders — a short, curated list for instant access</h3>
+<p>Also requested directly, modeled on a feature from Kurzweil 1000: a
+short list of folders you mark as favorites, distinct from Windows’
+recent-folders list. Recent folders tracks what you <em>recently</em>
+opened; favorites tracks what you actually want fast access to — a
+folder you use constantly but haven’t touched in months (the classic
+example: a document your boss might ask about at any moment) belongs in
+favorites even though it long ago aged out of any recency-based
+list.</p>
+<ul>
+<li><strong>Ctrl+Alt+Shift+A</strong> — <strong>Add Favorite
+Folder.</strong> Adds the current document’s containing folder to your
+favorites list. (Save the document first if it’s untitled — Quill needs
+a real folder to add.)</li>
+<li><strong>Ctrl+Alt+Shift+R</strong> — <strong>Remove Favorite
+Folder…</strong> Opens a list of your current favorites; choose one to
+remove it.</li>
+<li><strong>Ctrl+Alt+Shift+O</strong> — <strong>Open From Favorite
+Folder…</strong> Opens Quick Open (see below) scoped to your
+favorites.</li>
+</ul>
+<p>All three are also on the <strong>File</strong> menu, under a new
+<strong>Favorite Folders</strong> submenu, if you’d rather navigate by
+menu than remember the chords.</p>
+<h3
+id="open-from-favorite-folder-a-vscode-style-quick-open-scoped-to-your-favorites">Open
+From Favorite Folder — a VSCode-style Quick Open, scoped to your
+favorites</h3>
+<p>Press <strong>Ctrl+Alt+Shift+O</strong> and a small dialog opens with
+a text box already focused. Start typing part of a filename and the list
+below filters live, case-insensitively, across every one of your
+favorite folders at once — the same type-to-filter rhythm as VSCode’s
+Ctrl+P. Arrow down to a match (each entry shows which favorite folder it
+came from, since two favorites can both contain a file with a similar
+name) and press Enter, or click <strong>OK</strong>, to open it. Escape
+or <strong>Cancel</strong> backs out with nothing changed.</p>
+<p>By default the scan is <strong>top-level files only</strong> within
+each favorite folder, not recursive — this keeps the filter instant even
+if one of your favorites happens to contain a huge nested tree, and it
+matches the “short, curated list” philosophy favorites are built around.
+Tick the <strong>Include subfolders</strong> checkbox in the dialog to
+search every subfolder too, if you need to — it’s capped at a few
+thousand files so even a very large favorite can’t hang the dialog. And
+because Quill doesn’t have a single-project-root “workspace” concept the
+way VSCode does, this Quick Open is intentionally scoped to your
+favorites rather than searching your whole disk.</p>
+<h3 id="accessible-code-folding">Accessible code folding</h3>
+<p>Fold a heading section or a fenced code block (the
+<code>```</code>…<code>```</code> kind, as in Markdown or a code block
+inside a document) to reduce clutter while you work — without ever
+losing access to what’s folded.</p>
+<ul>
+<li><strong>Ctrl+Alt+Shift+F</strong> — <strong>Toggle Fold.</strong>
+Folds or unfolds the smallest foldable region containing your cursor.
+You’ll hear exactly what happened: <em>“Folded: 14 lines under ‘Chapter
+Two’”</em> when you fold, <em>“Unfolded: ‘Chapter Two’”</em> when you
+unfold.</li>
+<li><strong>Alt+Shift+]</strong> — <strong>Next Fold.</strong> Jumps to
+the next foldable region’s boundary, whether it’s currently folded or
+not, announcing its label, fold state, and line count on arrival:
+<em>“‘Chapter Three’, expanded, 22 lines.”</em></li>
+<li><strong>Alt+Shift+[</strong> — <strong>Previous Fold.</strong> Same
+as Next Fold, but backward.</li>
+<li><strong>Ctrl+Alt+Shift+L</strong> — <strong>List Folds…</strong>
+Opens a dialog listing every foldable region in the document at once,
+each showing its current fold state and line count. Pick one to jump
+straight to it — the fastest way to get an overview of a long document’s
+structure and fold state without stepping through it region by
+region.</li>
+</ul>
+<p>We designed this one carefully, and it’s worth explaining why it
+works differently from folding in most other editors. There, folding
+hides lines visually, and arrow-key navigation silently skips right over
+a folded block — a screen reader user has no way to tell whether content
+vanished or was just collapsed, which is a real, long-standing
+accessibility complaint about folding in mainstream code editors.
+Quill’s folding never does that: <strong>the document text is never
+touched, and ordinary arrow-key, word, and line navigation is never
+intercepted.</strong> Fold state is purely something the four commands
+above announce and act on — arrow through a folded region character by
+character and you will read every word in it, exactly as if it weren’t
+folded. Folding only changes what a <em>jump</em> command does, never
+what you can reach by moving normally, so nothing you can reach is ever
+made silently unreachable.</p>
+<hr />
+<h2 id="offline-edition-genuinely-offline-now">Offline Edition:
+genuinely offline now</h2>
+<p>A community member testing the Offline Edition installer found that
+Kokoro’s neural voices still asked for an internet connection the first
+time they were used — on a build whose entire point is “no internet
+needed.” That report turned into an audit of every optional speech
+component Quill offers, and this release closes the gaps that audit
+found.</p>
+<h3 id="what-offline-edition-means-and-where-it-fell-short">What
+“Offline Edition” means, and where it fell short</h3>
+<p>The Offline Edition installer is meant to be a genuinely
+self-contained build: everything you might reasonably use, already on
+your computer, with no internet connection required after install.
+Kokoro’s <em>voice model files</em> were already bundled that way. What
+wasn’t bundled was the small piece of software that actually
+<em>reads</em> those files — Kokoro’s underlying package, which pulls in
+a few supporting libraries the first time it’s used. That meant
+selecting a Kokoro voice on a genuinely offline machine still hit a
+wall: the model was right there, but the program needed to install its
+“engine” over a connection that, by definition, an offline machine
+doesn’t have.</p>
+<h3 id="whats-fixed">What’s fixed</h3>
+<ul>
+<li><p><strong>Kokoro neural voices</strong> now install completely from
+files already on your computer, with the Offline Edition build. No
+connection needed, the first time or ever.</p></li>
+<li><p><strong>whisper.cpp — the speech-to-text engine Quill uses by
+default</strong> — now comes with its starter model already in place.
+This one mattered most: whisper.cpp isn’t an optional extra you might
+choose, it’s the engine Quill reaches for automatically, so a “no
+internet needed” build that couldn’t actually transcribe anything until
+it fetched a file was the biggest gap of all. That’s fixed.</p></li>
+<li><p><strong>Faster Whisper, Vosk, and MP3 chapter-marker
+support</strong> — three smaller optional add-ons — get the same
+treatment. Choosing any of them under the Offline Edition build now
+works without a connection.</p></li>
+<li><p><strong>Vosk’s install got more reliable as a side
+effect.</strong> Vosk always needed one small supporting library that,
+until now, could only come from the internet even when Vosk’s own file
+was already verified and local. That gap closes too.</p></li>
+<li><p><strong>Piper gets the same treatment in this release</strong>:
+the Offline Edition now bundles Piper’s engine — integrity-checked
+against the same pinned fingerprint at build time and again at install
+time — plus a ready-to-speak starter voice (Lessac, US English, medium
+quality). Pick Piper on an Offline Edition install and it talks without
+ever touching the network; more voices download from the online catalog
+whenever you want them.</p></li>
+</ul>
+<h3 id="whats-still-on-the-list">What’s still on the list</h3>
+<p>One component doesn’t have this treatment yet: <strong>Node.js-based
+Quillins</strong> still need a connection the first time you use one,
+even under the Offline Edition. This is a known, tracked gap rather than
+an oversight.</p>
+<h2 id="a-note-on-how-this-release-came-together">A note on how this
+release came together</h2>
+<p>Every fix in this release traces back to a specific community bug
+report — nine in total, from #939 through #953, every one now closed
+with an explanation of what was found and (where applicable) what
+changed. The two “no evidence in the log” reports (#940, #948) turned
+into a real feature rather than being quietly closed as unreproducible:
+Quill now recognizes that pattern itself and stops asking about it. And
+two of the seven new features — ranked spelling and favorite folders —
+came directly from a tester’s side-by-side comparison with a competing
+product, alongside a third request (an instant single-word spell check)
+that’s also in this release. Keep the reports coming; this is how Quill
+actually gets built.</p>
+<h2 id="whats-next">What’s next</h2>
+<p>Beta 3 keeps the beta cycle moving toward 1.0. As always:
+<strong>Help &gt; Report a Bug</strong> for anything that surprises you,
+and thank you for testing.</p>
+</body>
+</html>
