@@ -3979,6 +3979,7 @@ class MainFrame(
             "tools.sticky_notes": self._id_sticky_notes,
             "tools.sticky_note_capture": self._id_new_sticky_note,
             "tools.spell_check_dialog": self._id_spell_check,
+            "tools.spell_check_ranked": self._id_spell_check_ranked,
             "tools.spell_check_word_at_cursor": self._id_spell_check_word,
             "tools.previous_misspelling": self._id_previous_misspelling,
             "tools.next_misspelling": self._id_next_misspelling,
@@ -17358,7 +17359,22 @@ class MainFrame(
         self._invalidate_spell_dictionary_cache()
 
     def open_spell_check_dialog(self) -> None:
-        """Open the guided F7 Spelling Review dialog."""
+        """Open the guided F7 Spelling Review dialog, in document order."""
+        self._open_spelling_review(ranked=False)
+
+    def spell_check_ranked(self) -> None:
+        """Open the guided Spelling Review dialog, most-frequent word first.
+
+        Kurzweil-1000-style ranked spelling, community feature request:
+        the same Change/Change All/Ignore/Add to Dictionary workflow as F7,
+        but ordered so a single recurring OCR error or typo -- usually the
+        fastest way to clear the bulk of a long list -- is always reviewed
+        first. See ReviewSession(ranked=True) for how the ordering stays
+        correct as issues are fixed mid-session.
+        """
+        self._open_spelling_review(ranked=True)
+
+    def _open_spelling_review(self, *, ranked: bool) -> None:
         from quill.core.spelling.session import ReviewSession
         from quill.ui.spelling_review_dialog import SpellingReviewDialog
 
@@ -17384,6 +17400,7 @@ class MainFrame(
             dictionary=set(dictionary),
             scope_start=scope_start,
             scope_end=scope_end,
+            ranked=ranked,
         )
 
         if session.is_complete():
@@ -17410,7 +17427,7 @@ class MainFrame(
             document_path=doc_path,
             project_root=project_root,
             settings=self.settings,
-            scope_label=scope_label,
+            scope_label=f"{scope_label}, ranked by frequency" if ranked else scope_label,
         )
 
         self.editor.SetFocus()  # store focus for return

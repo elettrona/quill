@@ -138,6 +138,7 @@ DEFAULT_KEYMAP: dict[str, str] = {
     "tools.ask_quill_chat": "" if sys.platform == "darwin" else "Alt+Q",
     "tools.word_count": "Ctrl+Shift+W",
     "tools.spell_check_dialog": "F7",
+    "tools.spell_check_ranked": "Alt+Shift+F7",
     "tools.spell_check_word_at_cursor": "Alt+F7",
     "tools.next_misspelling": "Ctrl+F7",
     "tools.previous_misspelling": "Ctrl+Shift+F7",

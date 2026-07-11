@@ -955,6 +955,21 @@ clears every occurrence of that word at once. Arrow through the list and press
 Enter to jump to any occurrence, exactly like the regular list. The document-order
 list on **Alt+Shift+L** is unchanged and remains the default.
 
+#### Ranked Spelling Review (Alt+Shift+F7) — the full guided review, ranked
+
+**Alt+Shift+F7** is the other half of ranked spelling: the entire guided F7
+Spelling Review — **Change**, **Change All**, **Ignore Once**, **Ignore All**,
+**Add to Dictionary**, **Undo Last** — but walking issues most-frequent-word-first
+instead of top-to-bottom.
+
+This is built for genuinely messy documents: a rough OCR scan, or a document with
+one systematic error repeated many times. Press **Change All** on the top entry
+and the ranking re-evaluates immediately — whatever word is now most frequent
+among what's left rises to the front, so you clear a document's worst offenders
+first instead of hunting for them in reading order. **F7** and **Alt+Shift+F7**
+use the exact same dialog and the exact same actions; only the review order
+differs.
+
 #### Spell check a document before saving
 
 Turn on **Settings → Editing → Spell check a document before saving** (off by

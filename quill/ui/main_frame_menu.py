@@ -1455,6 +1455,7 @@ class MenuBuilderMixin:
         self._id_sticky_notes = wx.NewIdRef()
         self._id_new_sticky_note = wx.NewIdRef()
         self._id_spell_check = wx.NewIdRef()
+        self._id_spell_check_ranked = wx.NewIdRef()
         self._id_spell_check_word = wx.NewIdRef()
         self._id_previous_misspelling = wx.NewIdRef()
         self._id_next_misspelling = wx.NewIdRef()
@@ -1748,6 +1749,12 @@ class MenuBuilderMixin:
         writing_menu.Append(
             self._id_spell_check,
             self._menu_label(_("&Spell Check..."), "tools.spell_check_dialog"),
+        )
+        writing_menu.Append(
+            self._id_spell_check_ranked,
+            self._menu_label(
+                _("Spell Check (&Ranked by Frequency)..."), "tools.spell_check_ranked"
+            ),
         )
         writing_menu.Append(
             self._id_spell_check_word,
@@ -3979,6 +3986,11 @@ class MenuBuilderMixin:
             wx.EVT_MENU,
             lambda _e: self.open_spell_check_dialog(),
             id=self._id_spell_check,
+        )
+        self.frame.Bind(
+            wx.EVT_MENU,
+            lambda _e: self.spell_check_ranked(),
+            id=self._id_spell_check_ranked,
         )
         self.frame.Bind(
             wx.EVT_MENU,

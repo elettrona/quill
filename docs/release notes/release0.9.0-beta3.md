@@ -4,13 +4,17 @@
 
 *From Community Access. Free. Optional by design. Private by default.*
 
-Beta 3 is a short, focused release: fix what Beta 2 testers found, close out every open community bug report, and ship six small accessibility-first features that were ready to go. This document explains every new keystroke in full, step by step — no feature here requires you to guess at a shortcut.
+Beta 3 is a short, focused release: fix what Beta 2 testers found, close out every open community bug report, and ship eight small accessibility-first features that were ready to go. This document explains every new keystroke in full, step by step — no feature here requires you to guess at a shortcut.
 
 This is the friendly companion to the **"0.9.0 Beta 3"** section of `CHANGELOG.md`. The shorter text under **Help > What's New** and **Check for Updates** comes from that changelog; this document tells the fuller story.
 
 ---
 
 ## Fixes
+
+### Pandoc imports (EPUB and others) could silently produce an empty document
+
+A community member reported — and correctly root-caused — a serious one: importing an EPUB via **File > Import > EPUB Book** could leave you with a completely empty document while Quill reported success. The cause was a subtle encoding mismatch: Quill's subprocess helper decoded Pandoc's output using the system's default locale encoding rather than an explicit one, and on a Windows machine whose locale defaults to a legacy code page instead of UTF-8, Pandoc's UTF-8 output could fail to decode — silently leaving Quill with nothing, while still reporting success. Output is now always decoded as UTF-8 (with a safe fallback so even a genuinely non-UTF-8 byte never crashes or blanks the result), and the Pandoc import path now explicitly fails loudly if it ever gets no output, instead of quietly handing you a blank page. This affected every tool that goes through Quill's subprocess helper, not just EPUB import, so this is a broader reliability fix than it first appears.
 
 ### Speech and Dictation crashed on open
 
@@ -30,7 +34,7 @@ Two automatic crash-recovery submissions showed logs with only routine backgroun
 
 ---
 
-## New: seven small, accessibility-first additions
+## New: eight small, accessibility-first additions
 
 ### Quill can add itself to your PATH
 
@@ -65,6 +69,12 @@ If you've used the "press F7 on a focused word" workflow in Microsoft Office, th
 **Ctrl+Shift+L** opens the misspelling list just like **Alt+Shift+L** (the existing **Misspelling List**) already does, but in a different order: instead of the order the words appear in your document, the word that recurs the *most* comes first. Each entry also shows how many times it occurs, e.g. "teh (Ln 12, Col 4, 8 occurrences)."
 
 This is a Kurzweil-1000-style feature, requested directly by a longtime user: a single OCR misread or a repeated typo (`teh` for `the`, say) is usually the fastest way to clear the bulk of a long misspelling list, since fixing one entry — mentally, or via Add to Dictionary — effectively resolves every occurrence of that word at once. Arrow through the ranked list, press Enter to jump to any occurrence, same as the regular list. The document-order **Misspelling List** on **Alt+Shift+L** is unchanged and stays the default for anyone who prefers reviewing top-to-bottom.
+
+### Ranked Spelling Review (Alt+Shift+F7) — the full guided F7 experience, in ranked order
+
+Where **Ctrl+Shift+L** above is a quick jump-to-occurrence list, **Alt+Shift+F7** is the other half of the same request: the *entire* guided F7 Spelling Review — **Change**, **Change All**, **Ignore Once**, **Ignore All**, **Add to Dictionary**, **Undo Last**, all of it — but walking issues most-frequent-word-first instead of top-to-bottom.
+
+This is the version built for genuinely messy documents — a rough OCR scan, a document with a systematic autocorrect error, or anything with the same handful of mistakes repeated many times. Press **Change All** on the top entry and the ranking re-evaluates immediately: whatever word is now most frequent among what's left rises to the front automatically, so you keep working through the document's worst offenders first instead of hunting for them one at a time in reading order. **F7** (document order) and **Alt+Shift+F7** (ranked order) use the exact same dialog and the exact same set of actions — only the order issues are presented in differs.
 
 ### Favorite folders — a short, curated list for instant access
 
