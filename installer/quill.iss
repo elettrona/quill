@@ -2,7 +2,7 @@
 ; Edit build_inno_setup_script(), not this file, to change packaging.
 
 #define AppName "QUILL for All"
-#define AppVersion "0.9.0 Beta 2"
+#define AppVersion "0.9.0 Beta 3"
 #define AppPublisher "Community Access"
 #define AppURL "https://github.com/Community-Access/quill"
 #define AppExeName "quill.exe"
@@ -15,7 +15,7 @@ AppPublisher={#AppPublisher}
 AppPublisherURL={#AppURL}
 AppSupportURL={#AppURL}
 AppUpdatesURL={#AppURL}
-VersionInfoVersion=0.9.0.2
+VersionInfoVersion=0.9.0.3
 VersionInfoCompany={#AppPublisher}
 VersionInfoDescription={#AppName} accessible writing environment
 DefaultDirName={autopf}\{#AppName}
@@ -38,7 +38,7 @@ MinVersion=10.0
 ; The file-association and Send-to-Quill tasks write Explorer keys, so
 ; tell Windows to refresh association/icon caches after install.
 ChangesAssociations=yes
-OutputBaseFilename=Quill-for-All-Setup-0.9.0 Beta 2
+OutputBaseFilename=Quill-for-All-Setup-0.9.0 Beta 3
 Compression=lzma2/ultra
 SolidCompression=yes
 WizardStyle=modern
@@ -64,6 +64,7 @@ Name: "english"; MessagesFile: "compiler:Default.isl"
 [Tasks]
 Name: "fileassoc"; Description: "Register Quill in the Open With menu for common text formats (.txt, .md, .rst, .log, .csv, .json)"; GroupDescription: "File associations:"; Flags: unchecked
 Name: "shellverbs"; Description: "Add ""Send to Quill"" actions (OCR, Open, Read aloud) to the file right-click menu"; GroupDescription: "File associations:"; Flags: unchecked
+Name: "addtopath"; Description: "Add Quill to PATH (lets you run ""quill"" from a terminal or a shortcut Target field without the full path)"; GroupDescription: "Command line:"; Flags: unchecked
 
 ; No [Types] or [Components] section: every optional component is fetched
 ; on demand from its verified source, so the installer shows no setup-type
@@ -112,7 +113,7 @@ Type: filesandordirs; Name: "{app}\python"
 ; needed now that migration protects the data.
 
 [Files]
-Source: "..\portable\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs; Excludes: "docs\QUILL-PRD.md,tools\pandoc\*,tools\speech\dectalk\*,tools\speech\espeak-ng\*,tools\speech\piper\*,tools\speech\whispercpp\*,tools\nodejs\*,vendor\braille-pack\*,kokoro-models\*,_tool-download\*,_speech-download\*,*\__pycache__\*"
+Source: "..\portable\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs; Excludes: "docs\QUILL-PRD.md,tools\nodejs\*,_tool-download\*,_speech-download\*,*\__pycache__\*,tools\pandoc\*,tools\speech\dectalk\*,tools\speech\espeak-ng\*,tools\speech\piper\*,tools\speech\whispercpp\*,vendor\braille-pack\*,kokoro-models\*"
 ; Only Quill's core bundle is installed. Every optional component --
 ; Pandoc, Piper, Node.js, the braille pack, whisper.cpp, Kokoro, DECtalk,
 ; and eSpeak-NG -- is fetched on demand to %APPDATA%\Quill (verified,
@@ -287,6 +288,13 @@ Root: HKCU; Subkey: "Software\Classes\SystemFileAssociations\.pdf\shell\Quill.re
 Root: HKCU; Subkey: "Software\Classes\SystemFileAssociations\.pdf\shell\Quill.read"; ValueType: string; ValueName: "MUIVerb"; ValueData: "Read aloud in Quill"; Tasks: shellverbs
 Root: HKCU; Subkey: "Software\Classes\SystemFileAssociations\.pdf\shell\Quill.read\command"; ValueType: string; ValueName: ""; ValueData: """{app}\{#AppExeName}"" -m quill --action read ""%1"""; Tasks: shellverbs
 
+; community#941: opt-in PATH registration (addtopath task) so
+; quill resolves from a terminal or a shortcut Target field without
+; the full install path. Per-user only (HKCU) -- no elevation needed and
+; no other account is touched. NeedsAddPath (in [Code]) guards against
+; duplicate entries on repeat installs/repairs.
+Root: HKCU; Subkey: "Environment"; ValueType: expandsz; ValueName: "Path"; ValueData: "{olddata};{app}"; Tasks: addtopath; Check: NeedsAddPath('{app}')
+
 [Run]
 Filename: "{app}\README.txt"; Description: "View the Quill README"; Flags: postinstall shellexec skipifsilent unchecked
 Filename: "{app}\docs\userguide.html"; Description: "View the User Guide"; Flags: postinstall shellexec skipifsilent unchecked
@@ -329,6 +337,23 @@ end;
 function HasBundledLauncher(): Boolean;
 begin
   Result := BundledLauncherPath('') <> '';
+end;
+
+// -- community#941: opt-in PATH registration --------------------------------
+// True when {app} is not already present in the user's PATH, so the
+// [Registry] addtopath entry above only appends once per machine even
+// across repeat installs/repairs (a missing PATH value is treated as
+// empty, so the very first install still adds it).
+function NeedsAddPath(Param: string): boolean;
+var
+  OrigPath: string;
+begin
+  if not RegQueryStringValue(HKEY_CURRENT_USER, 'Environment', 'Path', OrigPath) then
+  begin
+    Result := True;
+    exit;
+  end;
+  Result := Pos(';' + Param + ';', ';' + OrigPath + ';') = 0;
 end;
 
 // -- Post-install: write the new-install marker -----------------------------

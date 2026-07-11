@@ -148,6 +148,23 @@ class MenuBuilderMixin:
         self._recent_menu = wx.Menu()
         file_menu.AppendSubMenu(self._recent_menu, _("Open &Recent"))
         self._refresh_recent_menu()
+        self._id_open_from_favorite_folder = wx.NewIdRef()
+        self._id_add_favorite_folder = wx.NewIdRef()
+        self._id_remove_favorite_folder = wx.NewIdRef()
+        favorites_menu = wx.Menu()
+        favorites_menu.Append(
+            self._id_open_from_favorite_folder,
+            self._menu_label(_("&Open From Favorite Folder..."), "file.open_from_favorite_folder"),
+        )
+        favorites_menu.Append(
+            self._id_add_favorite_folder,
+            self._menu_label(_("&Add Current Folder to Favorites"), "file.add_favorite_folder"),
+        )
+        favorites_menu.Append(
+            self._id_remove_favorite_folder,
+            self._menu_label(_("&Remove Favorite Folder..."), "file.remove_favorite_folder"),
+        )
+        file_menu.AppendSubMenu(favorites_menu, _("Favorite &Folders"))
         file_menu.Append(self._id_open_url, _("Open from &URL..."))
         ssh_menu = wx.Menu()
         ssh_menu.Append(self._id_ssh_quick_connect, _("&Quick Connect..."))
@@ -789,6 +806,10 @@ class MenuBuilderMixin:
         self._id_next_block = wx.NewIdRef()
         self._id_previous_block = wx.NewIdRef()
         self._id_outline_navigator = wx.NewIdRef()
+        self._id_toggle_fold = wx.NewIdRef()
+        self._id_next_fold = wx.NewIdRef()
+        self._id_previous_fold = wx.NewIdRef()
+        self._id_list_folds = wx.NewIdRef()
         self._id_heading_organizer = wx.NewIdRef()
         self._id_match_bracket = wx.NewIdRef()
         self._id_next_token = wx.NewIdRef()
@@ -933,6 +954,23 @@ class MenuBuilderMixin:
         navigate_menu.Append(
             self._id_heading_organizer,
             self._menu_label(_("&Heading Organizer..."), "navigate.heading_organizer"),
+        )
+        navigate_menu.AppendSeparator()
+        navigate_menu.Append(
+            self._id_toggle_fold,
+            self._menu_label(_("Toggle &Fold"), "edit.toggle_fold"),
+        )
+        navigate_menu.Append(
+            self._id_next_fold,
+            self._menu_label(_("Ne&xt Fold"), "navigate.next_fold"),
+        )
+        navigate_menu.Append(
+            self._id_previous_fold,
+            self._menu_label(_("Pre&vious Fold"), "navigate.previous_fold"),
+        )
+        navigate_menu.Append(
+            self._id_list_folds,
+            self._menu_label(_("List &Folds..."), "tools.list_folds"),
         )
         navigate_menu.AppendSeparator()
         navigate_menu.Append(
@@ -1417,9 +1455,11 @@ class MenuBuilderMixin:
         self._id_sticky_notes = wx.NewIdRef()
         self._id_new_sticky_note = wx.NewIdRef()
         self._id_spell_check = wx.NewIdRef()
+        self._id_spell_check_word = wx.NewIdRef()
         self._id_previous_misspelling = wx.NewIdRef()
         self._id_next_misspelling = wx.NewIdRef()
         self._id_misspelling_list = wx.NewIdRef()
+        self._id_misspelling_list_ranked = wx.NewIdRef()
         self._id_dictionary_status = wx.NewIdRef()
         self._id_ocr_image = wx.NewIdRef()
         self._id_table_studio = wx.NewIdRef()
@@ -1710,6 +1750,10 @@ class MenuBuilderMixin:
             self._menu_label(_("&Spell Check..."), "tools.spell_check_dialog"),
         )
         writing_menu.Append(
+            self._id_spell_check_word,
+            self._menu_label(_("Spell Check &Word"), "tools.spell_check_word_at_cursor"),
+        )
+        writing_menu.Append(
             self._id_previous_misspelling,
             self._menu_label(_("Previous Mi&sspelling"), "tools.previous_misspelling"),
         )
@@ -1720,6 +1764,12 @@ class MenuBuilderMixin:
         writing_menu.Append(
             self._id_misspelling_list,
             self._menu_label(_("&Misspelling List..."), "tools.misspelling_list"),
+        )
+        writing_menu.Append(
+            self._id_misspelling_list_ranked,
+            self._menu_label(
+                _("Misspelling List (&Ranked by Frequency)..."), "tools.misspelling_list_ranked"
+            ),
         )
         self._id_spell_language = wx.NewIdRef()
         writing_menu.Append(
@@ -2721,6 +2771,21 @@ class MenuBuilderMixin:
         self.frame.Bind(wx.EVT_MENU, lambda _e: self.open_url(), id=self._id_open_url)
         self.frame.Bind(
             wx.EVT_MENU,
+            lambda _e: self.open_from_favorite_folder(),
+            id=self._id_open_from_favorite_folder,
+        )
+        self.frame.Bind(
+            wx.EVT_MENU,
+            lambda _e: self.add_favorite_folder(),
+            id=self._id_add_favorite_folder,
+        )
+        self.frame.Bind(
+            wx.EVT_MENU,
+            lambda _e: self.remove_favorite_folder(),
+            id=self._id_remove_favorite_folder,
+        )
+        self.frame.Bind(
+            wx.EVT_MENU,
             lambda _e: self.open_from_remote(),
             id=self._id_open_remote,
         )
@@ -3621,6 +3686,10 @@ class MenuBuilderMixin:
             lambda _e: self.open_outline_navigator(),
             id=self._id_outline_navigator,
         )
+        self.frame.Bind(wx.EVT_MENU, lambda _e: self.toggle_fold(), id=self._id_toggle_fold)
+        self.frame.Bind(wx.EVT_MENU, lambda _e: self.next_fold(), id=self._id_next_fold)
+        self.frame.Bind(wx.EVT_MENU, lambda _e: self.previous_fold(), id=self._id_previous_fold)
+        self.frame.Bind(wx.EVT_MENU, lambda _e: self.list_folds(), id=self._id_list_folds)
         self.frame.Bind(
             wx.EVT_MENU,
             lambda _e: self.open_heading_organizer(),
@@ -3913,6 +3982,11 @@ class MenuBuilderMixin:
         )
         self.frame.Bind(
             wx.EVT_MENU,
+            lambda _e: self.spell_check_word_at_cursor(),
+            id=self._id_spell_check_word,
+        )
+        self.frame.Bind(
+            wx.EVT_MENU,
             lambda _e: self.previous_misspelling(),
             id=self._id_previous_misspelling,
         )
@@ -3925,6 +3999,11 @@ class MenuBuilderMixin:
             wx.EVT_MENU,
             lambda _e: self.open_misspelling_list(),
             id=self._id_misspelling_list,
+        )
+        self.frame.Bind(
+            wx.EVT_MENU,
+            lambda _e: self.open_misspelling_list_ranked(),
+            id=self._id_misspelling_list_ranked,
         )
         self.frame.Bind(
             wx.EVT_MENU,

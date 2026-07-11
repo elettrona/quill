@@ -197,11 +197,25 @@ def test_build_inno_setup_script_mentions_portable_bundle() -> None:
     assert "OpenJS.NodeJS" not in script
     assert "winget install --id OpenJS" not in script
     # The core bundle still ships, with the optional tools excluded from it so a
-    # locally staged dev copy never leaks into the installer.
-    assert (
-        'Excludes: "docs\\QUILL-PRD.md,tools\\pandoc\\*,tools\\speech\\dectalk\\*,tools\\speech\\espeak-ng\\*,tools\\speech\\piper\\*,tools\\speech\\whispercpp\\*,tools\\nodejs\\*,vendor\\braille-pack\\*,kokoro-models\\*,_tool-download\\*,_speech-download\\*,*\\__pycache__\\*"'
-        in script
-    )
+    # locally staged dev copy never leaks into the installer. Checked by
+    # membership (not a fixed order) since --bundle-offline reorders the same
+    # always-excluded terms ahead of the optional-component terms it can lift.
+    excludes_line = next(line for line in script.splitlines() if line.startswith("Source:"))
+    for term in (
+        "docs\\QUILL-PRD.md",
+        "tools\\pandoc\\*",
+        "tools\\speech\\dectalk\\*",
+        "tools\\speech\\espeak-ng\\*",
+        "tools\\speech\\piper\\*",
+        "tools\\speech\\whispercpp\\*",
+        "tools\\nodejs\\*",
+        "vendor\\braille-pack\\*",
+        "kokoro-models\\*",
+        "_tool-download\\*",
+        "_speech-download\\*",
+        "*\\__pycache__\\*",
+    ):
+        assert term in excludes_line, f"{term!r} missing from default (non-offline) Excludes"
     assert "User Guide" in script
     assert "userguide.html" in script
     assert 'Parameters: "-m quill"' in script
@@ -237,6 +251,49 @@ def test_build_inno_setup_script_mentions_portable_bundle() -> None:
     assert "HKLM" not in script
     # The script parses as plain ASCII text (catches stray bad characters).
     script.encode("ascii")
+
+
+def test_bundle_offline_lifts_optional_component_excludes() -> None:
+    """--bundle-offline includes locally staged optional components in the .exe.
+
+    Without the flag (the default/regular installer), any optional component
+    staged via --pandoc-dir/--dectalk-dir/--espeak-dir/--whisper-dir/--kokoro-dir/
+    --braille-pack-dir is still stripped from the compiled .exe -- only the
+    portable ZIP output carries it. This is what makes an "Offline Edition"
+    installer genuinely different from the regular one instead of a same-payload
+    duplicate under a misleading name.
+    """
+    online = build_inno_setup_script("0.9.0", bundle_offline_components=False)
+    offline = build_inno_setup_script("0.9.0", bundle_offline_components=True)
+
+    online_excludes = next(line for line in online.splitlines() if line.startswith("Source:"))
+    offline_excludes = next(line for line in offline.splitlines() if line.startswith("Source:"))
+
+    optional_component_terms = (
+        "tools\\pandoc\\*",
+        "tools\\speech\\dectalk\\*",
+        "tools\\speech\\espeak-ng\\*",
+        "tools\\speech\\piper\\*",
+        "tools\\speech\\whispercpp\\*",
+        "vendor\\braille-pack\\*",
+        "kokoro-models\\*",
+    )
+    for term in optional_component_terms:
+        assert term in online_excludes, f"{term!r} must be excluded from the regular installer"
+        assert term not in offline_excludes, f"{term!r} must NOT be excluded from --bundle-offline"
+
+    # Node.js has no --nodejs-dir staging flag on this script (it is not part of
+    # the offline-speech/braille bundle) and the build-artifact/dev-only entries
+    # are meaningless to ship either way, so both stay excluded regardless.
+    for always_excluded in (
+        "docs\\QUILL-PRD.md",
+        "tools\\nodejs\\*",
+        "_tool-download\\*",
+        "_speech-download\\*",
+        "*\\__pycache__\\*",
+    ):
+        assert always_excluded in online_excludes
+        assert always_excluded in offline_excludes
 
 
 def test_installer_clean_replaces_first_party_package_for_safe_upgrades() -> None:

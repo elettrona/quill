@@ -298,6 +298,22 @@ def main() -> int:
         default=None,
         help="Optional explicit path to ISCC.exe for installer compilation.",
     )
+    parser.add_argument(
+        "--bundle-offline",
+        action="store_true",
+        help=(
+            "Build a fully self-contained 'Offline Edition' installer: any optional "
+            "component staged via --pandoc-dir/--dectalk-dir/--espeak-dir/"
+            "--whisper-dir/--kokoro-dir/--braille-pack-dir is INCLUDED in the "
+            "compiled .exe instead of being stripped by the default [Files] "
+            "Excludes. Without this flag (the default, smaller/regular installer), "
+            "any locally staged copy is still written to the portable bundle for "
+            "the ZIP output, but excluded from the .exe -- optional components "
+            "always download on demand in that installer, matching the standard "
+            "release. Has no effect on the portable ZIP, which always includes "
+            "whatever was staged."
+        ),
+    )
     args = parser.parse_args()
 
     bundle = build_windows_distribution(
@@ -306,6 +322,7 @@ def main() -> int:
         bundle_python=args.bundle_python,
         source_root=args.source_root,
         braille_pack_dir=args.braille_pack_dir,
+        bundle_offline=args.bundle_offline,
         bundled_tool_dirs={
             tool_id: path
             for tool_id, path in {
@@ -337,6 +354,7 @@ def build_windows_distribution(
     bundled_tool_dirs: dict[str, Path] | None = None,
     kokoro_dir: Path | None = None,
     braille_pack_dir: Path | None = None,
+    bundle_offline: bool = False,
     compile_installer: bool = False,
     iscc_path: Path | None = None,
 ) -> dict[str, str]:
@@ -442,6 +460,7 @@ def build_windows_distribution(
         product_name=identity.product_name,
         publisher=identity.publisher,
         bundle_braille_pack=braille_pack_staged,
+        bundle_offline_components=bundle_offline,
         numeric_version=iss_numeric_version,
     )
     installer_script.write_text(installer_script_text, encoding="utf-8")
@@ -748,6 +767,7 @@ def build_inno_setup_script(
     product_name: str = APP_DISPLAY_NAME,
     publisher: str = APP_ORGANIZATION,
     bundle_braille_pack: bool = False,
+    bundle_offline_components: bool = False,
     numeric_version: str | None = None,
 ) -> str:
     """Return a production-quality Inno Setup script for the portable bundle.
@@ -837,6 +857,13 @@ def build_inno_setup_script(
         'Name: "shellverbs"; Description: "Add ""Send to Quill"" actions'
         ' (OCR, Open, Read aloud) to the file right-click menu";'
         ' GroupDescription: "File associations:"; Flags: unchecked',
+        # community#941: launching "quill" from a terminal or a shortcut's Target
+        # field needs the install directory on PATH. Opt-in (unchecked), same as
+        # the other Tasks above -- PATH is shared system/user state, so this is
+        # never silently applied.
+        'Name: "addtopath"; Description: "Add Quill to PATH (lets you run'
+        ' ""quill"" from a terminal or a shortcut Target field without the full'
+        ' path)"; GroupDescription: "Command line:"; Flags: unchecked',
         "",
         "; No [Types] or [Components] section: every optional component is fetched",
         "; on demand from its verified source, so the installer shows no setup-type",
@@ -885,17 +912,53 @@ def build_inno_setup_script(
         "; needed now that migration protects the data.",
         "",
         "[Files]",
-        'Source: "..\\portable\\*"; DestDir: "{app}";'
+    ]
+    # Optional-component excludes. Node.js has no --nodejs-dir staging flag on this
+    # build script (it is not part of the offline-speech/braille bundle), and the
+    # build-artifact/dev-only entries are excluded either way, so those five stay
+    # excluded regardless of --bundle-offline. The remaining six (Pandoc, DECtalk,
+    # eSpeak-NG, Piper, whisper.cpp, Kokoro, and the braille pack) are only excluded
+    # for the regular/smaller installer; --bundle-offline lifts the exclusion so a
+    # locally staged copy (via --pandoc-dir/--dectalk-dir/--espeak-dir/--whisper-dir/
+    # --kokoro-dir/--braille-pack-dir) ships inside the compiled .exe, producing a
+    # genuine "Offline Edition" installer instead of a same-payload duplicate of the
+    # regular one.
+    _always_excluded = "docs\\QUILL-PRD.md,tools\\nodejs\\*,_tool-download\\*,_speech-download\\*,*\\__pycache__\\*"
+    _optional_component_excludes = (
+        "tools\\pandoc\\*,tools\\speech\\dectalk\\*,tools\\speech\\espeak-ng\\*,"
+        "tools\\speech\\piper\\*,tools\\speech\\whispercpp\\*,vendor\\braille-pack\\*,kokoro-models\\*"
+    )
+    _files_excludes = (
+        _always_excluded
+        if bundle_offline_components
+        else f"{_always_excluded},{_optional_component_excludes}"
+    )
+    lines += [
+        f'Source: "..\\portable\\*"; DestDir: "{{app}}";'
         " Flags: ignoreversion recursesubdirs createallsubdirs;"
-        ' Excludes: "docs\\QUILL-PRD.md,tools\\pandoc\\*,tools\\speech\\dectalk\\*,tools\\speech\\espeak-ng\\*,tools\\speech\\piper\\*,tools\\speech\\whispercpp\\*,tools\\nodejs\\*,vendor\\braille-pack\\*,kokoro-models\\*,_tool-download\\*,_speech-download\\*,*\\__pycache__\\*"',
-        "; Only Quill's core bundle is installed. Every optional component --",
-        "; Pandoc, Piper, Node.js, the braille pack, whisper.cpp, Kokoro, DECtalk,",
-        "; and eSpeak-NG -- is fetched on demand to %APPDATA%\\Quill (verified,",
-        "; pinned release assets or official builds), which the app's resolvers",
-        "; prefer. The Excludes above keep any locally staged copy (from a --*-dir",
-        "; dev build) out of the shipped installer; [InstallDelete] never touches",
-        "; an upgrader's existing {app} copies.",
-        "",
+        f' Excludes: "{_files_excludes}"',
+    ]
+    if bundle_offline_components:
+        lines += [
+            "; Offline Edition: every optional component (Pandoc, Piper, whisper.cpp,",
+            "; Kokoro, DECtalk, eSpeak-NG, the braille pack) staged via --*-dir flags",
+            "; ships inside this installer, so no internet connection is ever needed",
+            "; after install. [InstallDelete] never touches an upgrader's existing",
+            "; {app} copies.",
+            "",
+        ]
+    else:
+        lines += [
+            "; Only Quill's core bundle is installed. Every optional component --",
+            "; Pandoc, Piper, Node.js, the braille pack, whisper.cpp, Kokoro, DECtalk,",
+            "; and eSpeak-NG -- is fetched on demand to %APPDATA%\\Quill (verified,",
+            "; pinned release assets or official builds), which the app's resolvers",
+            "; prefer. The Excludes above keep any locally staged copy (from a --*-dir",
+            "; dev build) out of the shipped installer; [InstallDelete] never touches",
+            "; an upgrader's existing {app} copies.",
+            "",
+        ]
+    lines += [
         "[Icons]",
         'Name: "{group}\\{#AppName}"; Filename: "{code:BundledLauncherPath}"; Parameters: "-m quill"; WorkingDir: "{app}"; Check: HasBundledLauncher',
         'Name: "{group}\\{#AppName}"; Filename: "{app}\\{#AppExeName}"; WorkingDir: "{app}"; Check: not HasBundledLauncher',
@@ -934,6 +997,14 @@ def build_inno_setup_script(
     ]
     lines += build_shell_verb_registry_lines()
     lines += [
+        "",
+        "; community#941: opt-in PATH registration (addtopath task) so",
+        "; quill resolves from a terminal or a shortcut Target field without",
+        "; the full install path. Per-user only (HKCU) -- no elevation needed and",
+        "; no other account is touched. NeedsAddPath (in [Code]) guards against",
+        "; duplicate entries on repeat installs/repairs.",
+        'Root: HKCU; Subkey: "Environment"; ValueType: expandsz; ValueName: "Path";'
+        " ValueData: \"{olddata};{app}\"; Tasks: addtopath; Check: NeedsAddPath('{app}')",
         "",
         "[Run]",
         'Filename: "{app}\\README.txt"; Description: "View the Quill README";'
@@ -982,6 +1053,23 @@ def build_inno_setup_script(
         "function HasBundledLauncher(): Boolean;",
         "begin",
         "  Result := BundledLauncherPath('') <> '';",
+        "end;",
+        "",
+        "// -- community#941: opt-in PATH registration --------------------------------",
+        "// True when {app} is not already present in the user's PATH, so the",
+        "// [Registry] addtopath entry above only appends once per machine even",
+        "// across repeat installs/repairs (a missing PATH value is treated as",
+        "// empty, so the very first install still adds it).",
+        "function NeedsAddPath(Param: string): boolean;",
+        "var",
+        "  OrigPath: string;",
+        "begin",
+        "  if not RegQueryStringValue(HKEY_CURRENT_USER, 'Environment', 'Path', OrigPath) then",
+        "  begin",
+        "    Result := True;",
+        "    exit;",
+        "  end;",
+        "  Result := Pos(';' + Param + ';', ';' + OrigPath + ';') = 0;",
         "end;",
         "",
         "// -- Post-install: write the new-install marker -----------------------------",

@@ -522,6 +522,88 @@ each saved document and returns you to it when you reopen the file. (Untitled, n
 saved documents keep their bookmarks for the current session only, since there is no
 file to attach them to yet — saving the document makes them persistent.)
 
+##### Temporary bookmark (one keystroke, no dialog)
+
+For the times you just want to mark "right here" and come straight back — no name,
+no picker — use the temporary bookmark:
+
+- **Ctrl+Shift+K** sets it at the cursor.
+- **Alt+Shift+K** jumps back to it.
+
+Setting a new temporary bookmark silently replaces the old one, and unlike named
+bookmarks, it does **not** persist between sessions — it is disposable scratch state
+by design, not a place you'd want to find again next week. Use named bookmarks for
+that; use the temporary bookmark when you're actively working and just need to step
+away and come right back.
+
+##### Numbered quick bookmarks (0-9)
+
+Ten fixed jump slots, one per digit, each reachable in a single direct keystroke —
+no menu, no sub-mode to enter first:
+
+- **Alt+Shift+0** through **Alt+Shift+9** sets the jump point for that slot at the
+  cursor.
+- **Ctrl+Alt+Shift+0** through **Ctrl+Alt+Shift+9** jumps straight to that slot.
+
+They are stored the same way named bookmarks are — under generated names like
+"Quick 3" — so they persist per document with no separate storage to manage.
+Jumping to a slot that has not been set announces that clearly rather than
+failing silently.
+
+##### Favorite folders — a short, curated list for instant access
+
+A short list of folders you mark as favorites, distinct from Windows' recent-folders
+list. Recent folders tracks what you *recently* opened; favorites tracks what you
+actually want fast access to — a folder you use constantly but haven't touched in
+months still belongs here, even though it long ago aged out of any recency-based
+list.
+
+- **Ctrl+Alt+Shift+A** — **Add Favorite Folder.** Adds the current document's folder.
+  (Save the document first if it's untitled.)
+- **Ctrl+Alt+Shift+R** — **Remove Favorite Folder...** Choose one from your current
+  favorites to remove.
+- **Ctrl+Alt+Shift+O** — **Open From Favorite Folder...** Opens Quick Open, described
+  next.
+
+All three also live on **File → Favorite Folders**.
+
+##### Open From Favorite Folder — a VSCode-style Quick Open
+
+**Ctrl+Alt+Shift+O** opens a small dialog with a text box already focused. Start
+typing part of a filename and the list below filters live, case-insensitively,
+across every favorite folder at once — arrow to a match (each entry shows which
+favorite folder it came from) and press Enter, or **OK**, to open it.
+
+The scan is **top-level files only** within each favorite folder, not recursive —
+this keeps the filter instant even if a favorite happens to contain a large nested
+tree, matching the "short, curated list" idea favorites are built around.
+
+#### Code folding (accessible)
+
+Fold a heading section or a fenced code block (` ``` `...` ``` `) to reduce
+clutter while you work, without ever losing access to what's folded:
+
+- **Ctrl+Alt+Shift+F** — **Toggle Fold**. Folds or unfolds the smallest
+  foldable region containing the cursor, announcing what happened: *"Folded:
+  14 lines under 'Chapter Two'"* or *"Unfolded: 'Chapter Two'."*
+- **Alt+Shift+]** / **Alt+Shift+[** — **Next Fold** / **Previous Fold**. Jump
+  between foldable region boundaries, folded or not, announcing the region's
+  label, fold state, and line count on arrival.
+- **Ctrl+Alt+Shift+L** — **List Folds**. Opens a dialog listing every foldable
+  region in the document with its current state and line count — pick one to
+  jump straight to it, or toggle it from there.
+
+QUILL's folding is deliberately built differently from folding in most other
+editors. There, folding hides lines visually, and arrow-key navigation
+silently skips right over a folded block — a screen reader user has no way to
+tell whether content vanished or was just collapsed. QUILL never does that:
+**folding never changes the document text, and ordinary arrow, word, and line
+navigation is never intercepted.** Fold state is purely something the
+structural commands above announce and act on. Arrow through a folded region
+character by character and you will read every word in it, exactly as if it
+were not folded — folding only changes what a *jump* command does, never what
+you can reach by moving normally.
+
 #### Inline notes (sticky comments)
 
 Inline notes are private comments you attach to a line or a selection — for queries,
@@ -843,6 +925,35 @@ connection, nothing uploaded.
 - **Detailed** — adds control hints and scope reminders.
 - **Spell word aloud** — after announcing the misspelling, QUILL reads it
   letter by letter. The pause before spelling starts is configurable.
+
+#### Spell Check Word (Alt+F7) — instant, single-word check
+
+If you have used the "press F7 on a focused word" workflow in other word
+processors, **Alt+F7** is that, for QUILL: it checks only the word at your
+cursor, with no full-document review.
+
+- If the word is spelled correctly, QUILL announces that and nothing else
+  happens — no dialog for the common case.
+- If it is misspelled, a small list opens with the same choices you would get
+  from the right-click spelling menu: suggested corrections, **Add to
+  Dictionary**, and **Ignore**. Pick one and you are back to typing.
+
+Use **F7** (Spelling Review) when you want to work through a whole document or
+selection systematically; use **Alt+F7** when you just want to check the one
+word you are looking at right now.
+
+#### Ranked spelling (Ctrl+Shift+L) — misspellings sorted by frequency
+
+**Ctrl+Shift+L** opens the misspelling list in a different order than the regular
+**Misspelling List** (**Alt+Shift+L**): instead of document order, the word that
+recurs the *most* comes first, with an occurrence count shown for each entry —
+"teh (Ln 12, Col 4, 8 occurrences)."
+
+A single OCR misread or a repeated typo is usually the fastest thing to fix first,
+since resolving one entry — mentally, or via **Add to Dictionary** — effectively
+clears every occurrence of that word at once. Arrow through the list and press
+Enter to jump to any occurrence, exactly like the regular list. The document-order
+list on **Alt+Shift+L** is unchanged and remains the default.
 
 #### Spell check a document before saving
 

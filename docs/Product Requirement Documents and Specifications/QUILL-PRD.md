@@ -1759,6 +1759,8 @@ QUILL ships **its own spell checking engine**, built on Hunspell dictionaries, d
 
 - **`F7`** opens the **Spelling Review** dialog — a guided, modal, fully keyboard-operable review of every misspelling in the document or active selection. The dialog surfaces each issue inside a readable, navigable, sentence-level context window. See §6.4 for the complete specification. **Implemented in 0.7.0 Beta 2.**
 - **`Ctrl+F7` / `Ctrl+Shift+F7`** jump to the next or previous misspelling without leaving the editor.
+- **`Alt+F7`** (`tools.spell_check_word_at_cursor`) — **Spell Check Word, shipped 0.9.0 Beta 3.** Checks only the word at the caret (or the current selection), with no full-document scan. A correctly spelled word is announced and nothing else happens; a misspelling opens the same suggestions/Add to Dictionary/Ignore choices as the right-click spelling context menu (reusing `suggest_words`/`misspelling_at_position` from the spell-check core), in a lightweight `wx.SingleChoiceDialog` rather than the full Spelling Review dialog. The keyboard equivalent of pressing F7 on a focused word in Microsoft Office.
+- **`Ctrl+Shift+L`** (`tools.misspelling_list_ranked`) — **Ranked spelling, shipped 0.9.0 Beta 3, community feature request (Kurzweil 1000 parity).** Opens the same tree-navigator dialog as the existing document-order `tools.misspelling_list` (`Alt+Shift+L`), but ordered by `rank_misspellings_by_frequency()` (new, pure, in `core/spellcheck.py`): most-recurring word first, case-insensitive grouping, ties broken by first-occurrence position for a stable/reproducible order. Each entry's label includes its occurrence count (`_build_misspelling_navigator_nodes(..., show_counts=True)`). Rationale: a single OCR misread or repeated typo often accounts for the bulk of a long misspelling list, so fixing the most-frequent entry first clears the most ground fastest. Pure reordering — every occurrence still appears in the result, nothing is deduplicated or hidden.
 - As-you-type checking is on by default. Misspellings are tracked in a sidecar model (not visual squiggles) and announced gently on word boundary if the user opts in.
 - Suggestions come from Hunspell plus an n-gram reranker trained on the user's writing for personalised top suggestions.
 - Personal dictionary persists per user; per-document dictionary persists in a sidecar file.
@@ -1779,6 +1781,14 @@ QUILL ships **its own spell checking engine**, built on Hunspell dictionaries, d
 - `Ctrl+Shift+G` opens Bookmarks Manager.
 - On jump: if the stored line still contains the surrounding text, go there. If not, search for the surrounding text and update the bookmark. If still not found, fall back to line number and announce "approximate position."
 - Bookmarks for saved documents persist in `%APPDATA%\Quill\bookmarks\<hash>.json`.
+
+**Note:** the section above predates the shipped implementation and describes an earlier design (`Ctrl+B`, surrounding-text fuzzy resolution); the as-shipped named-bookmark commands (`navigate.set_bookmark`/`go_to_bookmark`/`list_bookmarks`, default `Alt+Shift+B` for List Bookmarks) live in `quill/core/bookmarks.py` and `MainFrame`, storing name→position pairs per document via `DocumentMemory`. Reconciling this section with the shipped design is a separate follow-up; the two additions below are accurate as of 0.9.0 Beta 3.
+
+**Temporary bookmark — shipped 0.9.0 Beta 3.** A single unnamed, one-shot jump point, distinct from named bookmarks: `Ctrl+Shift+K` sets it at the cursor with no dialog; `Alt+Shift+K` jumps to it with no picker. Session-only by design (never written to `DocumentMemory`) — it is disposable scratch state, not a durable anchor. Implemented as `MainFrame.set_temp_bookmark`/`go_to_temp_bookmark`, aliased per-tab exactly like the named-bookmark dict.
+
+**Numbered quick bookmarks — shipped 0.9.0 Beta 3.** Ten fixed slots (0-9). The original design (see the now-superseded PRD draft in `x.md`) proposed routing set/jump through Quick Nav's "press a letter, then a qualifier" grammar; direct user feedback during review asked for one-keystroke access with no sub-mode, so the shipped implementation instead intercepts `Alt+Shift+<digit>` (set) and `Ctrl+Alt+Shift+<digit>` (jump) directly in `MainFrame._on_char_hook`, alongside the existing frame-level `Ctrl+K`/`Ctrl+W` handling — the declarative keymap table has no "any digit" wildcard, so these 20 chords are intercepted rather than declared. Deliberately *not* a parallel storage system: `quick_slot_name(slot)` in `core/bookmarks.py` generates a reserved name (`"Quick 3"`) that reuses the existing named-bookmark store, so numbered bookmarks get persistence, save/load, and crash-safety for free rather than needing a new `DocumentMemory` schema field.
+
+**Favorite folders — shipped 0.9.0 Beta 3, community feature request.** A short, user-curated list of folders (`quill/core/favorite_folders.py`, wx-free, modeled on `BookmarkVault`), distinct from Windows' recency-based recent-folders. `Ctrl+Alt+Shift+A`/`Ctrl+Alt+Shift+R` add/remove the current document's folder; `Ctrl+Alt+Shift+O` opens **Open From Favorite Folder** — a VSCode-Quick-Open-style type-to-filter dialog (`list_files_in_favorites`/`filter_favorite_files`, both pure and unit-tested) scanning every favorite folder's top-level files (non-recursive by design, to keep the filter instant) and matching by case-insensitive filename substring. Quill has no single-project-root "workspace" concept to scan the way VSCode does, so this is intentionally scoped to the curated favorites list rather than the whole disk.
 
 ### 5.11 Selection helpers and Where Am I
 
@@ -2922,16 +2932,19 @@ The first shipped slice of the QUILL Sync plan (`docs/planning/quill-sync-plan.m
 - When the underlying document is moved or renamed, Quill detects the orphan note next time the document is opened and offers `Re-attach note to current document?` (Yes / No / Show note).
 - Scratchpads use the same spell-check stack as their parent document but are excluded from accessibility audits.
 
-### 5.45 Section folding (announce-only)
+### 5.45 Section folding (announce-only) — shipped 0.9.0 Beta 3
 
-A folding model designed for screen-reader users: folded ranges are summarised aloud and never visually hidden in a way that confuses the cursor.
+A folding model designed for screen-reader users: fold state is spoken metadata, never visual line-hiding, and the document text is never mutated. Implemented in `quill/core/code_folding.py` (pure region detection, wx-free) plus `MainFrame` command wiring; see `x.md`'s original "PRD: Code Folding" for the accessibility rationale behind the design decisions below.
 
-- `Ctrl+Shift+[` folds the section starting at the heading on or above the current line into a single summary line: `Section "Background" — 14 lines hidden`.
-- `Ctrl+Shift+]` unfolds the section at the cursor.
-- `Ctrl+Shift+K Ctrl+Shift+0` folds all sections to a given level (chord sequence); `Ctrl+Shift+K Ctrl+Shift+J` unfolds all.
-- Folding state is per-session and never written to file.
-- Find still finds matches inside folded ranges and automatically unfolds on jump.
-- Outline Navigator (5.16) is the primary navigation tool; folding is the in-editor companion.
+Two kinds of foldable region are detected, both reusing existing infrastructure rather than adding a new parser: **heading sections** (via the existing `extract_outline_entries`, so a heading's region runs to the next heading at the same-or-higher level) and **fenced code blocks** (` ``` `...` ``` `, each complete fence is one atomic region). The original spec above called for heading-only folding with a fold-to-level chord sequence; the shipped version covers headings and code fences with a simpler single-toggle model, and does not yet implement fold-to-level or Find auto-unfold — both remain open follow-ups (see below).
+
+- **Ctrl+Alt+Shift+F** (`edit.toggle_fold`) — folds or unfolds the smallest foldable region containing the cursor, announcing `"Folded: 14 lines under 'Background'"` / `"Unfolded: 'Background'"`. (The original spec's `Ctrl+Shift+[`/`Ctrl+Shift+]` were reused for other bindings by the time this shipped; a single toggle command was chosen over a separate fold/unfold pair for a smaller keymap footprint.)
+- **Alt+Shift+]** / **Alt+Shift+[** (`navigate.next_fold` / `navigate.previous_fold`) — jump between foldable region *boundaries*, folded or not, announcing the region's label, fold state, and line count on arrival. This is the safe, honest version of "skip folded content": it only fires on a command that already jumps by structural unit, never on literal arrow-key movement, which is never intercepted.
+- **Ctrl+Alt+Shift+L** (`tools.list_folds`) — the accessible equivalent of scanning gutter fold triangles: a dialog (reusing the same tree-navigator pattern as `list_bookmarks`/Outline Navigator) listing every foldable region with its fold state and line count, letting a user jump or toggle without ever needing to encounter a region by scrolling past it.
+- Folding state is per-tab and session-only, never written to file or `DocumentMemory` — deliberately, since persisting it would need edit-resilient position tracking (like `InlineNote`'s quote-anchoring) for a feature whose entire value is "reduce clutter right now."
+- Outline Navigator (5.16) remains the primary navigation tool; folding is the in-editor companion, and `List Folds` is folding's own navigator-style surface.
+
+**Not yet implemented** (open follow-ups from the original spec): fold-to-level chord sequences (`Ctrl+Shift+K Ctrl+Shift+0`/`J`); Find auto-unfolding a region it matches inside (moot today since folding never hides text from Find or any other text-reading operation — only the four commands above are fold-aware); per-function/indentation-based folding for real source files edited via a Quillin (fenced-block granularity is the right scope for a writing app with embedded code, not an IDE, and was an explicit scope decision, not an oversight).
 
 ### 5.46 Spell-check ignore directives and manual bilingual flag
 
@@ -3034,6 +3047,8 @@ When Quill detects an autosave snapshot newer than the on-disk file on launch:
 - **Compare with on-disk** opens the diff view (5.22) immediately.
 - The dialog is screen-reader-friendly first: every value is a separate labelled `wx.StaticText` so it reads cleanly.
 - Choosing Recover writes the snapshot as a new unsaved document; the on-disk file is **never** overwritten without an explicit Save.
+
+**Offer suppression on inconclusive exits — shipped 0.9.0 Beta 3 (#940/#948).** `begin_session()` in `core/recovery.py` now calls `_log_shows_actionable_error(logs_dir)` before appending a `RecoveryOffer`: it scans the tail (last 256 KB) of `quill.log` for `ERROR`/`CRITICAL`/`Traceback` markers, and suppresses the offer entirely when none are found -- an exit with no error evidence in the log is indistinguishable from an external termination (OS shutdown, forced close) and gets no "Quill detected an unclean exit" prompt. A missing log file fails open (still offers recovery) since an absent log is inconclusive, not evidence of nothing having happened. The autosave snapshot itself is untouched either way; only the *offer* is gated.
 
 ### 5.60 Read-only document mode
 

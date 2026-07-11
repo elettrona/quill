@@ -42,6 +42,7 @@ from quill.core.bookmarks import (  # N-13: keep the module as the supported hom
     DocumentMemory,
     bookmark_names,
     bookmark_position,
+    quick_slot_name,
     set_bookmark,
 )
 from quill.core.browser_preview import (
@@ -54,6 +55,14 @@ from quill.core.browser_preview import (
     preview_anchor_for_text,
     render_preview_body,
     render_preview_html,
+)
+from quill.core.code_folding import (
+    FoldableRegion,
+    extract_foldable_regions,
+    next_region_boundary,
+    previous_region_boundary,
+    region_line_count,
+    smallest_region_containing,
 )
 from quill.core.commands import CommandRegistry
 from quill.core.context_menu import (
@@ -101,6 +110,12 @@ from quill.core.external_tools import (
     copyable_install_command,
     get_external_tool_status,
     get_external_tool_statuses,
+)
+from quill.core.favorite_folders import (
+    FavoriteFile,
+    FavoriteFolders,
+    filter_favorite_files,
+    list_files_in_favorites,
 )
 from quill.core.features import (
     FEATURE_DEFINITIONS,
@@ -285,10 +300,12 @@ from quill.core.sound_events import SoundEvent
 from quill.core.spellcheck import (
     Misspelling,
     add_word_to_scope,
+    is_known_word,
     list_misspellings,
     load_combined_dictionary,
     load_scope_dictionary,
     misspelling_at_position,
+    rank_misspellings_by_frequency,
     suggest_words,
 )
 from quill.core.spellcheck import (
@@ -553,9 +570,16 @@ class _DocumentTab:
     # files; in-memory only for untitled documents). The active tab's dict is
     # aliased to MainFrame._bookmarks while it is the current tab.
     bookmarks: dict[str, int] = field(default_factory=dict)
+    # Single unnamed, one-shot jump point (Leasey-style temp bookmark). Session-only:
+    # never persisted to DocumentMemory, deliberately forgotten on restart.
+    temp_bookmark: int | None = None
     # Per-document inline notes (content-anchored). Loaded from / saved to the
     # InlineNoteVault for saved files; in-memory only for untitled documents.
     inline_notes: list = field(default_factory=list)
+    # Folded region state (accessible code folding, x.md PRD). Session-only:
+    # never persisted, purely a reading-session convenience. Keyed by
+    # (start, end) of the FoldableRegion currently marked folded.
+    folded_regions: set[tuple[int, int]] = field(default_factory=set)
     _indent_tone_last_level: int = -1
     _language_profile: object = None
     _language_profile_pinned: bool = False
@@ -764,6 +788,11 @@ _APP_TITLE_VERSION = f"QUILL for All {build_info.get_short_version()}"
 # #11: name the background-indicator surface what the user actually sees -- the
 # Windows system tray, or the macOS menu-bar status item. Read once at import.
 _TRAY_NOUN = "menu bar" if sys.platform == "darwin" else "system tray"
+
+# Numbered quick bookmarks (0-9): maps the top-row digit key codes to their
+# slot number for the direct Alt+Shift+<digit> / Ctrl+Alt+Shift+<digit>
+# interception in _on_char_hook.
+_DIGIT_KEY_CODES: dict[int, int] = {ord(str(digit)): digit for digit in range(10)}
 
 
 class MainFrame(
@@ -1106,6 +1135,13 @@ class MainFrame(
         self._epub_book: EpubBook | None = None
         self._browser_preview_session: _BrowserPreviewSession | None = None
         self._bookmarks: dict[str, int] = {}
+        # Single unnamed, one-shot jump point (Leasey-style temp bookmark).
+        # Deliberately session-only (aliased per-tab, never persisted to
+        # DocumentMemory) -- it is disposable scratch state by design.
+        self._temp_bookmark: int | None = None
+        # Folded region state (accessible code folding). Session-only, aliased
+        # per-tab like _bookmarks/_temp_bookmark.
+        self._folded_regions: set[tuple[int, int]] = set()
         # Active document's inline notes (aliased to the active tab's list).
         self._inline_notes: list = []
         # Persistent, per-document bookmarks + last cursor position (#300 follow-up).
@@ -3821,6 +3857,9 @@ class MainFrame(
         return {
             "file.new": self._id_new,
             "file.open": self._id_open,
+            "file.open_from_favorite_folder": self._id_open_from_favorite_folder,
+            "file.add_favorite_folder": self._id_add_favorite_folder,
+            "file.remove_favorite_folder": self._id_remove_favorite_folder,
             "file.save": self._id_save,
             "file.save_as": self._id_save_as,
             "file.close_document": self._id_close_document,
@@ -3923,6 +3962,10 @@ class MainFrame(
             "navigate.back_location": self._id_back_location,
             "navigate.forward_location": self._id_forward_location,
             "navigate.outline_navigator": self._id_outline_navigator,
+            "edit.toggle_fold": self._id_toggle_fold,
+            "navigate.next_fold": self._id_next_fold,
+            "navigate.previous_fold": self._id_previous_fold,
+            "tools.list_folds": self._id_list_folds,
             "navigate.heading_organizer": self._id_heading_organizer,
             "navigate.match_bracket": self._id_match_bracket,
             "navigate.next_token": self._id_next_token,
@@ -3936,9 +3979,11 @@ class MainFrame(
             "tools.sticky_notes": self._id_sticky_notes,
             "tools.sticky_note_capture": self._id_new_sticky_note,
             "tools.spell_check_dialog": self._id_spell_check,
+            "tools.spell_check_word_at_cursor": self._id_spell_check_word,
             "tools.previous_misspelling": self._id_previous_misspelling,
             "tools.next_misspelling": self._id_next_misspelling,
             "tools.misspelling_list": self._id_misspelling_list,
+            "tools.misspelling_list_ranked": self._id_misspelling_list_ranked,
             "tools.thesaurus": self._id_thesaurus,
             "tools.dictionary_status": self._id_dictionary_status,
             "tools.announcement_backend": self._id_announcement_backend,
@@ -4616,6 +4661,19 @@ class MainFrame(
             if tab is not None and self._focus_is_in_document_surface():
                 self.close_current_document()
                 return
+        # Numbered quick bookmarks (0-9): direct chords rather than a Quick Nav
+        # sub-mode, so set/jump is always a single keystroke with no modal step.
+        # The declarative keymap table has no "any digit" wildcard, so these 20
+        # chords are intercepted here instead, mirroring the Ctrl+K/Ctrl+W
+        # frame-level handling immediately above.
+        if key_code in _DIGIT_KEY_CODES and self._focus_is_in_document_surface():
+            slot = _DIGIT_KEY_CODES[key_code]
+            if event.AltDown() and event.ShiftDown() and not event.ControlDown():
+                self.set_quick_bookmark(slot)
+                return
+            if event.ControlDown() and event.AltDown() and event.ShiftDown():
+                self.go_to_quick_bookmark(slot)
+                return
         if not self._focus_is_in_document_surface():
             # Modal dialogs (including WebView-hosted HTML surfaces) should
             # receive keys directly. If browse mode was active in the editor,
@@ -4639,9 +4697,11 @@ class MainFrame(
         if focus is None:
             return False
         document_surface = getattr(self, "_documents_panel", None)
+        notebook = getattr(self, "notebook", None)
+        editor = getattr(self, "editor", None)
         node = focus
         while node is not None:
-            if node is document_surface or node is self.notebook or node is self.editor:
+            if node is document_surface or node is notebook or node is editor:
                 return True
             get_parent = getattr(node, "GetParent", None)
             node = get_parent() if callable(get_parent) else None
@@ -4661,6 +4721,10 @@ class MainFrame(
         self.document = tab.document
         # The active document's bookmark set is this tab's own dict (per-document).
         self._bookmarks = getattr(tab, "bookmarks", {})
+        # The active document's temp bookmark is this tab's own value (session-only).
+        self._temp_bookmark = getattr(tab, "temp_bookmark", None)
+        # The active document's folded regions are this tab's own set (session-only).
+        self._folded_regions = getattr(tab, "folded_regions", set())
         # The active document's inline notes are this tab's own list (per-document).
         self._inline_notes = getattr(tab, "inline_notes", [])
         tab._indent_tone_last_level = -1  # reset per-tab indent tone cache on switch
@@ -16681,8 +16745,15 @@ class MainFrame(
     def _build_misspelling_navigator_nodes(
         self,
         misspellings: list[Misspelling],
+        *,
+        show_counts: bool = False,
     ) -> list[_NavigatorNode]:
         text = self.editor.GetValue()
+        counts: dict[str, int] = {}
+        if show_counts:
+            for item in misspellings:
+                key = item.word.lower()
+                counts[key] = counts.get(key, 0) + 1
         nodes: list[_NavigatorNode] = []
         for item in misspellings:
             line, column = line_column_for_position(text, item.start)
@@ -16691,9 +16762,13 @@ class MainFrame(
             if line_end == -1:
                 line_end = len(text)
             excerpt = text[line_start:line_end].strip() or item.word
+            count_suffix = ""
+            if show_counts:
+                total = counts[item.word.lower()]
+                count_suffix = f", {total} occurrence{'s' if total != 1 else ''}"
             nodes.append(
                 _NavigatorNode(
-                    label=f"{item.word} (Ln {line}, Col {column})",
+                    label=f"{item.word} (Ln {line}, Col {column}{count_suffix})",
                     preview=f"Line {line}, Column {column}\n\n{excerpt}",
                     payload=item,
                     action_label="Jump to Occurrence",
@@ -16885,6 +16960,259 @@ class MainFrame(
         self._move_point(target)
         self.editor.SetFocus()
         self._set_status(f'Jumped to bookmark "{selected}"')
+
+    def set_temp_bookmark(self) -> None:
+        """Set the single unnamed, one-shot jump point (Leasey-style temp bookmark).
+
+        Deliberately no dialog and no persistence -- this is disposable scratch
+        state, overwritten silently on every re-set, and forgotten on restart.
+        """
+        position = self.editor.GetInsertionPoint()
+        self._temp_bookmark = position
+        self._active_tab().temp_bookmark = position
+        self._set_status("Temporary bookmark set")
+
+    def go_to_temp_bookmark(self) -> None:
+        """Jump to the temp bookmark with no picker dialog."""
+        if self._temp_bookmark is None:
+            self._set_status("No temporary bookmark set")
+            return
+        self._move_point(self._temp_bookmark)
+        self.editor.SetFocus()
+        self._set_status("Jumped to temporary bookmark")
+
+    def set_quick_bookmark(self, slot: int) -> None:
+        """Set numbered quick-bookmark slot 0-9 (reuses the named-bookmark store)."""
+        name = quick_slot_name(slot)
+        position = self.editor.GetInsertionPoint()
+        self._bookmarks = set_bookmark(self._bookmarks, name, position)
+        self._save_active_bookmarks()
+        self._set_status(f"Quick bookmark {slot} set")
+
+    def go_to_quick_bookmark(self, slot: int) -> None:
+        """Jump to numbered quick-bookmark slot 0-9 with no picker dialog."""
+        name = quick_slot_name(slot)
+        target = bookmark_position(self._bookmarks, name)
+        if target is None:
+            self._set_status(f"Quick bookmark {slot} is not set")
+            return
+        self._move_point(target)
+        self.editor.SetFocus()
+        self._set_status(f"Jumped to quick bookmark {slot}")
+
+    # -- accessible code folding (x.md PRD) ---------------------------------- #
+    # Fold state is spoken metadata, never visual line-hiding: the document
+    # text is never mutated, and raw arrow/word/line navigation is never
+    # intercepted. Only structural jump commands (here) are fold-aware, so a
+    # screen reader user arrowing through a folded region reads it exactly as
+    # if it weren't folded -- nothing reachable is ever silently skipped.
+
+    def _current_foldable_regions(self) -> list[FoldableRegion]:
+        markup_kind = self._effective_markup_kind()
+        return extract_foldable_regions(self.editor.GetValue(), markup_kind)
+
+    def toggle_fold(self) -> None:
+        """Fold or unfold the smallest foldable region containing the caret."""
+        regions = self._current_foldable_regions()
+        caret = self.editor.GetInsertionPoint()
+        region = smallest_region_containing(regions, caret)
+        if region is None:
+            self._set_status("No foldable region at the cursor")
+            return
+        key = (region.start, region.end)
+        text = self.editor.GetValue()
+        lines = region_line_count(text, region)
+        if key in self._folded_regions:
+            self._folded_regions.discard(key)
+            self._set_status(f'Unfolded: "{region.label}"')
+        else:
+            self._folded_regions.add(key)
+            self._set_status(f'Folded: {lines} lines under "{region.label}"')
+
+    def next_fold(self) -> None:
+        """Jump to the next foldable region boundary, announcing fold state."""
+        regions = self._current_foldable_regions()
+        if not regions:
+            self._set_status("No foldable regions in this document")
+            return
+        caret = self.editor.GetInsertionPoint()
+        region = next_region_boundary(regions, caret)
+        if region is None:
+            self._set_status("No more foldable regions ahead")
+            return
+        self._jump_to_fold(region)
+
+    def previous_fold(self) -> None:
+        """Jump to the previous foldable region boundary, announcing fold state."""
+        regions = self._current_foldable_regions()
+        if not regions:
+            self._set_status("No foldable regions in this document")
+            return
+        caret = self.editor.GetInsertionPoint()
+        region = previous_region_boundary(regions, caret)
+        if region is None:
+            self._set_status("No more foldable regions behind")
+            return
+        self._jump_to_fold(region)
+
+    def _jump_to_fold(self, region: FoldableRegion) -> None:
+        self._record_location_before_jump()
+        self.editor.SetInsertionPoint(region.start)
+        self.editor.SetFocus()
+        text = self.editor.GetValue()
+        lines = region_line_count(text, region)
+        state = "folded" if (region.start, region.end) in self._folded_regions else "expanded"
+        self._set_status(f'"{region.label}", {state}, {lines} lines')
+
+    def list_folds(self) -> None:
+        """Show every foldable region with its fold state; jump or toggle from here.
+
+        The accessible equivalent of a sighted user scanning the gutter fold
+        triangles: a spoken table of contents with fold state, reachable
+        without ever having to encounter a region by scrolling past it.
+        """
+        regions = self._current_foldable_regions()
+        if not regions:
+            self._set_status("No foldable regions in this document")
+            return
+        text = self.editor.GetValue()
+        nodes: list[_NavigatorNode] = []
+        for region in regions:
+            key = (region.start, region.end)
+            state = "Folded" if key in self._folded_regions else "Expanded"
+            lines = region_line_count(text, region)
+            nodes.append(
+                _NavigatorNode(
+                    label=f"{region.label} ({state}, {lines} lines)",
+                    preview=f"{region.label}\n\n{state}, {lines} lines",
+                    payload=key,
+                    action_label="Jump to Region",
+                    children=[],
+                )
+            )
+        selected = self._show_tree_navigator(
+            title="List Folds",
+            root_label="Foldable Regions",
+            nodes=nodes,
+        )
+        if not isinstance(selected, tuple):
+            self._set_status("Fold list cancelled")
+            return
+        region = next((r for r in regions if (r.start, r.end) == selected), None)
+        if region is None:
+            self._set_status("Region was not found")
+            return
+        self._jump_to_fold(region)
+
+    # -- favorite folders (community feature request) ------------------------ #
+    def _favorite_folders(self) -> FavoriteFolders:
+        if getattr(self, "_favorite_folders_cache", None) is None:
+            self._favorite_folders_cache = FavoriteFolders.load()
+        return self._favorite_folders_cache
+
+    def add_favorite_folder(self) -> None:
+        """Add the current document's folder to Favorite Folders.
+
+        Kurzweil-1000-style favorites: a short, deliberately curated list for
+        instant access, distinct from Windows' recency-based recent-folders --
+        a folder used constantly but not touched in months still belongs here.
+        """
+        doc_path = getattr(self.document, "path", None)
+        if not doc_path:
+            self._set_status("Save this document first, or use a specific folder")
+            return
+        folder = str(Path(doc_path).resolve().parent)
+        added = self._favorite_folders().add(folder)
+        if added:
+            self._set_status(f"Added to Favorite Folders: {Path(folder).name}")
+        else:
+            self._set_status(f"{Path(folder).name} is already a favorite folder")
+
+    def remove_favorite_folder(self) -> None:
+        """Pick a favorite folder to remove from the list."""
+        wx = self._wx
+        vault = self._favorite_folders()
+        names = vault.names()
+        if not names:
+            self._set_status("No favorite folders yet. Use Add Favorite Folder first.")
+            return
+        with wx.SingleChoiceDialog(
+            self.frame,
+            "Choose a favorite folder to remove:",
+            "Remove Favorite Folder",
+            choices=names,
+        ) as dialog:
+            if hasattr(dialog, "SetSelection"):
+                dialog.SetSelection(0)
+            apply_modal_ids(dialog, affirmative_id=wx.ID_OK, escape_id=wx.ID_CANCEL)
+            if self._show_modal_dialog(dialog, "Remove Favorite Folder") != wx.ID_OK:
+                self._set_status("Remove favorite folder cancelled")
+                return
+            index = dialog.GetSelection()
+        folder = vault.folders[index]
+        vault.remove(folder)
+        self._set_status(f"Removed favorite folder: {names[index]}")
+
+    def open_from_favorite_folder(self) -> None:
+        """VSCode-Quick-Open-style file finder, scoped to favorite folders.
+
+        Quill has no single-project-root "workspace" the way VSCode does, so
+        this scans favorite folders (top-level only, non-recursive by design
+        -- see list_files_in_favorites) instead of an entire tree. Type to
+        filter by filename, arrow to a match, Enter/OK to open it -- the same
+        one-keystroke-per-step rhythm as VSCode's Ctrl+P, just bounded to the
+        short, deliberately curated favorites list rather than everything on
+        disk.
+        """
+        wx = self._wx
+        vault = self._favorite_folders()
+        all_files = list_files_in_favorites(vault)
+        if not all_files:
+            if not vault.folders:
+                self._set_status("No favorite folders yet. Use Add Favorite Folder first.")
+            else:
+                self._set_status("No files found in your favorite folders.")
+            return
+
+        dialog = wx.Dialog(self.frame, title="Open From Favorite Folder", size=(560, 420))
+        root = wx.BoxSizer(wx.VERTICAL)
+        root.Add(
+            wx.StaticText(dialog, label="Type to filter, then choose a file to open:"),
+            0,
+            wx.ALL,
+            8,
+        )
+        search = wx.TextCtrl(dialog)
+        search.SetName("Filter")
+        root.Add(search, 0, wx.LEFT | wx.RIGHT | wx.EXPAND, 8)
+        results = wx.ListBox(dialog)
+        results.SetName("Matching files")
+        root.Add(results, 1, wx.ALL | wx.EXPAND, 8)
+        buttons = dialog.CreateButtonSizer(wx.OK | wx.CANCEL)
+        if buttons is not None:
+            root.Add(buttons, 0, wx.EXPAND | wx.LEFT | wx.RIGHT | wx.BOTTOM, 8)
+        dialog.SetSizer(root)
+
+        current_matches: list[FavoriteFile] = list(all_files)
+
+        def refresh(query: str) -> None:
+            nonlocal current_matches
+            current_matches = filter_favorite_files(all_files, query)
+            results.Set([f"{item.path.name}  —  {item.folder_label}" for item in current_matches])
+            if current_matches:
+                results.SetSelection(0)
+
+        refresh("")
+        search.Bind(wx.EVT_TEXT, lambda _e: refresh(search.GetValue()))
+        apply_modal_ids(dialog, affirmative_id=wx.ID_OK, escape_id=wx.ID_CANCEL)
+        search.SetFocus()
+        result = self._show_modal_dialog(dialog, "Open From Favorite Folder")
+        selection = results.GetSelection()
+        dialog.Destroy()
+        if result != wx.ID_OK or selection == wx.NOT_FOUND:
+            self._set_status("Open from favorite folder cancelled")
+            return
+        self.open_file(path=current_matches[selection].path)
 
     # -- persistent per-document bookmarks + last position ------------------ #
     def _save_active_bookmarks(self) -> None:
@@ -17282,6 +17610,40 @@ class MainFrame(
         self._location_ring.record(selected.start)
         self._set_status(f'Jumped to misspelling "{selected.word}"')
 
+    def open_misspelling_list_ranked(self) -> None:
+        """Kurzweil-1000-style "ranked spelling": most-frequent misspelling first.
+
+        Community feature request. Same dialog as List Misspellings, but
+        ordered by how often each word recurs rather than document position --
+        fixing a single OCR misread or repeated typo (e.g. "teh" for "the")
+        this way clears the bulk of a long list in a handful of steps.
+        """
+        dictionary = self._spell_dictionary()
+        misspellings = rank_misspellings_by_frequency(
+            list_misspellings(self.editor.GetValue(), dictionary)
+        )
+        if not misspellings:
+            self._set_status("No misspellings found")
+            return
+        nodes = self._build_misspelling_navigator_nodes(misspellings, show_counts=True)
+        selected = self._show_tree_navigator(
+            title="Misspelling List (Ranked by Frequency)",
+            root_label="Misspellings, most frequent first",
+            nodes=nodes,
+        )
+        if not isinstance(selected, Misspelling):
+            self._set_status("Ranked misspelling list cancelled")
+            return
+        self._record_location_before_jump()
+        if self._extend_selection_mode and self._extend_selection_anchor is not None:
+            self._move_point(selected.start)
+        else:
+            self.editor.SetInsertionPoint(selected.start)
+            self.editor.SetSelection(selected.start, selected.end)
+        self.editor.SetFocus()
+        self._location_ring.record(selected.start)
+        self._set_status(f'Jumped to misspelling "{selected.word}"')
+
     def _misspellings_behind_message(
         self, text: str, cursor: int, dictionary: set[str], *, ahead: bool
     ) -> str:
@@ -17341,6 +17703,57 @@ class MainFrame(
             self.editor.SetSelection(item.start, item.end)
         self.editor.SetFocus()
         self._set_status(f'Previous misspelling: "{item.word}"')
+
+    def spell_check_word_at_cursor(self) -> None:
+        """Instantly check the word at (or nearest) the caret -- no full-document
+        review, no context menu. Mirrors the MS-Office-style "F7 on a focused
+        word" workflow: one keystroke, one word, a suggestion list, done.
+
+        If the word is spelled correctly, announces that and returns immediately
+        -- no dialog for the common case. If it's misspelled, offers the same
+        suggestions/Add/Ignore choices as the right-click context menu, just
+        reachable without a mouse or the Menu/Application key.
+        """
+        wx = self._wx
+        text = self.editor.GetValue()
+        caret = self.editor.GetInsertionPoint()
+        dictionary = self._spell_dictionary()
+        misspelling = misspelling_at_position(text, caret, dictionary)
+        if misspelling is None:
+            sel_start, sel_end = self.editor.GetSelection()
+            if sel_end > sel_start:
+                word = text[sel_start:sel_end]
+                if not is_known_word(word, dictionary):
+                    misspelling = Misspelling(word=word, start=sel_start, end=sel_end)
+        if misspelling is None:
+            self._set_status("No misspelling at the cursor")
+            return
+
+        suggestions = suggest_words(misspelling.word, dictionary)
+        choices = list(suggestions) + ["Add to Dictionary", "Ignore"]
+        with wx.SingleChoiceDialog(
+            self.frame,
+            f'"{misspelling.word}" is not in the dictionary. Choose a correction:',
+            "Spell Check Word",
+            choices=choices,
+        ) as dialog:
+            if hasattr(dialog, "SetSelection"):
+                dialog.SetSelection(0)
+            apply_modal_ids(dialog, affirmative_id=wx.ID_OK, escape_id=wx.ID_CANCEL)
+            if self._show_modal_dialog(dialog, "Spell Check Word") != wx.ID_OK:
+                self._set_status("Spell check word cancelled")
+                return
+            choice = dialog.GetStringSelection()
+
+        if choice == "Add to Dictionary":
+            self._add_word_to_dictionary_scope(misspelling.word, 0)
+            return
+        if choice == "Ignore":
+            self._add_word_to_dictionary_scope(misspelling.word, 1)
+            return
+        self.editor.Replace(misspelling.start, misspelling.end, choice)
+        self.document.set_text(self.editor.GetValue())
+        self._set_status(f'Replaced "{misspelling.word}" with "{choice}"')
 
     def show_thesaurus(self) -> None:
         """Open the thesaurus for the selected word or the word under the caret."""
@@ -18129,7 +18542,9 @@ class MainFrame(
         )
         from quill.core.speech.engine_install import (
             is_faster_whisper_available,
+            is_kokoro_onnx_available,
             is_vosk_available,
+            kokoro_onnx_install_supported,
             vosk_install_supported,
         )
         from quill.core.speech.ffmpeg import ffmpeg_available
@@ -18222,6 +18637,8 @@ class MainFrame(
             "engine_ok": is_faster_whisper_available(),
             "vosk_ok": is_vosk_available(),
             "vosk_can_install": vosk_install_supported(),
+            "kokoro_ok": is_kokoro_onnx_available(),
+            "kokoro_can_install": kokoro_onnx_install_supported(),
             "all_providers": all_providers,
             "total_ram": total_ram,
             "has_gpu": has_gpu,
