@@ -83,8 +83,10 @@ class _AppKitBridge:
     def _require(self) -> Any:  # pragma: no cover - trivial guard
         if self._appkit is None:
             raise MacRichTextError(
-                "Native rich text needs macOS with the PyObjC bridge installed "
-                "(pip install 'quill[mac]')."
+                "The macOS rich text bridge (PyObjC) is unavailable. The Mac "
+                "app ships it; on a source install add it with "
+                "pip install 'quill[mac]'. Documents stay fully editable as "
+                "converted text — please report this via Help > Report a Bug."
             )
         return self._appkit
 

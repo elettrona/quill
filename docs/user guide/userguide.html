@@ -6645,12 +6645,16 @@ headings into real ones; leaving a rich format warns first, with the
 specific list of anything that will not survive. A switched document
 never silently overwrites its old file — the next save proposes the
 matching new name.</p>
-<p><strong>If rich mode is unavailable</strong> (macOS without the
-optional PyObjC component, or a Windows machine missing its COM bridge),
-.rtf and .docx documents open converted to editable text exactly as in
-earlier releases, and save back through the same converters. Nothing is
-ever lost to a missing optional component; you simply get the classic
-behavior.</p>
+<p><strong>If rich mode is unavailable</strong> (a system where the
+bundled macOS bridge or the Windows COM bridge cannot load), .rtf and
+.docx documents open converted to editable text exactly as in earlier
+releases, and save back through the same converters. Nothing is ever
+lost; you simply get the classic behavior — and QUILL says so in the
+status bar. The Mac app ships everything rich mode needs out of the box;
+only source installs add it themselves
+(<code>pip install "quill[mac]"</code>). If you ever see the converted
+fallback on a normal install, please tell us via <strong>Help &gt;
+Report a Bug</strong>.</p>
 <h3 id="table-studio-experimental">Table Studio (experimental)</h3>
 <p>Once you enable it on the Experimental tab, <strong>Tools &gt; Table
 Studio…</strong> opens a table in a fully keyboard-accessible grid — a

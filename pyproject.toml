@@ -79,8 +79,11 @@ ui = [
 spellcheck = ["pyenchant>=3.3.0"]
 # macOS native rich text (One Editor, Every Format, Phase 6): PyObjC lets
 # QuillMacRichText drive the editor's NSTextView (RTF via NSAttributedString).
-# Soft dependency by design — absent, .rtf documents open converted (the
-# failsafe floor) and everything else is unchanged. macOS only.
+# The shipped Mac .app BUNDLES this (the [macos] build extra installs the full
+# pyobjc and scripts/setup_macos.py lists objc/AppKit/Foundation in the py2app
+# includes, since the imports are lazy and the tracer misses them) — nothing
+# for end users to install. This extra covers source/pip installs on a Mac.
+# The code path still degrades to converted rich if the bridge is ever absent.
 mac = ["pyobjc-framework-Cocoa>=10.3; sys_platform == 'darwin'"]
 # Direct GitHub issue submission for Report a Bug (#210): feedback_hub provides
 # the accessible FeedbackDialog driven by quill/core/schemas/feedback.json and

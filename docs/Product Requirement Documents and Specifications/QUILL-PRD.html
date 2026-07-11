@@ -18924,10 +18924,21 @@ exactly as before.</p>
 <code>quill/ui/nstextview_rtf_surface.py</code>
 (<code>QuillMacRichText</code>) mirrors the Windows wrapper
 method-for-method over Cocoa’s text model (the editor is an
-<code>NSTextView</code> underneath; PyObjC is the soft <code>mac</code>
-install extra). Converted rich is the floor and the fallback; on-device
-VoiceOver verification is the promotion gate for the native path,
-mirroring the Windows braille A/B.</p>
+<code>NSTextView</code> underneath). <strong>The Mac .app bundles the
+PyObjC bridge</strong>: the <code>[macos]</code> build extra installs
+the full <code>pyobjc</code>, and <code>scripts/setup_macos.py</code>
+lists <code>objc</code>/<code>AppKit</code>/<code>Foundation</code> in
+the py2app <code>includes</code> because every AppKit import in the
+codebase is lazy and the import tracer misses them (the same fix makes
+the #616 VoiceOver editor-role pin actually ship in the .app — it was a
+silent no-op when AppKit was absent from the bundle). Source installs
+use the <code>mac</code> extra (<code>pyobjc-framework-Cocoa</code>).
+The code path still degrades to converted rich if the bridge is ever
+absent — the floor and the fallback are permanent — and on-device
+VoiceOver verification remains the promotion gate for the native path,
+mirroring the Windows braille A/B; the Beta 3 release notes ask Mac
+users to report results via Help &gt; Report a Bug, positive or
+negative.</p>
 <h3
 id="the-fragment-spine-and-five-features-built-on-it-shipped-0.9.0-beta-2">The
 Fragment spine, and five features built on it (shipped 0.9.0 Beta

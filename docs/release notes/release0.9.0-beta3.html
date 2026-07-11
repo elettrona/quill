@@ -282,44 +282,28 @@ overwrites its old file: the next save proposes the new name
 (<code>notes.md</code> becomes <code>notes.rtf</code>) so the format on
 disk always matches the extension.</p>
 <h3 id="on-the-mac">On the Mac</h3>
-<p>The macOS editor is the same native text view it has always been, and
-with the optional PyObjC component installed, rich mode works there too
-— same commands, same heading sizes, same behavior. Without it, RTF and
-Word documents open converted, exactly as they did before: nothing
-breaks, nothing is lost, and VoiceOver keeps reading the same native
-control it always has. We will promote the native Mac path fully once it
-passes the same live-hardware verification the braille fix did on
-Windows.</p>
-<p><strong>How to get PyObjC and test rich mode on your Mac.</strong>
-PyObjC is the small, well-established open-source bridge that lets QUILL
-talk to macOS’s own text engine; it is not bundled, so testing is
-strictly opt-in. To install it:</p>
-<ol type="1">
-<li>Open <strong>Terminal</strong> (press Cmd+Space, type “Terminal”,
-press Return).</li>
-<li>If you run QUILL from source or a pip install, type:
-<code>pip install "pyobjc-framework-Cocoa&gt;=10.3"</code> and press
-Return. If you installed QUILL as an app bundle, use the same Python
-that runs QUILL — from the QUILL source folder that is:
-<code>python -m pip install ".[mac]"</code> — the <code>mac</code> extra
-resolves to the identical PyObjC package.</li>
-<li>Restart QUILL, then open any .rtf file. If the install worked, the
-document opens formatted and pressing Ctrl+B on a selection announces
-“Bold” with genuine bold applied; <strong>Describe Formatting at
-Cursor</strong> reads the live formatting back (“Helvetica, 14 point,
-bold”).</li>
-<li>If PyObjC is not found, nothing changes: the same .rtf opens
-converted to editable text with a status message saying so — that is the
-designed fallback, not an error.</li>
-</ol>
-<p><strong>What we need from VoiceOver users, specifically:</strong>
-with rich mode active, does VoiceOver still read the editor normally
-(typing echo, arrow-key review, selection announcements)? Does formatted
-text — a bold word, a sized heading — read and navigate correctly? Tell
-us either way through <strong>Help &gt; Report a Bug</strong>, naming
-your macOS version. Exactly as with the Windows braille fix in Beta 2,
-real-hardware reports are the promotion gate: the native Mac path
-becomes the default the moment it passes this test in the field.</p>
+<p>Rich mode ships ready to use. The macOS editor is the same native
+text view it has always been, and the Mac app now <strong>bundles
+everything rich mode needs</strong> — there is nothing to install and
+nothing to configure. Open any .rtf (or Word document) and it opens
+formatted: Ctrl+B applies genuine bold and announces “Bold,”
+<strong>Insert &gt; Heading 2</strong> applies a real heading, and
+<strong>Describe Formatting at Cursor</strong> reads the live formatting
+back (“Helvetica, 14 point, bold”). If the bridge were ever unavailable
+on a particular system, the same document simply opens converted to
+editable text with a status message saying so — nothing breaks, nothing
+is lost, and VoiceOver keeps reading the same native control it always
+has.</p>
+<p><strong>What we need from you: try it and tell us — good or
+bad.</strong> Open an .rtf, format something, save it, reopen it. If you
+use VoiceOver: does the editor still read normally (typing echo,
+arrow-key review, selection announcements)? Does formatted text — a bold
+word, a sized heading — read and navigate correctly? Then send what you
+found through <strong>Help &gt; Report a Bug</strong>, naming your macOS
+version. “It works perfectly” is exactly as valuable to us as a failure
+report — real-hardware reports in both directions are the promotion
+gate, just as your braille reports were for the Windows fix in Beta
+2.</p>
 <hr />
 <h2 id="fixes">Fixes</h2>
 <h3

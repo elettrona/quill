@@ -3338,7 +3338,7 @@ Every document opens in the one QUILL editor — the same native control QUILL h
 
 **The Document Format switcher.** **Format > Document Format...** (also Ctrl+Shift+Grave, K; the command palette; or press Enter on the **Format** cell in the status bar, which always shows your current format) moves the current document between Plain text, Markdown, HTML, Rich Text (RTF), and Word (.docx) mid-session. Switching to a rich format turns your Markdown headings into real ones; leaving a rich format warns first, with the specific list of anything that will not survive. A switched document never silently overwrites its old file — the next save proposes the matching new name.
 
-**If rich mode is unavailable** (macOS without the optional PyObjC component, or a Windows machine missing its COM bridge), .rtf and .docx documents open converted to editable text exactly as in earlier releases, and save back through the same converters. Nothing is ever lost to a missing optional component; you simply get the classic behavior.
+**If rich mode is unavailable** (a system where the bundled macOS bridge or the Windows COM bridge cannot load), .rtf and .docx documents open converted to editable text exactly as in earlier releases, and save back through the same converters. Nothing is ever lost; you simply get the classic behavior — and QUILL says so in the status bar. The Mac app ships everything rich mode needs out of the box; only source installs add it themselves (`pip install "quill[mac]"`). If you ever see the converted fallback on a normal install, please tell us via **Help > Report a Bug**.
 
 ### Table Studio (experimental)
 

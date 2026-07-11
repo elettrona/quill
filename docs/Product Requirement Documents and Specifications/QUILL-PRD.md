@@ -10306,9 +10306,19 @@ docx opens read-extract exactly as before.
 
 **macOS:** `quill/ui/nstextview_rtf_surface.py` (`QuillMacRichText`) mirrors
 the Windows wrapper method-for-method over Cocoa's text model (the editor is
-an `NSTextView` underneath; PyObjC is the soft `mac` install extra). Converted
-rich is the floor and the fallback; on-device VoiceOver verification is the
-promotion gate for the native path, mirroring the Windows braille A/B.
+an `NSTextView` underneath). **The Mac .app bundles the PyObjC bridge**: the
+`[macos]` build extra installs the full `pyobjc`, and
+`scripts/setup_macos.py` lists `objc`/`AppKit`/`Foundation` in the py2app
+`includes` because every AppKit import in the codebase is lazy and the
+import tracer misses them (the same fix makes the #616 VoiceOver
+editor-role pin actually ship in the .app — it was a silent no-op when
+AppKit was absent from the bundle). Source installs use the `mac` extra
+(`pyobjc-framework-Cocoa`). The code path still degrades to converted rich
+if the bridge is ever absent — the floor and the fallback are permanent —
+and on-device VoiceOver verification remains the promotion gate for the
+native path, mirroring the Windows braille A/B; the Beta 3 release notes
+ask Mac users to report results via Help > Report a Bug, positive or
+negative.
 
 ### The Fragment spine, and five features built on it (shipped 0.9.0 Beta 2)
 
