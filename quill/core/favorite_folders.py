@@ -92,25 +92,47 @@ class FavoriteFile:
     folder_label: str  # the favorite folder's display name, for disambiguation
 
 
-def list_files_in_favorites(vault: FavoriteFolders) -> list[FavoriteFile]:
-    """Non-recursive top-level file listing across every favorite folder.
+_RECURSIVE_SCAN_CAP = 5_000
+# Ceiling on how many files a recursive scan collects (per call, across all
+# favorites combined). Top-level scanning has no such cap since a "short
+# curated list" of folders scanned shallowly is inherently bounded; a favorite
+# that turns out to contain a huge nested tree should not be able to freeze
+# Quick Open when the user explicitly opts into recursive search.
 
-    Non-recursive is a deliberate scope choice, not an oversight: favorites
-    are meant to be a *short* curated list, and a shallow scan keeps Quick
-    Open instant even for a favorite that happens to contain a huge tree.
+
+def list_files_in_favorites(
+    vault: FavoriteFolders, *, recursive: bool = False
+) -> list[FavoriteFile]:
+    """File listing across every favorite folder.
+
+    Non-recursive (the default) lists top-level files only -- a deliberate
+    scope choice, not an oversight: favorites are meant to be a *short*
+    curated list, and a shallow scan keeps Quick Open instant even for a
+    favorite that happens to contain a huge tree. Pass ``recursive=True``
+    (an explicit, user-opted-into checkbox in the UI) to search every
+    subfolder too, capped at ``_RECURSIVE_SCAN_CAP`` files total so a
+    pathologically large favorite still can't hang the dialog.
+
     A missing or unreadable favorite folder is skipped silently (it may have
     been moved or the drive may be offline) rather than raising.
     """
     names = vault.names()
     results: list[FavoriteFile] = []
     for folder, label in zip(vault.folders, names, strict=True):
+        root = Path(folder)
         try:
-            entries = sorted(Path(folder).iterdir(), key=lambda p: p.name.lower())
+            entries = (
+                sorted(root.rglob("*"), key=lambda p: p.name.lower())
+                if recursive
+                else sorted(root.iterdir(), key=lambda p: p.name.lower())
+            )
         except OSError:
             continue
         for entry in entries:
             if entry.is_file():
                 results.append(FavoriteFile(path=entry, folder_label=label))
+                if recursive and len(results) >= _RECURSIVE_SCAN_CAP:
+                    return results
     return results
 
 

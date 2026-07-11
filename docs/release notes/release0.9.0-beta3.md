@@ -90,7 +90,7 @@ All three are also on the **File** menu, under a new **Favorite Folders** submen
 
 Press **Ctrl+Alt+Shift+O** and a small dialog opens with a text box already focused. Start typing part of a filename and the list below filters live, case-insensitively, across every one of your favorite folders at once — the same type-to-filter rhythm as VSCode's Ctrl+P. Arrow down to a match (each entry shows which favorite folder it came from, since two favorites can both contain a file with a similar name) and press Enter, or click **OK**, to open it. Escape or **Cancel** backs out with nothing changed.
 
-Two scope notes worth knowing: the scan is **top-level files only** within each favorite folder, not recursive — this keeps the filter instant even if one of your favorites happens to contain a huge nested tree, and it matches the "short, curated list" philosophy favorites are built around. And because Quill doesn't have a single-project-root "workspace" concept the way VSCode does, this Quick Open is intentionally scoped to your favorites rather than searching your whole disk.
+By default the scan is **top-level files only** within each favorite folder, not recursive — this keeps the filter instant even if one of your favorites happens to contain a huge nested tree, and it matches the "short, curated list" philosophy favorites are built around. Tick the **Include subfolders** checkbox in the dialog to search every subfolder too, if you need to — it's capped at a few thousand files so even a very large favorite can't hang the dialog. And because Quill doesn't have a single-project-root "workspace" concept the way VSCode does, this Quick Open is intentionally scoped to your favorites rather than searching your whole disk.
 
 ### Accessible code folding
 

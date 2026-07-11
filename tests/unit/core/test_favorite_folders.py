@@ -101,6 +101,39 @@ def test_list_files_in_favorites_skips_missing_folder(tmp_path: Path) -> None:
     assert list_files_in_favorites(vault) == []
 
 
+def test_list_files_in_favorites_recursive_finds_nested_files(tmp_path: Path) -> None:
+    folder = tmp_path / "Reports"
+    folder.mkdir()
+    (folder / "top.txt").write_text("x")
+    nested = folder / "nested"
+    nested.mkdir()
+    (nested / "deep.txt").write_text("x")
+    deeper = nested / "deeper"
+    deeper.mkdir()
+    (deeper / "deepest.txt").write_text("x")
+
+    vault = FavoriteFolders(folders=[str(folder)])
+    files = list_files_in_favorites(vault, recursive=True)
+
+    assert sorted(f.path.name for f in files) == ["deep.txt", "deepest.txt", "top.txt"]
+    assert all(f.folder_label == "Reports" for f in files)
+
+
+def test_list_files_in_favorites_recursive_is_capped(tmp_path: Path, monkeypatch) -> None:
+    import quill.core.favorite_folders as ff_module
+
+    monkeypatch.setattr(ff_module, "_RECURSIVE_SCAN_CAP", 3)
+    folder = tmp_path / "Reports"
+    folder.mkdir()
+    for i in range(10):
+        (folder / f"file{i}.txt").write_text("x")
+
+    vault = FavoriteFolders(folders=[str(folder)])
+    files = list_files_in_favorites(vault, recursive=True)
+
+    assert len(files) == 3
+
+
 def test_list_files_in_favorites_combines_multiple_folders(tmp_path: Path) -> None:
     reports = tmp_path / "Reports"
     reports.mkdir()

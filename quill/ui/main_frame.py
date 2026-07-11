@@ -17158,24 +17158,22 @@ class MainFrame(
         """VSCode-Quick-Open-style file finder, scoped to favorite folders.
 
         Quill has no single-project-root "workspace" the way VSCode does, so
-        this scans favorite folders (top-level only, non-recursive by design
-        -- see list_files_in_favorites) instead of an entire tree. Type to
-        filter by filename, arrow to a match, Enter/OK to open it -- the same
+        this scans favorite folders (top-level only by default -- see
+        list_files_in_favorites) instead of an entire tree. Type to filter by
+        filename, arrow to a match, Enter/OK to open it -- the same
         one-keystroke-per-step rhythm as VSCode's Ctrl+P, just bounded to the
         short, deliberately curated favorites list rather than everything on
-        disk.
+        disk. An opt-in "Include subfolders" checkbox switches to a recursive
+        scan (capped, so a huge favorite still can't hang the dialog) for
+        anyone who wants it.
         """
         wx = self._wx
         vault = self._favorite_folders()
-        all_files = list_files_in_favorites(vault)
-        if not all_files:
-            if not vault.folders:
-                self._set_status("No favorite folders yet. Use Add Favorite Folder first.")
-            else:
-                self._set_status("No files found in your favorite folders.")
+        if not vault.folders:
+            self._set_status("No favorite folders yet. Use Add Favorite Folder first.")
             return
 
-        dialog = wx.Dialog(self.frame, title="Open From Favorite Folder", size=(560, 420))
+        dialog = wx.Dialog(self.frame, title="Open From Favorite Folder", size=(560, 440))
         root = wx.BoxSizer(wx.VERTICAL)
         root.Add(
             wx.StaticText(dialog, label="Type to filter, then choose a file to open:"),
@@ -17186,6 +17184,9 @@ class MainFrame(
         search = wx.TextCtrl(dialog)
         search.SetName("Filter")
         root.Add(search, 0, wx.LEFT | wx.RIGHT | wx.EXPAND, 8)
+        recursive_check = wx.CheckBox(dialog, label="Include subfolders")
+        recursive_check.SetName("Include subfolders")
+        root.Add(recursive_check, 0, wx.ALL, 8)
         results = wx.ListBox(dialog)
         results.SetName("Matching files")
         root.Add(results, 1, wx.ALL | wx.EXPAND, 8)
@@ -17194,6 +17195,7 @@ class MainFrame(
             root.Add(buttons, 0, wx.EXPAND | wx.LEFT | wx.RIGHT | wx.BOTTOM, 8)
         dialog.SetSizer(root)
 
+        all_files: list[FavoriteFile] = list_files_in_favorites(vault)
         current_matches: list[FavoriteFile] = list(all_files)
 
         def refresh(query: str) -> None:
@@ -17203,8 +17205,14 @@ class MainFrame(
             if current_matches:
                 results.SetSelection(0)
 
+        def rescan() -> None:
+            nonlocal all_files
+            all_files = list_files_in_favorites(vault, recursive=recursive_check.GetValue())
+            refresh(search.GetValue())
+
         refresh("")
         search.Bind(wx.EVT_TEXT, lambda _e: refresh(search.GetValue()))
+        recursive_check.Bind(wx.EVT_CHECKBOX, lambda _e: rescan())
         apply_modal_ids(dialog, affirmative_id=wx.ID_OK, escape_id=wx.ID_CANCEL)
         search.SetFocus()
         result = self._show_modal_dialog(dialog, "Open From Favorite Folder")
@@ -17212,6 +17220,9 @@ class MainFrame(
         dialog.Destroy()
         if result != wx.ID_OK or selection == wx.NOT_FOUND:
             self._set_status("Open from favorite folder cancelled")
+            return
+        if not current_matches:
+            self._set_status("No files found in your favorite folders.")
             return
         self.open_file(path=current_matches[selection].path)
 

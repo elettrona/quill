@@ -574,9 +574,12 @@ typing part of a filename and the list below filters live, case-insensitively,
 across every favorite folder at once — arrow to a match (each entry shows which
 favorite folder it came from) and press Enter, or **OK**, to open it.
 
-The scan is **top-level files only** within each favorite folder, not recursive —
-this keeps the filter instant even if a favorite happens to contain a large nested
-tree, matching the "short, curated list" idea favorites are built around.
+By default the scan is **top-level files only** within each favorite folder, not
+recursive — this keeps the filter instant even if a favorite happens to contain a
+large nested tree, matching the "short, curated list" idea favorites are built
+around. Tick the **Include subfolders** checkbox in the dialog to search every
+subfolder too; it's capped at a few thousand files so even a very large favorite
+can't hang the dialog.
 
 #### Code folding (accessible)
 
