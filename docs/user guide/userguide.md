@@ -1861,6 +1861,7 @@ The **Help** menu is where Quill becomes a guide.
 - **Open User Guide** opens this guide as an in-app document.
 - **Open Welcome Guide** opens a lighter, profile-aware getting-started document.
 - **Open Keyboard Reference** generates the current live shortcut reference from the active command registry.
+- **Status Page** opens a live view of what QUILL is doing right now — see [Application Status page](#application-status-page) below.
 - **Save Diagnostics...** writes a local diagnostics bundle you can review before sharing.
 - **What Can I Do Here?** gives context-aware assistance.
 - **Why Don't I See a Feature?** explains profile-driven feature visibility.
@@ -1909,6 +1910,17 @@ When an unhandled exception closes QUILL, a dialog now appears during the beta p
 5. The local crash file is always saved to `app_data_dir()/crash-reports/`, regardless of which button you choose. You can find it later from **Help -> Open Diagnostics Folder**.
 
 If you do not want the dialog at all, turn it off in **Preferences -> General -> Offer to send crash reports automatically**. The local crash file is still saved; the dialog is the only opt-in here.
+
+### Application Status page
+
+**Help -> Status Page** opens a non-modal window with four tabs, arranged so you can leave it open in the background while you keep working:
+
+- **Status** — an at-a-glance Overview (version, active profile, background task count, queued notifications) plus per-feature detail rows (BITS Whisperer, Read Aloud engine and voice settings) when those features are enabled.
+- **Tasks & Downloads** — one live row per background job: name, status, progress, start time, and finish time. This is where batch conversions, model downloads, and other long-running work report their progress.
+- **Features** — every feature ID QUILL knows about, its display name, category, and whether it is currently on.
+- **Actions** — a plain-text log of recent actions QUILL has taken.
+
+Each of the three list tabs is a normal accessible list: arrow up and down to move between rows, Left and Right to move between columns, Tab to reach the **Refresh** and **Close** buttons. The page also refreshes itself automatically every two seconds so downloads and task progress stay current without you pressing Refresh — and as of 0.9.0 Beta 3, that automatic refresh no longer disturbs your position in the list: arrow down to a row, and it stays the focused row through the next automatic update instead of snapping back to the top.
 
 ## Writing and Editing
 

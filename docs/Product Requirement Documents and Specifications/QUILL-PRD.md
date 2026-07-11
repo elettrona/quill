@@ -3051,6 +3051,12 @@ When Quill detects an autosave snapshot newer than the on-disk file on launch:
 
 **Offer suppression on inconclusive exits — shipped 0.9.0 Beta 3 (#940/#948).** `begin_session()` in `core/recovery.py` now calls `_log_shows_actionable_error(logs_dir)` before appending a `RecoveryOffer`: it scans the tail (last 256 KB) of `quill.log` for `ERROR`/`CRITICAL`/`Traceback` markers, and suppresses the offer entirely when none are found -- an exit with no error evidence in the log is indistinguishable from an external termination (OS shutdown, forced close) and gets no "Quill detected an unclean exit" prompt. A missing log file fails open (still offers recovery) since an absent log is inconclusive, not evidence of nothing having happened. The autosave snapshot itself is untouched either way; only the *offer* is gated.
 
+### 5.59a Application Status page (`Help → Status Page`)
+
+`HelpStatusDialog` (`quill/ui/status_dialog.py`) is a non-modal `wx.Notebook` of four tabs -- **Status** (Overview/Whisperer/Speech key-value rows), **Tasks & Downloads**, **Features**, and **Actions** -- each backed by a `wx.ListCtrl` (except Actions, a read-only text box) so screen readers get native column navigation instead of Browse-mode HTML table traversal. While the dialog is open, a `wx.Timer` calls `refresh()` every two seconds so background-task progress and downloads stay live without the user pressing the **Refresh** button.
+
+**Live-refresh focus loss, fixed 0.9.0 Beta 3 (#969).** `refresh()` rebuilds each `wx.ListCtrl` from scratch (`DeleteAllItems()` then re-`InsertItem()` every row) so the displayed data always matches `_build_help_status_data()` exactly -- but the rebuild silently dropped the list's focused-row marker too. With the timer firing every two seconds, a user arrowing down the list got returned to the top (or to no focused row at all) before they could act on where they had navigated, reported verbatim as "Move down through the list. The focus will be put back at the top of the list." `refresh()` now captures each list's focused row index before the rebuild (`_capture_focus`) and restores it afterward (`_restore_focus`, clamped to the new row count in case it shrank), independently per list -- so a live-update tick can never undo the user's own navigation. Covered by `tests/unit/ui/test_status_dialog.py` against a real `wx.ListCtrl`, not a fake.
+
 ### 5.60 Read-only document mode
 
 - `View → Read-Only Mode` (`Ctrl+Shift+L` by default) toggles the editor's editability without touching file permissions.

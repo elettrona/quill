@@ -6482,6 +6482,36 @@ unclean exit” prompt. A missing log file fails open (still offers
 recovery) since an absent log is inconclusive, not evidence of nothing
 having happened. The autosave snapshot itself is untouched either way;
 only the <em>offer</em> is gated.</p>
+<h3 id="a-application-status-page-help-status-page">5.59a Application
+Status page (<code>Help → Status Page</code>)</h3>
+<p><code>HelpStatusDialog</code>
+(<code>quill/ui/status_dialog.py</code>) is a non-modal
+<code>wx.Notebook</code> of four tabs – <strong>Status</strong>
+(Overview/Whisperer/Speech key-value rows), <strong>Tasks &amp;
+Downloads</strong>, <strong>Features</strong>, and
+<strong>Actions</strong> – each backed by a <code>wx.ListCtrl</code>
+(except Actions, a read-only text box) so screen readers get native
+column navigation instead of Browse-mode HTML table traversal. While the
+dialog is open, a <code>wx.Timer</code> calls <code>refresh()</code>
+every two seconds so background-task progress and downloads stay live
+without the user pressing the <strong>Refresh</strong> button.</p>
+<p><strong>Live-refresh focus loss, fixed 0.9.0 Beta 3 (#969).</strong>
+<code>refresh()</code> rebuilds each <code>wx.ListCtrl</code> from
+scratch (<code>DeleteAllItems()</code> then re-<code>InsertItem()</code>
+every row) so the displayed data always matches
+<code>_build_help_status_data()</code> exactly – but the rebuild
+silently dropped the list’s focused-row marker too. With the timer
+firing every two seconds, a user arrowing down the list got returned to
+the top (or to no focused row at all) before they could act on where
+they had navigated, reported verbatim as “Move down through the list.
+The focus will be put back at the top of the list.”
+<code>refresh()</code> now captures each list’s focused row index before
+the rebuild (<code>_capture_focus</code>) and restores it afterward
+(<code>_restore_focus</code>, clamped to the new row count in case it
+shrank), independently per list – so a live-update tick can never undo
+the user’s own navigation. Covered by
+<code>tests/unit/ui/test_status_dialog.py</code> against a real
+<code>wx.ListCtrl</code>, not a fake.</p>
 <h3 id="read-only-document-mode">5.60 Read-only document mode</h3>
 <ul>
 <li><code>View → Read-Only Mode</code> (<code>Ctrl+Shift+L</code> by

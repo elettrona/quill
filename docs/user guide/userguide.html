@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="generator" content="pandoc 3.10" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
-  <title>userguide</title>
+  <title>User Guide</title>
   <style>
     /* Default styles provided by pandoc.
     ** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
@@ -241,6 +241,9 @@
   </style>
 </head>
 <body>
+<header id="title-block-header">
+<h1 class="title">User Guide</h1>
+</header>
 <h1 id="quill-user-guide">Quill User Guide</h1>
 <p><strong>QUILL</strong> stands for <strong>Quality, Usable, Inclusive,
 Lightweight, Literate</strong>.</p>
@@ -3178,6 +3181,9 @@ document.</li>
 getting-started document.</li>
 <li><strong>Open Keyboard Reference</strong> generates the current live
 shortcut reference from the active command registry.</li>
+<li><strong>Status Page</strong> opens a live view of what QUILL is
+doing right now — see <a href="#application-status-page">Application
+Status page</a> below.</li>
 <li><strong>Save Diagnostics…</strong> writes a local diagnostics bundle
 you can review before sharing.</li>
 <li><strong>What Can I Do Here?</strong> gives context-aware
@@ -3304,6 +3310,33 @@ Diagnostics Folder</strong>.</li>
 <strong>Preferences -&gt; General -&gt; Offer to send crash reports
 automatically</strong>. The local crash file is still saved; the dialog
 is the only opt-in here.</p>
+<h3 id="application-status-page">Application Status page</h3>
+<p><strong>Help -&gt; Status Page</strong> opens a non-modal window with
+four tabs, arranged so you can leave it open in the background while you
+keep working:</p>
+<ul>
+<li><strong>Status</strong> — an at-a-glance Overview (version, active
+profile, background task count, queued notifications) plus per-feature
+detail rows (BITS Whisperer, Read Aloud engine and voice settings) when
+those features are enabled.</li>
+<li><strong>Tasks &amp; Downloads</strong> — one live row per background
+job: name, status, progress, start time, and finish time. This is where
+batch conversions, model downloads, and other long-running work report
+their progress.</li>
+<li><strong>Features</strong> — every feature ID QUILL knows about, its
+display name, category, and whether it is currently on.</li>
+<li><strong>Actions</strong> — a plain-text log of recent actions QUILL
+has taken.</li>
+</ul>
+<p>Each of the three list tabs is a normal accessible list: arrow up and
+down to move between rows, Left and Right to move between columns, Tab
+to reach the <strong>Refresh</strong> and <strong>Close</strong>
+buttons. The page also refreshes itself automatically every two seconds
+so downloads and task progress stay current without you pressing Refresh
+— and as of 0.9.0 Beta 3, that automatic refresh no longer disturbs your
+position in the list: arrow down to a row, and it stays the focused row
+through the next automatic update instead of snapping back to the
+top.</p>
 <h2 id="writing-and-editing">Writing and Editing</h2>
 <p>Quill’s editing model is fast once you stop thinking of it as only a
 textbox.</p>

@@ -105,6 +105,10 @@ One honest caveat: the direct-Narrator channel is verified in code and tests but
 
 Reported against Beta 2: the pack list needed a Space press on an invisible checkbox — with no feedback — before Enter would do anything. It's now a plain multi-select list: arrow to `daily-writing`, press Enter, it installs. Hold Shift or Ctrl to pick several; your screen reader announces what's selected as you move.
 
+### The Application Status page is navigable again
+
+Reported with exact repro steps that made this an easy fix: open **Help > Status Page**, arrow down through any of its lists, and focus jumped back to the top before you could act on where you'd navigated. The page refreshes itself every two seconds to keep download and task progress current, and that refresh was rebuilding every list from scratch without remembering which row you were on. Each list now holds onto its focused row across a refresh, so you can arrow through the Status, Tasks & Downloads, and Features tabs the way any accessible list should work.
+
 ### A macOS crash while creating a Notebook
 
 Shannon Dyer hit a hard crash ("SystemError: ActivateEvent returned a result with an exception set") while creating a Notebook on macOS — a window-activation handler ran into a wx assertion while dialogs were tearing down, and the whole app went with it. Window activation only exists to put focus back in your document; it is now fully contained and can never take the process down.

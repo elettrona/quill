@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="generator" content="pandoc 3.10" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
-  <title>release0.9.0-beta3</title>
+  <title>0.9.0 Beta 3 Release Notes</title>
   <style>
     /* Default styles provided by pandoc.
     ** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
@@ -176,6 +176,9 @@
   </style>
 </head>
 <body>
+<header id="title-block-header">
+<h1 class="title">0.9.0 Beta 3 Release Notes</h1>
+</header>
 <h1 id="quill-0.9.0-beta-3">QUILL 0.9.0 Beta 3</h1>
 <h2
 id="one-editor-every-format-and-the-braille-fix-is-on-for-everyone.">One
@@ -452,6 +455,17 @@ invisible checkbox — with no feedback — before Enter would do anything.
 It’s now a plain multi-select list: arrow to <code>daily-writing</code>,
 press Enter, it installs. Hold Shift or Ctrl to pick several; your
 screen reader announces what’s selected as you move.</p>
+<h3 id="the-application-status-page-is-navigable-again">The Application
+Status page is navigable again</h3>
+<p>Reported with exact repro steps that made this an easy fix: open
+<strong>Help &gt; Status Page</strong>, arrow down through any of its
+lists, and focus jumped back to the top before you could act on where
+you’d navigated. The page refreshes itself every two seconds to keep
+download and task progress current, and that refresh was rebuilding
+every list from scratch without remembering which row you were on. Each
+list now holds onto its focused row across a refresh, so you can arrow
+through the Status, Tasks &amp; Downloads, and Features tabs the way any
+accessible list should work.</p>
 <h3 id="a-macos-crash-while-creating-a-notebook">A macOS crash while
 creating a Notebook</h3>
 <p>Shannon Dyer hit a hard crash (“SystemError: ActivateEvent returned a
