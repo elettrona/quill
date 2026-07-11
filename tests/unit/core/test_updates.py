@@ -448,3 +448,72 @@ def test_active_feature_locks_respects_version_range() -> None:
     assert locks["a"] == "ra"
     assert "safety advisory" in locks["c"]  # empty reason gets a default
     assert active_feature_locks(m, "1.0.0") == {"b": "rb", "c": locks["c"]}
+
+
+# --- extract_portable_update ---------------------------------------------- #
+
+
+def test_extract_portable_update_writes_files(tmp_path) -> None:
+    import zipfile
+
+    from quill.core.updates import extract_portable_update
+
+    zip_path = tmp_path / "quill-portable.zip"
+    with zipfile.ZipFile(zip_path, "w") as zf:
+        zf.writestr("quill.exe", "fake exe bytes")
+        zf.writestr("data/README.txt", "placeholder")
+
+    dest = tmp_path / "extracted"
+    extract_portable_update(zip_path, dest)
+
+    assert (dest / "quill.exe").read_text() == "fake exe bytes"
+    assert (dest / "data" / "README.txt").read_text() == "placeholder"
+
+
+def test_extract_portable_update_creates_dest_dir(tmp_path) -> None:
+    import zipfile
+
+    from quill.core.updates import extract_portable_update
+
+    zip_path = tmp_path / "quill-portable.zip"
+    with zipfile.ZipFile(zip_path, "w") as zf:
+        zf.writestr("quill.exe", "x")
+
+    dest = tmp_path / "nested" / "extracted"
+    extract_portable_update(zip_path, dest)
+
+    assert dest.is_dir()
+    assert (dest / "quill.exe").is_file()
+
+
+def test_extract_portable_update_rejects_zip_slip(tmp_path) -> None:
+    import zipfile
+
+    import pytest
+
+    from quill.core.updates import extract_portable_update
+
+    zip_path = tmp_path / "malicious.zip"
+    with zipfile.ZipFile(zip_path, "w") as zf:
+        zf.writestr("../../evil.txt", "escaped")
+
+    dest = tmp_path / "extracted"
+    with pytest.raises(ValueError, match="unsafe archive entry"):
+        extract_portable_update(zip_path, dest)
+
+
+def test_extract_portable_update_rejects_decompression_bomb(tmp_path) -> None:
+    import zipfile
+
+    import pytest
+
+    from quill.core.safe_archive import DecompressionBombError
+    from quill.core.updates import extract_portable_update
+
+    zip_path = tmp_path / "bomb.zip"
+    with zipfile.ZipFile(zip_path, "w") as zf:
+        zf.writestr("big.txt", "x" * 1000)
+
+    dest = tmp_path / "extracted"
+    with pytest.raises(DecompressionBombError):
+        extract_portable_update(zip_path, dest, max_total=10)

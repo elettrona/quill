@@ -2486,3 +2486,99 @@ def test_bare_digit_key_does_not_trigger_quick_bookmark() -> None:
 
     assert frame._bookmarks == {}
     assert event.skipped is True
+
+
+def test_extract_and_reveal_portable_update_success(monkeypatch: pytest.MonkeyPatch) -> None:
+    # Regression: a downloaded portable .zip previously left the user with
+    # only "Open folder"/"Close" and no in-app way to extract it. This
+    # verifies the new handler actually extracts and reveals the result.
+    from quill.core.updates import GitHubRelease
+
+    frame = MainFrame.__new__(MainFrame)
+    frame._status_message = "Ready"
+    frame._notifications: list[tuple[str, str]] = []
+    frame._announcements: list[str] = []
+    frame._set_status = lambda msg: setattr(frame, "_status_message", msg)  # type: ignore[method-assign]
+    frame._set_status_quiet = lambda msg: setattr(frame, "_status_message", msg)  # type: ignore[method-assign]
+    frame._record_notification = (  # type: ignore[method-assign]
+        lambda msg, category="info": frame._notifications.append((msg, category))
+    )
+    frame._announce = lambda msg, **_kw: frame._announcements.append(msg)  # type: ignore[method-assign]
+
+    revealed: list[Path] = []
+    frame._reveal_in_folder = lambda target: revealed.append(target)  # type: ignore[method-assign]
+
+    extract_calls: list[tuple[Path, Path]] = []
+
+    def fake_extract(zip_path, dest_dir):
+        extract_calls.append((Path(zip_path), Path(dest_dir)))
+
+    monkeypatch.setattr("quill.core.updates.extract_portable_update", fake_extract)
+
+    release = GitHubRelease(
+        version="0.9.0 Beta 3",
+        download_url="https://example.invalid/x.zip",
+        published_at="",
+        notes="",
+        prerelease=True,
+    )
+    target = Path("C:/fake/updates/Quill-Portable-v0.9.0-beta.3.zip")
+
+    frame._extract_and_reveal_portable_update(release, target)
+
+    assert extract_calls == [
+        (target, target.parent / "Quill-Portable-0.9.0 Beta 3")
+    ]
+    assert revealed == [target.parent / "Quill-Portable-0.9.0 Beta 3"]
+    assert any("extracted" in msg.lower() for msg in frame._announcements)
+    assert frame._status_message == "Extracted update 0.9.0 Beta 3"
+
+
+def test_extract_and_reveal_portable_update_failure_is_reported(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from quill.core.updates import GitHubRelease
+
+    frame = MainFrame.__new__(MainFrame)
+    frame._status_message = "Ready"
+    frame._notifications: list[tuple[str, str]] = []
+    frame._set_status = lambda msg: setattr(frame, "_status_message", msg)  # type: ignore[method-assign]
+    frame._set_status_quiet = lambda msg: setattr(frame, "_status_message", msg)  # type: ignore[method-assign]
+    frame._record_notification = (  # type: ignore[method-assign]
+        lambda msg, category="info": frame._notifications.append((msg, category))
+    )
+    reveal_called = []
+    frame._reveal_in_folder = lambda target: reveal_called.append(target)  # type: ignore[method-assign]
+
+    def fake_extract(zip_path, dest_dir):
+        raise ValueError("boom")
+
+    monkeypatch.setattr("quill.core.updates.extract_portable_update", fake_extract)
+
+    release = GitHubRelease(
+        version="0.9.0 Beta 3",
+        download_url="https://example.invalid/x.zip",
+        published_at="",
+        notes="",
+        prerelease=True,
+    )
+    target = Path("C:/fake/updates/Quill-Portable-v0.9.0-beta.3.zip")
+
+    frame._extract_and_reveal_portable_update(release, target)
+
+    assert reveal_called == []
+    assert frame._status_message == "Update extraction failed"
+    assert any("failed" in msg.lower() for msg, _cat in frame._notifications)
+
+
+def test_offer_post_download_actions_offers_extract_for_zip_not_install() -> None:
+    # Source-contract check (real wx.Dialog construction needs a live wx.App,
+    # which this headless suite doesn't run): a .zip target must be treated
+    # as extractable, never as a runnable installer, and vice versa.
+    src = Path(main_frame_module.__file__).read_text(encoding="utf-8")
+    assert 'extractable = target.suffix.lower() == ".zip"' in src
+    assert '"Extract now"' in src
+    assert "_extract_and_reveal_portable_update(release, target)" in src
+    # The old behavior (zip treated as non-runnable, non-extractable, only
+    # ever "Open folder"/"Close") must not have silently regressed back.
+    assert 'runnable = target.suffix.lower() in {".exe", ".msi"}' in src

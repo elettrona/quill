@@ -9,6 +9,7 @@ import ssl
 import sys
 from collections.abc import Callable
 from dataclasses import dataclass
+from pathlib import Path
 from urllib.error import URLError
 from urllib.parse import urlparse
 from urllib.request import Request, urlopen
@@ -561,6 +562,47 @@ def download_release_asset(
                 done += len(chunk)
                 if progress is not None:
                     progress(done, total)
+
+
+def extract_portable_update(
+    zip_path: str | os.PathLike[str],
+    dest_dir: str | os.PathLike[str],
+    *,
+    max_total: int | None = None,
+    max_ratio: int | None = None,
+) -> None:
+    """Extract a downloaded portable-update ZIP into ``dest_dir``.
+
+    A portable update was previously left as a bare ``.zip`` in the downloads
+    folder with no in-app way to act on it beyond "Open folder" -- a portable
+    user had to know to extract it themselves. This gives the post-download
+    dialog something real to do with a ``.zip`` asset: extract it to a
+    ready-to-run sibling folder so "Open folder" reveals a working install
+    instead of an unopened archive.
+
+    Uses :func:`quill.core.safe_archive.open_zip` for decompression-bomb
+    protection (``max_total``/``max_ratio`` default to that function's own
+    limits when not given -- exposed as real parameters, not module-constant
+    monkeypatching, so tests can override them deterministically), and
+    additionally rejects any archive member whose extracted path would
+    resolve outside ``dest_dir`` (zip-slip) -- defense in depth even though
+    this only ever runs against Quill's own HTTPS+trusted-host-verified
+    release asset, never arbitrary user-supplied input.
+    """
+    from quill.core.safe_archive import MAX_COMPRESSION_RATIO, MAX_TOTAL_UNCOMPRESSED, open_zip
+
+    dest = Path(dest_dir).resolve()
+    dest.mkdir(parents=True, exist_ok=True)
+    with open_zip(
+        zip_path,
+        max_total=max_total if max_total is not None else MAX_TOTAL_UNCOMPRESSED,
+        max_ratio=max_ratio if max_ratio is not None else MAX_COMPRESSION_RATIO,
+    ) as archive:
+        for member in archive.infolist():
+            member_path = (dest / member.filename).resolve()
+            if member_path != dest and dest not in member_path.parents:
+                raise ValueError(f"Refused to extract unsafe archive entry: {member.filename!r}")
+        archive.extractall(dest)
 
 
 def _validate_remote_url(url: str) -> None:

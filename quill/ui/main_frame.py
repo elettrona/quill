@@ -21482,19 +21482,28 @@ class MainFrame(
         ).start()
 
     def _offer_post_download_actions(self, release: GitHubRelease, target: Path) -> None:
-        """After a successful download, let the user install it now or reveal it
-        in the folder. Installer launch is offered only for runnable assets."""
+        """After a successful download, let the user install/extract it now or
+        reveal it in the folder. Installer launch is offered only for runnable
+        (.exe/.msi) assets; extraction is offered only for a portable (.zip)
+        asset -- previously a portable download only ever offered "Open
+        folder"/"Close", leaving a portable user to find and extract the ZIP
+        themselves with no in-app help at all.
+        """
         from quill.ui.dialog_contract import apply_modal_ids
 
         wx = self._wx
         runnable = target.suffix.lower() in {".exe", ".msi"} and sys.platform.startswith("win")
-        install_line = (
-            "Select 'Install now' to close Quill and run the installer, or " if runnable else ""
-        )
+        extractable = target.suffix.lower() == ".zip"
+        if runnable:
+            action_line = "Select 'Install now' to close Quill and run the installer, or "
+        elif extractable:
+            action_line = "Select 'Extract now' to unzip it into a ready-to-run folder, or "
+        else:
+            action_line = ""
         plain = (
             f"Update {release.version} downloaded.\n\n"
             f"Saved to: {target}\n\n"
-            f"{install_line}Select 'Open folder' to find it."
+            f"{action_line}Select 'Open folder' to find it."
         )
         dialog = wx.Dialog(
             self.frame, title="Update downloaded", style=wx.DEFAULT_DIALOG_STYLE | wx.RESIZE_BORDER
@@ -21521,11 +21530,16 @@ class MainFrame(
             install_btn.Bind(wx.EVT_BUTTON, lambda _e: dialog.EndModal(wx.ID_OK))
             install_btn.SetDefault()
             btn_sizer.Add(install_btn, 0)
+        elif extractable:
+            extract_btn = wx.Button(dialog, wx.ID_OK, label="Extract now")
+            extract_btn.Bind(wx.EVT_BUTTON, lambda _e: dialog.EndModal(wx.ID_OK))
+            extract_btn.SetDefault()
+            btn_sizer.Add(extract_btn, 0)
         else:
             close_btn.SetDefault()
         sizer.Add(btn_sizer, 0, wx.EXPAND | wx.LEFT | wx.RIGHT | wx.BOTTOM, 12)
         dialog.SetSizer(sizer)
-        affirmative = wx.ID_OK if runnable else wx.ID_OPEN
+        affirmative = wx.ID_OK if (runnable or extractable) else wx.ID_OPEN
         apply_modal_ids(dialog, affirmative_id=affirmative, escape_id=wx.ID_CANCEL)
         wx.CallAfter(body.SetFocus)
         try:
@@ -21536,6 +21550,33 @@ class MainFrame(
             self._reveal_in_folder(target)
         elif result == wx.ID_OK and runnable:
             self._launch_installer(target)
+        elif result == wx.ID_OK and extractable:
+            self._extract_and_reveal_portable_update(release, target)
+
+    def _extract_and_reveal_portable_update(self, release: GitHubRelease, target: Path) -> None:
+        """Extract a downloaded portable-update ZIP and reveal the result.
+
+        Extracts to a ready-to-run sibling folder (``<target's dir>/Quill-Portable-<version>``)
+        rather than leaving the user to find and unzip the archive themselves.
+        Does not attempt to replace the currently-running portable bundle in
+        place (its own files may be locked while Quill is running) -- the
+        user still copies their ``data`` folder over and swaps folders
+        manually, but no longer needs to know how to extract a ZIP first.
+        """
+        from quill.core.updates import extract_portable_update
+
+        dest = target.parent / f"Quill-Portable-{release.version}"
+        self._set_status_quiet(f"Extracting update {release.version}...")
+        try:
+            extract_portable_update(target, dest)
+        except Exception as exc:  # noqa: BLE001
+            self._record_notification(f"Update extraction failed: {exc}", "update")
+            self._set_status("Update extraction failed")
+            return
+        self._record_notification(f"Update {release.version} extracted to {dest}", "update")
+        self._set_status(f"Extracted update {release.version}")
+        self._announce(f"Update {release.version} extracted, ready to use")
+        self._reveal_in_folder(dest)
 
     def _reveal_in_folder(self, target: Path) -> None:
         """Reveal the downloaded file in the OS file manager."""
