@@ -8,9 +8,17 @@ import pytest
 
 from quill.core.shell_verbs import default_shell_verbs
 from scripts.build_windows_distribution import (
+    DEFAULT_BUNDLED_WHISPER_MODEL_ID,
+    FASTER_WHISPER_WHEELHOUSE_REQUIREMENTS,
+    KOKORO_WHEELHOUSE_REQUIREMENTS,
+    MP3_WHEELHOUSE_REQUIREMENTS,
+    VOSK_WHEELHOUSE_REQUIREMENTS,
     _assert_bundled_token_nonempty,
     _bundled_token_value,
     _prune_embedded_runtime,
+    _speech_asset_manifest,
+    _stage_pip_wheelhouse,
+    _stage_whisper_model,
     build_inno_setup_script,
     build_shell_verb_registry_lines,
     build_windows_distribution,
@@ -273,14 +281,23 @@ def test_bundle_offline_lifts_optional_component_excludes() -> None:
         "tools\\pandoc\\*",
         "tools\\speech\\dectalk\\*",
         "tools\\speech\\espeak-ng\\*",
-        "tools\\speech\\piper\\*",
         "tools\\speech\\whispercpp\\*",
         "vendor\\braille-pack\\*",
         "kokoro-models\\*",
+        "speech-models-bundled\\*",
+        "wheels\\kokoro\\*",
+        "wheels\\faster-whisper\\*",
+        "wheels\\vosk\\*",
+        "wheels\\mp3\\*",
     )
     for term in optional_component_terms:
         assert term in online_excludes, f"{term!r} must be excluded from the regular installer"
         assert term not in offline_excludes, f"{term!r} must NOT be excluded from --bundle-offline"
+    # Piper has no build-time staging mechanism at all (no --piper-dir flag, no
+    # wheelhouse) -- unlike the other five, --bundle-offline cannot lift this one
+    # because there is nothing it could ever include. It stays excluded either way.
+    assert "tools\\speech\\piper\\*" in online_excludes
+    assert "tools\\speech\\piper\\*" in offline_excludes
 
     # Node.js has no --nodejs-dir staging flag on this script (it is not part of
     # the offline-speech/braille bundle) and the build-artifact/dev-only entries
@@ -874,6 +891,147 @@ def test_kokoro_is_not_bundled_and_installs_on_demand() -> None:
     # The engines users actually need offline stay bundled.
     assert "speech" in DEFAULT_BUNDLED_DEPENDENCY_GROUPS
     assert "ui" in DEFAULT_BUNDLED_DEPENDENCY_GROUPS
+
+
+@pytest.mark.parametrize(
+    ("name", "requirements"),
+    [
+        ("kokoro", KOKORO_WHEELHOUSE_REQUIREMENTS),
+        ("faster-whisper", FASTER_WHISPER_WHEELHOUSE_REQUIREMENTS),
+        ("vosk", VOSK_WHEELHOUSE_REQUIREMENTS),
+        ("mp3", MP3_WHEELHOUSE_REQUIREMENTS),
+    ],
+)
+def test_stage_pip_wheelhouse_runs_pip_download(
+    monkeypatch, tmp_path: Path, name: str, requirements: tuple[str, ...]
+) -> None:
+    """--bundle-offline stages an on-demand engine's pip package tree as local
+    wheels, using the *same* interpreter that will later install them (so wheel
+    tags match) -- the fix for the Offline Edition still needing PyPI to
+    actually use Kokoro, Faster Whisper, Vosk, or MP3 support."""
+    captured: dict = {}
+
+    def fake_run(command, *, check):
+        captured["command"] = list(command)
+        assert check is True
+        # Simulate pip download actually producing a wheel.
+        target = Path(command[command.index("--dest") + 1])
+        (target / "fake_wheel-0.1-py3-none-any.whl").write_bytes(b"fake wheel")
+
+    monkeypatch.setattr("scripts.build_windows_distribution.subprocess.run", fake_run)
+    portable_dir = tmp_path / "portable"
+    python_exe = tmp_path / "python.exe"
+    result = _stage_pip_wheelhouse(portable_dir, python_exe, name, requirements)
+
+    assert result is True
+    cmd = captured["command"]
+    assert cmd[0] == str(python_exe)
+    assert cmd[1:4] == ["-m", "pip", "download"]
+    assert "--only-binary=:all:" in cmd
+    for req in requirements:
+        assert req in cmd
+    assert list((portable_dir / "wheels" / name).glob("*.whl"))
+
+
+def test_stage_pip_wheelhouse_reuses_already_staged(monkeypatch, tmp_path: Path) -> None:
+    portable_dir = tmp_path / "portable"
+    target = portable_dir / "wheels" / "kokoro"
+    target.mkdir(parents=True)
+    (target / "existing-0.1-py3-none-any.whl").write_bytes(b"x")
+
+    def fail_if_called(*args, **kwargs):
+        raise AssertionError("pip download should not run when already staged")
+
+    monkeypatch.setattr("scripts.build_windows_distribution.subprocess.run", fail_if_called)
+    assert (
+        _stage_pip_wheelhouse(
+            portable_dir, tmp_path / "python.exe", "kokoro", KOKORO_WHEELHOUSE_REQUIREMENTS
+        )
+        is True
+    )
+
+
+def test_speech_asset_manifest_reports_wheelhouse_presence(tmp_path: Path) -> None:
+    portable_dir = tmp_path / "portable"
+    portable_dir.mkdir()
+    manifest = _speech_asset_manifest(portable_dir, [])
+    assert manifest["kokoro_wheelhouse"]["bundled"] is False
+
+    wheel_dir = portable_dir / "wheels" / "kokoro"
+    wheel_dir.mkdir(parents=True)
+    (wheel_dir / "soundfile-0.14.0-py3-none-any.whl").write_bytes(b"x")
+    manifest = _speech_asset_manifest(portable_dir, [])
+    assert manifest["kokoro_wheelhouse"]["bundled"] is True
+    assert manifest["kokoro_wheelhouse"]["path"] == str(wheel_dir)
+
+
+def test_speech_asset_manifest_reports_whisper_model_presence(tmp_path: Path) -> None:
+    portable_dir = tmp_path / "portable"
+    portable_dir.mkdir()
+    manifest = _speech_asset_manifest(portable_dir, [])
+    assert manifest["whispercpp_model"]["bundled"] is False
+
+    model_dir = portable_dir / "speech-models-bundled" / "whispercpp"
+    model_dir.mkdir(parents=True)
+    model_path = model_dir / f"ggml-{DEFAULT_BUNDLED_WHISPER_MODEL_ID}.bin"
+    model_path.write_bytes(b"x")
+    manifest = _speech_asset_manifest(portable_dir, [])
+    assert manifest["whispercpp_model"]["bundled"] is True
+    assert manifest["whispercpp_model"]["path"] == str(model_path)
+
+
+def test_stage_whisper_model_downloads_and_verifies(monkeypatch, tmp_path: Path) -> None:
+    """--bundle-offline auto-fetches the default whisper.cpp GGML model (no
+    --whisper-dir needed, unlike the engine binary) so the Offline Edition's
+    required default transcription engine has something to transcribe with
+    immediately after install."""
+    captured: dict = {}
+
+    def fake_download(url, target, expected_sha256):
+        captured["url"] = url
+        captured["target"] = target
+        captured["sha256"] = expected_sha256
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_bytes(b"fake ggml model")
+
+    monkeypatch.setattr(
+        "scripts.build_windows_distribution._download_with_verification", fake_download
+    )
+    portable_dir = tmp_path / "portable"
+    result = _stage_whisper_model(portable_dir)
+
+    assert result is True
+    target = (
+        portable_dir
+        / "speech-models-bundled"
+        / "whispercpp"
+        / f"ggml-{DEFAULT_BUNDLED_WHISPER_MODEL_ID}.bin"
+    )
+    assert target.is_file()
+    assert captured["target"] == target
+    assert captured["sha256"]
+    assert "huggingface.co" in captured["url"]
+    assert DEFAULT_BUNDLED_WHISPER_MODEL_ID in captured["url"] or "ggml-tiny.bin" in captured["url"]
+
+
+def test_stage_whisper_model_reuses_already_staged(monkeypatch, tmp_path: Path) -> None:
+    portable_dir = tmp_path / "portable"
+    target = (
+        portable_dir
+        / "speech-models-bundled"
+        / "whispercpp"
+        / f"ggml-{DEFAULT_BUNDLED_WHISPER_MODEL_ID}.bin"
+    )
+    target.parent.mkdir(parents=True)
+    target.write_bytes(b"already here")
+
+    def fail_if_called(*args, **kwargs):
+        raise AssertionError("download should not run when already staged")
+
+    monkeypatch.setattr(
+        "scripts.build_windows_distribution._download_with_verification", fail_if_called
+    )
+    assert _stage_whisper_model(portable_dir) is True
 
 
 def test_dev_cache_ignore_excludes_local_tool_caches_but_keeps_real_source(

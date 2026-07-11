@@ -7405,7 +7405,20 @@ class MainFrame(
             # display rewrite existed. Keep the friendly label visible but
             # out of the accelerator-parsed slot.
             return f"{label} ({display})"
-        return f"{label}\t{display}"
+        # macOS-only variant of #612: DEFAULT_KEYMAP spells the Command key
+        # "Cmd" (matching how a person reads a Mac shortcut aloud, and matching
+        # _parse_keybinding's own "Cmd" -> wx.ACCEL_CTRL mapping for the real
+        # AcceleratorTable). But wx's menu-label accelerator parser
+        # (wxGetAccelFromString) does not reliably recognize the literal token
+        # "Cmd" -- it silently drops the unrecognized modifier and keeps the
+        # bare final key, exactly like the QUILL Key case above. "Find
+        # &Next\tCmd+G" bound a bare, unmodified G as a native menu
+        # accelerator, intercepting every G/g keystroke before it ever reached
+        # the editor. "Ctrl" is what wx already renders as the Command-key
+        # glyph on macOS (see _parse_keybinding), so translate only for this
+        # native-parsed slot; every other display surface keeps "Cmd".
+        native_accelerator = re.sub(r"(?i)\bcmd\b", "Ctrl", display)
+        return f"{label}\t{native_accelerator}"
 
     def _ensure_menu_customization(self) -> MenuCustomization:
         """Return the loaded menu customization, loading it on first use."""

@@ -32,6 +32,14 @@ The same tester who hit the Speech and Dictation crash above also found this whi
 
 On macOS, a very early or very late keystroke — before the first document tab finished setting up, or after the last one closed — could raise `AttributeError: 'MainFrame' object has no attribute 'editor'` from the global keyboard hook. One of the three checks in that code path read the editor directly where its neighbors already defended against exactly this case; all three are now consistent.
 
+### On macOS, the G key stopped typing and opened Find instead
+
+A tester reported the strangest thing: in a completely blank document, pressing G — upper or lower case — opened a Find dialog instead of typing the letter. Every other key worked normally. We traced it to how Quill builds the little keyboard-shortcut hint shown at the right edge of each menu item. Find Next is Cmd+G on macOS, and that hint text is embedded after a literal tab character in the menu label — which wxWidgets (the toolkit Quill is built on) parses as a second, independent keyboard shortcut, entirely separate from Quill's own shortcut handling. wxWidgets recognizes the words "Ctrl", "Alt", and "Shift" in that hint text, but not the word "Cmd" — so instead of rejecting the whole hint as invalid, it silently dropped "Cmd" and kept the bare "G", accidentally registering plain G as a real system-level shortcut for Find Next. That shortcut then intercepted every G keystroke everywhere in the app, before it could ever reach whatever you were typing into. This affected every macOS-only "Cmd+something" shortcut in Quill, not just Find Next — the fix changes how that one hint is built so wxWidgets always sees a modifier word it understands, while the shortcut you actually see on screen still reads "Cmd+G" exactly as before.
+
+### The portable-update "next launch" confusion
+
+A user asked a very reasonable question after downloading an update and restarting: why did Quill still show the old version? The short answer is that a portable update has never applied itself automatically, on any release — the downloaded ZIP has always needed a manual step from you (previously "Open folder" and unzip it yourself; as of the Extract Now button above, Quill now does the unzip for you). If our own wording anywhere implied it happens on the next launch, that was the actual bug — nothing was silently failing, the automatic step just never existed. We've tightened the wording in this document and in Quill's own update dialog so "swap it into place" reads as the manual step it has always been.
+
 ### A shared dialog crash, already fixed before Beta 2 shipped
 
 "Go to Entry in Notebook" and its sibling tree-navigator dialogs could crash with a `wxAssertionError` on open. We traced this to a fix that had already landed on the development branch before Beta 2's code froze but is worth confirming here for anyone who hit it on a Beta 2 build: the dialog no longer tries to expand its (intentionally hidden) root node.
@@ -112,6 +120,25 @@ Fold a heading section or a fenced code block (the ` ``` `...` ``` ` kind, as in
 We designed this one carefully, and it's worth explaining why it works differently from folding in most other editors. There, folding hides lines visually, and arrow-key navigation silently skips right over a folded block — a screen reader user has no way to tell whether content vanished or was just collapsed, which is a real, long-standing accessibility complaint about folding in mainstream code editors. Quill's folding never does that: **the document text is never touched, and ordinary arrow-key, word, and line navigation is never intercepted.** Fold state is purely something the four commands above announce and act on — arrow through a folded region character by character and you will read every word in it, exactly as if it weren't folded. Folding only changes what a *jump* command does, never what you can reach by moving normally, so nothing you can reach is ever made silently unreachable.
 
 ---
+
+## Offline Edition: genuinely offline now
+
+A community member testing the Offline Edition installer found that Kokoro's neural voices still asked for an internet connection the first time they were used — on a build whose entire point is "no internet needed." That report turned into an audit of every optional speech component Quill offers, and this release closes the gaps that audit found.
+
+### What "Offline Edition" means, and where it fell short
+
+The Offline Edition installer is meant to be a genuinely self-contained build: everything you might reasonably use, already on your computer, with no internet connection required after install. Kokoro's *voice model files* were already bundled that way. What wasn't bundled was the small piece of software that actually *reads* those files — Kokoro's underlying package, which pulls in a few supporting libraries the first time it's used. That meant selecting a Kokoro voice on a genuinely offline machine still hit a wall: the model was right there, but the program needed to install its "engine" over a connection that, by definition, an offline machine doesn't have.
+
+### What's fixed
+
+- **Kokoro neural voices** now install completely from files already on your computer, with the Offline Edition build. No connection needed, the first time or ever.
+- **whisper.cpp — the speech-to-text engine Quill uses by default** — now comes with its starter model already in place. This one mattered most: whisper.cpp isn't an optional extra you might choose, it's the engine Quill reaches for automatically, so a "no internet needed" build that couldn't actually transcribe anything until it fetched a file was the biggest gap of all. That's fixed.
+- **Faster Whisper, Vosk, and MP3 chapter-marker support** — three smaller optional add-ons — get the same treatment. Choosing any of them under the Offline Edition build now works without a connection.
+- **Vosk's install got more reliable as a side effect.** Vosk always needed one small supporting library that, until now, could only come from the internet even when Vosk's own file was already verified and local. That gap closes too.
+
+### What's still on the list
+
+Two components don't have this treatment yet: **Piper voices** and **Node.js-based Quillins**. Both still need a connection the first time you use them, even under the Offline Edition. This is a known, tracked gap rather than an oversight, and we expect to close it in a future release.
 
 ## A note on how this release came together
 
