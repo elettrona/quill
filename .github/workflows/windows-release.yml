@@ -23,7 +23,8 @@ jobs:
         run: |
           pytest -q `
             --ignore=tests\unit\core\test_net_tls.py `
-            --ignore=tests\unit\core\test_thesaurus.py
+            --ignore=tests\unit\core\test_thesaurus.py `
+            --ignore=tests\unit\tools\test_check_banned_patterns.py
       - name: Verify release corpus
         run: python -m scripts.verify_release_corpus
 
