@@ -104,6 +104,21 @@ Two automatic crash-recovery submissions showed logs with only routine backgroun
 
 ---
 
+## GitHub Items grows up: pins, favorites, real search, and local git sync
+
+Beta 2 introduced the read-only GitHub Items viewer. Beta 3 merges the first tranche of the GHManage/fastgh unification into it — four features, all keyboard-first:
+
+- **Pinned repositories.** The **Pinned...** button keeps a short, curated list of the repos you actually work in. Pick one from the menu to load it instantly; pin or unpin the loaded repo from the same menu. No more retyping `owner/repo`.
+- **Favorites.** Press **Ctrl+D** on any selected row — an issue, a PR, a branch, a release — to bookmark it. The **Favorites...** menu lists every bookmark across all your repos and opens any of them in your browser. Bookmarks live only on your machine.
+- **Search with full GitHub syntax.** Press **Ctrl+F**, type any GitHub search query — `label:bug is:open crash`, `author:alice is:pr` — and press Enter. Results are scoped to the loaded repository; clearing the search restores the normal list.
+- **Local git sync.** The repository field now fills itself in when the document you are editing lives inside a git clone whose origin points at GitHub — any file, however you opened it, not just files opened through QUILL's own GitHub commands.
+
+The viewer stays read-only against GitHub, behind the same consent, token, and Safe Mode gates as every other GitHub feature. The rest of the unification review — PR diffs, batch operations, AI thread summaries, and more — is on the roadmap.
+
+## Headers and footers now live inside your Word and RTF files
+
+The Header/Footer Builder from Beta 2 wrote headers and footers when *printing*; the files themselves didn't carry them. Now they do: save as **.docx** and your header/footer becomes a real Word header and footer — with a live page-number field Word keeps renumbering as the document changes — and save as **.rtf** writes the equivalent native header/footer groups. Roman numerals, a custom starting page number, and a different first page all carry through. A blank spec changes nothing, and a header can never be the reason a save fails.
+
 ## New: eight small, accessibility-first additions
 
 ### Quill can add itself to your PATH

@@ -1019,7 +1019,6 @@ def test_stage_piper_offline_stages_engine_and_starter_voice(monkeypatch, tmp_pa
     starter voice pair, closing the last tracked speech gap in the Offline
     Edition (Piper previously always needed the internet on first use)."""
     from quill.core.speech.piper_install import PIPER_DOWNLOAD_SHA256
-
     from scripts.build_windows_distribution import _stage_piper_offline
 
     calls: list[tuple[str, Path, str | None]] = []

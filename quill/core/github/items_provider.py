@@ -542,6 +542,35 @@ class GitHubItemsProvider:
     # ------------------------------------------------------------------
     # Detail (a single item with its comment thread for the details pane)
 
+    def search_items(
+        self,
+        full_name: str,
+        query: str,
+        *,
+        limit: int = DEFAULT_PAGE_LIMIT,
+    ) -> list[GitHubItem]:
+        """Full GitHub search syntax over one repository's issues and PRs.
+
+        The Unified GitHub Management review's "Advanced Filtering" item:
+        *query* is passed to GitHub's issue search verbatim — labels
+        (``label:bug``), authors (``author:x``), text, ``is:pr``,
+        ``no:assignee``, date ranges, everything the syntax supports — with a
+        ``repo:`` qualifier pinned in front so results never leave the loaded
+        repository. Search API results are issue-shaped for both issues and
+        PRs (the ``pull_request`` link distinguishes them), matching
+        ``_map_issue``'s dual handling.
+        """
+        text = query.strip()
+        if not text:
+            return []
+        try:
+            rows = _take(self._gh.search_issues(f"repo:{full_name} {text}"), limit)
+        except Exception as exc:  # noqa: BLE001 - surface as a coded error
+            raise GitHubItemsError(
+                f"Search failed: {exc}. Check the GitHub search syntax."
+            ) from exc
+        return [self._map_issue(row, is_pr=False) for row in rows]
+
     def fetch_issue_comments(self, full_name: str, number: int) -> list[dict[str, str]]:
         """Return the comment thread on an issue/PR as plain dicts.
 

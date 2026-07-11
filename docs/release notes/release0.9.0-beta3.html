@@ -449,6 +449,48 @@ recovery exactly as it always has; only the no-evidence case changed.
 Your autosave snapshot is never touched by this — it’s still on disk
 either way, this just controls whether Quill asks you about it.</p>
 <hr />
+<h2
+id="github-items-grows-up-pins-favorites-real-search-and-local-git-sync">GitHub
+Items grows up: pins, favorites, real search, and local git sync</h2>
+<p>Beta 2 introduced the read-only GitHub Items viewer. Beta 3 merges
+the first tranche of the GHManage/fastgh unification into it — four
+features, all keyboard-first:</p>
+<ul>
+<li><strong>Pinned repositories.</strong> The <strong>Pinned…</strong>
+button keeps a short, curated list of the repos you actually work in.
+Pick one from the menu to load it instantly; pin or unpin the loaded
+repo from the same menu. No more retyping <code>owner/repo</code>.</li>
+<li><strong>Favorites.</strong> Press <strong>Ctrl+D</strong> on any
+selected row — an issue, a PR, a branch, a release — to bookmark it. The
+<strong>Favorites…</strong> menu lists every bookmark across all your
+repos and opens any of them in your browser. Bookmarks live only on your
+machine.</li>
+<li><strong>Search with full GitHub syntax.</strong> Press
+<strong>Ctrl+F</strong>, type any GitHub search query —
+<code>label:bug is:open crash</code>, <code>author:alice is:pr</code> —
+and press Enter. Results are scoped to the loaded repository; clearing
+the search restores the normal list.</li>
+<li><strong>Local git sync.</strong> The repository field now fills
+itself in when the document you are editing lives inside a git clone
+whose origin points at GitHub — any file, however you opened it, not
+just files opened through QUILL’s own GitHub commands.</li>
+</ul>
+<p>The viewer stays read-only against GitHub, behind the same consent,
+token, and Safe Mode gates as every other GitHub feature. The rest of
+the unification review — PR diffs, batch operations, AI thread
+summaries, and more — is on the roadmap.</p>
+<h2
+id="headers-and-footers-now-live-inside-your-word-and-rtf-files">Headers
+and footers now live inside your Word and RTF files</h2>
+<p>The Header/Footer Builder from Beta 2 wrote headers and footers when
+<em>printing</em>; the files themselves didn’t carry them. Now they do:
+save as <strong>.docx</strong> and your header/footer becomes a real
+Word header and footer — with a live page-number field Word keeps
+renumbering as the document changes — and save as <strong>.rtf</strong>
+writes the equivalent native header/footer groups. Roman numerals, a
+custom starting page number, and a different first page all carry
+through. A blank spec changes nothing, and a header can never be the
+reason a save fails.</p>
 <h2 id="new-eight-small-accessibility-first-additions">New: eight small,
 accessibility-first additions</h2>
 <h3 id="quill-can-add-itself-to-your-path">Quill can add itself to your

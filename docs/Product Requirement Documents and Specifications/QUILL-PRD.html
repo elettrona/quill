@@ -13960,6 +13960,16 @@ positions (#924)</td>
 <td><code>GitHubItemsMixin</code> — Safe Mode + consent + token gate
 (#924)</td>
 </tr>
+<tr>
+<td><code>quill/core/github/saved_items.py</code></td>
+<td>Pinned repositories + favorited items store (Unified GitHub
+Management)</td>
+</tr>
+<tr>
+<td><code>quill/core/github/local_repo.py</code></td>
+<td>Local git sync: <code>owner/repo</code> from the document’s own
+checkout</td>
+</tr>
 </tbody>
 </table>
 <h3 id="implementation-status-3">§25.11 Implementation Status</h3>
@@ -13978,9 +13988,40 @@ requests, branches, commits, tags, releases, and workflow runs. It is
 modeled on the <a
 href="https://github.com/kellylford/GHManage">GHManage</a> reference
 viewer (the same field set, list modes, and per-comment navigation),
-adapted to QUILL’s PyGithub transport and dialog conventions. v1 is
-<strong>read-only</strong>; mutating actions (close / reopen / comment)
-are out of scope.</p>
+adapted to QUILL’s PyGithub transport and dialog conventions.
+<strong>Read-only against GitHub</strong>; mutating actions (close /
+reopen / comment) are out of scope, and the only writes are the local
+pins/favorites store below.</p>
+<p><strong>Unified GitHub Management additions (0.9.0 Beta 3, merged
+from the GHManage + fastgh review):</strong></p>
+<ul>
+<li><strong>Pinned repositories</strong>
+(<code>quill/core/github/saved_items.py</code>): the
+<strong>Pinned…</strong> menu pins/unpins the loaded repo and jumps to
+any pinned one. Case-insensitive dedup; atomic JSON under the app data
+dir.</li>
+<li><strong>Favorites</strong>: <code>Ctrl+D</code> bookmarks the
+selected row (issue/PR/branch/commit/ tag/release/run) with repo, type,
+URL, title, and timestamp; the <strong>Favorites…</strong> menu reopens
+any bookmark in the browser, across repos.</li>
+<li><strong>Advanced search</strong>
+(<code>GitHubItemsProvider.search_items</code>): <code>Ctrl+F</code>
+focuses a search box taking full GitHub search syntax, passed to the
+issue-search API with a pinned <code>repo:</code> qualifier so results
+never leave the loaded repository. Empty search (or loading a different
+repo) restores the list.</li>
+<li><strong>Local git sync</strong>
+(<code>quill/core/github/local_repo.py</code>): the repository field
+also prefills from the document’s own checkout — the nearest
+<code>.git</code> (worktree pointers followed) whose <code>origin</code>
+remote parses as a GitHub URL — covering files opened from disk, not
+just through Open-from-GitHub.</li>
+</ul>
+<p>The review’s remaining items (batch operations, PR diff viewer,
+branch comparison, notifications, wiki browser, AI summarization, vault
+linking, a <code>gh</code>-CLI hybrid engine, metadata caching, an
+in-viewer command palette) stay deferred; see the roadmap’s “Unified
+GitHub Management — deferred” list.</p>
 <p><strong>Views.</strong> A single <strong>View</strong> switcher
 selects one of:</p>
 <table>
@@ -14063,6 +14104,8 @@ the view to Commits scoped to it).</li>
 <li><code>Ctrl+O</code>: open the selected item in the browser.</li>
 <li><code>Ctrl+G</code>: go to an issue/PR by number (Issues &amp; PRs
 view only).</li>
+<li><code>Ctrl+F</code>: focus the GitHub-syntax search box;
+<code>Ctrl+D</code>: favorite the row.</li>
 <li><code>Alt+N</code> / <code>Alt+P</code>: next / previous comment in
 the details pane.</li>
 <li><code>M</code> (in the list): toggle Quick / Full list mode.</li>

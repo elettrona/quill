@@ -64,9 +64,7 @@ def test_rtf_injection_is_a_no_op_for_blank_spec_or_odd_input() -> None:
     assert inject_rtf_header_footer(rtf, None, **_CTX) == rtf
     assert inject_rtf_header_footer(rtf, HeaderFooterSpec(), **_CTX) == rtf
     junk = "not an rtf document"
-    assert (
-        inject_rtf_header_footer(junk, HeaderFooterSpec(footer_left="x"), **_CTX) == junk
-    )
+    assert inject_rtf_header_footer(junk, HeaderFooterSpec(footer_left="x"), **_CTX) == junk
 
 
 def test_write_rtf_document_injects_the_saved_spec(tmp_path: Path, monkeypatch) -> None:

@@ -3610,9 +3610,15 @@ Use **File > Open from Remote > Manage GitHub Accounts...** to:
 
 **Browsing a repository's issues, PRs, and history (#924)**
 
-**File > Open from Remote > GitHub Items...** opens a read-only viewer for a repository's issues, pull requests, branches, commits, tags, releases, and workflow runs — the same kind of overview the GitHub website gives you, but keyboard- and screen-reader-first. It is modeled on the open-source [GHManage](https://github.com/kellylford/GHManage) viewer. v1 is read-only: you can browse and open items in your browser, but you cannot close, reopen, or comment from inside QUILL.
+**File > Open from Remote > GitHub Items...** opens a read-only viewer for a repository's issues, pull requests, branches, commits, tags, releases, and workflow runs — the same kind of overview the GitHub website gives you, but keyboard- and screen-reader-first. It is modeled on the open-source [GHManage](https://github.com/kellylford/GHManage) viewer. It stays read-only against GitHub: you can browse and open items in your browser, but you cannot close, reopen, or comment from inside QUILL. (Pins and favorites, below, are saved locally on your machine only.)
 
-Type a repository in `owner/repo` form and press **Load**. If the document you are editing was itself opened from GitHub, the repository is already filled in, so you can review that repo in one step.
+Type a repository in `owner/repo` form and press **Load**. If the document you are editing was itself opened from GitHub — or simply lives inside a git clone whose `origin` remote points at GitHub — the repository is already filled in, so you can review that repo in one step.
+
+**Pinned repositories.** The **Pinned...** button opens a menu of your pinned repos: pick one to load it instantly, or pin/unpin the currently loaded repository. A short curated list for the handful of repos you actually work in — distinct from anything GitHub itself tracks, and never synced anywhere.
+
+**Favorites.** Press **Ctrl+D** on any selected row — an issue, a PR, a branch, a release — to bookmark it. The **Favorites...** button lists every bookmark across every repo; pick one to open it in your browser. Favorites persist between sessions.
+
+**Search with full GitHub syntax.** Press **Ctrl+F** (or Tab to the Search box) and type any GitHub search query — `label:bug is:open crash`, `author:alice is:pr`, `created:>2026-01-01 no:assignee` — then press Enter. Results replace the Issues & PRs list, scoped to the loaded repository. Clear the box and press Enter to restore the normal list; loading a different repository also clears the search.
 
 Pick a **View** — Issues & PRs (the combined inbox), Branches, Commits, Tags, Releases, or Workflow Runs. The list shows one row per item; the **Details** box below shows the full text of the selected row. In the Issues & PRs view you can also filter by **Show** (Both / Issues / PRs), **State** (Open / Closed / All), and **Sort** (by number, title, last-updated, or comment count).
 
@@ -3624,6 +3630,7 @@ Pick a **View** — Issues & PRs (the combined inbox), Branches, Commits, Tags, 
 
 - **Enter** on a row opens it in your browser. On a **Branch** row, Enter drills into that branch's commits.
 - **Ctrl+R** refreshes the current view. **Ctrl+O** opens the selected item in the browser. **Ctrl+G** jumps to an issue or PR by number (in the Issues & PRs view).
+- **Ctrl+F** focuses the GitHub-syntax search box. **Ctrl+D** favorites the selected row.
 - **View More** loads the next page of results.
 
 The same gates apply as the other GitHub commands: it is disabled in Safe Mode, asks for first-run consent, and works anonymously for public repositories (with a lower rate limit) or with your stored token for private ones.

@@ -67,9 +67,7 @@ class _KeepPage(dict):
 
 def _substitute_static(template: str, *, title: str, filename: str, date: str) -> str:
     try:
-        return template.format_map(
-            _KeepPage(title=title, filename=filename, date=date)
-        )
+        return template.format_map(_KeepPage(title=title, filename=filename, date=date))
     except (ValueError, KeyError):
         # A malformed template (stray brace) exports as literal text rather
         # than failing the whole save.
@@ -97,7 +95,7 @@ def _docx_fill_paragraph(paragraph: Any, text: str, *, roman: bool) -> None:
 
     for run in list(paragraph.runs):
         run._element.getparent().remove(run._element)
-    fmt = '\\* ROMAN ' if roman else ""
+    fmt = "\\* ROMAN " if roman else ""
     segments = text.split("{page}")
     for index, segment in enumerate(segments):
         if index:

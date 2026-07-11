@@ -15,10 +15,21 @@ A list-over-detail dialog modeled on GHManage (https://github.com/kellylford/GHM
   a screen reader reads a self-describing line; selection announces the row;
   Alt+N/Alt+P jumps between comments in the details box; Enter opens in the
   browser, and on a branch row drills into that branch's commits.
-- v1 is read-only. Mutating actions (close/reopen/comment) are out of scope.
+- Read-only against GitHub itself. Mutating GitHub actions (close/reopen/
+  comment) stay out of scope; the only writes are local bookmarks.
+- Unified GitHub Management additions (merged from the GHManage/fastgh
+  review): **Pinned repositories** (the Pinned... menu — pin the loaded repo,
+  jump to any pinned one), **Favorites** (Ctrl+D bookmarks the selected row;
+  the Favorites... menu reopens any bookmark in the browser, across repos),
+  **advanced search** (Ctrl+F focuses a repo-scoped search box that takes
+  full GitHub search syntax — ``label:bug author:x is:pr`` — over Issues &
+  PRs), and **local git sync** (the repository field prefills from the
+  current document's own git checkout when it has a GitHub origin remote).
 
 The wx-free view-model formatting (cells, details, comment positions) lives in
-:mod:`quill.ui.github_items_view` so it is unit-testable without a display.
+:mod:`quill.ui.github_items_view` so it is unit-testable without a display;
+the pinned/favorites store is :mod:`quill.core.github.saved_items` and the
+checkout detection :mod:`quill.core.github.local_repo`.
 """
 
 from __future__ import annotations
@@ -83,6 +94,11 @@ class GitHubItemsDialog:
         self._page = 1  # page cap = page * DEFAULT_PAGE_LIMIT for "View more"
         self._rows: list[object] = []
         self._drill_branch: str | None = None
+        self._search_query = ""  # non-empty = issues view shows search results
+        # Pinned repos + favorites (GHManage parity), persisted across sessions.
+        from quill.core.github.saved_items import GitHubSavedItems
+
+        self._saved = GitHubSavedItems.load()
         # Per-selection comment thread + positions for Alt+N/Alt+P navigation.
         self._comments: list[dict[str, str]] = []
         self._comment_positions: list[tuple[int, int]] = []
@@ -111,9 +127,35 @@ class GitHubItemsDialog:
         self._repo_ctrl.SetName("Repository in owner slash repo format")
         self._load_btn = wx.Button(panel, label="Load")
         self._load_btn.SetName("Load repository")
+        self._pinned_btn = wx.Button(panel, label="&Pinned...")
+        self._pinned_btn.SetName("Pinned repositories menu")
+        self._favorites_btn = wx.Button(panel, label="Fa&vorites...")
+        self._favorites_btn.SetName("Favorited items menu")
         repo_row.Add(self._repo_ctrl, 1, wx.EXPAND | wx.RIGHT, 6)
-        repo_row.Add(self._load_btn)
+        repo_row.Add(self._load_btn, 0, wx.RIGHT, 6)
+        repo_row.Add(self._pinned_btn, 0, wx.RIGHT, 6)
+        repo_row.Add(self._favorites_btn)
         root.Add(repo_row, 0, wx.EXPAND | wx.ALL, 10)
+
+        # Search row: full GitHub search syntax, scoped to the loaded repo
+        # (Unified GitHub Management review, "Advanced Filtering").
+        search_row = wx.BoxSizer(wx.HORIZONTAL)
+        search_row.Add(
+            wx.StaticText(panel, label="Searc&h (GitHub syntax):"),
+            0,
+            wx.ALIGN_CENTER_VERTICAL | wx.RIGHT,
+            6,
+        )
+        self._search_ctrl = wx.TextCtrl(panel, style=wx.TE_PROCESS_ENTER)
+        self._search_ctrl.SetName(
+            "Search issues and pull requests with full GitHub search syntax; "
+            "empty search restores the normal list"
+        )
+        self._search_btn = wx.Button(panel, label="Search")
+        self._search_btn.SetName("Run search")
+        search_row.Add(self._search_ctrl, 1, wx.EXPAND | wx.RIGHT, 6)
+        search_row.Add(self._search_btn)
+        root.Add(search_row, 0, wx.EXPAND | wx.LEFT | wx.RIGHT | wx.BOTTOM, 10)
 
         # Filter row: View / Show / State / Sort / List mode
         filt = wx.BoxSizer(wx.HORIZONTAL)
@@ -210,6 +252,10 @@ class GitHubItemsDialog:
         self._more_btn.Bind(wx.EVT_BUTTON, self._on_more)
         self._open_btn.Bind(wx.EVT_BUTTON, lambda _e: self._open_selected())
         self._goto_btn.Bind(wx.EVT_BUTTON, self._on_goto)
+        self._pinned_btn.Bind(wx.EVT_BUTTON, self._on_pinned_menu)
+        self._favorites_btn.Bind(wx.EVT_BUTTON, self._on_favorites_menu)
+        self._search_btn.Bind(wx.EVT_BUTTON, self._on_search)
+        self._search_ctrl.Bind(wx.EVT_TEXT_ENTER, self._on_search)
         self.dialog.Bind(wx.EVT_CHAR_HOOK, self._on_char_hook)
         self._apply_filter_enablement()
         self._rebuild_columns()
@@ -250,6 +296,11 @@ class GitHubItemsDialog:
             self._set_status("Repository must be in owner/repo format.")
             self._repo_ctrl.SetFocus()
             return
+        if full_name != self._repo:
+            # A different repository starts clean: a stale search query would
+            # silently filter the new repo's list.
+            self._search_query = ""
+            self._search_ctrl.SetValue("")
         self._repo = full_name
         self._page = 1
         self._reload()
@@ -281,6 +332,10 @@ class GitHubItemsDialog:
 
     def _fetch(self, repo: str, view: str, show: str, state: str, limit: int) -> list[object]:
         if view == VIEW_ISSUES:
+            if self._search_query:
+                # Advanced filtering: full GitHub search syntax, repo-scoped.
+                found = self._provider.search_items(repo, self._search_query, limit=limit)
+                return sort_items(found, self._sort)
             out: list[object] = []
             if show in ("issues", "both"):
                 out += self._provider.fetch_issues(repo, state=state, limit=limit)
@@ -307,9 +362,11 @@ class GitHubItemsDialog:
         self._set_loading(False)
         count = len(rows)
         noun = view_label(self._view)
+        prefix = f"search '{self._search_query}': " if self._search_query else ""
         self._set_status(
-            f"{self._repo} - {count} {noun}{'' if count == 1 else 's'}. "
+            f"{self._repo} - {prefix}{count} {noun}{'' if count == 1 else 's'}. "
             "Enter=open/drill  Ctrl+R=refresh  Ctrl+O=browser  Ctrl+G=go to  "
+            "Ctrl+F=search  Ctrl+D=favorite  "
             f"Alt+N/Alt+P=comment  List={self._list_mode}"
         )
         if count:
@@ -513,6 +570,125 @@ class GitHubItemsDialog:
         return show_modal_dialog(dlg, title, announce=self._announce)
 
     # ------------------------------------------------------------------
+    # Search / pinned repositories / favorites (Unified GitHub Management)
+
+    def _on_search(self, _event: object) -> None:
+        """Run (or clear) a repo-scoped GitHub-syntax search over issues + PRs."""
+        query = self._search_ctrl.GetValue().strip()
+        if not self._repo:
+            self._announce("Load a repository first, then search it.")
+            self._repo_ctrl.SetFocus()
+            return
+        self._search_query = query
+        if self._view != VIEW_ISSUES:
+            self._view_choice.SetSelection(0)
+            self._switch_view(VIEW_ISSUES)
+            return
+        self._page = 1
+        self._reload()
+        if not query:
+            self._announce("Search cleared; showing the normal list.")
+
+    def _on_pinned_menu(self, _event: object) -> None:
+        """Pinned repositories: pick one to load, pin/unpin the current one."""
+        wx = self._wx
+        menu = wx.Menu()
+        ids: dict[int, str] = {}
+        for repo in self._saved.pinned:
+            item_id = wx.NewIdRef()
+            menu.Append(item_id, repo)
+            ids[int(item_id)] = repo
+        if self._saved.pinned:
+            menu.AppendSeparator()
+        current = self._repo_ctrl.GetValue().strip()
+        action_id = wx.NewIdRef()
+        if current and self._saved.is_pinned(current):
+            menu.Append(action_id, f"Unpin {current}")
+            action = "unpin"
+        elif current and "/" in current:
+            menu.Append(action_id, f"Pin {current}")
+            action = "pin"
+        else:
+            menu.Append(action_id, "Pin the loaded repository (load one first)")
+            menu.Enable(int(action_id), False)
+            action = ""
+
+        def _on_pick(event: object) -> None:
+            picked_id = int(event.GetId())
+            if picked_id == int(action_id):
+                if action == "pin" and self._saved.pin_repo(current):
+                    self._announce(f"Pinned {current}")
+                elif action == "unpin" and self._saved.unpin_repo(current):
+                    self._announce(f"Unpinned {current}")
+                return
+            repo = ids.get(picked_id)
+            if repo:
+                self._repo_ctrl.SetValue(repo)
+                self._search_query = ""
+                self._search_ctrl.SetValue("")
+                self._on_load(None)
+
+        menu.Bind(wx.EVT_MENU, _on_pick)
+        try:
+            self._pinned_btn.PopupMenu(menu)
+        finally:
+            menu.Destroy()
+
+    def _on_favorites_menu(self, _event: object) -> None:
+        """Favorited items across every repo: pick one to open in the browser."""
+        wx = self._wx
+        if not self._saved.favorites:
+            self._announce("No favorites yet. Press Ctrl+D on a selected item to favorite it.")
+            return
+        menu = wx.Menu()
+        ids: dict[int, object] = {}
+        for entry in self._saved.favorites:
+            item_id = wx.NewIdRef()
+            suffix = f" ({entry.subtitle})" if entry.subtitle else ""
+            menu.Append(item_id, f"{entry.repo}: {entry.title}{suffix}")
+            ids[int(item_id)] = entry
+
+        def _on_pick(event: object) -> None:
+            entry = ids.get(int(event.GetId()))
+            if entry is not None and entry.url:
+                webbrowser.open(entry.url)
+                self._announce(f"Opened favorite {entry.title} in browser")
+
+        menu.Bind(wx.EVT_MENU, _on_pick)
+        try:
+            self._favorites_btn.PopupMenu(menu)
+        finally:
+            menu.Destroy()
+
+    def _favorite_selected(self) -> None:
+        """Ctrl+D: bookmark the selected row (GHManage favorites parity)."""
+        from quill.core.github.saved_items import FavoriteItem
+
+        idx = self._list.GetFirstSelected()
+        if idx < 0 or idx >= len(self._rows):
+            self._announce("Select an item to favorite first.")
+            return
+        model = self._rows[idx]
+        url = model_url(model)
+        if not url:
+            self._announce("This item has no link to favorite.")
+            return
+        item_type = self._view.rstrip("s")
+        if isinstance(model, GitHubItem):
+            item_type = "pr" if model.is_pr else "issue"
+        entry = FavoriteItem(
+            repo=self._repo,
+            item_type=item_type,
+            url=url,
+            title=model_label(model),
+            subtitle=getattr(model, "state", "") or "",
+        )
+        if self._saved.add_favorite(entry):
+            self._announce(f"Favorited {entry.title}")
+        else:
+            self._announce(f"{entry.title} is already a favorite")
+
+    # ------------------------------------------------------------------
     # View switching + filter enablement
 
     def _on_view_changed(self, _event: object) -> None:
@@ -560,6 +736,10 @@ class GitHubItemsDialog:
             self._open_selected()
         elif key == ord("G") and mod == wx.MOD_CONTROL:
             self._on_goto(None)
+        elif key == ord("D") and mod == wx.MOD_CONTROL:
+            self._favorite_selected()
+        elif key == ord("F") and mod == wx.MOD_CONTROL:
+            self._search_ctrl.SetFocus()
         elif key == ord("N") and mod == wx.MOD_ALT:
             self._navigate_comment(1)
         elif key == ord("P") and mod == wx.MOD_ALT:

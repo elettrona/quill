@@ -92,9 +92,15 @@ class _FakeRepo:
 class _FakeGithubClient:
     def __init__(self, repo: _FakeRepo) -> None:
         self._repo = repo
+        self.searches: list[str] = []
+        self.search_results: list[Any] = []
 
     def get_repo(self, full_name: str) -> _FakeRepo:
         return self._repo
+
+    def search_issues(self, query: str) -> list[Any]:
+        self.searches.append(query)
+        return self.search_results
 
     def close(self) -> None:
         pass
@@ -439,3 +445,38 @@ def test_fetch_surfaces_api_failure_as_coded_error(
     repo.get_issues = _boom  # type: ignore[method-assign]
     with pytest.raises(GitHubItemsError, match="Could not list issues"):
         provider.fetch_issues("owner/repo")
+
+
+# ---------------------------------------------------------------------------
+# Advanced search (Unified GitHub Management: full GitHub search syntax)
+# ---------------------------------------------------------------------------
+
+
+def test_search_items_pins_the_repo_qualifier(
+    provider: GitHubItemsProvider, repo: _FakeRepo
+) -> None:
+    client = provider._gh
+    client.search_results = [_issue_row(42, title="Found")]
+    items = provider.search_items("owner/repo", "label:bug is:open crash")
+    assert client.searches == ["repo:owner/repo label:bug is:open crash"]
+    assert [item.number for item in items] == [42]
+    # A PR-shaped search row (pull_request link present) maps as a PR.
+    client.search_results = [_issue_row(7, is_pr=True)]
+    assert provider.search_items("owner/repo", "is:pr")[0].is_pr is True
+
+
+def test_search_items_with_a_blank_query_is_a_no_op(
+    provider: GitHubItemsProvider,
+) -> None:
+    assert provider.search_items("owner/repo", "   ") == []
+
+
+def test_search_items_maps_failures_to_coded_errors(
+    provider: GitHubItemsProvider,
+) -> None:
+    def _boom(_query: str):
+        raise RuntimeError("rate limited")
+
+    provider._gh.search_issues = _boom
+    with pytest.raises(GitHubItemsError, match="Search failed"):
+        provider.search_items("owner/repo", "label:bug")

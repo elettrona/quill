@@ -6901,6 +6901,8 @@ The tab's `source_label` is set to `GitHub: owner/repo (branch)` and shown in th
 | `quill/ui/github_items_view.py` | Wx-free view-model formatting: list cells, details, comment positions (#924) |
 | `quill/ui/github_items_dialog.py` | `GitHubItemsDialog` — modal list-over-detail viewer (#924) |
 | `quill/ui/main_frame_github_items.py` | `GitHubItemsMixin` — Safe Mode + consent + token gate (#924) |
+| `quill/core/github/saved_items.py` | Pinned repositories + favorited items store (Unified GitHub Management) |
+| `quill/core/github/local_repo.py` | Local git sync: `owner/repo` from the document's own checkout |
 
 ### §25.11 Implementation Status
 
@@ -6920,8 +6922,32 @@ The tab's `source_label` is set to `GitHub: owner/repo (branch)` and shown in th
 browser for a repository's issues, pull requests, branches, commits, tags,
 releases, and workflow runs. It is modeled on the [GHManage](https://github.com/kellylford/GHManage)
 reference viewer (the same field set, list modes, and per-comment navigation),
-adapted to QUILL's PyGithub transport and dialog conventions. v1 is **read-only**;
-mutating actions (close / reopen / comment) are out of scope.
+adapted to QUILL's PyGithub transport and dialog conventions. **Read-only
+against GitHub**; mutating actions (close / reopen / comment) are out of scope,
+and the only writes are the local pins/favorites store below.
+
+**Unified GitHub Management additions (0.9.0 Beta 3, merged from the
+GHManage + fastgh review):**
+
+- **Pinned repositories** (`quill/core/github/saved_items.py`): the
+  **Pinned...** menu pins/unpins the loaded repo and jumps to any pinned one.
+  Case-insensitive dedup; atomic JSON under the app data dir.
+- **Favorites**: `Ctrl+D` bookmarks the selected row (issue/PR/branch/commit/
+  tag/release/run) with repo, type, URL, title, and timestamp; the
+  **Favorites...** menu reopens any bookmark in the browser, across repos.
+- **Advanced search** (`GitHubItemsProvider.search_items`): `Ctrl+F` focuses a
+  search box taking full GitHub search syntax, passed to the issue-search API
+  with a pinned `repo:` qualifier so results never leave the loaded
+  repository. Empty search (or loading a different repo) restores the list.
+- **Local git sync** (`quill/core/github/local_repo.py`): the repository field
+  also prefills from the document's own checkout — the nearest `.git`
+  (worktree pointers followed) whose `origin` remote parses as a GitHub URL —
+  covering files opened from disk, not just through Open-from-GitHub.
+
+The review's remaining items (batch operations, PR diff viewer, branch
+comparison, notifications, wiki browser, AI summarization, vault linking, a
+`gh`-CLI hybrid engine, metadata caching, an in-viewer command palette) stay
+deferred; see the roadmap's "Unified GitHub Management — deferred" list.
 
 **Views.** A single **View** switcher selects one of:
 
@@ -6962,6 +6988,7 @@ types `owner/repo` and clicks Load.
 - `Ctrl+R`: refresh the current view.
 - `Ctrl+O`: open the selected item in the browser.
 - `Ctrl+G`: go to an issue/PR by number (Issues & PRs view only).
+- `Ctrl+F`: focus the GitHub-syntax search box; `Ctrl+D`: favorite the row.
 - `Alt+N` / `Alt+P`: next / previous comment in the details pane.
 - `M` (in the list): toggle Quick / Full list mode.
 - **View More**: load the next page (page cap = page * 30).

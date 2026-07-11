@@ -18658,7 +18658,6 @@ class MainFrame(
 
         if install_bundled_piper_voice(voice_id, dest_dir=piper_dir) is not None:
             self._set_status(f"Piper voice '{voice_id}' installed from the offline bundle.")
-            self._announce(f"Piper voice {voice_id} installed from the offline bundle.")
             self.choose_read_aloud_configuration()
             return
         piper_dir.mkdir(parents=True, exist_ok=True)

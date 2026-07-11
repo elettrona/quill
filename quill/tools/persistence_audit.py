@@ -131,6 +131,10 @@ _REVIEWED_PERSISTENCE: dict[str, str] = {
     "core/copy_tray.py::_save": "content",
     "core/favorite_folders.py::save": "content",
     "core/header_footer_store.py::save": "content",
+    # GitHub Items pinned repos + favorites (GHManage parity): local bookmarks
+    # keyed by owner/repo and URL — user content, tolerant loader (unknown
+    # fields ignored, corrupt file degrades to empty).
+    "core/github/saved_items.py::save": "content",
     "core/inline_notes.py::save": "content",
     "core/macros.py::save": "content",
     "core/notebook_store.py::save_notebook": "content",

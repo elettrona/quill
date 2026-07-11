@@ -7186,13 +7186,33 @@ a read-only viewer for a repository’s issues, pull requests, branches,
 commits, tags, releases, and workflow runs — the same kind of overview
 the GitHub website gives you, but keyboard- and screen-reader-first. It
 is modeled on the open-source <a
-href="https://github.com/kellylford/GHManage">GHManage</a> viewer. v1 is
-read-only: you can browse and open items in your browser, but you cannot
-close, reopen, or comment from inside QUILL.</p>
+href="https://github.com/kellylford/GHManage">GHManage</a> viewer. It
+stays read-only against GitHub: you can browse and open items in your
+browser, but you cannot close, reopen, or comment from inside QUILL.
+(Pins and favorites, below, are saved locally on your machine only.)</p>
 <p>Type a repository in <code>owner/repo</code> form and press
 <strong>Load</strong>. If the document you are editing was itself opened
-from GitHub, the repository is already filled in, so you can review that
-repo in one step.</p>
+from GitHub — or simply lives inside a git clone whose
+<code>origin</code> remote points at GitHub — the repository is already
+filled in, so you can review that repo in one step.</p>
+<p><strong>Pinned repositories.</strong> The <strong>Pinned…</strong>
+button opens a menu of your pinned repos: pick one to load it instantly,
+or pin/unpin the currently loaded repository. A short curated list for
+the handful of repos you actually work in — distinct from anything
+GitHub itself tracks, and never synced anywhere.</p>
+<p><strong>Favorites.</strong> Press <strong>Ctrl+D</strong> on any
+selected row — an issue, a PR, a branch, a release — to bookmark it. The
+<strong>Favorites…</strong> button lists every bookmark across every
+repo; pick one to open it in your browser. Favorites persist between
+sessions.</p>
+<p><strong>Search with full GitHub syntax.</strong> Press
+<strong>Ctrl+F</strong> (or Tab to the Search box) and type any GitHub
+search query — <code>label:bug is:open crash</code>,
+<code>author:alice is:pr</code>,
+<code>created:&gt;2026-01-01 no:assignee</code> — then press Enter.
+Results replace the Issues &amp; PRs list, scoped to the loaded
+repository. Clear the box and press Enter to restore the normal list;
+loading a different repository also clears the search.</p>
 <p>Pick a <strong>View</strong> — Issues &amp; PRs (the combined inbox),
 Branches, Commits, Tags, Releases, or Workflow Runs. The list shows one
 row per item; the <strong>Details</strong> box below shows the full text
@@ -7224,6 +7244,8 @@ commits.</li>
 <strong>Ctrl+O</strong> opens the selected item in the browser.
 <strong>Ctrl+G</strong> jumps to an issue or PR by number (in the Issues
 &amp; PRs view).</li>
+<li><strong>Ctrl+F</strong> focuses the GitHub-syntax search box.
+<strong>Ctrl+D</strong> favorites the selected row.</li>
 <li><strong>View More</strong> loads the next page of results.</li>
 </ul>
 <p>The same gates apply as the other GitHub commands: it is disabled in
