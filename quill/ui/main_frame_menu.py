@@ -1066,6 +1066,18 @@ class MenuBuilderMixin:
         self._id_insert_table = wx.NewIdRef()
         format_menu = wx.Menu()
 
+        # --- Document Format (One Editor, Every Format) ---
+        # The switcher leads the menu: it decides what every command below
+        # *means* (rich mode applies real formatting; markup modes insert
+        # tags). Also reachable from the palette, the Ctrl+Shift+Grave, K
+        # chord, and the status bar Format cell — one handler behind all four.
+        self._id_switch_document_format = wx.NewIdRef()
+        format_menu.Append(
+            self._id_switch_document_format,
+            self._menu_label(_("&Document Format..."), "format.switch_document_format"),
+        )
+        format_menu.AppendSeparator()
+
         # --- Character formatting (most common) ---
         format_menu.Append(self._id_format_bold, self._menu_label(_("&Bold"), "format.bold"))
         format_menu.Append(self._id_format_italic, self._menu_label(_("&Italic"), "format.italic"))
@@ -3846,6 +3858,11 @@ class MenuBuilderMixin:
         self.frame.Bind(wx.EVT_MENU, lambda _e: self.join_lines(), id=self._id_join_lines)
         self.frame.Bind(wx.EVT_MENU, lambda _e: self.quote_lines(), id=self._id_quote_lines)
         self.frame.Bind(wx.EVT_MENU, lambda _e: self.unquote_lines(), id=self._id_unquote_lines)
+        self.frame.Bind(
+            wx.EVT_MENU,
+            lambda _e: self.switch_document_format(),
+            id=self._id_switch_document_format,
+        )
         self.frame.Bind(wx.EVT_MENU, lambda _e: self.format_bold(), id=self._id_format_bold)
         self.frame.Bind(wx.EVT_MENU, lambda _e: self.format_italic(), id=self._id_format_italic)
         self.frame.Bind(

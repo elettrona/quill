@@ -9724,10 +9724,13 @@ safer path is offered.
 
 ## Part One: Native RTF Editing as an Optional Surface
 
-> **What shipped (0.8.1 Beta 1) — hidden-codes first.** The plan of record for this
-> work became **hidden-codes formatting** rather than a WYSIWYG editing surface;
-> the full design and phasing are in
-> [`docs/planning/rtf.md`](../planning/rtf.md). What is delivered: real document
+> **What shipped (0.8.1 Beta 1) — hidden-codes first; rich mode followed in
+> 0.9.0 Beta 3.** The plan of record for this work became **hidden-codes
+> formatting** rather than a WYSIWYG editing surface (the planning docs
+> `rtf.md` and `rich-text-formatting-hidden-codes-design.md` are retired; this
+> appendix and "One Editor, Every Format" above are the canonical record, and
+> the deferred P5 clean-on-disk overlay stays a deliberate backlog item,
+> revisited only on field demand). What is delivered: real document
 > formatting (font family/size, colour, highlight, underline, strikethrough,
 > super/subscript; paragraph alignment, line spacing, indent, named styles, page
 > breaks) applied from the **Format** menu and the accessible **Font…** dialog,
@@ -10037,9 +10040,10 @@ group) governs what happens when a formatted document is saved as plain text:
 `.txt` and the formatting does not travel — the UI and docs say so, and steer
 writers who want one self-contained file to Markdown (inline codes) or Word/RTF
 (native formatting). The fully out-of-band, clean-on-disk-everywhere variant (no
-visible codes even in a saved `.md`) remains the deferred "Option B" end-state in
-[`docs/planning/rtf.md`](../planning/rtf.md); Illumination delivers the clean-text
-round-trip now without that larger overlay rebuild.
+visible codes even in a saved `.md`) remains the deferred "Option B" end-state —
+a deliberate backlog item, revisited only on field demand (the rtf.md planning
+doc retired with One Editor, Every Format); Illumination delivers the
+clean-text round-trip now without that larger overlay rebuild.
 
 ### Spoken Echo: re-read the last announcement (shipped 0.8.1 Beta 1)
 
@@ -10156,7 +10160,7 @@ control's **Text Object Model** (`ITextDocument`/`ITextSelection`, reached via
 `EM_GETOLEINTERFACE` → `QueryInterface(ITextDocument)`, no Python ctypes
 callback in the hot path — a callback-driven `EM_STREAMIN`/`EM_STREAMOUT`
 attempt was tried first and hard-crashes msftedit; see
-`docs/planning/editor-surface-experiments.md` §8 for the post-mortem) and its
+`docs/engineering/editor-surface-history.md` for the post-mortem) and its
 low-level edit-style messages (`EM_SETEDITSTYLE`/`EM_GETEDITSTYLE`).
 
 Three phases shipped:
@@ -10181,24 +10185,81 @@ Three phases shipped:
   correct `IAccessible` value reporting (the reason RichEdit is the default in
   the first place, #616) is unchanged.
 
-**Gating (deliberately conservative — this changes the control your whole
-document lives in):** QuillRichEdit only exists when *both*
-`experimental_acknowledged` and `experimental_editor_surfaces_enabled` are on
-and `experimental_editor_surface` is set to `richedit_rtf`; the emulate-sysedit
-braille lever is a further, separate checkbox
-(`experimental_richedit_emulate_sysedit`) under the same double gate. Every
-path falls back to a plain `wx.TextCtrl` on any failure — selecting this
-surface can never brick the editor. All three settings are restart-based (new
-documents/relaunch), matching every other editor-surface option.
+**Status: CONFIRMED and promoted (0.9.0 Beta 3).** Live JAWS + braille
+hardware testing verified the fix — text renders from cell 1, selections show
+dots 7-8, and JAWS reads the editor's value correctly — with one addition the
+testing surfaced: the visible editor border itself pushes braille output out
+of cell 1, so a borderless frame is part of the fix. See **One Editor, Every
+Format** below for the shipped design; the experimental gating this section
+originally specified is retired, and the surface-experiment record lives in
+`docs/engineering/editor-surface-history.md`.
 
-**Status: needs on-device JAWS + braille-display testing.** The instrument and
-the lever both verify cleanly by direct `SendMessage`/COM inspection, but
-whether the lever actually fixes what a braille display shows — cell start
-position, selection dots 7-8, and whether JAWS still reads the editor's value
-correctly — can only be judged on real hardware. See the request for braille
-display owner feedback in the user guide's Experimental Features section, and
-`docs/planning/editor-surface-experiments.md` §8 for the full test protocol
-and the running record of results.
+### One Editor, Every Format (shipped 0.9.0 Beta 3)
+
+The QuillRichEdit promotion: every document tab on Windows is built through
+`create_richedit_rtf(...)` (`quill/ui/richedit_rtf_surface.py`) — no surface
+choice anywhere — and the braille fix ships on by default as two plain
+checkboxes on **Preferences > Braille**, forced on for upgraders (the settings
+delta store drops the retired surface-override keys on load, with a one-time
+migration notice):
+
+- `braille_editor_system_edit_fix` (default True) — `SES_EMULATESYSEDIT`, the
+  cell-1 + dots-7-8 fix (#616/#813).
+- `braille_editor_hide_border` (default True) — the borderless frame; the
+  border demonstrably breaks cell alignment, so unchecking warns specifically
+  and re-checks unless confirmed.
+
+**Two document modes, one control** (`quill/ui/main_frame_rich_mode.py`,
+`_DocumentTab.editor_mode`):
+
+- **Plain-markup mode** (`"markup"`): byte-for-byte the classic behavior —
+  canonical markup buffer, format-native tag insertion, hidden codes.
+- **Rich mode** (`"rich"`): an .rtf loads natively through the TOM (sanitized
+  first — `read_rtf_sanitized`, the same `rtf_safety` gate as the conversion
+  path); formatting commands apply real formatting via `ITextFont`/`ITextPara`
+  (`set_heading` maps QUILL's levels to a Word-tracking point-size + bold
+  ladder shared across platforms); save writes real RTF via the TOM. The
+  buffer and `Document.text` mirror the plain text, so search / spell / AI /
+  read-aloud / braille are unchanged. TOM formatting fires no `EVT_TEXT`, so
+  commands mark content changed explicitly (`Document.mark_content_changed`),
+  and autosave snapshots RTF bytes (`.rtfsnap` sidecars,
+  `autosave_rich_document`) so crash recovery restores formatting.
+- **Converted rich** (`"rich_converted"`): the permanent failsafe floor when
+  the TOM is unavailable (comtypes missing, macOS without PyObjC, any COM
+  failure) — the classic converted open + RTF-writer save. Never a blank
+  editor.
+
+**Mode-polymorphic commands:** one command id, one shortcut — the effect
+follows the document format (rich → TOM; markdown/html → today's insertion;
+plain text → a once-per-document transition prompt). Native Ctrl+B/I/U are
+intercepted in rich mode and routed through QUILL's commands so formatting is
+announced, dirty-marked, and remappable. Describe Formatting at Cursor reads
+the live TOM in rich mode.
+
+**The Document Format switcher** (`format.switch_document_format`,
+Ctrl+Shift+Grave, K): Format menu, command palette, keyboard chord, and the
+interactive `document_format` status bar cell all dispatch one handler — a
+native popup radio menu (screen readers get the items and checked state for
+free). Transitions run through the `RichDocument` bridge with
+`scan_rtf_features` honest-fidelity warnings before anything lossy, and a
+switched document retargets its file type on the next Save As (never a silent
+in-place rewrite).
+
+**Editable rich Word (.docx)** is reconstructive — no control hosts docx
+natively — so safety is procedural: `quill/io/docx_reader.py` reads exactly
+the vocabulary `docx_writer.py` emits (symmetric by construction through
+`RichDocument`); `scan_docx_features` inventories out-of-vocabulary features
+(tables, images, comments, tracked changes, headers/footers, footnotes) and
+drives a three-way open choice (read-extract default / rich with named losses
+/ edit a copy); the first rich save over a flagged original writes a
+timestamped backup alongside. python-docx stays a soft dependency — absent,
+docx opens read-extract exactly as before.
+
+**macOS:** `quill/ui/nstextview_rtf_surface.py` (`QuillMacRichText`) mirrors
+the Windows wrapper method-for-method over Cocoa's text model (the editor is
+an `NSTextView` underneath; PyObjC is the soft `mac` install extra). Converted
+rich is the floor and the fallback; on-device VoiceOver verification is the
+promotion gate for the native path, mirroring the Windows braille A/B.
 
 ### The Fragment spine, and five features built on it (shipped 0.9.0 Beta 2)
 

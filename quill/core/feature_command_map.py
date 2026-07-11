@@ -95,7 +95,7 @@ COMMAND_FEATURE_MAP: dict[str, str] = {
     "view.toggle_spellcheck_as_you_type": "core.view",
     "view.toggle_intellisense_as_you_type": "core.view",
     "view.toggle_overwrite_mode": "core.view",
-    "view.switch_editing_lens": "core.rich_text_lens",
+    "format.switch_document_format": "core.format",
     "navigate.speak_window_title": "core.navigate",
     "navigate.speak_full_path": "core.navigate",
     "navigate.speak_status_summary": "core.navigate",

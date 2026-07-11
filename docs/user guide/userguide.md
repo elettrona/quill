@@ -3038,20 +3038,17 @@ Manager.
   shortcut can be turned off under **Preferences > Accessibility > Double-press
   to show the Spoken Echo** (on by default). The Echo only records lines QUILL
   actually speaks, never your typing.
-- **Braille display showing the first character in cell two?** QUILL's editor
-  defaults to a rich-text control (so screen readers report its contents
-  correctly), and some braille displays shift each line one cell to the right —
-  the same long-standing quirk you may remember from word processors. Honest
-  status: **this issue is not yet resolved** — testing shows that changing the
-  editor control type does not eliminate the offset for affected displays, and
-  an outcome is still being considered. **Preferences > Accessibility > Editor
-  control type (braille)** remains available for troubleshooting and
-  experimentation: you can switch between RichEdit 3.0, RichEdit 2.0, and
-  **Plain edit, like Notepad** to compare how your display and screen reader
-  behave on each (the change applies to documents opened afterward, so reopen
-  or restart to compare). This affects only how the control is presented; your
-  text is never changed, and your reports about what you observe on your
-  hardware genuinely help.
+- **Braille display showing the first character in cell two?** Resolved — and
+  on by default. Live JAWS + braille testing confirmed the fix: text renders
+  from cell 1 and selections show dots 7-8. Two checkboxes on **Preferences >
+  Braille** own the whole fix, both checked out of the box: **Fix braille cell
+  alignment and selection dots (recommended)** and **Hide editor border
+  (required for braille cell alignment)** — the visible border itself pushes
+  braille output out of cell 1, so the borderless frame is part of the fix.
+  Leave both on unless a specific display misbehaves; unchecking the border
+  warns you first that cell alignment will break. Restart QUILL after changing
+  either so every document uses the new setting. (The old Editor control type
+  and Experimental surface settings retired with this fix.)
 - **Per-action templates.** Advanced users can edit exactly what each action
   says, using tokens like `{line}` and filters like `${ordinal:line}`, with live
   validation and preview. Templates can be saved to a library, shared as
@@ -3317,33 +3314,21 @@ Quill is serious about recovery and user control.
 - **WordPress publishing connections (experimental)** — lights the read-only publishing tools in the **File** menu: save a WordPress connection, verify it, browse your site's posts and pages, and open a remote item in the editor. Strictly inbound: the send/publish half remains locked while the providers framework is reviewed, so nothing can be published from QUILL regardless of this switch.
 - **Read the document aloud in your browser (experimental)** — the browser reader page described under Read Aloud.
 - **Table Studio — accessible table and CSV editing (experimental)** — lights **Table Studio** and **Open CSV in Table Studio** in the **Tools** menu (see "Table Studio" below). Takes effect on Apply, no restart.
-- **Enable experimental editor surfaces** — a *second* safety gate whose label carries its own warning: *features may degrade based on the control selected*. The editor surface is the control your document lives in, so this gate separately governs the **Editor surface** choice and the **Hide editor border** option beneath it, plus the live explainer that describes each surface. Both this gate and the master switch must be on before any surface override is applied, and while it is off those controls are disabled and skipped in the tab order. One of the choices is **QuillRichEdit (native Rich Edit + RTF, experimental)** — see below.
-- **QuillRichEdit: emulate a system edit control (braille test)** — a third checkbox, only meaningful when the Editor surface above is set to QuillRichEdit. See "QuillRichEdit (experimental)" below for what it does and why your feedback matters if you use a braille display.
+The pattern to remember: one master switch for the tab, and one switch per experiment — consent in layers, never by accident. (The editor-surface experiments that used to live here graduated in 0.9.0 Beta 3: QuillRichEdit is now QUILL's one editor, and the braille fix it carried moved to **Preferences > Braille**, on by default. See "One Editor, Every Format" below.)
 
-The pattern to remember: one master switch for the tab, one switch per experiment, and the editor-surface experiments behind a third acknowledgement of their own — consent in layers, never by accident.
+### One Editor, Every Format
 
-### QuillRichEdit (experimental) — and a request for braille display owners
+Every document opens in the one QUILL editor — the same native control QUILL has always used, now with the braille fix on by default (see the braille troubleshooting entry under Accessibility) and a real rich text mode. The rule to hold onto: **bold means bold — QUILL speaks your document's language.**
 
-QuillRichEdit is a new experimental editor surface: the *same* native Rich Edit control QUILL already uses as its default editor, wrapped so QUILL can reach a few things underneath it that were previously out of reach — real RTF load/save, and a candidate fix for two long-standing braille reports:
+- **Writing Markdown (.md):** Ctrl+B wraps your selection in `**`, Insert Heading 2 puts `## ` on the line. Exactly as always.
+- **Writing HTML (.html):** Ctrl+B wraps in `<strong>`, headings become real HTML headings. Exactly as always.
+- **Writing Rich Text (.rtf):** the document opens *formatted*. Ctrl+B applies genuine bold; Insert Heading 2 applies a real sized heading; the Format menu's font, size, color, highlight, and alignment commands change the actual formatting; and **Describe Formatting at Cursor** answers from the live document ("Arial, 14 point, bold, centered"). Search, spell check, read aloud, bookmarks, notes, and braille all keep working exactly as in any other document.
+- **Writing plain text (.txt):** text stays plain — that is the promise of .txt. The first time you press a formatting key, QUILL asks once: treat this document as Markdown, convert it to Rich Text, or stay plain. Whatever you answer is remembered for that document.
+- **Editing Word documents (.docx):** a .docx can open for real rich editing and save back as a genuine Word file. A file carrying things QUILL's editor cannot hold (tables, images, comments, tracked changes, headers/footers) asks first — open for reading and plain editing (the safe default), edit as Rich Text with those losses named specifically, or edit a copy. The first rich save over such an original writes a timestamped backup next to it automatically.
 
-- **The braille "cell-two" offset**, where some displays start the first character of every line in cell 2 instead of cell 1 (a long-standing word-processor-control quirk, not specific to QUILL).
-- **Missing selection dots** — some displays do not show dots 7-8 under selected text when the caret is in QUILL's default editor.
+**The Document Format switcher.** **Format > Document Format...** (also Ctrl+Shift+Grave, K; the command palette; or press Enter on the **Format** cell in the status bar, which always shows your current format) moves the current document between Plain text, Markdown, HTML, Rich Text (RTF), and Word (.docx) mid-session. Switching to a rich format turns your Markdown headings into real ones; leaving a rich format warns first, with the specific list of anything that will not survive. A switched document never silently overwrites its old file — the next save proposes the matching new name.
 
-QuillRichEdit adds a switch that asks the same native control to behave more like a plain text-edit control for braille purposes, while keeping everything that makes it read correctly to JAWS and NVDA. **We do not yet know if this fixes the offset or the missing dots on real hardware — that is exactly what we need your help to find out.**
-
-**How to try it and give feedback:**
-
-1. Open **Preferences > Experimental**.
-2. Tick **Enable experimental features** (the master switch).
-3. Tick **Enable experimental editor surfaces**.
-4. Set **Editor surface** to **QuillRichEdit (native Rich Edit + RTF, experimental)**.
-5. Tick **QuillRichEdit: emulate a system edit control (braille test)**.
-6. Apply Settings, then **restart QUILL** — all three of these settings take effect on the next launch, not immediately.
-7. With your braille display attached, open or type into a document and check: Does text now start in cell 1, or still cell 2? Does selecting text now show dots 7-8 underneath it? Does JAWS/NVDA still read the editor's content correctly?
-
-Please tell us what you see — with which screen reader and which braille display — through **Help > Report a Bug** or your usual QUILL feedback channel either way, whether it helped, made no difference, or made things worse. This is genuinely still an open question and real-hardware reports are the only way to answer it.
-
-This surface also carries QUILL's first native RTF load/save and in-place bold/italic/underline/font/alignment formatting, as a first step toward a lighter-weight rich-text document mode — but the braille question above is the reason it needs your feedback most.
+**If rich mode is unavailable** (macOS without the optional PyObjC component, or a Windows machine missing its COM bridge), .rtf and .docx documents open converted to editable text exactly as in earlier releases, and save back through the same converters. Nothing is ever lost to a missing optional component; you simply get the classic behavior.
 
 ### Table Studio (experimental)
 

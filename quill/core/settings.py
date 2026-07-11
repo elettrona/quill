@@ -51,8 +51,6 @@ class Settings:
     browse_mode_followon_custom_ms: int = 4000
     csv_open_mode: str = "prompt"
     word_open_mode: str = "prompt"
-    editor_surface: str = "plain"
-    save_as_surface_sync: str = "prompt"
     # Conversion engine preferences for Word documents. "auto" keeps QUILL's
     # default chains: MarkItDown-first when opening a .docx, the native
     # python-docx writer first when saving one. The explicit choices trade
@@ -207,37 +205,25 @@ class Settings:
     # dialog instead of re-speaking. The dedicated Echo key works regardless; this
     # only governs the double-press shortcut. See quill/core/spoken_echo.py.
     spoken_echo_on_double_press: bool = True
-    # Braille leading-cell experiment. The editor defaults to a Windows RichEdit
-    # for accessible value reporting (#616). "editor_control_kind" lets a braille
-    # user switch the native control: "rich2" (RichEdit 3.0, default), "rich"
-    # (RichEdit 2.0), or "plain" (a Notepad-style EDIT control). Takes effect for
-    # documents opened after the change.
-    editor_control_kind: str = "rich2"
-    # Experimental (testing) overrides — see the Experimental settings tab. Changing
-    # either takes effect on the next QUILL restart.
-    #   experimental_editor_surface: which control backs the editor, overriding
-    #   editor_control_kind for testing. "default" follows editor_control_kind;
-    #   otherwise "rich2" (RichEdit 3.0), "rich" (RichEdit 2.0), "plain" (Notepad-style
-    #   EDIT control), or "rtf" (a wx.RichTextCtrl rich-text surface, experimental).
-    experimental_editor_surface: str = "default"
-    #   editor_hide_border: draw the editor control with no border for a cleaner,
-    #   Notepad-like frame. Off keeps the platform default border.
-    editor_hide_border: bool = False
-    #   experimental_richedit_emulate_sysedit: the QuillRichEdit braille lever.
-    #   When on (and the QuillRichEdit surface is selected), the native Rich Edit
-    #   is put in SES_EMULATESYSEDIT mode to A/B whether emulating a classic EDIT
-    #   control fixes the JAWS cell-2 offset (#616) and selection dots 7-8 (#813).
-    #   Gated by experimental_acknowledged; needs JAWS + a braille display to judge.
-    experimental_richedit_emulate_sysedit: bool = False
+    # The braille editor fix (Preferences > Braille). QUILL's one editor surface
+    # on Windows is QuillRichEdit — the native Rich Edit (RICHEDIT50W) plus the
+    # TOM wrapper. Live JAWS + braille testing (2026-07) confirmed the fix for
+    # the two long-standing braille bugs: text starting in cell 2 (#616) and
+    # selection dots 7-8 not shown (#813). Both halves default ON; each is a
+    # plain checkbox on the Braille tab. Windows only; restart to apply
+    # everywhere.
+    #   braille_editor_system_edit_fix: apply SES_EMULATESYSEDIT to the editor so
+    #   braille displays show text from cell 1 and mark selections with dots 7-8.
+    braille_editor_system_edit_fix: bool = True
+    #   braille_editor_hide_border: draw the editor with no border. The visible
+    #   border itself pushes braille output out of cell 1, so a hidden border is
+    #   part of the fix, not cosmetics. Unchecking warns that cell alignment
+    #   will break.
+    braille_editor_hide_border: bool = True
     #   experimental_acknowledged: the master Experimental switch — the user has
     #   opted in to experimental features as a group. Every experimental option
     #   below is ignored (and its controls disabled) until this is True.
     experimental_acknowledged: bool = False
-    #   experimental_editor_surfaces_enabled: the secondary gate for the two
-    #   editor-surface options above; carries the "features may degrade based on
-    #   the control selected" acknowledgement. Both gates must be on before a
-    #   non-default surface or border override is applied.
-    experimental_editor_surfaces_enabled: bool = False
     #   glow_experimental_enabled: opt-in for the GLOW accessibility review and
     #   repair suite (Tools > GLOW). Gated by experimental_acknowledged; off by
     #   default while GLOW matures; takes effect on settings apply (menu rebuild).
@@ -618,11 +604,6 @@ class Settings:
         word_open_mode = str(data.get("word_open_mode", "prompt")).strip().lower()
         if word_open_mode not in {"prompt", "text", "structured"}:
             word_open_mode = "prompt"
-        # core.rich_text_lens is locked_off; always "plain" regardless of stored value.
-        editor_surface = "plain"
-        save_as_surface_sync = str(data.get("save_as_surface_sync", "prompt")).strip().lower()
-        if save_as_surface_sync not in {"prompt", "always", "never"}:
-            save_as_surface_sync = "prompt"
         docx_read_engine = str(data.get("docx_read_engine", "auto")).strip().lower()
         if docx_read_engine not in {"auto", "markitdown", "pandoc"}:
             docx_read_engine = "auto"
@@ -811,35 +792,15 @@ class Settings:
         idle_unload_minutes = _clamp_int(data.get("idle_unload_minutes", 10), 10, 0, 240)
         announce_indent_depth = bool(data.get("announce_indent_depth", True))
         spoken_echo_on_double_press = bool(data.get("spoken_echo_on_double_press", True))
-        editor_control_kind = str(data.get("editor_control_kind", "")).strip().lower()
-        if editor_control_kind not in {"rich2", "rich", "plain"}:
-            # Back-compat: the earlier editor_use_legacy_richedit bool -> "rich".
-            editor_control_kind = (
-                "rich" if bool(data.get("editor_use_legacy_richedit", False)) else "rich2"
-            )
-        experimental_editor_surface = (
-            str(data.get("experimental_editor_surface", "default")).strip().lower()
-        )
-        allowed_surfaces = {
-            "default",
-            "rich2",
-            "rich",
-            "plain",
-            "rtf",
-            "win32",
-            "stc",
-            "richedit_rtf",
-        }
-        if experimental_editor_surface not in allowed_surfaces:
-            experimental_editor_surface = "default"
-        editor_hide_border = bool(data.get("editor_hide_border", False))
+        # The retired surface-experiment keys (editor_control_kind,
+        # experimental_editor_surface, editor_hide_border,
+        # experimental_richedit_emulate_sysedit,
+        # experimental_editor_surfaces_enabled) are deliberately NOT read here:
+        # the delta store drops unknown keys on load, so every upgrader lands on
+        # the promoted default — QuillRichEdit with the braille fix on.
+        braille_editor_system_edit_fix = bool(data.get("braille_editor_system_edit_fix", True))
+        braille_editor_hide_border = bool(data.get("braille_editor_hide_border", True))
         experimental_acknowledged = bool(data.get("experimental_acknowledged", False))
-        experimental_editor_surfaces_enabled = bool(
-            data.get("experimental_editor_surfaces_enabled", False)
-        )
-        experimental_richedit_emulate_sysedit = bool(
-            data.get("experimental_richedit_emulate_sysedit", False)
-        )
         glow_experimental_enabled = bool(data.get("glow_experimental_enabled", False))
         publishing_experimental_enabled = bool(data.get("publishing_experimental_enabled", False))
         table_studio_experimental_enabled = bool(
@@ -1278,8 +1239,6 @@ class Settings:
             browse_mode_followon_custom_ms=browse_mode_followon_custom_ms,
             csv_open_mode=csv_open_mode,
             word_open_mode=word_open_mode,
-            editor_surface=editor_surface,
-            save_as_surface_sync=save_as_surface_sync,
             docx_read_engine=docx_read_engine,
             docx_write_engine=docx_write_engine,
             plain_text_link_style=plain_text_link_style,
@@ -1364,12 +1323,9 @@ class Settings:
             idle_unload_minutes=idle_unload_minutes,
             announce_indent_depth=announce_indent_depth,
             spoken_echo_on_double_press=spoken_echo_on_double_press,
-            editor_control_kind=editor_control_kind,
-            experimental_editor_surface=experimental_editor_surface,
-            editor_hide_border=editor_hide_border,
-            experimental_richedit_emulate_sysedit=experimental_richedit_emulate_sysedit,
+            braille_editor_system_edit_fix=braille_editor_system_edit_fix,
+            braille_editor_hide_border=braille_editor_hide_border,
             experimental_acknowledged=experimental_acknowledged,
-            experimental_editor_surfaces_enabled=experimental_editor_surfaces_enabled,
             glow_experimental_enabled=glow_experimental_enabled,
             publishing_experimental_enabled=publishing_experimental_enabled,
             table_studio_experimental_enabled=table_studio_experimental_enabled,

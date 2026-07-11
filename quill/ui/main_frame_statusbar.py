@@ -213,6 +213,11 @@ class StatusBarMixin:
             return "Overwrite" if getattr(self, "_overwrite_mode", False) else "Insert"
         if item == "tab_mode":
             return "Tab char" if getattr(self, "_tab_inserts_literal", False) else "Indent"
+        if item == "document_format":
+            try:
+                return self._document_format_status_text()
+            except Exception:  # noqa: BLE001 - a status cell must never raise
+                return ""
         if item == "selection":
             editor = getattr(self, "editor", None)
             if editor is not None and hasattr(editor, "GetSelection"):
@@ -517,6 +522,10 @@ class StatusBarMixin:
             "word_count": "Show document statistics",
             "mode": "Toggle overwrite mode",
             "tab_mode": "Toggle Tab key mode (QUILL Key + U). Indent or insert a tab character.",
+            "document_format": (
+                "Current document format. Press Enter to switch between Plain "
+                "text, Markdown, HTML, and Rich Text."
+            ),
             "selection": "Show selection statistics",
             "encoding": "Choose document encoding",
             "line_endings": "Toggle line endings",
@@ -724,6 +733,7 @@ class StatusBarMixin:
             "word_count": self.show_word_count,
             "mode": self.toggle_overwrite_mode,
             "tab_mode": self.toggle_tab_insert_mode,
+            "document_format": self.switch_document_format,
             "selection": self.show_word_count,
             "encoding": self.choose_document_encoding,
             "line_endings": self.toggle_line_endings,

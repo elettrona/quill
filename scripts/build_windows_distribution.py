@@ -452,6 +452,12 @@ def build_windows_distribution(
     # anything. No --*-dir override exists for this; see _stage_whisper_model.
     if bundle_offline:
         _stage_whisper_model(portable_dir)
+        # Piper closes the last tracked speech gap in the Offline Edition:
+        # the engine zip (SHA-256-verified at stage time AND re-verified by
+        # install_piper at install time) plus starter voice models, so
+        # choosing Piper never needs the internet. See
+        # quill/core/speech/piper_install.py (bundled_piper_offline_dir).
+        _stage_piper_offline(portable_dir)
 
     readme = portable_dir / "README.txt"
     readme.write_text(
@@ -557,7 +563,9 @@ def build_windows_distribution(
         # stays fast and small.
         if bundle_offline:
             python_exe = portable_dir / "python.exe"
-            _stage_pip_wheelhouse(portable_dir, python_exe, "kokoro", KOKORO_WHEELHOUSE_REQUIREMENTS)
+            _stage_pip_wheelhouse(
+                portable_dir, python_exe, "kokoro", KOKORO_WHEELHOUSE_REQUIREMENTS
+            )
             _stage_pip_wheelhouse(
                 portable_dir,
                 python_exe,
@@ -982,10 +990,8 @@ def build_inno_setup_script(
     # Optional-component excludes. Node.js has no --nodejs-dir staging flag on this
     # build script (it is not part of the offline-speech/braille bundle) and is
     # excluded regardless of --bundle-offline (a Node-based Quillin still needs a
-    # separately installed Node.js either way; see quill/core/node_install.py). Piper
-    # likewise has no build-time staging flag today -- it is NOT one of the components
-    # --bundle-offline can actually cover yet (tracked gap, unlike the claim an earlier
-    # version of this comment made). The build-artifact/dev-only entries are excluded
+    # separately installed Node.js either way; see quill/core/node_install.py).
+    # The build-artifact/dev-only entries are excluded
     # either way. The remaining five (Pandoc, DECtalk, eSpeak-NG, whisper.cpp's binary,
     # and the braille pack) are only excluded for the regular/smaller installer;
     # --bundle-offline lifts the exclusion so a locally staged copy (via --pandoc-dir/
@@ -993,12 +999,16 @@ def build_inno_setup_script(
     # compiled .exe. Kokoro's model files (kokoro-models\*) are handled the same way
     # but auto-stage under --bundle-offline with no flag required (see the
     # kokoro_dir/_stage_kokoro call site above), as does whisper.cpp's default GGML
-    # model (speech-models-bundled\*, see _stage_whisper_model -- required, not
-    # optional, so there is no matching --*-dir override for it either). Every
+    # model and Piper's engine zip + starter voices (speech-models-bundled\*,
+    # see _stage_whisper_model / _stage_piper_offline -- auto-staged, so there
+    # is no matching --*-dir override for either). Every
     # on-demand engine's pip package tree (wheels\<name>\*: kokoro, faster-whisper,
     # vosk, mp3 -- see _stage_pip_wheelhouse) auto-stages the same way. Together
-    # these mean whisper.cpp (the default), Kokoro, Faster Whisper, Vosk, and MP3
-    # support all work with zero network access under a genuine Offline Edition.
+    # these mean whisper.cpp (the default), Kokoro, Piper, Faster Whisper, Vosk,
+    # and MP3 support all work with zero network access under a genuine Offline
+    # Edition. (tools\speech\piper\* stays excluded: that path is only ever a
+    # legacy locally-staged binary; the offline bundle lives under
+    # speech-models-bundled\piper and installs to user data on demand.)
     _always_excluded = "docs\\QUILL-PRD.md,tools\\nodejs\\*,tools\\speech\\piper\\*,_tool-download\\*,_speech-download\\*,*\\__pycache__\\*"
     _optional_component_excludes = (
         "tools\\pandoc\\*,tools\\speech\\dectalk\\*,tools\\speech\\espeak-ng\\*,"
@@ -1870,6 +1880,59 @@ def _stage_whisper_model(
     print(f"Downloading whisper.cpp {model_id!r} model from {url}...")
     _download_with_verification(url, target, expected_sha256=info.sha256)
     return target.exists()
+
+
+#: Starter Piper voices staged under --bundle-offline: one good default per
+#: catalog accent family keeps the bundle small while making Piper genuinely
+#: usable offline out of the box (more voices install from the bundle-free
+#: HuggingFace path whenever the user is online).
+DEFAULT_BUNDLED_PIPER_VOICES: tuple[str, ...] = ("en_US-lessac-medium",)
+
+
+def _stage_piper_offline(
+    portable_dir: Path, voice_ids: tuple[str, ...] = DEFAULT_BUNDLED_PIPER_VOICES
+) -> bool:
+    """Stage the Piper engine zip + starter voices into portable/speech-models-bundled/piper/.
+
+    The engine zip is fetched from the pinned rhasspy release and SHA-256
+    verified against ``PIPER_DOWNLOAD_SHA256`` (the runtime's ``install_piper``
+    re-verifies the same hash before extracting, so a tampered bundle still
+    fails closed). Voice models come from the pinned
+    ``rhasspy/piper-voices`` HuggingFace repo over HTTPS — the exact URLs the
+    runtime's own on-demand voice download uses
+    (``quill.core.voice_catalog.piper_voice_download_urls``); their SHA-256s
+    are printed for the build log. Already-staged files are reused. Returns
+    True when the engine zip and every requested voice are present.
+    """
+    from quill.core.speech.piper_install import PIPER_DOWNLOAD_SHA256, PIPER_DOWNLOAD_URL
+    from quill.core.voice_catalog import piper_voice_download_urls
+
+    root = portable_dir / "speech-models-bundled" / "piper"
+    zip_target = root / "piper_windows_amd64.zip"
+    if zip_target.exists():
+        print("Piper engine zip already staged; skipping.")
+    else:
+        print(f"Downloading Piper engine from {PIPER_DOWNLOAD_URL}...")
+        _download_with_verification(
+            PIPER_DOWNLOAD_URL, zip_target, expected_sha256=PIPER_DOWNLOAD_SHA256
+        )
+
+    voices_dir = root / "voices"
+    all_present = zip_target.exists()
+    for voice_id in voice_ids:
+        urls = piper_voice_download_urls(voice_id)
+        if urls is None:
+            raise RuntimeError(f"No Piper voice URL derivable for {voice_id!r}")
+        for url, name in zip(urls, (f"{voice_id}.onnx", f"{voice_id}.onnx.json"), strict=True):
+            target = voices_dir / name
+            if target.exists():
+                print(f"Piper voice file {name} already staged; skipping.")
+                continue
+            print(f"Downloading Piper voice file {name} from {url}...")
+            _download_with_verification(url, target, expected_sha256=None)
+            print(f"  staged {name} sha256={hashlib.sha256(target.read_bytes()).hexdigest()}")
+            all_present = all_present and target.exists()
+    return all_present
 
 
 def _stage_pip_wheelhouse(

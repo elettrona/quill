@@ -415,7 +415,6 @@ from quill.ui.dialog_contract import (
     ok_cancel_platform_order,
     show_modal_dialog,
 )
-from quill.ui.editor_surface import PLAIN, RICH, surface_kind
 from quill.ui.html_paste_cleaner import analyze_paste
 from quill.ui.keymap_editor import KeymapEditorMixin
 from quill.ui.main_frame_abbreviations import AbbreviationsMixin
@@ -453,6 +452,7 @@ from quill.ui.main_frame_quill_key import QuillKeyMixin
 from quill.ui.main_frame_quillins import QuillinsMenuMixin
 from quill.ui.main_frame_restore_points import RestorePointsMixin
 from quill.ui.main_frame_reveal_codes import RevealCodesMixin
+from quill.ui.main_frame_rich_mode import RichModeMixin
 from quill.ui.main_frame_section_move import SectionMoveMixin
 from quill.ui.main_frame_selection import SelectionMarksMixin
 from quill.ui.main_frame_sessions import SessionsMixin
@@ -466,7 +466,6 @@ from quill.ui.main_frame_verbosity import VerbosityCommandsMixin
 from quill.ui.main_frame_watch_profile import WatchProfileDialogMixin
 from quill.ui.main_frame_work_persona import WorkPersonaMixin
 from quill.ui.notebook_panel import NotebookEntriesPanel
-from quill.ui.rich_text_surface import RichTextSurface
 from quill.ui.sound_manager import post_sound
 from quill.ui.word_view import WordDocumentSurface
 
@@ -566,6 +565,30 @@ class _DocumentTab:
     preview: object = None
     source_label: str = ""
     read_only_remote: bool = False
+    # One Editor, Every Format: how this tab presents its document.
+    #   "markup"         — the buffer is canonical QUILL markup (default).
+    #   "rich"           — the native control holds real formatting (TOM/RTF);
+    #                      the buffer mirrors the plain text.
+    #   "rich_converted" — an .rtf/.docx opened through the conversion bridge
+    #                      (no native rich available); buffer is markup and
+    #                      save re-serializes to the rich format.
+    editor_mode: str = "markup"
+    # The extension the Document Format switcher retargeted this tab to
+    # ("" = follow document.path). Save As proposes the renamed path; Save
+    # never silently rewrites a different extension in place.
+    pending_format_suffix: str = ""
+    # The remembered answer to the plain-text first-formatting-command prompt
+    # ("" = not asked yet; "markdown" / "rich" / "plain" once answered).
+    plain_format_choice: str = ""
+    # Phase 7 (docx rich): this rich tab's on-disk format is .docx (save runs
+    # RichDocument -> rich_to_docx_bytes instead of native RTF).
+    docx_rich: bool = False
+    # Phase 7: the honest-fidelity scan flagged out-of-vocabulary features in
+    # the original (tables, images, tracked changes, ...).
+    docx_flagged: bool = False
+    # Phase 7 (docx rich): whether the one-time pre-overwrite backup of a
+    # fidelity-flagged original has been written for this tab.
+    rich_backup_done: bool = False
     # Per-document named bookmarks (loaded from / saved to DocumentMemory for saved
     # files; in-memory only for untitled documents). The active tab's dict is
     # aliased to MainFrame._bookmarks while it is the current tab.
@@ -813,6 +836,7 @@ class MainFrame(
     MenuBuilderMixin,
     NotebookUIMixin,
     QuillKeyMixin,
+    RichModeMixin,
     SelectionMarksMixin,
     SessionsMixin,
     StatusBarMixin,
@@ -862,6 +886,7 @@ class MainFrame(
         "document_progress": "Document Progress",
         "mode": "Keyboard Mode",
         "tab_mode": "Tab Mode",
+        "document_format": "Format",
         "selection": "Selection Length",
         "encoding": "Encoding",
         "line_endings": "Line Endings",
@@ -895,6 +920,7 @@ class MainFrame(
         "document_progress": 150,
         "mode": 110,
         "tab_mode": 130,
+        "document_format": 170,
         "selection": 110,
         "encoding": 120,
         "line_endings": 140,
@@ -928,6 +954,7 @@ class MainFrame(
         "document_progress": "core.editor",
         "mode": "core.editor",
         "tab_mode": "core.editor",
+        "document_format": "core.format",
         "selection": "core.editor",
         "encoding": "core.file",
         "line_endings": "core.file",
@@ -1957,12 +1984,6 @@ class MainFrame(
             "Focus Preview",
             self.focus_preview,
             self._binding_for("view.focus_preview"),
-        )
-        self.commands.register(
-            "view.switch_editing_lens",
-            "Switch Editing Lens",
-            self.switch_editing_lens,
-            self._binding_for("view.switch_editing_lens"),
         )
         self.commands.register(
             "view.browser_preview",
@@ -3412,6 +3433,12 @@ class MainFrame(
             self._binding_for("format.toggle_abbreviation_expansion"),
         )
         self.commands.register(
+            "format.switch_document_format",
+            "Switch Document Format",
+            self.switch_document_format,
+            self._binding_for("format.switch_document_format"),
+        )
+        self.commands.register(
             "format.bold",
             "Bold",
             self.format_bold,
@@ -4393,6 +4420,24 @@ class MainFrame(
         ):
             self.insert_link()
             return
+        # Rich mode: the native RichEdit handles Ctrl+B/I/U itself, silently.
+        # Route them through QUILL's commands instead so formatting is
+        # announced, dirty-marked, and remappable — one command id everywhere.
+        if (
+            self._current_editor_mode() == "rich"
+            and event.ControlDown()
+            and not event.AltDown()
+            and not event.ShiftDown()
+        ):
+            rich_keys = {
+                ord("B"): self.format_bold,
+                ord("I"): self.format_italic,
+                ord("U"): self.format_underline,
+            }
+            handler = rich_keys.get(event.GetKeyCode())
+            if handler is not None:
+                handler()
+                return
         if event.GetKeyCode() == wx.WXK_ESCAPE and self._extend_selection_mode:
             event.Skip()
             return
@@ -4458,76 +4503,34 @@ class MainFrame(
         # treats the editor as a real text area rather than a generic
         # group.
         if sys.platform == "darwin":
-            editor = wx.TextCtrl(splitter, style=wx.TE_MULTILINE)
+            # The same multiline wx.TextCtrl macOS always used (an NSTextView
+            # underneath; wx.TE_MULTILINE alone so VoiceOver keeps the native
+            # text-area mapping), built through the QuillMacRichText factory so
+            # rich mode works on the Mac too when PyObjC is present. Absent
+            # PyObjC — the soft 'mac' extra — the wrapper reports unavailable
+            # and .rtf stays on converted rich; the control is identical.
+            from quill.ui.nstextview_rtf_surface import create_nstextview_rtf
+
+            editor = create_nstextview_rtf(wx, splitter, wx.TE_MULTILINE)
         else:
-            # The editor surface is configurable (Windows/Linux). The Experimental tab
-            # can override the braille Editor control type for testing; "default"
-            # follows that setting. An optional borderless style gives a cleaner frame.
-            kind = str(getattr(self.settings, "editor_control_kind", "rich2")).strip().lower()
-            # Experimental overrides apply only once the user has ticked BOTH
-            # gates on the Experimental tab: the master "Enable experimental
-            # features" switch and the editor-surfaces acknowledgment
-            # ("features may degrade based on the control selected").
-            acknowledged = bool(
-                getattr(self.settings, "experimental_acknowledged", False)
-            ) and bool(getattr(self.settings, "experimental_editor_surfaces_enabled", False))
-            override = (
-                str(getattr(self.settings, "experimental_editor_surface", "default"))
-                .strip()
-                .lower()
-            )
-            if acknowledged and override and override != "default":
-                kind = override
+            # QuillRichEdit is THE editor surface (Windows/Linux): the same
+            # native RichEdit (RICHEDIT50W) QUILL always shipped, wrapped for
+            # native RTF via the TOM, with the braille fix applied per the two
+            # Braille-tab checkboxes. The fix is two cooperating pieces, both on
+            # by default: SES_EMULATESYSEDIT (text from cell 1, selection dots
+            # 7-8 — #616/#813) and the hidden border (a visible border itself
+            # pushes braille output out of cell 1). create_richedit_rtf falls
+            # back to a plain wx.TextCtrl on any failure, so the editor can
+            # never fail to build.
+            from quill.ui.richedit_rtf_surface import create_richedit_rtf
+
             border = (
-                wx.BORDER_NONE
-                if acknowledged and getattr(self.settings, "editor_hide_border", False)
-                else 0
+                wx.BORDER_NONE if getattr(self.settings, "braille_editor_hide_border", True) else 0
             )
-            if kind == "win32":
-                # Experimental spike: host the raw Win32 EDIT control via pywin32.
-                # Returns None off-Windows / on any failure, so we fall back to a
-                # plain wx.TextCtrl and never break the editor.
-                from quill.ui.win32_edit_surface import create_win32_edit_host
-
-                editor = create_win32_edit_host(splitter) or wx.TextCtrl(
-                    splitter, style=wx.TE_MULTILINE | border
-                )
-            elif kind == "rtf":
-                # Experimental RichTextCtrl surface (TextCtrl-compatible selection API).
-                from quill.ui.rtf_edit_surface import create_rtf_editor
-
-                editor = create_rtf_editor(wx, splitter, wx.TE_MULTILINE | border)
-            elif kind == "stc":
-                # The Notepad++ experiment: Scintilla via wx.stc, shimmed to the
-                # TextCtrl contract (see stc_edit_surface.py). Falls back to a wx.TextCtrl.
-                from quill.ui.stc_edit_surface import create_stc_editor
-
-                editor = create_stc_editor(wx, splitter, wx.TE_MULTILINE | border)
-            elif kind == "richedit_rtf":
-                # QuillRichEdit: the SAME native RichEdit (RICHEDIT50W) the default
-                # uses, with native RTF load/save via the TOM and the Phase 3
-                # braille instrument (#616/#813). The emulate-system-edit lever is
-                # applied only when its own experimental toggle is on (and the
-                # experimental gates are acknowledged). Falls back to a wx.TextCtrl.
-                from quill.ui.richedit_rtf_surface import create_richedit_rtf
-
-                emulate = acknowledged and bool(
-                    getattr(self.settings, "experimental_richedit_emulate_sysedit", False)
-                )
-                editor = create_richedit_rtf(
-                    wx, splitter, wx.TE_MULTILINE | border, emulate_system_edit=emulate
-                )
-            elif kind == "plain":
-                # A Notepad-style EDIT control -- editable, reports its value to
-                # JAWS/NVDA correctly, and avoids the RichEdit leading-cell quirk (#616).
-                editor = wx.TextCtrl(splitter, style=wx.TE_MULTILINE | border)
-            else:
-                # "rich"/"rich2" keep a RichEdit (2.0 / 3.0); TE_NOHIDESEL stays there.
-                rich_flag = wx.TE_RICH if kind == "rich" else wx.TE_RICH2
-                editor = wx.TextCtrl(
-                    splitter,
-                    style=wx.TE_MULTILINE | rich_flag | wx.TE_NOHIDESEL | border,
-                )
+            emulate = bool(getattr(self.settings, "braille_editor_system_edit_fix", True))
+            editor = create_richedit_rtf(
+                wx, splitter, wx.TE_MULTILINE | border, emulate_system_edit=emulate
+            )
         editor.SetName("Document")
         if sys.platform == "darwin":
             self._pin_macos_editor_accessibility_role(editor)
@@ -6809,6 +6812,10 @@ class MainFrame(
                     Document(text=recovered_text, path=None, modified=True),
                     select=True,
                 )
+                # Rich-mode sessions also snapshot RTF bytes (.rtfsnap): the
+                # plain text alone would recover the words but lose the
+                # formatting. Best-effort restore through the surface's TOM.
+                self._maybe_restore_rich_snapshot(offer.snapshot)
                 # §8.2: warn when bytes were silently replaced during decode.
                 if had_replacements:
                     self._record_notification(
@@ -9011,11 +9018,21 @@ class MainFrame(
                     self._create_csv_document_tab(loaded, select=True)
             elif loaded.source_metadata.get("word_open_mode") == "structured":
                 self._create_word_document_tab(loaded, select=True)
-            elif suffix == ".rtf" and self._rich_editor_enabled():
-                # An .rtf is inherently a rich document, so it opens in the Rich
-                # text lens when that lens is enabled (rtf.md "Opening files").
-                self._create_rich_document_tab(loaded, select=True)
+            elif suffix == ".rtf":
+                # An .rtf is inherently a rich document. The tab is a normal
+                # QuillRichEdit tab; rich mode loads the sanitized RTF natively
+                # through the TOM where available and stays on the converted
+                # text (rich_converted) otherwise — never a blank editor.
+                self._create_document_tab(loaded, select=True)
+                self._enter_rich_mode_for_open(selected_path, loaded)
                 self._announce_rtf_safety(loaded)
+            elif suffix == ".docx":
+                # Editable rich Word: the extracted text opens first (the
+                # classic floor), then rich mode is offered/entered behind the
+                # honest-fidelity scan — a flagged original is never rewritten
+                # without a warning and a one-time backup.
+                self._create_document_tab(loaded, select=True)
+                self._enter_docx_rich_mode_for_open(selected_path, loaded)
             else:
                 self._create_document_tab(loaded, select=True)
             self._load_persistent_undo_state(selected_path, loaded.text)
@@ -9204,63 +9221,12 @@ class MainFrame(
         self._refresh_sessions_menu()
         return index
 
-    def _create_rich_document_tab(self, document: Document, select: bool = True) -> int:
-        """Create a tab backed by the native Rich text lens (rtf.md Part One).
-
-        Mirrors :meth:`_create_word_document_tab`: a duck-typed surface stands in
-        for ``self.editor``. The surface keeps QUILL markup canonical, so all
-        existing editor commands keep working through it.
-        """
-        wx = self._wx
-        surface = RichTextSurface(wx, self.notebook, document, self._sync_editor_change)
-        panel = surface.panel
-        self._bind_editor_events(surface)
-        tab = _DocumentTab(panel=panel, editor=surface, document=document)
-        self._document_tabs.append(tab)
-        index = self.notebook.GetPageCount()
-        self.notebook.AddPage(panel, document.name, select=select)
-        if select:
-            self._active_tab_index = index
-            self.editor = surface
-            self.document = document
-            self._apply_statusbar_layout()
-            self._refresh_title()
-            self._refresh_read_only_state()
-        self._refresh_sessions_menu()
-        return index
-
-    def _rich_editor_enabled(self) -> bool:
-        """True when the writer has opted into the Rich text lens (off by default)."""
-        return str(getattr(self.settings, "editor_surface", "plain")).lower() == "rich"
-
-    def _announce_lens(self, lens: str) -> None:
-        """Speak and show which editing lens is now active."""
-        self._set_status(f"{lens}")
-
-    def switch_editing_lens(self) -> None:
-        """Flip the current document between the Rich text and Markdown lenses.
-
-        On a rich surface this toggles the in-tab lens losslessly (the canonical
-        markup is shared, so no word is lost and the document is not marked dirty).
-        On a plain-text surface it reports how to enable the Rich text lens, since
-        QUILL's offset-based commands stay exact on the plain surface.
-        """
-        editor = self.editor
-        toggler = getattr(editor, "toggle_mode", None)
-        if surface_kind(editor) == "rich" and callable(toggler):
-            self._announce_lens(toggler())
-            return
-        if not self._rich_editor_enabled():
-            self._set_status("Rich text lens is off. Turn it on in Settings, Editing.")
-            return
-        self._set_status("This document is open in the Markdown lens.")
-
     def _announce_rtf_safety(self, document: Document) -> None:
-        """Announce the Rich text lens and any RTF safety findings on open."""
+        """Announce rich-mode open and any RTF safety findings."""
         metadata = document.source_metadata
         blocked = metadata.get("rtf_blocked")
         warnings = metadata.get("rtf_warnings")
-        parts = ["Opened in Rich text lens."]
+        parts = ["Opened as Rich Text."]
         if isinstance(blocked, list) and blocked:
             parts.append(
                 "Removed unsafe content: " + ", ".join(str(item) for item in blocked) + "."
@@ -9997,12 +9963,15 @@ class MainFrame(
             getattr(getattr(self, "settings", None), "plain_text_link_style", "text_url")
         )
         docx_engine = str(getattr(getattr(self, "settings", None), "docx_write_engine", "auto"))
-        write_document_as(
-            document,
-            target,  # type: ignore[arg-type]
-            plain_text_link_style=link_style,
-            docx_engine=docx_engine,
-        )
+        # Rich mode saves natively via the TOM (no conversion, no fidelity
+        # loss); everything else routes through the classic conversion writer.
+        if not self._save_rich_document_natively(document, target):
+            write_document_as(
+                document,
+                target,  # type: ignore[arg-type]
+                plain_text_link_style=link_style,
+                docx_engine=docx_engine,
+            )
         self._sync_publishing_linkage_for_document(document)  # type: ignore[arg-type]
         # Restore points: snapshot the canonical text of every successful save
         # (best-effort by contract; can never be the reason a save fails).
@@ -10039,6 +10008,14 @@ class MainFrame(
             self.save_copy_remote()
             return
         if self.document.path is None:
+            self.save_file_as()
+            return
+        # The Document Format switcher retargeted this tab's file type: Save
+        # proposes the renamed path through Save As instead of silently writing
+        # a different format into the old extension.
+        redirect = self._pending_format_redirect()
+        if redirect is not None:
+            self._set_status(f"Format changed; choose where to save {redirect.name}")
             self.save_file_as()
             return
         path = self.document.path
@@ -10284,7 +10261,6 @@ class MainFrame(
         self._refresh_sessions_menu()
         self._set_status(f"Saved as {target.name} ({format_label_for_path(target)})")
         self._announce_save_as_conversion(target)
-        self._maybe_reload_surface_after_save_as(target)
 
     def _announce_save_as_conversion(self, target: Path) -> None:
         """Speak what a converting Save As actually did.
@@ -10302,59 +10278,6 @@ class MainFrame(
             f"Saved as {target.name}, {label} format. You are still editing "
             f"QUILL text; each save converts it to {label}."
         )
-
-    def _surface_kind_for_path(self, path: Path) -> str:
-        """The editing surface ``open_file`` would use for ``path``.
-
-        Mirrors the open dispatch: an ``.rtf`` opens in the Rich text lens when
-        that lens is enabled, and everything else opens on the plain surface.
-        """
-        if path.suffix.lower() == ".rtf" and self._rich_editor_enabled():
-            return RICH
-        return PLAIN
-
-    @staticmethod
-    def _resolve_surface_sync(current_kind: str, desired_kind: str, mode: str) -> str:
-        """Decide the post-Save-As surface action: ``none``, ``prompt`` or ``reload``."""
-        if current_kind == desired_kind:
-            return "none"
-        if mode == "never":
-            return "none"
-        if mode == "always":
-            return "reload"
-        return "prompt"
-
-    def _maybe_reload_surface_after_save_as(self, target: Path) -> None:
-        """Offer to reload ``target`` so the surface matches its new format.
-
-        Governed by the ``save_as_surface_sync`` setting (ask / always / never).
-        Structured surfaces (CSV grid, Word) are never disturbed, and nothing
-        happens unless the format's natural surface differs from the current one.
-        """
-        editor = self.editor
-        if isinstance(editor, (CsvGridSurface, WordDocumentSurface)):
-            return
-        current = surface_kind(editor)
-        if current not in (PLAIN, RICH):
-            return
-        desired = self._surface_kind_for_path(target)
-        mode = str(getattr(self.settings, "save_as_surface_sync", "prompt")).strip().lower()
-        action = self._resolve_surface_sync(current, desired, mode)
-        if action == "none":
-            return
-        if action == "prompt":
-            wx = self._wx
-            view_label = "Rich text" if desired == RICH else "plain text"
-            response = self._show_message_box(
-                f"This file is now {format_label_for_path(target)}. Reload it in the "
-                f"{view_label} editor so the view matches the format? Reloading replaces "
-                f"the editor contents with the saved file.",
-                "Reload in matching view?",
-                wx.ICON_QUESTION | wx.YES_NO | wx.NO_DEFAULT,
-            )
-            if response != wx.YES:
-                return
-        self._reload_in_place(target)
 
     def _reload_in_place(self, target: Path) -> None:
         """Replace the current tab with ``target`` reopened in its natural surface.
@@ -10867,6 +10790,17 @@ class MainFrame(
             self._last_autosave_at = now
             return
         autosave_document(self.document, self.session_id)
+        # Rich tabs also snapshot the RTF bytes: TOM formatting never changes
+        # the plain text, so a text-only snapshot would lose formatting in a
+        # crash. Best-effort by the same contract as the text snapshot.
+        rich_payload = self._rich_autosave_payload()
+        if rich_payload is not None:
+            try:
+                from quill.core.autosave import autosave_rich_document
+
+                autosave_rich_document(self.document, self.session_id, rich_payload)
+            except Exception:  # noqa: BLE001 - autosave must never break editing
+                pass
         self._last_autosave_at = now
         self._last_autosave_revision = revision
         # §8.4 "Resume from where I left off": persist cursor position alongside
@@ -11241,149 +11175,16 @@ class MainFrame(
     QPF_WILDCARD = "QUILL profile file (*.qpf)|*.qpf|All files (*.*)|*.*"
     KQP_WILDCARD = "Keyboard Quill Pack (*.kqp)|*.kqp|All files (*.*)|*.*"
 
-    def _build_experimental_explainer(
-        self, parent: object, sizer: object, specs: object, control_index: object
-    ) -> None:
-        """Add a live, read-only explanation of each editor surface to the
-        Experimental tab. The text changes with the Editor-surface selection so a
-        user can preview what choosing a given control would mean (impact from both
-        a user and a technical perspective) before committing + restarting."""
-        wx = self._wx
-        explanations = {
-            "default": (
-                "Default — follow the Accessibility setting.\n\n"
-                "User: the safest choice. The editor uses whatever 'Editor control "
-                "type (braille)' is set to under Accessibility (RichEdit 3.0 unless "
-                "you changed it). Everything works as designed; nothing experimental.\n\n"
-                "Technical: no override is applied; the surface is chosen by "
-                "settings.editor_control_kind. Choose this to undo any experiment."
-            ),
-            "rich2": (
-                "RichEdit 3.0 — the modern native rich control (QUILL's default).\n\n"
-                "User: the normal QUILL editor. Best all-round accessibility with "
-                "JAWS and NVDA; all features work. Some braille displays show the "
-                "first character of each line in cell two (the long-standing Word quirk).\n\n"
-                "Technical: a wx.TextCtrl with TE_RICH2 | TE_NOHIDESEL — the Windows "
-                "RICHEDIT50W control. Its IAccessible value is reported correctly, "
-                "which is why it is the default (#616)."
-            ),
-            "rich": (
-                "RichEdit 2.0 — the older native rich control.\n\n"
-                "User: almost identical to RichEdit 3.0; offered for testing against "
-                "screen readers or displays that behave differently on the older "
-                "engine. All features work.\n\n"
-                "Technical: a wx.TextCtrl with TE_RICH (RICHEDIT20W) | TE_NOHIDESEL."
-            ),
-            "plain": (
-                "Notepad — the plain Win32 EDIT control.\n\n"
-                "User: the simplest, fastest control — exactly what Notepad uses. "
-                "Best for braille displays (no cell-two offset) and a clean feel. "
-                "All core editing works; it cannot show rich formatting visually "
-                "(QUILL keeps formatting as hidden codes anyway).\n\n"
-                "Technical: a wx.TextCtrl with TE_MULTILINE only (the native EDIT "
-                "class). Editable, so it reports its value correctly to JAWS/NVDA."
-            ),
-            "rtf": (
-                "Rich text — an experimental wx.RichTextCtrl surface.\n\n"
-                "User: a richer control that can render formatting visually. "
-                "EXPERIMENTAL: some QUILL commands that assume a plain edit control "
-                "may behave differently or not at all. Use for testing only.\n\n"
-                "Technical: wx.richtext.RichTextCtrl. It is value/caret API-compatible "
-                "(GetValue/ChangeValue/insertion point), so basic editing and the "
-                "Reveal Codes sync work, but it is not a drop-in for every TextCtrl call."
-            ),
-            "stc": (
-                "Notepad++ experiment — the Scintilla control (wx.stc).\n\n"
-                "User: the editing engine Notepad++ uses. Fast on very large "
-                "documents and the only experimental surface with full multi-level "
-                "undo AND redo. EXPERIMENTAL, NVDA ONLY: NVDA reads and tracks it "
-                "well; JAWS cannot follow the caret on this surface (verified "
-                "2026-07-03; bridging attempts failed). Do not use with JAWS.\n\n"
-                "Technical: wx.stc.StyledTextCtrl (Win32 class 'Scintilla') wrapped "
-                "to the TextCtrl contract: EVT_TEXT forwarding, LF-only line "
-                "endings, load-without-dirty, and caret moves that collapse the "
-                "selection. Full risk analysis: docs/planning/editor-surface-experiments.md."
-            ),
-            "richedit_rtf": (
-                "QuillRichEdit — the native Rich Edit control, wrapped, with RTF.\n\n"
-                "User: the same native control (RICHEDIT50W) as RichEdit 3.0, so "
-                "editing and screen-reader behaviour match the default — and this "
-                "surface can load and save real RTF (fonts, bold/italic, and so on) "
-                "through the native Windows text object model. It is the groundwork "
-                "for a lightweight, accessible RTF mode and for fixing the braille "
-                "cell-2 (#616) and selection dots-7-8 (#813) behaviour on the real "
-                "control. Use it to try RTF and to A/B braille against RichEdit "
-                "3.0.\n\n"
-                "Technical: a wx.TextCtrl with TE_RICH2 | TE_NOHIDESEL tagged with "
-                "surface_kind='richedit_rtf' and a QuillRichEdit wrapper "
-                "(quill/ui/richedit_rtf_surface.py). RTF load/save go through the "
-                "Rich Edit TOM (EM_GETOLEINTERFACE → ITextDocument Open/Save, tomRTF) "
-                "— chosen because the EM_STREAMIN/EM_STREAMOUT ctypes callback "
-                "crashes msftedit (see the §8 post-mortem). The braille instrument "
-                "(#616/#813) is wired: the diagnostic reports the edit style and a "
-                "TOM selection localizer, and the separate 'emulate a system edit "
-                "control' setting A/B-tests the cell-2 / dots-7-8 fix (needs a "
-                "braille display to judge). Formatting (bold/italic/underline/font/"
-                "size/alignment) is wired through the TOM too; native Ctrl+B/I/U "
-                "also work on this control. Falls back to a plain control on any "
-                "failure."
-            ),
-            "win32": (
-                "Native Win32 EDIT — the pywin32 spike (Windows only).\n\n"
-                "User: hosts the raw Windows EDIT control (the very control Notepad "
-                "uses) directly, for the most native feel. EXPERIMENTAL and partial: "
-                "typing, selection, undo, and dirty-tracking work, but type-time "
-                "features (autoformat, describe-key) and exact multi-line caret math "
-                "may not, and very large documents address the caret approximately. "
-                "If hosting fails it silently falls back to the Notepad control.\n\n"
-                "Technical: a wx.Window hosts a native EDIT created via pywin32; "
-                "EN_CHANGE is bridged to QUILL through a subclassed window proc. "
-                "Line breaks are translated CRLF<->LF; offsets are in the control's "
-                "own space. See quill/ui/win32_edit_surface.py."
-            ),
-        }
-        choices = {}
-        for spec in specs:  # type: ignore[union-attr]
-            if getattr(spec, "key", "") == "experimental_editor_surface":
-                choices = {label: value for value, label in spec.choices}
-                break
-        sizer.Add(wx.StaticText(parent, label="What each editor surface does:"), 0, wx.ALL, 6)
-        # Word-wrap (not TE_DONTWRAP) and a real minimum width so the prose flows as
-        # paragraphs instead of collapsing to one letter per line when the page is
-        # narrow (the control otherwise has no natural width of its own).
-        info = wx.TextCtrl(
-            parent,
-            style=wx.TE_MULTILINE | wx.TE_READONLY | wx.TE_BESTWRAP | wx.TE_RICH2,
-            size=(560, 220),
-        )
-        info.SetMinSize((360, 160))
-        info.SetName("Editor surface explanation")
-        sizer.Add(info, 1, wx.EXPAND | wx.ALL, 6)
-        entry = control_index.get("experimental_editor_surface")  # type: ignore[union-attr]
-        combo = entry[1] if entry else None
-
-        def _refresh(_evt: object = None) -> None:
-            value = "default"
-            if combo is not None:
-                value = choices.get(combo.GetStringSelection(), "default")
-            info.ChangeValue(explanations.get(value, explanations["default"]))
-            if _evt is not None:
-                _evt.Skip()
-
-        if combo is not None:
-            combo.Bind(wx.EVT_CHOICE, _refresh)
-        _refresh()
-        self._wire_experimental_gates(control_index, info)
-
-    def _wire_experimental_gates(self, control_index: object, explainer: object) -> None:
+    def _wire_experimental_gates(self, control_index: object) -> None:
         """Live enable/disable gating for the Experimental tab.
 
         The master "Enable experimental features" checkbox governs every other
-        control on the tab; the editor-surfaces checkbox additionally governs
-        the surface choice, the border option, and the surface explainer.
-        Disabled wx controls leave the tab order, so with the master switch off
-        the whole tab is a single checkbox to a screen-reader user — nothing
-        experimental can be reached, focused, or accidentally changed.
+        control on the tab. Disabled wx controls leave the tab order, so with
+        the master switch off the whole tab is a single checkbox to a
+        screen-reader user — nothing experimental can be reached, focused, or
+        accidentally changed. (The editor-surface options that once lived here
+        retired when QuillRichEdit became the one editor surface and the
+        braille fix moved to the Braille tab.)
         """
         wx = self._wx
 
@@ -11392,20 +11193,9 @@ class MainFrame(
             return entry[1] if entry else None
 
         master = _control("experimental_acknowledged")
-        surfaces_gate = _control("experimental_editor_surfaces_enabled")
-        surface_children = [
-            control
-            for control in (
-                _control("experimental_editor_surface"),
-                _control("editor_hide_border"),
-                explainer,
-            )
-            if control is not None
-        ]
         master_children = [
             control
             for control in (
-                surfaces_gate,
                 _control("glow_experimental_enabled"),
                 _control("publishing_experimental_enabled"),
                 _control("edge_read_aloud_enabled"),
@@ -11418,18 +11208,11 @@ class MainFrame(
             master_on = bool(master.GetValue()) if master is not None else True
             for control in master_children:
                 control.Enable(master_on)
-            surfaces_on = master_on and (
-                surfaces_gate is not None and bool(surfaces_gate.GetValue())
-            )
-            for control in surface_children:
-                control.Enable(surfaces_on)
             if _evt is not None:
                 _evt.Skip()
 
         if master is not None:
             master.Bind(wx.EVT_CHECKBOX, _apply)
-        if surfaces_gate is not None:
-            surfaces_gate.Bind(wx.EVT_CHECKBOX, _apply)
         _apply()
 
     def _start_model_lifecycle(self) -> None:
@@ -12526,6 +12309,14 @@ class MainFrame(
                                 _cb.SetValue(False)
 
                         cb.Bind(wx.EVT_CHECKBOX, _on_beta_toggle)
+                    if spec.key == "braille_editor_hide_border":
+                        # Unchecking breaks braille cell alignment; warn at
+                        # decision time and re-check unless the user confirms.
+                        def _on_border_toggle(_event: object, _cb=cb) -> None:
+                            if not _cb.GetValue() and not self._confirm_show_editor_border():
+                                _cb.SetValue(True)
+
+                        cb.Bind(wx.EVT_CHECKBOX, _on_border_toggle)
                     return
                 if spec.key == "browse_mode_followon_timeout":
                     # Choice + sibling SpinCtrl: the spin is only enabled
@@ -12870,7 +12661,7 @@ class MainFrame(
                     for spec in _sp:
                         _make_control(_p, _ps, spec, _pi)
                     if _show_experimental:
-                        self._build_experimental_explainer(_p, _ps, _sp, control_index)
+                        self._wire_experimental_gates(control_index)
                     if _show_data_location:
                         _build_data_location_block(_p, _ps)
                     if _show_mgmt:
@@ -13065,12 +12856,11 @@ class MainFrame(
 
             def _do_apply() -> None:
                 _c = {k: r() for k, r in readers.items()}
-                # Editor-surface settings only take full effect on restart; warn if
-                # the user changed one so they are not confused that nothing changed.
+                # The braille editor fix only takes full effect on restart; warn if
+                # the user changed it so they are not confused that nothing changed.
                 _restart_keys = (
-                    "experimental_editor_surface",
-                    "editor_hide_border",
-                    "editor_control_kind",
+                    "braille_editor_system_edit_fix",
+                    "braille_editor_hide_border",
                 )
                 _before = {k: getattr(self.settings, k, None) for k in _restart_keys}
                 upd = self.settings
@@ -13107,13 +12897,13 @@ class MainFrame(
                 self._settings_dialog_apply_refresh("Settings applied")
                 if _editor_restart_changed:
                     self._show_message_box(
-                        "The editor surface settings have changed. Restart QUILL so "
-                        "every document uses the new editor; documents you open before "
-                        "restarting may still use the previous surface.",
+                        "The braille editor fix settings have changed. Restart QUILL "
+                        "so every document uses the new setting; documents you open "
+                        "before restarting may still use the previous one.",
                         "Restart to apply",
                         wx.ICON_INFORMATION | wx.OK,
                     )
-                    self._announce("Restart QUILL to apply the new editor surface.")
+                    self._announce("Restart QUILL to apply the braille editor fix change.")
                 _dirty[0] = False
                 _apply_btn.Enable(False)
 
@@ -14365,10 +14155,16 @@ class MainFrame(
         shortcut change.
         """
         from quill.core.migration_backup import pop_recent_migrations
+        from quill.core.settings_migration import pop_retired_settings_keys
 
         migrated_stores = pop_recent_migrations()
+        retired_keys = pop_retired_settings_keys()
+        if retired_keys:
+            # The QuillRichEdit promotion: old surface overrides were dropped on
+            # load; write the cleaned delta back so the file matches what loaded.
+            save_settings(self.settings)
         shortcut_summaries = list(getattr(self, "_recommended_update_summaries", []))
-        if not migrated_stores and not shortcut_summaries:
+        if not migrated_stores and not shortcut_summaries and not retired_keys:
             return
         mode = getattr(self.settings, "migration_notice", "announce")
         if mode == "silent":
@@ -14376,6 +14172,11 @@ class MainFrame(
         parts: list[str] = []
         if migrated_stores:
             parts.append("QUILL updated your saved settings for this version. A backup was saved.")
+        if retired_keys:
+            parts.append(
+                "Your editor settings were simplified; the braille fix is now on "
+                "by default under Preferences > Braille."
+            )
         parts.extend(shortcut_summaries)
         message = " ".join(parts)
         can_undo = bool(getattr(self, "_recommended_update_undo", None))
@@ -18851,6 +18652,15 @@ class MainFrame(
             self._set_status(f"Piper voice '{voice_id}' is already downloaded.")
             self.choose_read_aloud_configuration()
             return
+        # Offline Edition: a staged starter voice installs with no network at
+        # all (same destination the download below would use).
+        from quill.core.speech.piper_install import install_bundled_piper_voice
+
+        if install_bundled_piper_voice(voice_id, dest_dir=piper_dir) is not None:
+            self._set_status(f"Piper voice '{voice_id}' installed from the offline bundle.")
+            self._announce(f"Piper voice {voice_id} installed from the offline bundle.")
+            self.choose_read_aloud_configuration()
+            return
         piper_dir.mkdir(parents=True, exist_ok=True)
 
         cancel = threading.Event()
@@ -21404,6 +21214,35 @@ class MainFrame(
             self._download_update_release(release)
         elif action == "skip":
             self._skip_update_version(release.version)
+
+    def _confirm_show_editor_border(self) -> bool:
+        """Warning gate before the braille hide-border fix is turned off.
+
+        The visible border pushes braille output out of cell 1 (part of the
+        #616 fix), so unchecking the Braille-tab box must be a deliberate,
+        informed act — announced at decision time, not discovered at the
+        display.
+        """
+        wx = self._wx
+        plain = (
+            "Warning: showing the editor border breaks braille cell alignment - "
+            "text will no longer start at cell 1 on a braille display.\n\n"
+            "Leave the border hidden unless you do not use a braille display.\n\n"
+            "Show the editor border anyway?"
+        )
+        dialog = wx.MessageDialog(
+            self.frame,
+            plain,
+            "Braille cell alignment",
+            wx.YES_NO | wx.NO_DEFAULT | wx.ICON_WARNING,
+        )
+        if hasattr(dialog, "SetYesNoLabels"):
+            dialog.SetYesNoLabels("Show border (breaks braille alignment)", "Keep it hidden")
+        try:
+            result = self._show_modal_dialog(dialog, "Braille cell alignment")
+        finally:
+            dialog.Destroy()
+        return result == wx.ID_YES
 
     def _confirm_beta_channel(self, release: GitHubRelease | None = None) -> bool:
         """Consent gate the user must agree to before beta updates turn on."""
@@ -24669,10 +24508,16 @@ class MainFrame(
         if not self._feature_enabled("core.format"):
             self._set_status("Bold is unavailable in this profile")
             return
+        # One command, one shortcut — the effect follows the document format:
+        # rich mode applies real bold via the TOM; Markdown/HTML insert their
+        # native tags; plain text gets the one-time transition prompt.
+        if self._rich_format_command("apply_bold", "Bold"):
+            return
         surface = self._active_markup_surface()
         if surface is None:
-            self._set_status("Bold is only available in Markdown or HTML documents")
-            return
+            if self._offer_plain_text_formatting_choice("Bold") != "markdown":
+                return
+            surface = "markdown"
         selected_text = self.editor.GetStringSelection()
         if surface == "markdown":
             result = build_markdown_insertion("Bold", selected_text)
@@ -24769,10 +24614,13 @@ class MainFrame(
         if not self._feature_enabled("core.format"):
             self._set_status("Italic is unavailable in this profile")
             return
+        if self._rich_format_command("apply_italic", "Italic"):
+            return
         surface = self._active_markup_surface()
         if surface is None:
-            self._set_status("Italic is only available in Markdown or HTML documents")
-            return
+            if self._offer_plain_text_formatting_choice("Italic") != "markdown":
+                return
+            surface = "markdown"
         selected_text = self.editor.GetStringSelection()
         if surface == "markdown":
             result = build_markdown_insertion("Italic", selected_text)
@@ -24787,10 +24635,13 @@ class MainFrame(
         if not self._feature_enabled("core.format"):
             self._set_status("Underline is unavailable in this profile")
             return
+        if self._rich_format_command("apply_underline", "Underline"):
+            return
         surface = self._active_markup_surface()
         if surface is None:
-            self._set_status("Underline is only available in Markdown or HTML documents")
-            return
+            if self._offer_plain_text_formatting_choice("Underline") != "markdown":
+                return
+            surface = "markdown"
         selected_text = self.editor.GetStringSelection()
         if surface == "markdown":
             result = build_markdown_insertion("Underline", selected_text)
@@ -24803,10 +24654,13 @@ class MainFrame(
         if not self._feature_enabled("core.format"):
             self._set_status("Heading tools are unavailable in this profile")
             return
+        if self._rich_format_command("set_heading", f"Heading {level}", level):
+            return
         surface = self._active_markup_surface()
         if surface is None:
-            self._set_status("Headings are only available in Markdown or HTML documents")
-            return
+            if self._offer_plain_text_formatting_choice(f"Heading {level}") != "markdown":
+                return
+            surface = "markdown"
         selected_text = self.editor.GetStringSelection()
         if surface == "markdown":
             result = build_markdown_insertion(f"Heading {level}", selected_text)

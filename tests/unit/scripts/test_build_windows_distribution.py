@@ -1014,6 +1014,41 @@ def test_stage_whisper_model_downloads_and_verifies(monkeypatch, tmp_path: Path)
     assert DEFAULT_BUNDLED_WHISPER_MODEL_ID in captured["url"] or "ggml-tiny.bin" in captured["url"]
 
 
+def test_stage_piper_offline_stages_engine_and_starter_voice(monkeypatch, tmp_path: Path) -> None:
+    """--bundle-offline auto-stages Piper's SHA-pinned engine zip plus a
+    starter voice pair, closing the last tracked speech gap in the Offline
+    Edition (Piper previously always needed the internet on first use)."""
+    from quill.core.speech.piper_install import PIPER_DOWNLOAD_SHA256
+
+    from scripts.build_windows_distribution import _stage_piper_offline
+
+    calls: list[tuple[str, Path, str | None]] = []
+
+    def fake_download(url, target, expected_sha256):
+        calls.append((url, target, expected_sha256))
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_bytes(b"fake payload")
+
+    monkeypatch.setattr(
+        "scripts.build_windows_distribution._download_with_verification", fake_download
+    )
+    portable_dir = tmp_path / "portable"
+    assert _stage_piper_offline(portable_dir) is True
+
+    root = portable_dir / "speech-models-bundled" / "piper"
+    assert (root / "piper_windows_amd64.zip").is_file()
+    assert (root / "voices" / "en_US-lessac-medium.onnx").is_file()
+    assert (root / "voices" / "en_US-lessac-medium.onnx.json").is_file()
+    # The engine zip is verified against the runtime's own pinned hash; the
+    # voice URLs are the exact HuggingFace paths the runtime download uses.
+    assert calls[0][2] == PIPER_DOWNLOAD_SHA256
+    assert all("huggingface.co/rhasspy/piper-voices" in url for url, _t, _s in calls[1:])
+    # Already-staged files are reused (no re-download on a second run).
+    calls.clear()
+    assert _stage_piper_offline(portable_dir) is True
+    assert calls == []
+
+
 def test_stage_whisper_model_reuses_already_staged(monkeypatch, tmp_path: Path) -> None:
     portable_dir = tmp_path / "portable"
     target = (

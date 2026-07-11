@@ -110,9 +110,7 @@ def smallest_region_containing(
     return min(containing, key=lambda r: r.end - r.start)
 
 
-def next_region_boundary(
-    regions: list[FoldableRegion], position: int
-) -> FoldableRegion | None:
+def next_region_boundary(regions: list[FoldableRegion], position: int) -> FoldableRegion | None:
     """The next region whose start is strictly after *position*, or None."""
     candidates = [r for r in regions if r.start > position]
     if not candidates:
@@ -120,9 +118,7 @@ def next_region_boundary(
     return min(candidates, key=lambda r: r.start)
 
 
-def previous_region_boundary(
-    regions: list[FoldableRegion], position: int
-) -> FoldableRegion | None:
+def previous_region_boundary(regions: list[FoldableRegion], position: int) -> FoldableRegion | None:
     """The previous region whose start is strictly before *position*, or None."""
     candidates = [r for r in regions if r.start < position]
     if not candidates:

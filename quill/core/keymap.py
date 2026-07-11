@@ -255,7 +255,9 @@ DEFAULT_KEYMAP: dict[str, str] = {
     "view.browser_preview": "Ctrl+Shift+Grave, V",  # §10.8.2: QUILL-key chord
     "view.split_preview": "Ctrl+Shift+Backslash",
     "view.focus_preview": "Ctrl+F6",
-    "view.switch_editing_lens": "Ctrl+Shift+Grave, K",
+    # The Document Format switcher (One Editor, Every Format): took over the
+    # chord the retired Rich text lens command held.
+    "format.switch_document_format": "Ctrl+Shift+Grave, K",
     "edit.set_mark": "Ctrl+Shift+M",
     # Ctrl+M becomes Cmd+M on macOS (system Minimize) -- dead by default. The
     # darwin alternate Cmd+Alt+M avoids Minimize (#31).

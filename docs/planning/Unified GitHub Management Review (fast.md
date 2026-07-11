@@ -1,3 +1,11 @@
+Pull the latest information from this repo: S:\code\GHManage> ...
+
+Merge everything in that you can where it makes sense, including committing, pushing, all features.
+
+Include everything below as well.
+
+Look at this repo also and bring everything forward that makes sense: S:\code\fastgh>
+
 # Unified GitHub Management Review (fastgh + GHManage)
 
 Ideas for merging `GHManage` accessibility with `fastgh` architecture and integrating with QUILL.

@@ -594,7 +594,7 @@ def extract_portable_update(
     dest = Path(dest_dir).resolve()
     dest.mkdir(parents=True, exist_ok=True)
     with open_zip(
-        zip_path,
+        Path(zip_path),
         max_total=max_total if max_total is not None else MAX_TOTAL_UNCOMPRESSED,
         max_ratio=max_ratio if max_ratio is not None else MAX_COMPRESSION_RATIO,
     ) as archive:

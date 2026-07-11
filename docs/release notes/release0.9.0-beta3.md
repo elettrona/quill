@@ -1,12 +1,66 @@
 # QUILL 0.9.0 Beta 3
 
-## A quick follow-up, driven by your bug reports.
+## One editor, every format — and the braille fix is on for everyone.
 
 *From Community Access. Free. Optional by design. Private by default.*
 
-Beta 3 is a short, focused release: fix what Beta 2 testers found, close out every open community bug report, and ship eight small accessibility-first features that were ready to go. This document explains every new keystroke in full, step by step — no feature here requires you to guess at a shortcut.
+Beta 3 carries one big story and a stack of community-driven fixes. The big story: **One Editor, Every Format**. The braille fix you helped us test in Beta 2 is confirmed and now on by default for every user, QUILL gains true rich text editing for RTF and Word documents, and one Document Format switcher moves any document between plain text, Markdown, HTML, Rich Text, and Word mid-session. Alongside it: fix what Beta 2 testers found, close out every open community bug report, and ship eight small accessibility-first features that were ready to go. This document explains every new keystroke in full, step by step — no feature here requires you to guess at a shortcut.
 
 This is the friendly companion to the **"0.9.0 Beta 3"** section of `CHANGELOG.md`. The shorter text under **Help > What's New** and **Check for Updates** comes from that changelog; this document tells the fuller story.
+
+---
+
+## The highlight: One Editor, Every Format
+
+### The braille fix is on — for everyone, by default
+
+In Beta 2 we asked braille display owners to try an experimental setting and tell us what they saw. You did, and it works: text now starts in braille cell 1 (the long-standing "cell two" quirk that RichEdit controls share with Microsoft Word is gone), and selecting text shows dots 7-8 on the display.
+
+So in Beta 3 it simply ships on. There is nothing to enable, no Experimental tab to navigate, no restart dance. Every document opens in the one QUILL editor — the same native Windows control you have always typed in, now carrying the fix out of the box.
+
+Two plain checkboxes on **Preferences > Braille** own the whole fix, both checked by default:
+
+- **Fix braille cell alignment and selection dots (recommended)** — the system-edit emulation that makes the display start at cell 1 and show selection dots.
+- **Hide editor border (required for braille cell alignment)** — testing showed the visible window border itself pushes braille output out of cell 1, so the borderless editor frame is part of the fix, not a cosmetic preference. If you uncheck it, QUILL warns you — specifically — that braille cell alignment will break, before anything changes.
+
+If you experimented with editor surfaces in earlier betas, your old experimental settings are retired automatically on upgrade and you land on the new default; QUILL tells you once, in plain language, that your editor settings were simplified.
+
+### Rich text is real now: RTF documents
+
+Open an .rtf and it is *formatted* — genuinely, in the editor. Bold text is bold. Headings are sized. Ctrl+B applies real bold, **Insert > Heading 2** applies a real heading, and **Describe Formatting at Cursor** answers from the live document: "Arial, 14 point, bold, centered."
+
+The rule to hold onto: **bold means bold — QUILL speaks your document's language.** In a Markdown file, Ctrl+B still wraps your selection in `**` exactly as it always has. In HTML, `<strong>`. In an RTF, it is real bold. Same key, same command, the right effect for the format you are writing.
+
+Everything else keeps working, because rich mode changes presentation, not plumbing: search, spell check, AI commands, read aloud, bookmarks, inline notes, and braille all read the same text they always have. Autosave protects the formatting too — rich documents snapshot their full formatting alongside the text, so crash recovery brings back your bold and headings, not just your words.
+
+In a plain .txt file, the first time you press a formatting key QUILL asks — once — what you want: treat the document as Markdown, convert it to Rich Text, or stay plain. Answer "stay plain" and it never nags again.
+
+### Editable Word documents — with your original protected
+
+A .docx can now open for real rich editing and save back as a genuine Word file. Because Word documents can carry things QUILL's editor cannot — tables, images, comments, tracked changes, headers and footers — QUILL is honest about it at the door:
+
+- A **clean** Word file (nothing QUILL can't carry) opens rich, directly.
+- A file **with** those features asks first, naming them specifically: open for reading and plain editing (the safe default), edit as Rich Text knowing exactly what a save cannot keep, or edit a copy and leave the original untouched.
+- The first rich save over a flagged original writes a **timestamped backup** next to it, automatically. QUILL never silently rewrites your Word file.
+
+### The Document Format switcher
+
+**Format > Document Format...** — or Ctrl+Shift+Grave, K; or the command palette; or the new **Format** cell on the status bar, which shows your current format and opens the switcher when you press Enter on it — moves the current document between Plain text, Markdown, HTML, Rich Text (RTF), and Word (.docx), mid-session.
+
+Switching a Markdown draft to Rich Text turns your `# headings` into real headings. Switching a rich document to Markdown warns first — with the specific list of anything that will not survive — before converting. And a switched document never silently overwrites its old file: the next save proposes the new name (`notes.md` becomes `notes.rtf`) so the format on disk always matches the extension.
+
+### On the Mac
+
+The macOS editor is the same native text view it has always been, and with the optional PyObjC component installed, rich mode works there too — same commands, same heading sizes, same behavior. Without it, RTF and Word documents open converted, exactly as they did before: nothing breaks, nothing is lost, and VoiceOver keeps reading the same native control it always has. We will promote the native Mac path fully once it passes the same live-hardware verification the braille fix did on Windows.
+
+**How to get PyObjC and test rich mode on your Mac.** PyObjC is the small, well-established open-source bridge that lets QUILL talk to macOS's own text engine; it is not bundled, so testing is strictly opt-in. To install it:
+
+1. Open **Terminal** (press Cmd+Space, type "Terminal", press Return).
+2. If you run QUILL from source or a pip install, type: `pip install "pyobjc-framework-Cocoa>=10.3"` and press Return. If you installed QUILL as an app bundle, use the same Python that runs QUILL — from the QUILL source folder that is: `python -m pip install ".[mac]"` — the `mac` extra resolves to the identical PyObjC package.
+3. Restart QUILL, then open any .rtf file. If the install worked, the document opens formatted and pressing Ctrl+B on a selection announces "Bold" with genuine bold applied; **Describe Formatting at Cursor** reads the live formatting back ("Helvetica, 14 point, bold").
+4. If PyObjC is not found, nothing changes: the same .rtf opens converted to editable text with a status message saying so — that is the designed fallback, not an error.
+
+**What we need from VoiceOver users, specifically:** with rich mode active, does VoiceOver still read the editor normally (typing echo, arrow-key review, selection announcements)? Does formatted text — a bold word, a sized heading — read and navigate correctly? Tell us either way through **Help > Report a Bug**, naming your macOS version. Exactly as with the Windows braille fix in Beta 2, real-hardware reports are the promotion gate: the native Mac path becomes the default the moment it passes this test in the field.
 
 ---
 
@@ -138,7 +192,9 @@ The Offline Edition installer is meant to be a genuinely self-contained build: e
 
 ### What's still on the list
 
-Two components don't have this treatment yet: **Piper voices** and **Node.js-based Quillins**. Both still need a connection the first time you use them, even under the Offline Edition. This is a known, tracked gap rather than an oversight, and we expect to close it in a future release.
+**Piper gets the same treatment in this release**: the Offline Edition now bundles Piper's engine — integrity-checked against the same pinned fingerprint at build time and again at install time — plus a ready-to-speak starter voice (Lessac, US English, medium quality). Pick Piper on an Offline Edition install and it talks without ever touching the network; more voices download from the online catalog whenever you want them.
+
+One component doesn't have this treatment yet: **Node.js-based Quillins** still need a connection the first time you use one, even under the Offline Edition. This is a known, tracked gap rather than an oversight.
 
 ## A note on how this release came together
 

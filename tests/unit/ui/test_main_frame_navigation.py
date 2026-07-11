@@ -2526,9 +2526,7 @@ def test_extract_and_reveal_portable_update_success(monkeypatch: pytest.MonkeyPa
 
     frame._extract_and_reveal_portable_update(release, target)
 
-    assert extract_calls == [
-        (target, target.parent / "Quill-Portable-0.9.0 Beta 3")
-    ]
+    assert extract_calls == [(target, target.parent / "Quill-Portable-0.9.0 Beta 3")]
     assert revealed == [target.parent / "Quill-Portable-0.9.0 Beta 3"]
     assert any("extracted" in msg.lower() for msg in frame._announcements)
     assert frame._status_message == "Extracted update 0.9.0 Beta 3"
