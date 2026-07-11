@@ -28,6 +28,7 @@ through PyGithub, which is the single audited transport for GitHub (see
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -162,6 +163,32 @@ class GitHubRelease:
 
 
 @dataclass(frozen=True, slots=True)
+class GitHubPullFile:
+    """One changed file in a pull request (the PR diff viewer's row model)."""
+
+    filename: str
+    status: str = ""  # added / removed / modified / renamed
+    additions: int = 0
+    deletions: int = 0
+    changes: int = 0
+    previous_filename: str = ""
+    patch: str = ""
+
+
+@dataclass(frozen=True, slots=True)
+class GitHubPullDiff:
+    """A pull request's changed-file inventory plus the refs to fetch content at."""
+
+    number: int
+    title: str
+    base_ref: str
+    base_sha: str
+    head_ref: str
+    head_sha: str
+    files: tuple[GitHubPullFile, ...] = ()
+
+
+@dataclass(frozen=True, slots=True)
 class GitHubWorkflowRun:
     """A GitHub Actions workflow run."""
 
@@ -262,6 +289,11 @@ class GitHubItemsProvider:
         else:
             self._gh = gh.Github()
         self._token = token
+
+    @property
+    def is_authenticated(self) -> bool:
+        """True when the session carries a token (batch actions require one)."""
+        return bool(self._token)
 
     def _repo(self, full_name: str) -> Any:
         gh = _get_gh_module()
@@ -541,6 +573,110 @@ class GitHubItemsProvider:
 
     # ------------------------------------------------------------------
     # Detail (a single item with its comment thread for the details pane)
+
+    def fetch_pull_diff(self, full_name: str, number: int) -> GitHubPullDiff:
+        """The changed-file inventory for PR *number* (the diff viewer's model).
+
+        Carries base/head refs and shas so file *content* can be fetched at
+        both sides and run through QUILL's own compare engine — an accessible
+        difference walk instead of a raw unified patch.
+        """
+        repo = self._repo(full_name)
+        try:
+            pull = repo.get_pull(number)
+            rows = _take(pull.get_files(), 300)
+        except Exception as exc:  # noqa: BLE001 - surface as a coded error
+            raise GitHubItemsError(f"Could not load the pull request's files: {exc}") from exc
+        files = tuple(
+            GitHubPullFile(
+                filename=_safe_str(getattr(row, "filename", "")),
+                status=_safe_str(getattr(row, "status", "")),
+                additions=int(getattr(row, "additions", 0) or 0),
+                deletions=int(getattr(row, "deletions", 0) or 0),
+                changes=int(getattr(row, "changes", 0) or 0),
+                previous_filename=_safe_str(getattr(row, "previous_filename", "") or ""),
+                patch=_safe_str(getattr(row, "patch", "") or ""),
+            )
+            for row in rows
+        )
+        base = getattr(pull, "base", None)
+        head = getattr(pull, "head", None)
+        return GitHubPullDiff(
+            number=number,
+            title=_safe_str(getattr(pull, "title", "")),
+            base_ref=_safe_str(getattr(base, "ref", "")) if base is not None else "",
+            base_sha=_safe_str(getattr(base, "sha", "")) if base is not None else "",
+            head_ref=_safe_str(getattr(head, "ref", "")) if head is not None else "",
+            head_sha=_safe_str(getattr(head, "sha", "")) if head is not None else "",
+            files=files,
+        )
+
+    def fetch_file_text(self, full_name: str, path: str, ref: str) -> str:
+        """A file's text content at *ref*, for the compare engine's two sides.
+
+        Returns ``""`` for a file that does not exist at that ref (an added
+        file has no base side; a deleted file has no head side) and raises a
+        clear coded error for binary or over-1MB content the API cannot
+        deliver.
+        """
+        repo = self._repo(full_name)
+        gh = _get_gh_module()
+        try:
+            blob = repo.get_contents(path, ref=ref)
+        except gh.GithubException as exc:
+            if getattr(exc, "status", None) == 404:
+                return ""
+            raise GitHubItemsError(f"Could not fetch {path} at {ref[:12]}: {exc}") from exc
+        except Exception as exc:  # noqa: BLE001
+            raise GitHubItemsError(f"Could not fetch {path} at {ref[:12]}: {exc}") from exc
+        try:
+            data = blob.decoded_content
+        except Exception as exc:  # noqa: BLE001 - >1MB or submodule content
+            raise GitHubItemsError(
+                f"{path} cannot be compared here (binary or over GitHub's 1 MB "
+                f"content limit): {exc}"
+            ) from exc
+        try:
+            return bytes(data).decode("utf-8")
+        except (UnicodeDecodeError, TypeError) as exc:
+            raise GitHubItemsError(f"{path} is not a text file (binary content).") from exc
+
+    def update_items(
+        self,
+        full_name: str,
+        numbers: Sequence[int],
+        *,
+        state: str | None = None,
+        add_labels: Sequence[str] = (),
+    ) -> list[str]:
+        """Apply a batch change to issues/PRs; returns per-item error strings.
+
+        The one deliberate exception to the viewer's read-only rule (Unified
+        GitHub Management "Batch Operations"), and still tightly scoped:
+        close/reopen (``state``) and adding labels — no deletions, no content
+        edits. Requires an authenticated session (the anonymous viewer stays
+        fully read-only), and the UI gates every call behind an explicit
+        consent dialog naming the exact items. Failures are collected
+        per-item so one bad number never aborts the rest.
+        """
+        if not self._token:
+            raise GitHubItemsError(
+                "Batch changes need a signed-in GitHub account; the anonymous viewer is read-only."
+            )
+        if state not in (None, "open", "closed"):
+            raise GitHubItemsError(f"Unknown state {state!r}; use open or closed.")
+        repo = self._repo(full_name)
+        errors: list[str] = []
+        for number in numbers:
+            try:
+                issue = repo.get_issue(number=int(number))
+                if state is not None:
+                    issue.edit(state=state)
+                if add_labels:
+                    issue.add_to_labels(*[str(label) for label in add_labels])
+            except Exception as exc:  # noqa: BLE001 - collect, keep going
+                errors.append(f"#{number}: {exc}")
+        return errors
 
     def search_items(
         self,

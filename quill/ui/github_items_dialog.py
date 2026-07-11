@@ -79,12 +79,16 @@ class GitHubItemsDialog:
         *,
         initial_repo: str = "",
         announce_cb: Callable[[str], None] | None = None,
+        ai_acquire_cb: Callable[[], Callable[[str], str] | None] | None = None,
     ) -> None:
         import wx
 
         self._wx = wx
         self._provider = provider
         self._announce = announce_cb or (lambda _m: None)
+        # Resolves QUILL's AI connection on demand (may prompt; UI thread) and
+        # returns a summarize(text) callable safe to run off-thread, or None.
+        self._ai_acquire = ai_acquire_cb
         self._repo = initial_repo.strip()
         self._view = VIEW_ISSUES
         self._show = "both"  # issues / prs / both (issues view only)
@@ -195,12 +199,14 @@ class GitHubItemsDialog:
         filt.Add(self._mode_choice, 1, wx.EXPAND)
         root.Add(filt, 0, wx.EXPAND | wx.LEFT | wx.RIGHT | wx.BOTTOM, 10)
 
-        # List
+        # List. Multi-select so batch actions can operate on several checked
+        # rows at once (Unified GitHub Management "Batch Operations"); the
+        # details pane follows the most recently selected row.
         self._list = wx.ListCtrl(
             panel,
-            style=wx.LC_REPORT | wx.LC_SINGLE_SEL | wx.BORDER_SIMPLE,
+            style=wx.LC_REPORT | wx.BORDER_SIMPLE,
         )
-        self._list.SetName("GitHub items list")
+        self._list.SetName("GitHub items list; select several rows for batch actions")
         root.Add(self._list, 2, wx.EXPAND | wx.LEFT | wx.RIGHT, 10)
 
         # Details
@@ -226,9 +232,25 @@ class GitHubItemsDialog:
         self._open_btn.SetName("Open selected item in browser")
         self._goto_btn = wx.Button(panel, label="Go To #...")
         self._goto_btn.SetName("Go to issue or PR by number")
+        self._diff_btn = wx.Button(panel, label="&Diff...")
+        self._diff_btn.SetName(
+            "View the selected pull request's changed files as accessible comparisons"
+        )
+        self._summarize_btn = wx.Button(panel, label="Summari&ze")
+        self._summarize_btn.SetName("Summarize the selected discussion with AI")
+        self._batch_btn = wx.Button(panel, label="&Batch...")
+        self._batch_btn.SetName("Batch actions on the checked items: close, reopen, add label")
         cancel_btn = wx.Button(panel, wx.ID_CANCEL, "Close")
         cancel_btn.SetName("Close dialog")
-        for b in (self._refresh_btn, self._more_btn, self._open_btn, self._goto_btn):
+        for b in (
+            self._refresh_btn,
+            self._more_btn,
+            self._open_btn,
+            self._goto_btn,
+            self._diff_btn,
+            self._summarize_btn,
+            self._batch_btn,
+        ):
             btn_row.Add(b, 0, wx.RIGHT, 6)
         btn_row.AddStretchSpacer()
         btn_row.Add(cancel_btn)
@@ -256,6 +278,9 @@ class GitHubItemsDialog:
         self._favorites_btn.Bind(wx.EVT_BUTTON, self._on_favorites_menu)
         self._search_btn.Bind(wx.EVT_BUTTON, self._on_search)
         self._search_ctrl.Bind(wx.EVT_TEXT_ENTER, self._on_search)
+        self._diff_btn.Bind(wx.EVT_BUTTON, lambda _e: self._on_diff())
+        self._summarize_btn.Bind(wx.EVT_BUTTON, lambda _e: self._on_summarize())
+        self._batch_btn.Bind(wx.EVT_BUTTON, self._on_batch_menu)
         self.dialog.Bind(wx.EVT_CHAR_HOOK, self._on_char_hook)
         self._apply_filter_enablement()
         self._rebuild_columns()
@@ -689,6 +714,202 @@ class GitHubItemsDialog:
             self._announce(f"{entry.title} is already a favorite")
 
     # ------------------------------------------------------------------
+    # PR diff / AI summary / batch actions (Unified GitHub Management)
+
+    def _selected_indices(self) -> list[int]:
+        indices: list[int] = []
+        index = self._list.GetFirstSelected()
+        while index != -1:
+            indices.append(index)
+            index = self._list.GetNextSelected(index)
+        return indices
+
+    def _on_diff(self) -> None:
+        """Open the selected PR's changed files in the accessible diff viewer."""
+        idx = self._list.GetFirstSelected()
+        model = self._rows[idx] if 0 <= idx < len(self._rows) else None
+        if not isinstance(model, GitHubItem) or not model.is_pr:
+            self._announce("Select a pull request row first; Diff works on PRs.")
+            return
+        self._set_status(f"Loading files for PR #{model.number}...")
+
+        def worker() -> None:
+            wx = self._wx
+            try:
+                diff = self._provider.fetch_pull_diff(self._repo, model.number)
+            except GitHubItemsError as exc:
+                wx.CallAfter(self._set_status, f"Error: {exc}")
+                return
+            wx.CallAfter(self._show_diff_dialog, diff)
+
+        threading.Thread(  # GATE-40-OK: PR file inventory fetch.
+            target=worker, daemon=True
+        ).start()
+
+    def _show_diff_dialog(self, diff: object) -> None:
+        from quill.ui.github_pr_diff_dialog import GitHubPullDiffDialog
+
+        if not getattr(diff, "files", ()):
+            self._set_status("This pull request has no changed files to compare.")
+            return
+        self._set_status(f"{len(diff.files)} changed files.")
+        GitHubPullDiffDialog(
+            self.dialog, self._provider, self._repo, diff, announce_cb=self._announce
+        ).show()
+
+    def _on_summarize(self) -> None:
+        """TL;DR the selected issue/PR thread through QUILL's AI."""
+        idx = self._list.GetFirstSelected()
+        model = self._rows[idx] if 0 <= idx < len(self._rows) else None
+        if not isinstance(model, GitHubItem):
+            self._announce("Select an issue or pull request to summarize.")
+            return
+        if self._ai_acquire is None:
+            self._announce("AI summaries are unavailable here.")
+            return
+        summarize = self._ai_acquire()  # may prompt for AI setup (UI thread)
+        if summarize is None:
+            self._announce("AI is not configured; summary cancelled.")
+            return
+        self._set_status(f"Summarizing #{model.number} with AI...")
+
+        def worker() -> None:
+            wx = self._wx
+            from quill.core.github.thread_summary import compose_thread_text
+
+            try:
+                comments = self._provider.fetch_issue_comments(self._repo, model.number)
+            except GitHubItemsError:
+                comments = list(self._comments)
+            thread_text = compose_thread_text(model.title, model.author, model.body, comments)
+            try:
+                summary = summarize(thread_text)
+            except Exception as exc:  # noqa: BLE001 - surface, never crash
+                wx.CallAfter(self._set_status, f"Summary failed: {exc}")
+                return
+            wx.CallAfter(self._on_summary_ready, model.number, summary)
+
+        threading.Thread(  # GATE-40-OK: one bounded completion per request.
+            target=worker, daemon=True
+        ).start()
+
+    def _on_summary_ready(self, number: int, summary: str) -> None:
+        existing = self._details.GetValue()
+        self._details.SetValue(f"AI SUMMARY of #{number}:\n{summary}\n\n{'-' * 40}\n{existing}")
+        self._details.SetFocus()
+        self._details.SetInsertionPoint(0)
+        self._announce(f"Summary ready for #{number}. {summary}")
+
+    def _on_batch_menu(self, _event: object) -> None:
+        """Batch close / reopen / label over the selected rows, behind consent."""
+        wx = self._wx
+        if self._view != VIEW_ISSUES:
+            self._announce("Batch actions work in the Issues & PRs view.")
+            return
+        if not self._provider.is_authenticated:
+            self._announce(
+                "Batch actions need a signed-in GitHub account; this session is read-only."
+            )
+            return
+        selected = self._selected_indices()
+        numbers = [
+            self._rows[i].number
+            for i in selected
+            if 0 <= i < len(self._rows) and isinstance(self._rows[i], GitHubItem)
+        ]
+        if not numbers:
+            self._announce("Select one or more issue or PR rows first.")
+            return
+        menu = wx.Menu()
+        close_id, reopen_id, label_id = wx.NewIdRef(), wx.NewIdRef(), wx.NewIdRef()
+        count = len(numbers)
+        menu.Append(close_id, f"Close {count} selected")
+        menu.Append(reopen_id, f"Reopen {count} selected")
+        menu.Append(label_id, f"Add label to {count} selected...")
+
+        def _on_pick(event: object) -> None:
+            picked = int(event.GetId())
+            if picked == int(close_id):
+                self._run_batch(numbers, state="closed")
+            elif picked == int(reopen_id):
+                self._run_batch(numbers, state="open")
+            elif picked == int(label_id):
+                dlg = wx.TextEntryDialog(
+                    self.dialog, "Label to add to the selected items:", "Add label"
+                )
+                if self._show_modal(dlg, "Add label") == wx.ID_OK:
+                    label = dlg.GetValue().strip()
+                    if label:
+                        self._run_batch(numbers, add_labels=(label,))
+                dlg.Destroy()
+
+        menu.Bind(wx.EVT_MENU, _on_pick)
+        try:
+            self._batch_btn.PopupMenu(menu)
+        finally:
+            menu.Destroy()
+
+    def _run_batch(
+        self,
+        numbers: list[int],
+        *,
+        state: str | None = None,
+        add_labels: tuple[str, ...] = (),
+    ) -> None:
+        wx = self._wx
+        # The consent surface: name the exact action and the exact items —
+        # this is the one place the viewer writes to GitHub.
+        action = (
+            f"Close {len(numbers)} item(s)"
+            if state == "closed"
+            else f"Reopen {len(numbers)} item(s)"
+            if state == "open"
+            else f"Add label {add_labels[0]!r} to {len(numbers)} item(s)"
+        )
+        listing = ", ".join(f"#{n}" for n in numbers[:20])
+        if len(numbers) > 20:
+            listing += f" and {len(numbers) - 20} more"
+        confirm = wx.MessageDialog(
+            self.dialog,
+            f"{action} in {self._repo}?\n\n{listing}\n\n"
+            "This changes the items on GitHub for everyone watching them.",
+            "Confirm batch change",
+            wx.YES_NO | wx.NO_DEFAULT | wx.ICON_WARNING,
+        )
+        if hasattr(confirm, "SetYesNoLabels"):
+            confirm.SetYesNoLabels(action, "Cancel")
+        try:
+            answer = self._show_modal(confirm, "Confirm batch change")
+        finally:
+            confirm.Destroy()
+        if answer != wx.ID_YES:
+            self._announce("Batch change cancelled.")
+            return
+        self._set_status(f"{action}...")
+
+        def worker() -> None:
+            try:
+                errors = self._provider.update_items(
+                    self._repo, numbers, state=state, add_labels=add_labels
+                )
+            except GitHubItemsError as exc:
+                wx.CallAfter(self._set_status, f"Error: {exc}")
+                return
+            wx.CallAfter(self._on_batch_done, len(numbers), errors)
+
+        threading.Thread(  # GATE-40-OK: explicit, consented batch write.
+            target=worker, daemon=True
+        ).start()
+
+    def _on_batch_done(self, requested: int, errors: list[str]) -> None:
+        done = requested - len(errors)
+        message = f"Batch change applied to {done} of {requested} item(s)."
+        if errors:
+            message += " Failed: " + "; ".join(errors[:5])
+        self._set_status(message)
+        self._reload()
+
+    # ------------------------------------------------------------------
     # View switching + filter enablement
 
     def _on_view_changed(self, _event: object) -> None:
@@ -708,6 +929,8 @@ class GitHubItemsDialog:
     def _apply_filter_enablement(self) -> None:
         issues_view = self._view == VIEW_ISSUES
         for ctrl in (self._show_choice, self._state_choice, self._sort_choice):
+            ctrl.Enable(issues_view)
+        for ctrl in (self._diff_btn, self._summarize_btn, self._batch_btn):
             ctrl.Enable(issues_view)
 
     # ------------------------------------------------------------------

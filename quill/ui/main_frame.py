@@ -4270,12 +4270,26 @@ class MainFrame(
     def _on_frame_activate(self, event: object) -> None:
         # On first open or Alt-Tab, wx may land focus on the splitter or
         # panel.  Redirect to the editor so JAWS announces the document (#170).
-        active = getattr(event, "GetActive", lambda: True)()
-        if active:
-            self._wx.CallAfter(self._return_focus_to_editor)
+        #
+        # #956: this handler runs inside wx's native event dispatch, so any
+        # exception that escapes it (macOS raised a wxArrayString
+        # "nIndex < m_nCount" C++ assertion here mid-Notebook-creation, while
+        # dialogs were tearing down and re-activating the frame) surfaces as
+        # "SystemError: ActivateEvent returned a result with an exception set"
+        # and crashes the app. Frame activation is a convenience, never worth
+        # the process: contain everything, best-effort.
+        try:
+            active = getattr(event, "GetActive", lambda: True)()
+            if active:
+                self._wx.CallAfter(self._return_focus_to_editor)
+        except Exception:  # noqa: BLE001 - activation must never crash (#956)
+            pass
         skip = getattr(event, "Skip", None)
         if callable(skip):
-            skip()
+            try:
+                skip()
+            except Exception:  # noqa: BLE001 - see above (#956)
+                pass
 
     def _apply_silent_accessible(self, widget: object) -> None:
         """Replace a layout container's built-in accessible so screen readers
@@ -4391,7 +4405,13 @@ class MainFrame(
                     containers.add(obj)
         containers.discard(None)
         if focused in containers:
-            editor.SetFocus()
+            try:
+                editor.SetFocus()
+            except RuntimeError:
+                # The tab (and its C++ editor) can be torn down between the
+                # CallAfter that queued us and now — e.g. mid-Notebook
+                # creation, the #956 crash window. Focus is a nicety; skip.
+                return
 
     def _bind_editor_events(self, editor: object) -> None:
         binder = getattr(editor, "bind_editor_events", None)
@@ -26144,18 +26164,43 @@ class MainFrame(
         )
 
     def install_starter_snippet_packs(self) -> None:
+        # #959: wx.MultiChoiceDialog's checked list was inaccessible with NVDA —
+        # Space toggled an invisible check with no feedback, and Enter on a
+        # merely-highlighted row said "No packs selected". A plain extended-
+        # selection ListBox announces selection state natively, arrowing to a
+        # pack selects it (so Enter installs the highlighted pack with no extra
+        # step), and Shift/Ctrl+arrows extend for multiple packs.
         wx = self._wx
         packs = starter_pack_names()
-        with wx.MultiChoiceDialog(
-            self.frame,
-            "Choose starter snippet packs to install:",
-            "Install Starter Snippet Packs",
-            choices=packs,
-        ) as dialog:
+        dialog = wx.Dialog(self.frame, title="Install Starter Snippet Packs")
+        root = wx.BoxSizer(wx.VERTICAL)
+        root.Add(
+            wx.StaticText(dialog, label="Choose starter snippet packs to install:"),
+            0,
+            wx.ALL,
+            8,
+        )
+        chooser = wx.ListBox(dialog, choices=packs, style=wx.LB_EXTENDED)
+        chooser.SetName(
+            "Starter snippet packs. Arrow to a pack and press Enter to install "
+            "it; hold Shift or Control to select more than one."
+        )
+        if packs:
+            chooser.SetSelection(0)
+        root.Add(chooser, 1, wx.EXPAND | wx.LEFT | wx.RIGHT, 8)
+        buttons = dialog.CreateStdDialogButtonSizer(wx.OK | wx.CANCEL)
+        root.Add(buttons, 0, wx.EXPAND | wx.ALL, 8)
+        dialog.SetSizerAndFit(root)
+        dialog.SetMinSize((420, 320))
+        apply_modal_ids(dialog, affirmative_id=wx.ID_OK, escape_id=wx.ID_CANCEL)
+        chooser.SetFocus()
+        try:
             if self._show_modal_dialog(dialog, "Install Starter Snippet Packs") != wx.ID_OK:
                 self._set_status("Starter snippet pack installation cancelled")
                 return
-            selections = dialog.GetSelections()
+            selections = list(chooser.GetSelections())
+        finally:
+            dialog.Destroy()
         if not selections:
             self._set_status("No starter snippet packs selected")
             return

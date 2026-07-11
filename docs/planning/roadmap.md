@@ -323,16 +323,15 @@ profiles (#426)**.
 
 ## 7. Unified GitHub Management — deferred items (2026-07-11)
 
-The GHManage + fastgh unification review merged its first tranche into the
-GitHub Items viewer in 0.9.0 Beta 3 (pinned repositories, favorites, full
-GitHub-search-syntax filtering, local git sync; PRD §25.12). The review
-document itself is retired; the items below carry forward as the deferred
-backlog, roughly in value order:
+The GHManage + fastgh unification review merged two tranches into the
+GitHub Items viewer in 0.9.0 Beta 3 (tranche 1: pinned repositories,
+favorites, full GitHub-search-syntax filtering, local git sync; tranche 2:
+the PR diff viewer through the compare engine, consent-gated batch
+close/reopen/label, AI thread summaries; PRD §25.12). The review document
+itself is retired; the items below carry forward as the deferred backlog,
+roughly in value order:
 
-- **AI summarization** — "TL;DR this discussion/PR" through QUILL's AI agents.
 - **Open in QUILL** — open a file from a PR diff or commit straight into the editor.
-- **PR diff viewer** — file-level diff inside the details pane (fastgh has the models).
-- **Batch operations** — multi-select close/reopen/label (requires leaving read-only; new consent surface).
 - **Vault linking** — "Link to Vault" reference notes for issues/PRs.
 - **Branch comparison** — side-by-side compare of two branches/tags.
 - **Real-time notifications** — poll-based activity in the notification tray.

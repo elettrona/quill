@@ -98,6 +98,22 @@ A user asked a very reasonable question after downloading an update and restarti
 
 "Go to Entry in Notebook" and its sibling tree-navigator dialogs could crash with a `wxAssertionError` on open. We traced this to a fix that had already landed on the development branch before Beta 2's code froze but is worth confirming here for anyone who hit it on a Beta 2 build: the dialog no longer tries to expand its (intentionally hidden) root node.
 
+### Narrator users: no more double speech
+
+George Kerscher reported that running Narrator, QUILL's self-voicing spoke at the same time as Narrator — most audibly in the command palette. The cause: QUILL *did* detect Narrator, but it has no way to route announcements through Narrator the way it does for JAWS and NVDA, so its own SAPI voice filled the gap — right on top of One Core. The rule is now absolute: when a screen reader is running, QUILL never self-voices. If it can't hand the announcement to your reader, the message goes to the status bar instead, where Narrator can read it on your terms.
+
+### Install Starter Snippet Packs works properly with a screen reader
+
+Reported against Beta 2: the pack list needed a Space press on an invisible checkbox — with no feedback — before Enter would do anything. It's now a plain multi-select list: arrow to `daily-writing`, press Enter, it installs. Hold Shift or Ctrl to pick several; your screen reader announces what's selected as you move.
+
+### A macOS crash while creating a Notebook
+
+Shannon Dyer hit a hard crash ("SystemError: ActivateEvent returned a result with an exception set") while creating a Notebook on macOS — a window-activation handler ran into a wx assertion while dialogs were tearing down, and the whole app went with it. Window activation only exists to put focus back in your document; it is now fully contained and can never take the process down.
+
+### Crash reports now say which beta you're on
+
+Two crash reports arrived this week for a bug that was already fixed in Beta 2 — and they looked like regressions because every 0.9.0 beta reported itself as just "0.9.0." Crash and feedback reports now carry the full version ("0.9.0 Beta 2"), so a report from an older install is recognizable at a glance. If you see the Profiles and Features crash (`_LazyString`), please update to the current beta: it was fixed there.
+
 ### Quill no longer offers crash recovery for exits with nothing to diagnose
 
 Two automatic crash-recovery submissions showed logs with only routine background activity right up to the moment QUILL stopped — no exception, no error, nothing actionable. That pattern is consistent with the process being closed externally (a forced shutdown, a killed task) rather than a bug inside QUILL. This is now a real fix, not just an observation: Quill checks the log for genuine error evidence (an `ERROR`, `CRITICAL`, or a traceback) before offering crash recovery at all. An inconclusive exit no longer shows the "Quill detected an unclean exit" dialog — there's simply nothing to prompt you about. A real crash still logs an error and still offers recovery exactly as it always has; only the no-evidence case changed. Your autosave snapshot is never touched by this — it's still on disk either way, this just controls whether Quill asks you about it.
@@ -113,13 +129,27 @@ Beta 2 introduced the read-only GitHub Items viewer. Beta 3 merges the first tra
 - **Search with full GitHub syntax.** Press **Ctrl+F**, type any GitHub search query — `label:bug is:open crash`, `author:alice is:pr` — and press Enter. Results are scoped to the loaded repository; clearing the search restores the normal list.
 - **Local git sync.** The repository field now fills itself in when the document you are editing lives inside a git clone whose origin points at GitHub — any file, however you opened it, not just files opened through QUILL's own GitHub commands.
 
-The viewer stays read-only against GitHub, behind the same consent, token, and Safe Mode gates as every other GitHub feature. The rest of the unification review — PR diffs, batch operations, AI thread summaries, and more — is on the roadmap.
+And the second tranche landed in this same release:
+
+- **PR diffs, read the QUILL way.** Select a pull request, press **Diff...**, and browse its changed files in an accessible list. Each file's before-and-after content runs through the same compare engine as **Compare Documents**, so what you hear is a numbered difference walk — "Difference 2 of 5. Text changed at line 41. main: ... this PR: ..." — with the actual changed words described, never a wall of plus and minus signs. A brand-new file reads as its content; a deleted file says exactly that; a binary or oversized file falls back honestly to its change counts.
+- **Batch operations, behind real consent.** Select several rows (the list is multi-select now), press **Batch...**, and close, reopen, or add a label to all of them at once. This is the one deliberate exception to the viewer's read-only rule, and it is fenced accordingly: it only works signed in — the anonymous viewer stays fully read-only — and a confirmation names the exact action and the exact item numbers before anything changes on GitHub. If some items fail, you hear which ones and why; the rest still go through.
+- **AI thread summaries.** A hundred-comment issue at 11 pm is nobody's friend. Press **Summarize** on any issue or PR and QUILL's AI condenses the whole discussion into a short, plain-prose TL;DR — what it's about, where it stands, what's still open, and the apparent next step — read into the details pane and announced. It uses the same AI connection and consent gates as every other QUILL AI feature, and nothing runs until you press the button.
+
+The viewer otherwise stays read-only against GitHub, behind the same consent, token, and Safe Mode gates as every other GitHub feature. The rest of the unification review — branch comparison, notifications, a wiki browser, and more — is on the roadmap.
 
 ## Headers and footers now live inside your Word and RTF files
 
 The Header/Footer Builder from Beta 2 wrote headers and footers when *printing*; the files themselves didn't carry them. Now they do: save as **.docx** and your header/footer becomes a real Word header and footer — with a live page-number field Word keeps renumbering as the document changes — and save as **.rtf** writes the equivalent native header/footer groups. Roman numerals, a custom starting page number, and a different first page all carry through. A blank spec changes nothing, and a header can never be the reason a save fails.
 
 ## New: eight small, accessibility-first additions
+
+### The Clipboard Collector went system-wide
+
+Dean Martineau asked for the EdSharp behavior: turn on the collector, then copy anywhere — a browser, an email, a terminal — and it all lands in your QUILL document. That's exactly what it does now. While **Toggle Clipboard Collector** is on, QUILL watches the system clipboard (a single cheap check, about once a second, that touches the clipboard only when something actually changed) and appends each new copy to the open document, saving as it goes. Copies made inside QUILL still collect instantly, and each distinct copy is collected exactly once.
+
+### QUILL as Thunderbird's external editor
+
+Martin Courcelles asked to write his email in QUILL. Good news: it already works — QUILL's one-process-per-file behavior is exactly what Thunderbird's "External Editor Revived" add-on expects — and the user guide now has a step-by-step "Using QUILL as an external editor" section: install the add-on, point it at `quill.exe`, press Ctrl+E in a compose window, write with every QUILL feature, save and close, and the text drops back into Thunderbird.
 
 ### Quill can add itself to your PATH
 
@@ -205,9 +235,9 @@ The Offline Edition installer is meant to be a genuinely self-contained build: e
 - **Faster Whisper, Vosk, and MP3 chapter-marker support** — three smaller optional add-ons — get the same treatment. Choosing any of them under the Offline Edition build now works without a connection.
 - **Vosk's install got more reliable as a side effect.** Vosk always needed one small supporting library that, until now, could only come from the internet even when Vosk's own file was already verified and local. That gap closes too.
 
-### What's still on the list
+- **Piper gets the same treatment in this release**: the Offline Edition now bundles Piper's engine — integrity-checked against the same pinned fingerprint at build time and again at install time — plus a ready-to-speak starter voice (Lessac, US English, medium quality). Pick Piper on an Offline Edition install and it talks without ever touching the network; more voices download from the online catalog whenever you want them.
 
-**Piper gets the same treatment in this release**: the Offline Edition now bundles Piper's engine — integrity-checked against the same pinned fingerprint at build time and again at install time — plus a ready-to-speak starter voice (Lessac, US English, medium quality). Pick Piper on an Offline Edition install and it talks without ever touching the network; more voices download from the online catalog whenever you want them.
+### What's still on the list
 
 One component doesn't have this treatment yet: **Node.js-based Quillins** still need a connection the first time you use one, even under the Offline Edition. This is a known, tracked gap rather than an oversight.
 

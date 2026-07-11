@@ -6944,10 +6944,32 @@ GHManage + fastgh review):**
   (worktree pointers followed) whose `origin` remote parses as a GitHub URL —
   covering files opened from disk, not just through Open-from-GitHub.
 
-The review's remaining items (batch operations, PR diff viewer, branch
-comparison, notifications, wiki browser, AI summarization, vault linking, a
-`gh`-CLI hybrid engine, metadata caching, an in-viewer command palette) stay
-deferred; see the roadmap's "Unified GitHub Management — deferred" list.
+**Tranche 2 (same release):**
+
+- **PR diff viewer** (`quill/ui/github_pr_diff_dialog.py` +
+  `render_pull_file_diff` in the view-model): the **Diff...** button lists a
+  PR's changed files (`fetch_pull_diff`) and renders each file's base/head
+  content (`fetch_file_text` at the PR shas) through
+  `quill.core.compare_service` — the Compare Documents difference walk, not a
+  unified patch. 404 at a ref → empty side (added/deleted files read
+  plainly); binary/oversized content fails closed to +/- counts and GitHub's
+  patch text.
+- **Batch operations** (`GitHubItemsProvider.update_items`): multi-select
+  close/reopen/add-label — the one deliberate write path, requiring an
+  authenticated session (anonymous stays read-only), gated by a consent
+  dialog naming the exact action and item numbers, with per-item error
+  collection. No deletions, no content edits.
+- **AI thread summaries** (`quill/core/github/thread_summary.py`): the
+  **Summarize** button flattens the thread (middle-out truncation at 24k
+  chars) and runs one bounded completion through
+  `generate_assistant_response`, resolved on demand via the same
+  `_ai_require_connection` gate as every keyed AI feature — opening the
+  viewer never prompts for AI setup.
+
+The review's remaining items (branch comparison, notifications, wiki
+browser, vault linking, a `gh`-CLI hybrid engine, metadata caching, an
+in-viewer command palette, context sharing) stay deferred; see the roadmap's
+"Unified GitHub Management — deferred" list.
 
 **Views.** A single **View** switcher selects one of:
 
@@ -10537,6 +10559,30 @@ cache is redirected to a writable per-user dir so SAPI initialises under a
 read-only install, and screen-reader detection enumerates processes through the
 Windows Toolhelp API (ctypes) rather than spawning ``tasklist``, so it never
 creates a console window a screen reader or braille display would announce.
+
+**Strengthened in 0.9.0 Beta 3 (#966, Narrator double-speech):** the
+``announce()`` SAPI branch previously let ``force_speech`` bypass the
+live-reader suppression. That branch is only reachable when *no* speech
+bridge could be acquired (Prism/accessible_output2 drive JAWS/NVDA before
+this point), so a detected-but-unbridged reader there is Narrator — and the
+bypass made QUILL's SAPI voice talk over One Core. The contract is now
+unconditional: **a running screen reader always suppresses the self-voice**,
+force_speech included; unbridged-reader announcements land in the status bar.
+``force_speech`` retains its purpose on the bridged paths (interrupting the
+reader's current utterance) and for users with no reader running.
+
+### System-wide Clipboard Collector (shipped 0.9.0 Beta 3, #964)
+
+The EDS-11 Clipboard Collector (Power Tools) originally captured only copies
+made inside QUILL (an ``EVT_TEXT_COPY`` bind on the editor). Per the EdSharp
+parity request, it is now system-wide: while toggled on, a 750 ms timer polls
+the OS clipboard **change counter** (``GetClipboardSequenceNumber`` on
+Windows, ``NSPasteboard.changeCount`` on macOS — one cheap call, no clipboard
+open unless it changed) and appends each *distinct* new clipboard text to the
+open document, autosaving as before. The in-app bind stays for instant
+response; a last-collected guard deduplicates the two paths and QUILL's own
+writes. See ``_clipboard_change_counter`` /
+``_start_collector_watch`` in ``quill/ui/main_frame_power_tools.py``.
 
 ---
 

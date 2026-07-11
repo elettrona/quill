@@ -3052,7 +3052,10 @@ editor-behavior power toggles.</p>
 to a document you are reviewing.</li>
 <li><strong>Toggle Clipboard Collector</strong> / <strong>Collect
 Clipboard Now</strong> — accumulates clipboard entries into a running
-log.</li>
+log in the open document. System-wide: while the collector is on,
+anything you copy in <em>any</em> application — browser, mail, terminal
+— is appended (each distinct copy once), EdSharp-style. The document
+autosaves after each collection when it has been saved before.</li>
 <li><strong>Toggle Key Describer</strong> — announces key names instead
 of performing actions; useful for documenting keystrokes.</li>
 <li><strong>Toggle Indentation Announcements</strong> / <strong>Infer
@@ -3551,6 +3554,29 @@ selected — as the message body.
 puts it on the clipboard instead, for the common case where a mail
 client truncates or refuses a very long pre-filled message. Both read
 the same content-format setting as the Clip Library.</p>
+<h3 id="using-quill-as-an-external-editor-thunderbird-and-others">Using
+QUILL as an external editor (Thunderbird and others)</h3>
+<p>QUILL launches one process per file and exits when you close the
+window — exactly the contract “external editor” integrations expect, so
+no special QUILL configuration is needed. For Thunderbird:</p>
+<ol type="1">
+<li>Install the <strong>External Editor Revived</strong> add-on in
+Thunderbird (Tools &gt; Add-ons and Themes, search for it; it also needs
+its small messaging-host companion, which its own setup page walks you
+through).</li>
+<li>In the add-on’s settings, set the editor to QUILL’s full path —
+typically
+<code>C:\Users\&lt;you&gt;\AppData\Local\Programs\QUILL for All\quill.exe</code>
+on Windows (copy the exact path from your QUILL shortcut’s Target
+field).</li>
+<li>Compose a message, press the add-on’s Edit-externally shortcut
+(Ctrl+E by default): your draft opens in QUILL with every QUILL feature
+available — spell check, read aloud, AI tools, braille. Save (Ctrl+S)
+and close QUILL, and the text lands back in Thunderbird’s compose
+window.</li>
+</ol>
+<p>The same recipe works with any application that launches an editor on
+a file and reads it back when the editor exits.</p>
 <h3 id="autooutline-numbered-headings">AutoOutline: numbered
 headings</h3>
 <p><code>Format &gt; Update Outline Numbering</code> numbers every
@@ -7213,6 +7239,31 @@ search query — <code>label:bug is:open crash</code>,
 Results replace the Issues &amp; PRs list, scoped to the loaded
 repository. Clear the box and press Enter to restore the normal list;
 loading a different repository also clears the search.</p>
+<p><strong>PR diffs, read the QUILL way.</strong> Select a pull request
+row and press <strong>Diff…</strong>. A list of the PR’s changed files
+opens — each row reads as <code>status: filename +added -removed</code>
+— and selecting a file speaks its changes through the same compare
+engine as <strong>Compare Documents</strong>: “Difference 2 of 5. Text
+changed at line 41,” with both sides labeled (<code>main:</code> /
+<code>this PR:</code>) and the changed words described. A new file reads
+as its content, a deleted file says so plainly, and a binary or
+oversized file falls back to its change counts and GitHub’s patch
+text.</p>
+<p><strong>Batch operations.</strong> The list is multi-select: hold
+Shift or Ctrl to select several issues or PRs, then press
+<strong>Batch…</strong> and choose Close, Reopen, or Add label. This is
+the viewer’s one write feature and it is deliberately fenced: it
+requires a signed-in GitHub account (anonymous browsing stays
+read-only), and a confirmation dialog names the exact action and the
+exact item numbers — nothing changes on GitHub until you confirm.
+Failures are reported per item; the rest still apply.</p>
+<p><strong>AI thread summaries.</strong> Select an issue or PR and press
+<strong>Summarize</strong>. QUILL’s AI condenses the whole discussion —
+body and comments — into a short plain-prose TL;DR (what it’s about,
+current state, open questions, next step), places it at the top of the
+details pane, and announces it. Uses the same AI connection and consent
+gates as every other QUILL AI feature; if AI is not configured, pressing
+Summarize offers setup rather than failing silently.</p>
 <p>Pick a <strong>View</strong> — Issues &amp; PRs (the combined inbox),
 Branches, Commits, Tags, Releases, or Workflow Runs. The list shows one
 row per item; the <strong>Details</strong> box below shows the full text

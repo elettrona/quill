@@ -14017,11 +14017,36 @@ also prefills from the document’s own checkout — the nearest
 remote parses as a GitHub URL — covering files opened from disk, not
 just through Open-from-GitHub.</li>
 </ul>
-<p>The review’s remaining items (batch operations, PR diff viewer,
-branch comparison, notifications, wiki browser, AI summarization, vault
-linking, a <code>gh</code>-CLI hybrid engine, metadata caching, an
-in-viewer command palette) stay deferred; see the roadmap’s “Unified
-GitHub Management — deferred” list.</p>
+<p><strong>Tranche 2 (same release):</strong></p>
+<ul>
+<li><strong>PR diff viewer</strong>
+(<code>quill/ui/github_pr_diff_dialog.py</code> +
+<code>render_pull_file_diff</code> in the view-model): the
+<strong>Diff…</strong> button lists a PR’s changed files
+(<code>fetch_pull_diff</code>) and renders each file’s base/head content
+(<code>fetch_file_text</code> at the PR shas) through
+<code>quill.core.compare_service</code> — the Compare Documents
+difference walk, not a unified patch. 404 at a ref → empty side
+(added/deleted files read plainly); binary/oversized content fails
+closed to +/- counts and GitHub’s patch text.</li>
+<li><strong>Batch operations</strong>
+(<code>GitHubItemsProvider.update_items</code>): multi-select
+close/reopen/add-label — the one deliberate write path, requiring an
+authenticated session (anonymous stays read-only), gated by a consent
+dialog naming the exact action and item numbers, with per-item error
+collection. No deletions, no content edits.</li>
+<li><strong>AI thread summaries</strong>
+(<code>quill/core/github/thread_summary.py</code>): the
+<strong>Summarize</strong> button flattens the thread (middle-out
+truncation at 24k chars) and runs one bounded completion through
+<code>generate_assistant_response</code>, resolved on demand via the
+same <code>_ai_require_connection</code> gate as every keyed AI feature
+— opening the viewer never prompts for AI setup.</li>
+</ul>
+<p>The review’s remaining items (branch comparison, notifications, wiki
+browser, vault linking, a <code>gh</code>-CLI hybrid engine, metadata
+caching, an in-viewer command palette, context sharing) stay deferred;
+see the roadmap’s “Unified GitHub Management — deferred” list.</p>
 <p><strong>Views.</strong> A single <strong>View</strong> switcher
 selects one of:</p>
 <table>
@@ -19208,6 +19233,35 @@ screen-reader detection enumerates processes through the Windows
 Toolhelp API (ctypes) rather than spawning <code>tasklist</code>, so it
 never creates a console window a screen reader or braille display would
 announce.</p>
+<p><strong>Strengthened in 0.9.0 Beta 3 (#966, Narrator
+double-speech):</strong> the <code>announce()</code> SAPI branch
+previously let <code>force_speech</code> bypass the live-reader
+suppression. That branch is only reachable when <em>no</em> speech
+bridge could be acquired (Prism/accessible_output2 drive JAWS/NVDA
+before this point), so a detected-but-unbridged reader there is Narrator
+— and the bypass made QUILL’s SAPI voice talk over One Core. The
+contract is now unconditional: <strong>a running screen reader always
+suppresses the self-voice</strong>, force_speech included;
+unbridged-reader announcements land in the status bar.
+<code>force_speech</code> retains its purpose on the bridged paths
+(interrupting the reader’s current utterance) and for users with no
+reader running.</p>
+<h3
+id="system-wide-clipboard-collector-shipped-0.9.0-beta-3-964">System-wide
+Clipboard Collector (shipped 0.9.0 Beta 3, #964)</h3>
+<p>The EDS-11 Clipboard Collector (Power Tools) originally captured only
+copies made inside QUILL (an <code>EVT_TEXT_COPY</code> bind on the
+editor). Per the EdSharp parity request, it is now system-wide: while
+toggled on, a 750 ms timer polls the OS clipboard <strong>change
+counter</strong> (<code>GetClipboardSequenceNumber</code> on Windows,
+<code>NSPasteboard.changeCount</code> on macOS — one cheap call, no
+clipboard open unless it changed) and appends each <em>distinct</em> new
+clipboard text to the open document, autosaving as before. The in-app
+bind stays for instant response; a last-collected guard deduplicates the
+two paths and QUILL’s own writes. See
+<code>_clipboard_change_counter</code> /
+<code>_start_collector_watch</code> in
+<code>quill/ui/main_frame_power_tools.py</code>.</p>
 <hr />
 <h2 id="part-two-competitive-study-ulysses">Part Two: Competitive Study,
 Ulysses</h2>

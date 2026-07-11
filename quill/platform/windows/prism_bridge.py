@@ -331,14 +331,20 @@ class AnnouncementEngine:
             # Windows/Linux: only speak via system TTS when NO screen reader is
             # running — otherwise it talks over Narrator/NVDA/JAWS (the screen
             # reader already reads the UI through the accessibility API).
-            # force_speech bypasses that suppression for callers narrating
-            # internal-only state (e.g. the QUILL key chord prefix) that has
-            # no focus or control change for the screen reader to pick up on
-            # its own, so without this the message is silently dropped.
+            # This branch is only reachable when no speech bridge could be
+            # acquired: with NVDA/JAWS live, Prism/accessible_output2 handle
+            # announcements above (including force_speech interrupts), so a
+            # detected-but-unbridged reader here is Narrator (#966) — and the
+            # earlier force_speech bypass made the SAPI self-voice talk right
+            # over it (One Core reading the control while QUILL's SAPI voice
+            # repeated the announcement). A live reader now always wins:
+            # force_speech only matters when no reader is running at all,
+            # where both operands pass anyway. Internal-state narration for an
+            # unbridged reader lands in the status bar instead of double talk.
             if (
                 self._state.requested_backend in {"auto", "prism"}
                 and not _tts_engine_failed
-                and (force_speech or not _screen_reader_active())
+                and not _screen_reader_active()
             ):
                 # Queue speech to the worker thread without resolving the voice
                 # here: building the SAPI SpVoice costs hundreds of ms the first

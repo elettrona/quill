@@ -66,11 +66,34 @@ class GitHubItemsMixin:
             provider,
             initial_repo=initial_repo,
             announce_cb=self._announce,
+            ai_acquire_cb=self._github_ai_summarizer,
         ).show()
         try:
             provider.close()
         except Exception:  # noqa: BLE001 - close is best-effort cleanup
             pass
+
+    def _github_ai_summarizer(self):
+        """Resolve QUILL's AI connection for a thread summary, on demand.
+
+        Called by the dialog on the UI thread when the user presses Summarize
+        — never earlier, so opening the viewer alone can never prompt for AI
+        setup. Returns a ``summarize(text) -> str`` closure that is safe to
+        run off-thread (one bounded completion through the same connection
+        and consent gates as every other keyed AI feature), or None when AI
+        is off/declined.
+        """
+        result = self._ai_require_connection()
+        if result is None:
+            return None
+        connection, api_key = result
+
+        def summarize(thread_text: str) -> str:
+            from quill.core.github.thread_summary import summarize_thread
+
+            return summarize_thread(connection, api_key, thread_text)
+
+        return summarize
 
     def _github_items_initial_repo(self) -> str:
         """The current document's ``owner/repo``, from either origin source.

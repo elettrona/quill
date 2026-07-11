@@ -317,3 +317,63 @@ __all__ = [
     "sort_items",
     "view_label",
 ]
+
+
+# ---------------------------------------------------------------------------
+# PR diff rendering (Unified GitHub Management: "PR Diff Viewer") -- the file
+# content of both sides runs through QUILL's own compare engine
+# (quill.core.compare_service), so a pull request's changes read as the same
+# accessible difference walk Compare Documents already gives: "Difference N of
+# M, text changed at line L, left ..., right ...", never a raw unified patch.
+# ---------------------------------------------------------------------------
+
+
+def pull_diff_file_label(pull_file: object) -> str:
+    """One list row per changed file: status, +/- counts, name (rename-aware)."""
+    status = str(getattr(pull_file, "status", "") or "changed")
+    name = str(getattr(pull_file, "filename", ""))
+    previous = str(getattr(pull_file, "previous_filename", "") or "")
+    additions = int(getattr(pull_file, "additions", 0) or 0)
+    deletions = int(getattr(pull_file, "deletions", 0) or 0)
+    rename = f" (was {previous})" if previous and previous != name else ""
+    return f"{status}: {name}{rename}  +{additions} -{deletions}"
+
+
+def render_pull_file_diff(
+    filename: str,
+    base_text: str,
+    head_text: str,
+    *,
+    base_label: str = "base",
+    head_label: str = "this PR",
+) -> str:
+    """An accessible compare of one PR file, via QUILL's compare engine.
+
+    Returns the full spoken-friendly walk: a header, then every
+    DifferenceGroup's verbose summary (location, what changed, the changed
+    words) followed by the actual lines, prefixed the screen-reader-friendly
+    way (``base:`` / ``this PR:``). Whole-file adds/removes are stated plainly
+    instead of dumping hundreds of "added" lines.
+    """
+    from quill.core.compare_service import CompareService
+
+    if not base_text and head_text:
+        line_count = len(head_text.splitlines())
+        header = f"{filename}: new file with {line_count} lines.\n\n"
+        return header + head_text
+    if base_text and not head_text:
+        line_count = len(base_text.splitlines())
+        return f"{filename}: file deleted ({line_count} lines removed)."
+    service = CompareService()
+    groups = service.compare(base_text, head_text, left_label=base_label, right_label=head_label)
+    if not groups:
+        return f"{filename}: no text differences (content identical on both sides)."
+    parts = [f"{filename}: {len(groups)} difference{'s' if len(groups) != 1 else ''}.", ""]
+    for group in groups:
+        parts.append(group.summary_verbose)
+        for line in group.left_text:
+            parts.append(f"  {base_label}: {line}")
+        for line in group.right_text:
+            parts.append(f"  {head_label}: {line}")
+        parts.append("")
+    return "\n".join(parts).rstrip() + "\n"

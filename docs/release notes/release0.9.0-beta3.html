@@ -432,6 +432,42 @@ to a fix that had already landed on the development branch before Beta
 2’s code froze but is worth confirming here for anyone who hit it on a
 Beta 2 build: the dialog no longer tries to expand its (intentionally
 hidden) root node.</p>
+<h3 id="narrator-users-no-more-double-speech">Narrator users: no more
+double speech</h3>
+<p>George Kerscher reported that running Narrator, QUILL’s self-voicing
+spoke at the same time as Narrator — most audibly in the command
+palette. The cause: QUILL <em>did</em> detect Narrator, but it has no
+way to route announcements through Narrator the way it does for JAWS and
+NVDA, so its own SAPI voice filled the gap — right on top of One Core.
+The rule is now absolute: when a screen reader is running, QUILL never
+self-voices. If it can’t hand the announcement to your reader, the
+message goes to the status bar instead, where Narrator can read it on
+your terms.</p>
+<h3
+id="install-starter-snippet-packs-works-properly-with-a-screen-reader">Install
+Starter Snippet Packs works properly with a screen reader</h3>
+<p>Reported against Beta 2: the pack list needed a Space press on an
+invisible checkbox — with no feedback — before Enter would do anything.
+It’s now a plain multi-select list: arrow to <code>daily-writing</code>,
+press Enter, it installs. Hold Shift or Ctrl to pick several; your
+screen reader announces what’s selected as you move.</p>
+<h3 id="a-macos-crash-while-creating-a-notebook">A macOS crash while
+creating a Notebook</h3>
+<p>Shannon Dyer hit a hard crash (“SystemError: ActivateEvent returned a
+result with an exception set”) while creating a Notebook on macOS — a
+window-activation handler ran into a wx assertion while dialogs were
+tearing down, and the whole app went with it. Window activation only
+exists to put focus back in your document; it is now fully contained and
+can never take the process down.</p>
+<h3 id="crash-reports-now-say-which-beta-youre-on">Crash reports now say
+which beta you’re on</h3>
+<p>Two crash reports arrived this week for a bug that was already fixed
+in Beta 2 — and they looked like regressions because every 0.9.0 beta
+reported itself as just “0.9.0.” Crash and feedback reports now carry
+the full version (“0.9.0 Beta 2”), so a report from an older install is
+recognizable at a glance. If you see the Profiles and Features crash
+(<code>_LazyString</code>), please update to the current beta: it was
+fixed there.</p>
 <h3
 id="quill-no-longer-offers-crash-recovery-for-exits-with-nothing-to-diagnose">Quill
 no longer offers crash recovery for exits with nothing to diagnose</h3>
@@ -475,10 +511,38 @@ itself in when the document you are editing lives inside a git clone
 whose origin points at GitHub — any file, however you opened it, not
 just files opened through QUILL’s own GitHub commands.</li>
 </ul>
-<p>The viewer stays read-only against GitHub, behind the same consent,
-token, and Safe Mode gates as every other GitHub feature. The rest of
-the unification review — PR diffs, batch operations, AI thread
-summaries, and more — is on the roadmap.</p>
+<p>And the second tranche landed in this same release:</p>
+<ul>
+<li><strong>PR diffs, read the QUILL way.</strong> Select a pull
+request, press <strong>Diff…</strong>, and browse its changed files in
+an accessible list. Each file’s before-and-after content runs through
+the same compare engine as <strong>Compare Documents</strong>, so what
+you hear is a numbered difference walk — “Difference 2 of 5. Text
+changed at line 41. main: … this PR: …” — with the actual changed words
+described, never a wall of plus and minus signs. A brand-new file reads
+as its content; a deleted file says exactly that; a binary or oversized
+file falls back honestly to its change counts.</li>
+<li><strong>Batch operations, behind real consent.</strong> Select
+several rows (the list is multi-select now), press
+<strong>Batch…</strong>, and close, reopen, or add a label to all of
+them at once. This is the one deliberate exception to the viewer’s
+read-only rule, and it is fenced accordingly: it only works signed in —
+the anonymous viewer stays fully read-only — and a confirmation names
+the exact action and the exact item numbers before anything changes on
+GitHub. If some items fail, you hear which ones and why; the rest still
+go through.</li>
+<li><strong>AI thread summaries.</strong> A hundred-comment issue at 11
+pm is nobody’s friend. Press <strong>Summarize</strong> on any issue or
+PR and QUILL’s AI condenses the whole discussion into a short,
+plain-prose TL;DR — what it’s about, where it stands, what’s still open,
+and the apparent next step — read into the details pane and announced.
+It uses the same AI connection and consent gates as every other QUILL AI
+feature, and nothing runs until you press the button.</li>
+</ul>
+<p>The viewer otherwise stays read-only against GitHub, behind the same
+consent, token, and Safe Mode gates as every other GitHub feature. The
+rest of the unification review — branch comparison, notifications, a
+wiki browser, and more — is on the roadmap.</p>
 <h2
 id="headers-and-footers-now-live-inside-your-word-and-rtf-files">Headers
 and footers now live inside your Word and RTF files</h2>
@@ -493,6 +557,26 @@ through. A blank spec changes nothing, and a header can never be the
 reason a save fails.</p>
 <h2 id="new-eight-small-accessibility-first-additions">New: eight small,
 accessibility-first additions</h2>
+<h3 id="the-clipboard-collector-went-system-wide">The Clipboard
+Collector went system-wide</h3>
+<p>Dean Martineau asked for the EdSharp behavior: turn on the collector,
+then copy anywhere — a browser, an email, a terminal — and it all lands
+in your QUILL document. That’s exactly what it does now. While
+<strong>Toggle Clipboard Collector</strong> is on, QUILL watches the
+system clipboard (a single cheap check, about once a second, that
+touches the clipboard only when something actually changed) and appends
+each new copy to the open document, saving as it goes. Copies made
+inside QUILL still collect instantly, and each distinct copy is
+collected exactly once.</p>
+<h3 id="quill-as-thunderbirds-external-editor">QUILL as Thunderbird’s
+external editor</h3>
+<p>Martin Courcelles asked to write his email in QUILL. Good news: it
+already works — QUILL’s one-process-per-file behavior is exactly what
+Thunderbird’s “External Editor Revived” add-on expects — and the user
+guide now has a step-by-step “Using QUILL as an external editor”
+section: install the add-on, point it at <code>quill.exe</code>, press
+Ctrl+E in a compose window, write with every QUILL feature, save and
+close, and the text drops back into Thunderbird.</p>
 <h3 id="quill-can-add-itself-to-your-path">Quill can add itself to your
 PATH</h3>
 <p>The Windows installer now offers an opt-in <strong>“Add Quill to
@@ -710,32 +794,32 @@ wall: the model was right there, but the program needed to install its
 doesn’t have.</p>
 <h3 id="whats-fixed">What’s fixed</h3>
 <ul>
-<li><strong>Kokoro neural voices</strong> now install completely from
+<li><p><strong>Kokoro neural voices</strong> now install completely from
 files already on your computer, with the Offline Edition build. No
-connection needed, the first time or ever.</li>
-<li><strong>whisper.cpp — the speech-to-text engine Quill uses by
+connection needed, the first time or ever.</p></li>
+<li><p><strong>whisper.cpp — the speech-to-text engine Quill uses by
 default</strong> — now comes with its starter model already in place.
 This one mattered most: whisper.cpp isn’t an optional extra you might
 choose, it’s the engine Quill reaches for automatically, so a “no
 internet needed” build that couldn’t actually transcribe anything until
-it fetched a file was the biggest gap of all. That’s fixed.</li>
-<li><strong>Faster Whisper, Vosk, and MP3 chapter-marker
+it fetched a file was the biggest gap of all. That’s fixed.</p></li>
+<li><p><strong>Faster Whisper, Vosk, and MP3 chapter-marker
 support</strong> — three smaller optional add-ons — get the same
 treatment. Choosing any of them under the Offline Edition build now
-works without a connection.</li>
-<li><strong>Vosk’s install got more reliable as a side effect.</strong>
-Vosk always needed one small supporting library that, until now, could
-only come from the internet even when Vosk’s own file was already
-verified and local. That gap closes too.</li>
-</ul>
-<h3 id="whats-still-on-the-list">What’s still on the list</h3>
-<p><strong>Piper gets the same treatment in this release</strong>: the
-Offline Edition now bundles Piper’s engine — integrity-checked against
-the same pinned fingerprint at build time and again at install time —
-plus a ready-to-speak starter voice (Lessac, US English, medium
+works without a connection.</p></li>
+<li><p><strong>Vosk’s install got more reliable as a side
+effect.</strong> Vosk always needed one small supporting library that,
+until now, could only come from the internet even when Vosk’s own file
+was already verified and local. That gap closes too.</p></li>
+<li><p><strong>Piper gets the same treatment in this release</strong>:
+the Offline Edition now bundles Piper’s engine — integrity-checked
+against the same pinned fingerprint at build time and again at install
+time — plus a ready-to-speak starter voice (Lessac, US English, medium
 quality). Pick Piper on an Offline Edition install and it talks without
 ever touching the network; more voices download from the online catalog
-whenever you want them.</p>
+whenever you want them.</p></li>
+</ul>
+<h3 id="whats-still-on-the-list">What’s still on the list</h3>
 <p>One component doesn’t have this treatment yet: <strong>Node.js-based
 Quillins</strong> still need a connection the first time you use one,
 even under the Offline Edition. This is a known, tracked gap rather than

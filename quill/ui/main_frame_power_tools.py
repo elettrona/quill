@@ -60,6 +60,32 @@ from quill.core.storage import read_json, write_json_atomic
 from quill.core.unicode_insert import CodepointError, parse_codepoint
 
 
+def _clipboard_change_counter() -> int | None:
+    """The OS clipboard change counter, or None where unavailable.
+
+    Windows: ``GetClipboardSequenceNumber`` — one cheap user32 call, no
+    clipboard open, bumps on every copy from ANY application (#964). macOS:
+    ``NSPasteboard.generalPasteboard().changeCount()`` via PyObjC when
+    present. None (Linux / missing bridge) makes the watcher fall back to
+    reading and comparing the clipboard text each tick.
+    """
+    if sys.platform == "win32":
+        try:
+            import ctypes
+
+            return int(ctypes.windll.user32.GetClipboardSequenceNumber())
+        except Exception:  # noqa: BLE001 - a probe must never raise
+            return None
+    if sys.platform == "darwin":
+        try:
+            from AppKit import NSPasteboard  # type: ignore[import-not-found]
+
+            return int(NSPasteboard.generalPasteboard().changeCount())
+        except Exception:  # noqa: BLE001
+            return None
+    return None
+
+
 class PowerToolsActionsMixin:
     """Editor power-tool conveniences mixed into :class:`MainFrame`."""
 
@@ -345,11 +371,52 @@ class PowerToolsActionsMixin:
         )
         if copy_event is not None and active:
             self.editor.Bind(copy_event, self._on_power_tools_collect_copy)
+        # #964 (Dean Martineau): the collector is system-wide, EdSharp-style —
+        # copy anywhere in Windows and it lands in the QUILL document. The
+        # in-app EVT_TEXT_COPY bind above stays for instant response; this
+        # watcher catches every other application's copies by polling the OS
+        # clipboard change counter (a single cheap Win32 call per tick, no
+        # clipboard open unless it actually changed).
+        if active:
+            self._start_collector_watch()
+        else:
+            self._stop_collector_watch()
         self._announce(
-            "Clipboard collector on; copies append to this document"
+            "Clipboard collector on; anything you copy, in any program, appends to this document"
             if active
             else "Clipboard collector off"
         )
+
+    def _start_collector_watch(self) -> None:
+        wx = self._wx
+        timer_cls = getattr(wx, "Timer", None)
+        if timer_cls is None:  # headless tests
+            return
+        self._power_tools_collector_seq = _clipboard_change_counter()
+        timer = getattr(self, "_power_tools_collector_timer", None)
+        if timer is None:
+            timer = timer_cls(self.frame)
+            self.frame.Bind(wx.EVT_TIMER, self._on_collector_tick, timer)
+            self._power_tools_collector_timer = timer
+        timer.Start(750)
+
+    def _stop_collector_watch(self) -> None:
+        timer = getattr(self, "_power_tools_collector_timer", None)
+        if timer is not None:
+            try:
+                timer.Stop()
+            except Exception:  # noqa: BLE001 - teardown is best-effort
+                pass
+
+    def _on_collector_tick(self, _event: object) -> None:
+        if not getattr(self, "_power_tools_clipboard_collector", False):
+            self._stop_collector_watch()
+            return
+        counter = _clipboard_change_counter()
+        if counter is not None and counter == getattr(self, "_power_tools_collector_seq", None):
+            return  # nothing new on the clipboard; no clipboard open needed
+        self._power_tools_collector_seq = counter
+        self.collect_clipboard_now()
 
     def _on_power_tools_collect_copy(self, event: object) -> None:
         event.Skip()
@@ -365,6 +432,12 @@ class PowerToolsActionsMixin:
         clip = self._power_tools_clipboard_text()
         if not clip:
             return
+        # The system watcher and the in-app copy event can both fire for one
+        # copy (and the counter ticks for our own writes): collect each
+        # distinct clipboard payload once.
+        if clip == getattr(self, "_power_tools_last_collected", None):
+            return
+        self._power_tools_last_collected = clip
         updated = append_collected(self.editor.GetValue(), clip)
         self._replace_document_text(updated)
         self.document.set_text(updated)
