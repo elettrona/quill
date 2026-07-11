@@ -626,7 +626,7 @@ def synthesize_with_kokoro(
     except ImportError as exc:
         raise ReadAloudUnavailableError(
             "Kokoro voices need one more component. "
-            "Tools > Speech > Install Kokoro ONNX will fetch it (~114 MB).\n"
+            "Help > Download Optional Components will fetch it (~114 MB).\n"
             "(Advanced: the 'kokoro' package with torch also works, but needs "
             "~2 GB: pip install kokoro)"
         ) from exc

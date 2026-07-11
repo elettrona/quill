@@ -21574,7 +21574,7 @@ class MainFrame(
             self._set_status("Update extraction failed")
             return
         self._record_notification(f"Update {release.version} extracted to {dest}", "update")
-        self._set_status(f"Extracted update {release.version}")
+        self._set_status_quiet(f"Extracted update {release.version}")
         self._announce(f"Update {release.version} extracted, ready to use")
         self._reveal_in_folder(dest)
 

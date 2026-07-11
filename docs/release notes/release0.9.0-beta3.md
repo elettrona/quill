@@ -24,6 +24,10 @@ A community member reported — and correctly root-caused — a serious one: imp
 
 Four testers independently reported the same crash: opening **Tools > Speech > Speech and Dictation** raised a `TypeError` instead of showing the dialog, on both the Offline and Online tabs. The dialog's constructor had grown two new required arguments (`kokoro_ok`, `kokoro_can_install`) that the one place calling it was never updated to supply. Both are now populated the same way the existing Vosk availability flags already are, and the dialog opens normally again.
 
+### The Kokoro-unavailable error pointed at a menu item that doesn't exist
+
+The same tester who hit the Speech and Dictation crash above also found this while checking Kokoro voices: trying to speak with Kokoro before its extra component was installed said "Tools > Speech > Install Kokoro ONNX will fetch it" — but that item was folded into **Help > Download Optional Components** in an earlier release, and the error text never caught up. It now points to the right place.
+
 ### A rare crash when a keystroke arrived before the first document existed
 
 On macOS, a very early or very late keystroke — before the first document tab finished setting up, or after the last one closed — could raise `AttributeError: 'MainFrame' object has no attribute 'editor'` from the global keyboard hook. One of the three checks in that code path read the editor directly where its neighbors already defended against exactly this case; all three are now consistent.

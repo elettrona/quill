@@ -209,7 +209,10 @@ def test_event_hooks_are_wired() -> None:
 
 
 def test_read_only_state_refreshes_on_tab_switch() -> None:
-    activate = _SOURCE[_SOURCE.index("def _activate_tab") :][:1800]
+    # Fixed-width slice of a still-growing method; widen generously (rather
+    # than to the exact current distance) so the next unrelated addition to
+    # _activate_tab doesn't retrigger this.
+    activate = _SOURCE[_SOURCE.index("def _activate_tab") :][:2400]
     assert "self._refresh_read_only_state()" in activate
 
 
