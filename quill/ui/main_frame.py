@@ -1436,6 +1436,29 @@ class MainFrame(
         if focus_target is not None and hasattr(focus_target, "SetFocus"):
             self._wx.CallAfter(focus_target.SetFocus)
 
+    def _load_quillins_and_refresh_menu(self) -> None:
+        """Load enabled Quillins, then rebuild the menu bar (#974).
+
+        H-SAFE-1: mirrors the safe_mode gate that used to live in
+        _register_quillins_commands -- Safe Mode keeps the manager/wizard
+        commands (registered synchronously in __init__) but never loads
+        contributed commands/providers.
+
+        _build_menu() runs synchronously in __init__, before this deferred
+        step (Quillin loading is deferred here for startup-speed and crash
+        isolation -- see _run_deferred_startup_tasks). Without the rebuild,
+        every Quillin-contributed menu item -- including the bundled
+        insert-tools items behind Insert > Date and Time -- is silently
+        absent for the rest of the session: the submenu itself still shows
+        (it is created unconditionally), but with zero items inside it,
+        so pressing Right Arrow on it has nothing to open and instead moves
+        to the next top-level menu.
+        """
+        if self._safe_mode:
+            return
+        self._register_quillin_contributions()
+        self._build_menu()
+
     def _run_deferred_startup_tasks(self) -> None:
         # Always capture startup timing so logs/startup_tasks.txt is fresh after
         # every launch (a field bug report can include it with no env var).
@@ -1502,7 +1525,7 @@ class MainFrame(
             # contributed commands/providers.
             (
                 "quillin contributions",
-                lambda: None if self._safe_mode else self._register_quillin_contributions(),
+                self._load_quillins_and_refresh_menu,
             ),
             ("crash recovery", self._offer_crash_recovery),
             ("first-run onboarding", self._maybe_run_first_run_onboarding),
