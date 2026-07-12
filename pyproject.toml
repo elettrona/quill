@@ -240,6 +240,12 @@ dev = [
   "pytest>=9.1.1",
   "pytest-xdist>=3.8.0",
   "pytest-timeout>=2.4.0",
+  # macOS release CI only (--forked): isolates each test in its own forked
+  # subprocess so a single native crash (a real, reproducible wx/Cocoa
+  # segfault in test_voice_browser_dialog.py, not a Python exception) can't
+  # take the rest of a multi-thousand-test run down with it. POSIX-only
+  # (os.fork); harmless as an installed-but-unused dependency on Windows.
+  "pytest-forked>=1.6.0",
   "pytest-cov>=7.1.0",
   "ruff>=0.15.20",
   "mypy>=2.1.0",

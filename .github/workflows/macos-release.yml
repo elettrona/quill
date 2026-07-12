@@ -30,7 +30,17 @@ jobs:
           python -m pip install -e ".[ui,spellcheck,macos,dev,feedback]"
 
       - name: Run test suite (excluding slow tests)
-        run: pytest -m "not slow" -q
+        # --forked (pytest-forked): each test runs in its own forked subprocess.
+        # A real, reproducible native crash (Segmentation fault, exit 139) in
+        # test_voice_browser_dialog.py has taken the entire multi-thousand-test
+        # run down on every real release attempt checked (0.9.0 Beta 2 x2, this
+        # Beta 3 attempt) -- always in the same file, though the exact test
+        # varies. Root cause not yet found (a targeted teardown-ordering fix did
+        # not resolve it -- see 57bf176). Isolating each test means a crash marks
+        # only that one test as failed/crashed instead of silently truncating
+        # everything after it, so the release build gets an honest, complete
+        # result instead of "the run happened to die partway through."
+        run: pytest -m "not slow" -q --forked
 
   build:
     runs-on: macos-26

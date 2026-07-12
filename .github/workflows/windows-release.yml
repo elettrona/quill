@@ -22,22 +22,23 @@ jobs:
       - name: Run test suite
         # tests/unit/tools is source-hygiene gates (AST-scanning lint tools), not
         # functional tests; this code already passed them in PR CI before merging
-        # to main. Several of them (check_banned_patterns, dialog_button_contract,
-        # check_dialog_zorder) have each independently timed out on this runner
-        # tonight despite running in ~3s locally -- a runner disk I/O issue, not a
-        # code defect -- so they're skipped here to unblock the release build.
-        # test_dialog_hardening_contract.py is the same AST-heavy pattern (walks
-        # main_frame.py's full AST) and hit the identical 180s timeout twice in a
-        # row on the v0.9.0-beta.3 release build (same stack trace both times:
-        # ast.walk -> iter_child_nodes -> iter_fields) -- also already verified in
-        # PR CI before this code reached main, so it's skipped here for the same
-        # reason.
+        # to main -- excluded here regardless of runner speed.
+        #
+        # --timeout=400 (was 180): multiple individual AST/full-source-scan tests
+        # outside tests/unit/tools (test_dialog_hardening_contract.py,
+        # test_dialog_inventory.py::test_scan_is_deterministic -- both walk/read
+        # every quill/ui source file) have independently hit the 180s wall on this
+        # runner on the v0.9.0-beta.3 release build despite running in ~3s locally.
+        # Excluding them one at a time as each turned up was treating a symptom --
+        # this runner is running some disk-I/O-heavy operations far slower than
+        # normal tonight, and any full-source-scan test is a candidate. A single,
+        # more generous ceiling covers the whole class instead of a growing
+        # exclusion list; a genuinely hung test still fails, just later.
         run: |
-          pytest -q --timeout=180 `
+          pytest -q --timeout=400 `
             --ignore=tests\unit\core\test_net_tls.py `
             --ignore=tests\unit\core\test_thesaurus.py `
-            --ignore=tests\unit\tools `
-            --ignore=tests\unit\ui\test_dialog_hardening_contract.py
+            --ignore=tests\unit\tools
       - name: Verify release corpus
         run: python -m scripts.verify_release_corpus
 
