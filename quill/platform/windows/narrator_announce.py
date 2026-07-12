@@ -126,6 +126,9 @@ def _accessible_for_hwnd(hwnd: int) -> Any | None:
         import comtypes
         import comtypes.client
 
+        from quill.platform.windows.comtypes_setup import ensure_comtypes_gen_dir_redirected
+
+        ensure_comtypes_gen_dir_redirected()
         oleacc_module = comtypes.client.GetModule("oleacc.dll")
         oleacc = ctypes.WinDLL("oleacc", use_last_error=True)
         pointer = ctypes.POINTER(oleacc_module.IAccessible)()

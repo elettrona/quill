@@ -162,6 +162,9 @@ def _get_text_document(hwnd: int) -> Any:  # pragma: no cover - needs a live HWN
         if not ptr.value:
             raise RichEditRtfError("EM_GETOLEINTERFACE returned no interface.")
         if _tom_module is None:
+            from quill.platform.windows.comtypes_setup import ensure_comtypes_gen_dir_redirected
+
+            ensure_comtypes_gen_dir_redirected()
             _tom_module = comtypes.client.GetModule(_TOM_TYPELIB)
         unknown = ctypes.cast(ptr.value, ctypes.POINTER(comtypes.IUnknown))
         return unknown.QueryInterface(_tom_module.ITextDocument)

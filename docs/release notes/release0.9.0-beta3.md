@@ -261,6 +261,14 @@ While tracking down the Date and Time submenu fix above, we found a related roug
 
 The list now shows **“(No versions saved yet)”** and disables Rename and Delete until there is something to act on, matching the “(No open documents in workspace)” pattern QUILL already uses in the Snapshots menu.
 
+### A per-machine install no longer needs administrator elevation to run at full speed
+
+Tyler Rodick installed QUILL system-wide (Program Files, all users) instead of per-user, and noticed something specific: startup was several seconds faster the first time he ran it as administrator than it was running normally afterward.
+
+The cause was a gap in a fix QUILL already had. comtypes — the library behind SAPI speech, Narrator's UIA announcement bridge, and the Rich Edit rich-text object model — writes a generated wrapper file to disk the first time it touches each of those three COM interfaces. Its default location is inside its own package folder, which a per-machine install makes read-only without elevation. QUILL already redirected this cache to a writable per-user folder, but only did the redirecting once, from inside the SAPI code path — Narrator's and Rich Edit's own comtypes calls only inherited that redirect if SAPI happened to run first in the same session. Whichever one ran first without that accident of ordering fell back to comtypes' own read-only default and degraded silently.
+
+Every comtypes call site now requests the redirect itself before touching comtypes, rather than counting on another feature to have already done it. None of the three depends on session ordering anymore, on any install type, with or without administrator elevation.
+
 ---
 
 ## GitHub Grows from a Viewer into a Workspace
