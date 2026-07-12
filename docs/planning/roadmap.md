@@ -172,8 +172,6 @@ validation**, handled in the normal QA pass rather than tracked as release block
   on the real installer, not just from source.
 - **Watch Folder queue** — a live repro confirming the by-design priming (drop a *new*
   matching file into a running profile, or enable "Process existing files").
-- **Snapshots vs Versions** — a live repro of the reported empty-submenu render (toggle
-  the `core.notebook` / `core.recovery` flags); the user-facing "Versions" rename is done.
 - **Save As conversion (shipped 2026-07-04)** — the manual JAWS/NVDA spot checks for the
   Save As conversion / window-title / export-fidelity fix (the retired plan's Task 9);
   the step-by-step script is SAVE-001 in
