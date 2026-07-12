@@ -35,13 +35,29 @@ def test_resolve_gh_prefers_system_path(monkeypatch: pytest.MonkeyPatch) -> None
 def test_resolve_git_falls_back_to_vendor_copy(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
+    # MinGit's git.exe lives nested under cmd/, alongside sibling etc/,
+    # mingw64/, usr/ folders it needs at runtime -- see the "git-windows"
+    # ASSETS entry in quill.core.release_assets.
+    monkeypatch.setattr(git_binaries.shutil, "which", lambda name: None)
+    vendor = tmp_path / "vendor" / "git"
+    (vendor / "cmd").mkdir(parents=True)
+    exe_name = "git.exe" if git_binaries.sys.platform == "win32" else "git"
+    (vendor / "cmd" / exe_name).write_text("", encoding="utf-8")
+    monkeypatch.setattr(git_binaries, "_vendor_dir", lambda: vendor)
+    result = resolve_git()
+    assert result == vendor / "cmd" / exe_name
+
+
+def test_resolve_gh_falls_back_to_flat_vendor_copy(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
     monkeypatch.setattr(git_binaries.shutil, "which", lambda name: None)
     vendor = tmp_path / "vendor" / "git"
     vendor.mkdir(parents=True)
-    exe_name = "git.exe" if git_binaries.sys.platform == "win32" else "git"
+    exe_name = "gh.exe" if git_binaries.sys.platform == "win32" else "gh"
     (vendor / exe_name).write_text("", encoding="utf-8")
     monkeypatch.setattr(git_binaries, "_vendor_dir", lambda: vendor)
-    result = resolve_git()
+    result = resolve_gh()
     assert result == vendor / exe_name
 
 

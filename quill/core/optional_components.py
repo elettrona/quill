@@ -208,6 +208,19 @@ def _candidate_removable_path(component_id: str) -> Path | None:
 
             lang = component_id[len("spell-") :]
             return managed_hunspell_dir() / f"{lang}.dic"
+        if component_id == "git":
+            # git and gh share one vendor directory (quill.core.git_binaries); the
+            # "cmd" subfolder is git's own top-level entry within it, distinct from
+            # gh's flat executable -- so Remove for one never touches the other's
+            # files (remove_component special-cases the full git cleanup below).
+            from quill.core.git_binaries import vendor_dir
+
+            return vendor_dir() / "cmd"
+        if component_id == "gh":
+            from quill.core.git_binaries import vendor_dir
+
+            exe = "gh.exe" if sys.platform == "win32" else "gh"
+            return vendor_dir() / exe
     except Exception:  # noqa: BLE001 - a missing helper just means "not removable"
         return None
     return None
@@ -256,6 +269,26 @@ def remove_component(component_id: str) -> bool:
             try:
                 if sibling.is_file():
                     sibling.unlink()
+                    removed_any = True
+            except OSError:
+                continue
+        return removed_any
+    # git and gh share one vendor directory (quill.core.git_binaries.vendor_dir);
+    # removing "git" must only delete MinGit's own top-level entries, never gh's
+    # flat executable that happens to live alongside them.
+    if component_id == "git":
+        from quill.core.git_binaries import vendor_dir
+
+        root = vendor_dir()
+        removed_any = False
+        for name in ("cmd", "etc", "mingw64", "usr", "LICENSE.txt"):
+            sub = root / name
+            try:
+                if sub.is_dir():
+                    shutil.rmtree(sub)
+                    removed_any = True
+                elif sub.is_file():
+                    sub.unlink()
                     removed_any = True
             except OSError:
                 continue
@@ -515,6 +548,8 @@ def _verify_presence(component_id: str) -> VerifyResult:
         "braille": _braille_pack_installed,
         "mathcat": _mathcat_installed,
         "audio_extras": _audio_extras_installed,
+        "git": _git_installed,
+        "gh": _gh_installed,
     }
     detector = detectors.get(component_id)
     if detector is None:
@@ -647,6 +682,18 @@ def _pdf_ocr_installed() -> bool:
     from quill.core.pdf_ocr_install import is_pdf_ocr_available
 
     return is_pdf_ocr_available()
+
+
+def _git_installed() -> bool:
+    from quill.core.git_binaries import git_available
+
+    return git_available()
+
+
+def _gh_installed() -> bool:
+    from quill.core.git_binaries import gh_available
+
+    return gh_available()
 
 
 def _audio_extras_installed() -> bool:
@@ -811,6 +858,44 @@ def gather_optional_components() -> list[OptionalComponent]:
                 "~3 MB",
                 note="MathCAT (MIT, daisy/MathCATForC); fetched from QUILL's pinned release.",
                 priority=100,
+            )
+        )
+        out.append(
+            OptionalComponent(
+                "git",
+                "Git (for Local Git tools)",
+                "A portable copy of Git, used by Tools > Local Git (interactive rebase, "
+                "merge conflict resolution, stash, blame, bisect) when git is not "
+                "already installed on this computer. QUILL always prefers a system git "
+                "on PATH first; this download exists only as a fallback for a user who "
+                "has never installed either.",
+                TOOL,
+                _safe(_git_installed),
+                "~40 MB",
+                note="Git for Windows MinGit (GPL-2.0); byte-identical re-publish of the "
+                "portable, no-installer release.",
+                priority=105,
+            )
+        )
+    # gh (the GitHub CLI) is self-hosted for Windows and macOS; there is no Linux
+    # asset, but a Linux user typically already has gh via their distro's package
+    # manager, so this only offers where QUILL has something real to download.
+    if sys.platform.startswith("win") or sys.platform == "darwin":
+        out.append(
+            OptionalComponent(
+                "gh",
+                "GitHub CLI (for Codespaces and Copilot commands)",
+                "A portable copy of the official GitHub CLI, used by Tools > GitHub's "
+                "Codespaces and Copilot suggest/explain commands when gh is not "
+                "already installed. QUILL always prefers a system gh on PATH first; "
+                "this download exists only as a fallback for a user who has never "
+                "installed it.",
+                TOOL,
+                _safe(_gh_installed),
+                "~14 MB",
+                note="GitHub CLI (MIT, cli/cli); byte-identical re-publish of the "
+                "official release.",
+                priority=106,
             )
         )
     out.extend(_dictionary_components())

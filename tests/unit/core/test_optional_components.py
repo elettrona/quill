@@ -225,11 +225,19 @@ def test_every_hosted_release_asset_is_catalogued() -> None:
     map to the dynamic spell-<lang> rows and are checked separately. Vosk and
     libmpv are hosted assets but not their own hub rows: Vosk is a third engine
     choice inside the "whispercpp" row's guided picker, and libmpv is bundled
-    into the "audio_extras" row with MP3 chapter markers."""
+    into the "audio_extras" row with MP3 chapter markers. git-windows folds into
+    the "git" row, and gh-windows/gh-macos both fold into the single "gh" row
+    (the hub picks the right platform asset itself; see download_git/download_gh)."""
     from quill.core.release_assets import ASSETS
 
     ids = {c.component_id for c in oc.gather_optional_components()}
-    folded_into = {"vosk": "whispercpp", "libmpv": "audio_extras"}
+    folded_into = {
+        "vosk": "whispercpp",
+        "libmpv": "audio_extras",
+        "git-windows": "git",
+        "gh-windows": "gh",
+        "gh-macos": "gh",
+    }
     for key in ASSETS:
         if key.startswith("spell-"):
             continue

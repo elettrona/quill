@@ -80,6 +80,8 @@ def test_hub_downloads_reopen_the_hub_when_done() -> None:
         "self.download_braille_pack(on_done=_back)",
         "self.download_audio_extras(on_done=_back)",
         "self.download_mathcat(on_done=_back)",
+        "self.download_git(on_done=_back)",
+        "self.download_gh(on_done=_back)",
     ):
         assert handler in src, f"hub dispatch missing reopen-hub for {handler}"
     assert "on_ok=(lambda: on_done(True)) if on_done else" in src

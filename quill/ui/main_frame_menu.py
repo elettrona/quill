@@ -1680,6 +1680,10 @@ class MenuBuilderMixin:
         self._id_github_dispatch_workflow = wx.NewIdRef()
         self._id_github_notifications = wx.NewIdRef()
         self._id_github_security_alerts = wx.NewIdRef()
+        self._id_github_list_codespaces = wx.NewIdRef()
+        self._id_github_create_codespace = wx.NewIdRef()
+        self._id_github_copilot_suggest = wx.NewIdRef()
+        self._id_github_copilot_explain = wx.NewIdRef()
         self._id_localgit_uncommitted = wx.NewIdRef()
         self._id_localgit_switch_branch = wx.NewIdRef()
         self._id_localgit_stash_changes = wx.NewIdRef()
@@ -1835,6 +1839,23 @@ class MenuBuilderMixin:
         github_admin_menu.Append(
             self._id_github_security_alerts,
             self._menu_label(_("&Security Alerts..."), "github.view_security_alerts"),
+        )
+        github_admin_menu.AppendSeparator()
+        github_admin_menu.Append(
+            self._id_github_list_codespaces,
+            self._menu_label(_("Code&spaces..."), "github.list_codespaces"),
+        )
+        github_admin_menu.Append(
+            self._id_github_create_codespace,
+            self._menu_label(_("Create Codespace..."), "github.create_codespace"),
+        )
+        github_admin_menu.Append(
+            self._id_github_copilot_suggest,
+            self._menu_label(_("Ask Copilot for a Command..."), "github.copilot_suggest"),
+        )
+        github_admin_menu.Append(
+            self._id_github_copilot_explain,
+            self._menu_label(_("Explain a Command..."), "github.copilot_explain"),
         )
         tools_menu.AppendSubMenu(github_admin_menu, _("&GitHub"))
         local_git_menu = wx.Menu()
@@ -3208,6 +3229,26 @@ class MenuBuilderMixin:
             wx.EVT_MENU,
             lambda _e: self.github_view_security_alerts(),
             id=self._id_github_security_alerts,
+        )
+        self.frame.Bind(
+            wx.EVT_MENU,
+            lambda _e: self.github_list_codespaces(),
+            id=self._id_github_list_codespaces,
+        )
+        self.frame.Bind(
+            wx.EVT_MENU,
+            lambda _e: self.github_create_codespace(),
+            id=self._id_github_create_codespace,
+        )
+        self.frame.Bind(
+            wx.EVT_MENU,
+            lambda _e: self.github_copilot_suggest(),
+            id=self._id_github_copilot_suggest,
+        )
+        self.frame.Bind(
+            wx.EVT_MENU,
+            lambda _e: self.github_copilot_explain(),
+            id=self._id_github_copilot_explain,
         )
         self.frame.Bind(
             wx.EVT_MENU,

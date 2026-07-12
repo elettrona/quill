@@ -431,6 +431,7 @@ from quill.ui.main_frame_devtools import DevToolsMixin
 from quill.ui.main_frame_dictation_hotkeys import DictationHotkeysMixin
 from quill.ui.main_frame_docconvert import DocConvertMixin
 from quill.ui.main_frame_format_codes import FormatCodesMixin
+from quill.ui.main_frame_gh_bridge import GhBridgeMixin
 from quill.ui.main_frame_git_sync import GitSyncMixin
 from quill.ui.main_frame_github import GitHubRemoteMixin
 from quill.ui.main_frame_github_admin import GitHubAdminMixin
@@ -866,6 +867,7 @@ class MainFrame(
     GitHubItemsMixin,
     GitHubAdminMixin,
     GitHubExtrasMixin,
+    GhBridgeMixin,
     DevToolsMixin,
     PowerToolsActionsMixin,
     ClassicEditorMixin,
@@ -3829,6 +3831,7 @@ class MainFrame(
         self._register_git_sync_commands()
         self._register_github_admin_commands()
         self._register_github_extras_commands()
+        self._register_gh_bridge_commands()
         self._register_local_git_commands()
         self._register_dictation_hotkey_commands()
 

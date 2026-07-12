@@ -399,6 +399,8 @@ class SpeechCommandsMixin:
             "braille": lambda: self.download_braille_pack(on_done=_back),
             "audio_extras": lambda: self.download_audio_extras(on_done=_back),
             "mathcat": lambda: self.download_mathcat(on_done=_back),
+            "git": lambda: self.download_git(on_done=_back),
+            "gh": lambda: self.download_gh(on_done=_back),
         }
         action = actions.get(chosen)
         if action is not None:

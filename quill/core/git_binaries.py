@@ -51,6 +51,13 @@ def _vendor_dir() -> Path:
     return app_data_dir() / "vendor" / "git"
 
 
+def vendor_dir() -> Path:
+    """Public accessor for the shared git/gh vendor directory, for the
+    ``release_assets.fetch_component`` download target and the Download
+    Optional Components removal path (``quill.core.optional_components``)."""
+    return _vendor_dir()
+
+
 def validate_executable(path: Path) -> Path:
     """Raise :class:`GitBinaryError` unless *path*'s basename is an allowed
     git/gh executable name. Callers use this right before building a
@@ -63,6 +70,12 @@ def validate_executable(path: Path) -> Path:
 
 def _vendor_candidate(basename: str) -> Path:
     exe = f"{basename}.exe" if sys.platform == "win32" else basename
+    if basename == "git":
+        # MinGit's git.exe lives at <vendor_dir>/cmd/git.exe, alongside
+        # sibling etc/, mingw64/, usr/ folders it needs at runtime -- see the
+        # "git-windows" ASSETS entry in quill.core.release_assets for why the
+        # fetched layout is nested rather than flat.
+        return _vendor_dir() / "cmd" / exe
     return _vendor_dir() / exe
 
 
@@ -105,4 +118,5 @@ __all__ = [
     "resolve_gh",
     "resolve_git",
     "validate_executable",
+    "vendor_dir",
 ]

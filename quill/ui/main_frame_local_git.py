@@ -18,6 +18,7 @@ that split mirrors :mod:`quill.core.local_git` itself.
 from __future__ import annotations
 
 import os
+from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
@@ -595,6 +596,65 @@ class LocalGitMixin:
             if self._show_modal_dialog(dialog, title) != wx.ID_OK:
                 return None
             return str(dialog.GetValue()).strip()
+
+    # ------------------------------------------------------------------
+    # Download Optional Components: the git fallback for a user with neither
+    # a system git nor QUILL's bundled copy (quill.core.git_binaries prefers
+    # a system install first; this is purely the recovery path).
+
+    def download_git(self, *, on_done: Callable[[bool], None] | None = None) -> None:
+        """Fetch QUILL's self-hosted, SHA-256-verified copy of Git (MinGit)
+        for Tools > Local Git. QUILL always prefers a system git on PATH
+        first; this download exists only for a user who has neither."""
+        from quill.core.git_binaries import git_available
+
+        wx = self._wx
+        if os.environ.get("QUILL_SAFE_MODE") == "1":
+            self._announce("Downloading components is disabled in Safe Mode.")
+            return
+        if git_available():
+            again = self._show_message_box(
+                "Git is already installed (either on your system, or QUILL's own "
+                "copy). Download QUILL's verified copy again anyway?",
+                "Git",
+                wx.ICON_QUESTION | wx.YES_NO,
+            )
+            if again != wx.YES:
+                if on_done is not None:
+                    on_done(True)
+                return
+        proceed = self._show_message_box(
+            "QUILL will download a portable copy of Git (about 40 MB) and verify "
+            "it. It powers Tools > Local Git's interactive rebase, merge conflict "
+            "resolution, stash, blame, and bisect commands. Continue?",
+            "Download Git",
+            wx.ICON_INFORMATION | wx.YES_NO,
+        )
+        if proceed != wx.YES:
+            return
+
+        def _work(progress):
+            from quill.core.git_binaries import vendor_dir
+            from quill.core.release_assets import fetch_component
+
+            fetch_component(
+                "git-windows",
+                vendor_dir(),
+                progress=lambda fraction, message: progress(message, int(fraction * 100), 100),
+                label="Downloading Git...",
+            )
+            return True
+
+        def _finished(result: object) -> None:
+            ok = bool(result)
+            if ok:
+                self._announce("Git installed. Local Git commands are ready to use.")
+            else:
+                self._announce("Git could not be installed.")
+            if on_done is not None:
+                on_done(ok)
+
+        self._run_background_task("Downloading Git", _work, _finished)
 
     # ------------------------------------------------------------------
     # Command palette registration
