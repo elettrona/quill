@@ -25,6 +25,10 @@ ground by ear).
    — a ready-made formula gallery, typing an equation with ordinary keyboard
    characters, exploring one by ear, rendering live, and a real, editable
    Word equation on export and back.
+8. [GitHub inside QUILL](08-github-inside-quill.md) — browse, open, and
+   save files; work issues and pull requests; administer a repository
+   (create, fork, rename, branch protection); and resolve merge conflicts
+   and run an interactive rebase without ever leaving QUILL.
 
 Every tutorial assumes only a default QUILL install and a screen reader (or
 none — everything here works identically by sight).
