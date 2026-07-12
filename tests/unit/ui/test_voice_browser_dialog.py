@@ -52,6 +52,16 @@ def test_preview_button_toggles_to_stop_while_active(wx_app) -> None:
     wx.YieldIfNeeded()
 
     assert dlg._preview_btn.GetLabel() == "&Stop Preview"
+    # A deterministic macOS-only native crash (Segmentation fault, reproduced
+    # identically across three separate CI runs -- 0.9.0 Beta 2 and Beta 3 --
+    # always right at this exact boundary): SetLabel() above queues a native
+    # repaint that wx.Cocoa has not necessarily finished delivering by the
+    # time this function returns. Destroying the frame while that repaint is
+    # still pending tears down the native peer out from under it. One more
+    # yield here drains it before Destroy() runs, matching the wx.Toolbook
+    # null-deref precedent (see test_preferences_hub_wiring.py) of native
+    # widget lifecycle bugs on macOS needing an explicit workaround.
+    wx.YieldIfNeeded()
     frame.Destroy()
 
 
@@ -80,6 +90,7 @@ def test_second_click_while_active_stops_preview_and_reverts_label(wx_app) -> No
 
     assert stop_calls == ["stopped"]
     assert dlg._preview_btn.GetLabel() == "&Preview Selected Voice"
+    wx.YieldIfNeeded()  # drain the label-change repaint before Destroy(); see above
     frame.Destroy()
 
 
@@ -102,6 +113,7 @@ def test_on_state_change_idle_reverts_label(wx_app) -> None:
     dlg._on_preview_state("idle")
 
     assert dlg._preview_btn.GetLabel() == "&Preview Selected Voice"
+    wx.YieldIfNeeded()  # drain the label-change repaint before Destroy(); see above
     frame.Destroy()
 
 
@@ -148,4 +160,5 @@ def test_preview_button_stays_enabled_after_selecting_a_not_ready_voice(wx_app) 
     wx.YieldIfNeeded()
     assert stop_calls == ["stopped"]
     assert dlg._preview_btn.GetLabel() == "&Preview Selected Voice"
+    wx.YieldIfNeeded()  # drain the label-change repaint before Destroy(); see above
     frame.Destroy()
