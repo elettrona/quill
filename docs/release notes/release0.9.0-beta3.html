@@ -563,9 +563,10 @@ exactly that one file back, list issues and PRs, close/reopen/label them
 in a batch. Creating a repo, opening a pull request, merging one,
 deleting a stale branch — all of that still meant leaving QUILL for a
 browser. We wrote up exactly how far we could take this without adding a
-<code>gh</code>-CLI dependency (<code>docs/planning/github.md</code>,
-retired now that it's shipped), and this release ships the confident
-half of that plan.</p>
+<code>gh</code>-CLI dependency (<code>docs/planning/github.md</code>),
+and this release ships the confident half of that plan — repository
+administration below, and a second batch (Organizations, Releases,
+workflow dispatch, notifications, security alerts) right after it.</p>
 <p><strong>Tools &gt; GitHub</strong> is a new submenu with eight
 commands:</p>
 <ul>
@@ -613,6 +614,83 @@ browsing commands that have been in QUILL since 0.5.0 but never had a
 keyboard shortcut until now) are in the Command Palette and ship default
 QUILL Key chords — reassign any of them in Preferences if you'd rather
 use something else.</p>
+<h2
+id="organizations-releases-workflow-runs-notifications-and-security-alerts">Organizations,
+releases, workflow runs, notifications, and security alerts</h2>
+<p>Five more <strong>Tools &gt; GitHub</strong> commands landed in the
+same push, rounding out the read-mostly parts of the plan:
+<strong>Browse Organization Repositories...</strong> (your account's
+organizations, then that org's repos — Teams stay out of scope on
+purpose, see below), <strong>Create Release...</strong> (a tag, optional
+notes or GitHub's own auto-generated notes from merged PRs, draft or
+published), <strong>Dispatch Workflow...</strong> (run a workflow on a
+branch or tag, the same as clicking "Run workflow" on github.com),
+<strong>Notifications...</strong> (a real inbox across every repo, not
+just the one you have loaded), and <strong>Security Alerts...</strong>
+(a repository's open Dependabot alerts).</p>
+<p>Before writing any of this we checked, rather than assumed, what
+PyGithub actually supports — and three things from the original plan
+didn't make the cut for a good reason, not a missed one.
+<strong>Discussions</strong> technically has a PyGithub method, but it
+needs you to hand-write a GraphQL field-selection string, and getting
+that right without testing it against a live repository felt like
+shipping a guess. <strong>Projects (v2)</strong> — the modern board
+GitHub actually wants people using now — has no PyGithub support at all;
+the library only wraps the classic Projects API GitHub has been
+sunsetting, so building against it would ship something that doesn't
+work on most current repos. <strong>Packages</strong> has no PyGithub
+support whatsoever. All three (plus renaming — sorry,
+<em>transferring</em> — a repository to a different owner, which also
+has no wrapped method) are real candidates for later, once there's a way
+to verify them properly.</p>
+<h2
+id="local-git-the-interactive-rebase-and-merge-conflict-tool-we-dont-think-exists-anywhere-else">Local
+Git: the interactive rebase and merge-conflict tool we don't think
+exists anywhere else</h2>
+<p>This one isn't about GitHub at all — it's about <code>git</code>
+itself, and it might be the single feature in this beta we're proudest
+of.</p>
+<p>If you've used git for any length of time, you've hit a merge
+conflict, and you know exactly what a screen reader does with
+<code>&lt;&lt;&lt;&lt;&lt;&lt;&lt;</code>, <code>=======</code>, and
+<code>&gt;&gt;&gt;&gt;&gt;&gt;&gt;</code> markers: reads them as line
+noise, because that's what they look like without eyes on the
+surrounding structure. Nothing we could find — not the <code>git</code>
+CLI, not GitHub Desktop, not any GUI merge tool — was built with that
+problem in mind, because none of them are also a text editor a
+screen-reader user already trusts. QUILL is. So <strong>Tools &gt; Local
+Git &gt; Resolve Conflicts...</strong> parses a conflicted file into
+actual structured pieces and walks you through them: "Conflict 1 of 3:
+your version says X, their version says Y," with keep-yours,
+keep-theirs, keep-both, or type-something-else as your options, one
+conflict at a time, in as many files as it takes.</p>
+<p>Interactive rebase got the same treatment. <code>git rebase -i</code>
+opens a text editor with a list of commits and expects you to reorder
+and annotate it — pick, squash, reword, drop — by eye, in place, without
+breaking the syntax. <strong>Interactive Rebase...</strong> is a real
+list dialog instead: one commit per row, an action you choose from a
+dropdown, Move Up and Move Down to reorder. Under the hood it's the same
+trick every GUI git client uses to make this possible at all — git will
+happily hand its generated todo list to any program you name instead of
+a text editor, so QUILL names one that hands back the list you actually
+built in the dialog. If a step in the rebase conflicts, the same
+conflict walker from above opens automatically; resolve it, and the
+rebase picks itself back up.</p>
+<p>Rounding it out: <strong>Uncommitted Changes...</strong>
+(stage/unstage with an accessible diff, not a raw one), <strong>Switch
+Branch...</strong> (with a guard so you're never surprised by
+uncommitted changes coming along for the ride), <strong>Stash
+Changes.../Manage Stashes...</strong>, <strong>Who Wrote This
+Line...</strong> (blame, spoken), and a guided <strong>Start
+Bisect.../End Bisect</strong> that turns <code>git bisect</code> into a
+plain "is this version good or bad?" conversation. None of it touches
+GitHub or the network — it's pure local git, and it works in any
+repository you point QUILL at.</p>
+<p>We tested this against real git repositories doing real things — a
+real merge conflict between two diverging branches, a real interactive
+rebase that hits a real conflict partway through and has to continue
+past it — because the only way to trust subprocess orchestration like
+this is to watch it actually happen, not assume it will.</p>
 <h2
 id="headers-and-footers-now-live-inside-your-word-and-rtf-files">Headers
 and footers now live inside your Word and RTF files</h2>

@@ -14424,6 +14424,245 @@ makes is documented in
 <code>quill/tools/network_egress_audit.py</code>'s PyGithub section (not
 AST-scannable, so it is maintained by hand alongside every other GitHub
 entry point).</p>
+<h3 id="2514-local-git-accessibility-090-beta-3">§25.14 Local Git
+Accessibility (0.9.0 Beta 3)</h3>
+<p><strong>Tools &gt; Local Git</strong> is the crown-jewel work from
+the git/gh integration PRD (<code>docs/planning/github.md</code> section
+4): a genuinely accessible local git experience, built specifically
+because interactive rebase and merge-conflict resolution are among the
+most screen-reader-hostile workflows in mainstream software, and no
+existing tool — not the <code>git</code> CLI, not a GUI client — was
+built with that problem in mind. This is entirely local; it never talks
+to GitHub's API (that stays in <code>quill/core/github/*</code>) and
+never pushes or pulls a remote (that stays in
+<code>git_sync.py</code>/<code>vault/sync.py</code>) — it only operates
+on the working copy and its own history.</p>
+<p><strong>Repository resolution.</strong> Every command resolves a
+repository root the same way: the nearest enclosing <code>.git</code>
+above the current document (walking up, following the same logic
+<code>quill.core.github.local_repo</code>'s detector uses), or a folder
+picker when no document is open or none is found.</p>
+<p><strong>Ten commands:</strong></p>
+<ul>
+<li><strong>Uncommitted Changes...</strong> — <code>git status</code>
+plus per-file diff content, rendered through the same accessible
+difference walk the PR diff viewer already uses
+(<code>render_pull_file_diff</code>, comparing the file's
+<code>HEAD</code> content against the live working-tree content) instead
+of a raw unified diff. Stage or unstage individual files from an
+accessible list; <strong>Stage All</strong> handles the rest in one
+action.</li>
+<li><strong>Switch Branch...</strong> — lists local branches, switches
+on selection. An uncommitted-changes guard refuses the switch and offers
+"switch anyway and carry them over" rather than silently discarding or
+blocking outright.</li>
+<li><strong>Stash Changes... / Manage Stashes...</strong> — save, list,
+apply, and drop stashes by name instead of <code>stash@{2}</code>
+indices.</li>
+<li><strong>Who Wrote This Line...</strong> — <code>git blame</code> on
+the current line of the open document, spoken as author, summary, and
+short SHA.</li>
+<li><strong>Start Bisect... / End Bisect</strong> — a guided "Is this
+version good or bad?" loop (Yes = bad, No = good) instead of remembering
+<code>git bisect</code>'s own command sequence; announces the culprit
+commit when bisection converges.</li>
+<li><strong>Resolve Conflicts...</strong> — the merge-conflict walker
+(below).</li>
+<li><strong>Interactive Rebase... / Abort Rebase</strong> — the
+accessible interactive rebase (below).</li>
+</ul>
+<p><strong>The merge-conflict walker.</strong>
+<code>&lt;&lt;&lt;&lt;&lt;&lt;&lt;</code>/<code>=======</code>/<code>&gt;&gt;&gt;&gt;&gt;&gt;&gt;</code>
+markers read as line noise with a screen reader; QUILL instead parses a
+conflicted file into structured hunks
+(<code>quill.core.local_git.parse_conflict_hunks</code>) and presents
+each one as "Conflict 1 of 3: your version says X, their version says Y"
+with <strong>your version</strong> / <strong>their version</strong> /
+<strong>both</strong> / <strong>edit manually</strong> as the resolution
+choice, writing the resolved content back and staging it
+(<code>resolve_conflict_hunks</code> +
+<code>mark_conflict_resolved</code>). Reached directly from
+<strong>Resolve Conflicts...</strong>, and automatically offered when a
+rebase stops for conflicts (below) or when a conflict surfaces from the
+already-shipped <strong>Sync Folder with GitHub</strong> command — the
+same walker resolves a conflict regardless of which command produced
+it.</p>
+<p><strong>Interactive rebase, spoken.</strong>
+<code>git rebase -i</code> opens an editor buffer with a
+<code>pick</code>/<code>squash</code>/<code>reword</code>/<code>drop</code>
+todo list meant to be reordered by eye. QUILL instead builds the same
+commit list as a real <code>InteractiveRebaseDialog</code> list — one
+commit per row, an action per row via a <code>Choice</code> control, and
+<strong>Move Up</strong>/<strong>Move Down</strong> to reorder — then
+substitutes the result for git's own generated list. Mechanically: git
+invokes whatever <code>sequence.editor</code> names with the todo file's
+path as its argument; QUILL writes the chosen todo content to a temp
+file and points <code>sequence.editor</code> at a small generated driver
+script that copies it over the path git provides
+(<code>quill.core.local_git.default_sequence_editor_command</code>) —
+the same trick every GUI git client uses to give interactive rebase a UI
+instead of a text buffer. A rebase that stops for conflicts hands off
+directly to the merge-conflict walker above, resolving each conflicted
+file in turn before calling <code>git rebase --continue</code>;
+<strong>Abort Rebase</strong> restores the original branch state.</p>
+<p><strong>Testing.</strong> <code>quill/core/local_git.py</code> is
+tested against real temporary git repositories (not fakes) — including a
+genuine merge conflict produced by two diverging branches and a genuine
+interactive rebase exercising both the clean path and the
+conflict-stop/continue path — because subprocess orchestration against
+real git behavior is exactly what needed verifying, not assumptions
+about it.</p>
+<p><strong>Implementation files:</strong></p>
+<table>
+<thead>
+<tr>
+<th>File</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>quill/core/git_binaries.py</code></td>
+<td><code>resolve_git()</code>/<code>resolve_gh()</code> executable
+resolution (system PATH first, QUILL-managed vendor copy second) and the
+narrow git/gh subprocess allowlist</td>
+</tr>
+<tr>
+<td><code>quill/core/local_git.py</code></td>
+<td>The wx-free local git engine: status/diff/stage, branches, stash,
+blame, bisect, conflict parsing/resolution, interactive rebase</td>
+</tr>
+<tr>
+<td><code>quill/ui/local_git_dialogs.py</code></td>
+<td><code>UncommittedChangesDialog</code>,
+<code>MergeConflictDialog</code>,
+<code>InteractiveRebaseDialog</code></td>
+</tr>
+<tr>
+<td><code>quill/ui/main_frame_local_git.py</code></td>
+<td><code>LocalGitMixin</code> — the ten command handlers and
+command-palette registration</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Feature flag.</strong> None — local git commands need no
+GitHub account and touch no network, so they are not gated by
+<code>core.github_remote</code>; they are gated only by Safe Mode and by
+<code>git</code> being available (system install or the QUILL-managed
+vendor copy from §2 of <code>docs/planning/github.md</code>).</p>
+<p><strong>Keybindings.</strong> None by default — the single-letter
+QUILL Key leader-chord space is fully claimed by existing commands (see
+§25.13's chord table). Reachable via <strong>Tools &gt; Local
+Git</strong> and the Command Palette; freely assignable in Preferences
+&gt; Keyboard Shortcuts.</p>
+<h3
+id="2515-github-tier-2-organizations-releases-workflow-dispatch-notifications-security-alerts-090-beta-3">§25.15
+GitHub Tier 2: Organizations, Releases, Workflow Dispatch,
+Notifications, Security Alerts (0.9.0 Beta 3)</h3>
+<p>The rest of the GitHub API surface from
+<code>docs/planning/github.md</code> section 5 — extended the same way
+as §25.13, using the existing PyGithub provider pattern rather than a
+<code>gh</code>-CLI shell-out. Every method's PyGithub call shape was
+confirmed by direct introspection of the installed <code>github</code>
+package (not assumed), specifically to catch the cases below where
+PyGithub's actual surface didn't match what the plan first hoped
+for.</p>
+<p><strong>Five new commands (Tools &gt; GitHub):</strong></p>
+<ul>
+<li><strong>Browse Organization Repositories...</strong> — lists the
+organizations the signed-in account belongs to, then that organization's
+repositories; selecting one opens the GitHub Items viewer pre-filled
+with it. <strong>Teams are explicitly out of scope</strong>
+(<code>docs/planning/github.md</code> section 1's "Organizations in,
+Teams out" decision) — no team membership or permission management.</li>
+<li><strong>Create Release...</strong> — tag, optional title, and either
+hand-written release notes or GitHub's own auto-generated notes from
+merged pull requests since the last release
+(<code>Repository.generate_release_notes</code>), with a draft/published
+choice.</li>
+<li><strong>Dispatch Workflow...</strong> — triggers a
+<code>workflow_dispatch</code> run for a named workflow file on a chosen
+branch or tag, confirmed before it runs.</li>
+<li><strong>Notifications...</strong> — a real, cross-repository inbox
+(every notification for the signed-in account, not scoped to one repo),
+each row read as read/unread state, repository, subject, and reason;
+selecting one opens github.com/notifications and marks it read.</li>
+<li><strong>Security Alerts...</strong> — read-only listing of a
+repository's open Dependabot alerts (severity, affected package,
+summary); selecting one opens it on github.com.</li>
+</ul>
+<p><strong>What was deliberately not built, and why.</strong> The
+original plan (<code>docs/planning/github.md</code> section 5) also
+named Discussions, Projects (v2), Packages, and repository transfer.
+Introspecting PyGithub directly (not guessing) before writing any code
+against it settled each one:</p>
+<ul>
+<li><strong>Discussions</strong> — PyGithub's
+<code>get_discussions()</code> exists, but requires the caller to
+hand-write the GraphQL field-selection fragment for the
+<code>nodes</code> it fetches (a raw string of GitHub GraphQL schema
+field names). Getting this right without live-testing against a real
+repository with Discussions enabled is a real correctness risk, not a
+design choice — deferred rather than shipped unverified.</li>
+<li><strong>Projects (v2)</strong> — PyGithub's
+<code>get_projects()</code>/<code>create_project()</code> wrap the
+<em>classic</em> Projects REST API, which GitHub has sunset for new
+projects. The modern Projects v2 board is GraphQL-only with no PyGithub
+wrapper at all. Building against the classic API would ship a feature
+that doesn't work for most users' actual repositories.</li>
+<li><strong>Packages</strong> — PyGithub has no Packages API support
+whatsoever (verified by introspecting
+<code>AuthenticatedUser</code>/<code>Organization</code>/<code>Repository</code>
+for any <code>*packag*</code> method — none exist).</li>
+<li><strong>Repository transfer</strong> — no wrapped
+<code>transfer()</code> method on <code>Repository</code>; would need a
+raw, unwrapped API call.</li>
+</ul>
+<p>All four would require either a hand-rolled GraphQL client or a raw
+REST call PyGithub doesn't provide a typed wrapper for — exactly the
+<code>gh api</code> passthrough / GraphQL surface
+<code>docs/planning/github.md</code> section 1 already ruled out of
+scope for this batch. They remain real candidates for a future batch,
+specifically once there's a path to verify them against a live
+repository rather than shipping speculative field-name guesses.</p>
+<p><strong>Implementation files:</strong></p>
+<table>
+<thead>
+<tr>
+<th>File</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>quill/core/github/repo_admin.py</code></td>
+<td><code>list_organizations</code>, <code>list_org_repositories</code>,
+<code>generate_release_notes</code>, <code>create_release</code> added
+to <code>GitHubRepoAdminProvider</code></td>
+</tr>
+<tr>
+<td><code>quill/core/github/items_provider.py</code></td>
+<td><code>GitHubWorkflowJob</code>/<code>GitHubNotification</code>/<code>GitHubSecurityAlert</code>
+models plus <code>fetch_workflow_jobs</code>,
+<code>dispatch_workflow</code>, <code>fetch_notifications</code>,
+<code>mark_notification_read</code>,
+<code>fetch_security_alerts</code></td>
+</tr>
+<tr>
+<td><code>quill/ui/main_frame_github_extras.py</code></td>
+<td><code>GitHubExtrasMixin</code> — the five command handlers, split
+into its own module rather than growing
+<code>main_frame_github_admin.py</code> a second time past its size
+budget; reuses that mixin's shared gating helpers
+(<code>_gh_admin_ready</code>, <code>_gh_admin_prompt_repo</code>, etc.)
+via <code>self</code>, the same sibling-mixin pattern
+<code>GitHubItemsMixin</code> already uses with
+<code>GitHubRemoteMixin</code></td>
+</tr>
+</tbody>
+</table>
+<p><strong>Feature flag.</strong> All five commands map to
+<code>core.github_remote</code>, same as every other GitHub command.</p>
 <hr />
 <h2 id="26-braille-mode-brfbrlpefueb">§26. Braille Mode
 (BRF/BRL/PEF/UEB)</h2>

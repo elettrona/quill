@@ -3705,9 +3705,36 @@ All eight commands are in the Command Palette too, and all have default keyboard
 
 GitHub's file API is limited to 1 MB. Files larger than that must be downloaded manually from github.com.
 
+**Organizations, releases, workflows, notifications, and security alerts (0.9.0 Beta 3).** Five more commands under **Tools > GitHub**:
+
+- **Browse Organization Repositories...** lists the organizations your signed-in account belongs to, then that organization's repositories; pick one to open it straight into the GitHub Items viewer. This is repository browsing only — QUILL does not manage organization teams or team permissions.
+- **Create Release...** asks for a tag and an optional title, then either your own release notes or GitHub's own auto-generated notes (summarizing merged pull requests since the last release), and whether to save it as a draft or publish immediately.
+- **Dispatch Workflow...** runs a GitHub Actions workflow on a branch or tag you choose, the same as clicking "Run workflow" on github.com — useful for workflows you've set up to take manual triggers.
+- **Notifications...** is a real inbox: every notification for your account across every repository, not just the one you have loaded, each one telling you whether it's read or unread, which repository it's from, and why you got it. Selecting one opens your GitHub notifications page and marks it read.
+- **Security Alerts...** lists a repository's open Dependabot alerts — severity, the affected package, and a summary — so you can see what needs attention without opening a browser.
+
 **Enabling the feature**
 
 GitHub remote access is controlled by the feature flag `core.github_remote`. If it is not visible, open **File > Open from Remote** and check whether the GitHub items appear. If PyGithub is not installed, QUILL shows a message explaining how to install it: `pip install "quill[github]"`.
+
+## Local Git: accessible merge conflicts and interactive rebase
+
+**Tools > Local Git** brings the two hardest parts of everyday git work — resolving a merge conflict and reordering commits with an interactive rebase — into QUILL as genuinely accessible, guided flows. Nothing here needs a GitHub account or touches the network; it works on any local git repository.
+
+**Uncommitted Changes...** shows every file you've changed since your last commit, split into staged and unstaged, with an accessible difference view for whichever file you select — the same reading style as Compare Documents, not a raw diff. Select a file and press **Stage** or **Unstage**, or **Stage All** to stage everything at once.
+
+**Resolving a merge conflict.** If you've ever hit a real git conflict, you know the markers — `<<<<<<<`, `=======`, `>>>>>>>` — read as line noise with a screen reader, and there was never a good way through them in QUILL until now. **Resolve Conflicts...** walks you through every conflict in every affected file, one at a time: "Conflict 1 of 3: your version says X, their version says Y," with four choices — keep your version, keep their version, keep both, or type a manual replacement. Move to the next or previous conflict, and QUILL writes the resolved file and stages it for you when you're done. This same walker also opens automatically if an **Interactive Rebase...** (below) or a **Sync Folder with GitHub** stops because of a conflict — you never have to go find a different tool to finish resolving it.
+
+**Interactive Rebase...** is the accessible version of `git rebase -i`, which normally opens a text editor with a list of commits you're expected to reorder and annotate by eye. QUILL instead shows you a real list: one commit per row, with an action — pick, squash, reword, or drop — you choose from a dropdown, and **Move Up**/**Move Down** buttons to reorder commits. Press **Start Rebase** when you're happy with the plan. If a step conflicts, the merge-conflict walker above opens automatically; resolve it and the rebase continues on its own. **Abort Rebase** puts your branch back exactly where it started if you change your mind partway through.
+
+**The rest of the toolkit:**
+
+- **Switch Branch...** lists your local branches and switches on selection. If you have uncommitted changes, QUILL warns you and offers to switch anyway and bring them along, rather than silently discarding them or just refusing.
+- **Stash Changes... / Manage Stashes...** save your uncommitted work aside with a name you'll recognize, then list, apply, or drop any stash later — no memorizing `stash@{2}`-style references.
+- **Who Wrote This Line...** runs `git blame` on wherever your cursor is in the current file and tells you who last touched that line, when, and the commit's summary.
+- **Start Bisect... / End Bisect** guides you through a `git bisect` session as a plain question-and-answer loop: QUILL checks out a commit and asks "Is this version good or bad?" — answer, and it narrows the search until it announces exactly which commit introduced the problem.
+
+None of these commands have a default keyboard shortcut — every letter on the QUILL Key leader chord is already claimed by another command — but all ten are in the Command Palette and in the **Tools > Local Git** menu, and you can assign your own shortcut to any of them in **Preferences > Keyboard Shortcuts**.
 
 ## Braille Mode (BRF, BRL, PEF, UEB)
 
