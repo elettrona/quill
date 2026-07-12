@@ -8,7 +8,7 @@
 #define AppExeName "quill.exe"
 
 [Setup]
-AppId={{6E0A1C52-4A90-4C6E-A8A1-3C2A16E2B7F2}
+AppId={{6E0A1C52-4A90-4C6E-A8A1-3C2A16E2B7F2}}
 AppName={#AppName}
 AppVersion={#AppVersion}
 AppPublisher={#AppPublisher}
@@ -288,12 +288,13 @@ Root: HKCU; Subkey: "Software\Classes\SystemFileAssociations\.pdf\shell\Quill.re
 Root: HKCU; Subkey: "Software\Classes\SystemFileAssociations\.pdf\shell\Quill.read"; ValueType: string; ValueName: "MUIVerb"; ValueData: "Read aloud in Quill"; Tasks: shellverbs
 Root: HKCU; Subkey: "Software\Classes\SystemFileAssociations\.pdf\shell\Quill.read\command"; ValueType: string; ValueName: ""; ValueData: """{app}\{#AppExeName}"" -m quill --action read ""%1"""; Tasks: shellverbs
 
-; community#941: opt-in PATH registration (addtopath task) so
-; quill resolves from a terminal or a shortcut Target field without
-; the full install path. Per-user only (HKCU) -- no elevation needed and
-; no other account is touched. NeedsAddPath (in [Code]) guards against
-; duplicate entries on repeat installs/repairs.
-Root: HKCU; Subkey: "Environment"; ValueType: expandsz; ValueName: "Path"; ValueData: "{olddata};{app}"; Tasks: addtopath; Check: NeedsAddPath('{app}')
+; community#941: opt-in PATH registration (addtopath task). Per-user only
+; (HKCU) -- no elevation needed and no other account is touched. The actual
+; add/remove happens in [Code] (EnvAddToPath / EnvRemoveFromPath below),
+; not a declarative [Registry] entry -- that gives install *and* uninstall
+; symmetry (a plain [Registry] value has no safe way to undo a delimited
+; PATH append on uninstall) plus a live WM_SETTINGCHANGE broadcast so an
+; already-open shell picks up the change immediately.
 
 [Run]
 Filename: "{app}\README.txt"; Description: "View the Quill README"; Flags: postinstall shellexec skipifsilent unchecked
@@ -339,21 +340,92 @@ begin
   Result := BundledLauncherPath('') <> '';
 end;
 
-// -- community#941: opt-in PATH registration --------------------------------
-// True when {app} is not already present in the user's PATH, so the
-// [Registry] addtopath entry above only appends once per machine even
-// across repeat installs/repairs (a missing PATH value is treated as
-// empty, so the very first install still adds it).
-function NeedsAddPath(Param: string): boolean;
+// -- PATH management (opt-in 'addtopath' task, #941) -----------------------
+// Adds/removes {app} in HKCU\Environment\Path (per-user, no admin needed --
+// matches PrivilegesRequired=lowest) so 'quill <file>' works from a shell
+// without typing the full install path. TStringList does the split/join so
+// there is no fragile substring-offset arithmetic on a system-important value.
+const
+  EnvHWND_BROADCAST = $FFFF;
+  EnvWM_SETTINGCHANGE = $001A;
+  EnvSMTO_ABORTIFHUNG = $0002;
+
+function SendMessageTimeoutA(hWnd: Longint; Msg: Longint; wParam: Longint;
+  lParam: String; fuFlags: Longint; uTimeout: Longint; var lpdwResult: Longint): Longint;
+  external 'SendMessageTimeoutA@user32.dll stdcall';
+
+procedure EnvBroadcastChange();
 var
-  OrigPath: string;
+  ResultCode: Longint;
 begin
-  if not RegQueryStringValue(HKEY_CURRENT_USER, 'Environment', 'Path', OrigPath) then
-  begin
-    Result := True;
-    exit;
+  // Lets already-running Explorer pick up the new PATH so a freshly opened
+  // Command Prompt/PowerShell sees it without a full sign-out; a 5s timeout
+  // keeps a hung listener from blocking the installer.
+  SendMessageTimeoutA(EnvHWND_BROADCAST, EnvWM_SETTINGCHANGE, 0, 'Environment',
+    EnvSMTO_ABORTIFHUNG, 5000, ResultCode);
+end;
+
+function EnvIndexOfPath(Paths, Dir: String): Integer;
+var
+  List: TStringList;
+  I: Integer;
+begin
+  Result := -1;
+  List := TStringList.Create;
+  try
+    List.Delimiter := ';';
+    List.StrictDelimiter := True;
+    List.DelimitedText := Paths;
+    for I := 0 to List.Count - 1 do
+    begin
+      if Lowercase(Trim(List[I])) = Lowercase(Trim(Dir)) then
+      begin
+        Result := I;
+        Break;
+      end;
+    end;
+  finally
+    List.Free;
   end;
-  Result := Pos(';' + Param + ';', ';' + OrigPath + ';') = 0;
+end;
+
+procedure EnvAddToPath(Dir: String);
+var
+  Paths: String;
+begin
+  if not RegQueryStringValue(HKEY_CURRENT_USER, 'Environment', 'Path', Paths) then
+    Paths := '';
+  if EnvIndexOfPath(Paths, Dir) >= 0 then
+    Exit;  // already present -- an upgrade or a re-run of the task
+  if (Paths <> '') and (Paths[Length(Paths)] <> ';') then
+    Paths := Paths + ';';
+  Paths := Paths + Dir;
+  RegWriteExpandStringValue(HKEY_CURRENT_USER, 'Environment', 'Path', Paths);
+  EnvBroadcastChange();
+end;
+
+procedure EnvRemoveFromPath(Dir: String);
+var
+  Paths: String;
+  List: TStringList;
+  Idx: Integer;
+begin
+  if not RegQueryStringValue(HKEY_CURRENT_USER, 'Environment', 'Path', Paths) then
+    Exit;
+  Idx := EnvIndexOfPath(Paths, Dir);
+  if Idx < 0 then
+    Exit;  // never added, or already removed
+  List := TStringList.Create;
+  try
+    List.Delimiter := ';';
+    List.StrictDelimiter := True;
+    List.DelimitedText := Paths;
+    List.Delete(Idx);
+    RegWriteExpandStringValue(HKEY_CURRENT_USER, 'Environment', 'Path', List.DelimitedText);
+  finally
+    List.Free;
+  end;
+  EnvBroadcastChange();
 end;
 
 // -- Post-install: write the new-install marker -----------------------------
@@ -382,6 +454,8 @@ begin
   if CurStep = ssPostInstall then
   begin
     SaveStringToFile(ExpandConstant('{app}\quill-new-install.txt'), 'new-install', False);
+    if WizardIsTaskSelected('addtopath') then
+      EnvAddToPath(ExpandConstant('{app}'));
   end;
 end;
 
@@ -471,6 +545,8 @@ var
 begin
   if CurUninstallStep = usUninstall then
   begin
+    // Safe no-op if the addtopath task was never selected (not found -> Exit).
+    EnvRemoveFromPath(ExpandConstant('{app}'));
     DataDir := ExpandConstant('{userappdata}\Quill');
     // Read the custom-location pointer BEFORE DataDir is deleted below.
     CustomDir := ReadCustomDataDir();
