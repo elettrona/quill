@@ -1,305 +1,758 @@
 # QUILL 0.9.0 Beta 3
 
-## One editor, every format — and the braille fix is on for everyone.
+## One Editor. Every Format. A Community Moving Forward Together.
 
-*From Community Access. Free. Optional by design. Private by default.*
+*From Community Access. Free. Optional by design. Private by default. Built with you.*
 
-Beta 3 carries one big story and a stack of community-driven fixes. The big story: **One Editor, Every Format**. The braille fix you helped us test in Beta 2 is confirmed and now on by default for every user, QUILL gains true rich text editing for RTF and Word documents, and one Document Format switcher moves any document between plain text, Markdown, HTML, Rich Text, and Word mid-session. Alongside it: fix what Beta 2 testers found, close out every open community bug report, and ship eight small accessibility-first features that were ready to go. This document explains every new keystroke in full, step by step — no feature here requires you to guess at a shortcut.
+QUILL 0.9.0 Beta 3 is more than another beta. It is a celebration of what becomes possible when people test boldly, report honestly, imagine generously, and build together.
 
-This is the friendly companion to the **"0.9.0 Beta 3"** section of `CHANGELOG.md`. The shorter text under **Help > What's New** and **Check for Updates** comes from that changelog; this document tells the fuller story.
+At the heart of this release is one transformative promise: **One Editor, Every Format**. The braille correction explored with the community in Beta 2 is now proven, polished, and enabled by default for everyone. RTF and Word documents become genuinely editable rich documents. A single Document Format switcher lets one living document move among plain text, Markdown, HTML, Rich Text, and Word without forcing you into a different editing world.
 
----
+Around that centerpiece is an extraordinary collection of community-powered progress: every open community bug report addressed, portable updates made clearer, imports made safer, Narrator treated as a first-class screen reader, GitHub transformed from a viewing window into a working environment, local git conflicts made understandable, the Offline Edition made truly offline, and a constellation of small accessibility-first tools designed to make daily work faster and more humane.
 
-## The highlight: One Editor, Every Format
+Every shortcut is explained. Every important safeguard is named. Every limitation is stated honestly. Nothing here asks you to discover essential behavior by accident.
 
-### The braille fix is on — for everyone, by default
-
-In Beta 2 we asked braille display owners to try an experimental setting and tell us what they saw. You did, and it works: text now starts in braille cell 1 (the long-standing "cell two" quirk that RichEdit controls share with Microsoft Word is gone), and selecting text shows dots 7-8 on the display.
-
-So in Beta 3 it simply ships on. There is nothing to enable, no Experimental tab to navigate, no restart dance. Every document opens in the one QUILL editor — the same native Windows control you have always typed in, now carrying the fix out of the box.
-
-Two plain checkboxes on **Preferences > Braille** own the whole fix, both checked by default:
-
-- **Fix braille cell alignment and selection dots (recommended)** — the system-edit emulation that makes the display start at cell 1 and show selection dots.
-- **Hide editor border (required for braille cell alignment)** — testing showed the visible window border itself pushes braille output out of cell 1, so the borderless editor frame is part of the fix, not a cosmetic preference. If you uncheck it, QUILL warns you — specifically — that braille cell alignment will break, before anything changes.
-
-If you experimented with editor surfaces in earlier betas, your old experimental settings are retired automatically on upgrade and you land on the new default; QUILL tells you once, in plain language, that your editor settings were simplified.
-
-### Rich text is real now: RTF documents
-
-Open an .rtf and it is *formatted* — genuinely, in the editor. Bold text is bold. Headings are sized. Ctrl+B applies real bold, **Insert > Heading 2** applies a real heading, and **Describe Formatting at Cursor** answers from the live document: "Arial, 14 point, bold, centered."
-
-The rule to hold onto: **bold means bold — QUILL speaks your document's language.** In a Markdown file, Ctrl+B still wraps your selection in `**` exactly as it always has. In HTML, `<strong>`. In an RTF, it is real bold. Same key, same command, the right effect for the format you are writing.
-
-Everything else keeps working, because rich mode changes presentation, not plumbing: search, spell check, AI commands, read aloud, bookmarks, inline notes, and braille all read the same text they always have. Autosave protects the formatting too — rich documents snapshot their full formatting alongside the text, so crash recovery brings back your bold and headings, not just your words.
-
-In a plain .txt file, the first time you press a formatting key QUILL asks — once — what you want: treat the document as Markdown, convert it to Rich Text, or stay plain. Answer "stay plain" and it never nags again.
-
-### Editable Word documents — with your original protected
-
-A .docx can now open for real rich editing and save back as a genuine Word file. Because Word documents can carry things QUILL's editor cannot — tables, images, comments, tracked changes, headers and footers — QUILL is honest about it at the door:
-
-- A **clean** Word file (nothing QUILL can't carry) opens rich, directly.
-- A file **with** those features asks first, naming them specifically: open for reading and plain editing (the safe default), edit as Rich Text knowing exactly what a save cannot keep, or edit a copy and leave the original untouched.
-- The first rich save over a flagged original writes a **timestamped backup** next to it, automatically. QUILL never silently rewrites your Word file.
-
-### The Document Format switcher
-
-**Format > Document Format...** — or Ctrl+Shift+Grave, K; or the command palette; or the new **Format** cell on the status bar, which shows your current format and opens the switcher when you press Enter on it — moves the current document between Plain text, Markdown, HTML, Rich Text (RTF), and Word (.docx), mid-session.
-
-Switching a Markdown draft to Rich Text turns your `# headings` into real headings. Switching a rich document to Markdown warns first — with the specific list of anything that will not survive — before converting. And a switched document never silently overwrites its old file: the next save proposes the new name (`notes.md` becomes `notes.rtf`) so the format on disk always matches the extension.
-
-### On the Mac
-
-Rich mode ships ready to use. The macOS editor is the same native text view it has always been, and the Mac app now **bundles everything rich mode needs** — there is nothing to install and nothing to configure. Open any .rtf (or Word document) and it opens formatted: Ctrl+B applies genuine bold and announces "Bold," **Insert > Heading 2** applies a real heading, and **Describe Formatting at Cursor** reads the live formatting back ("Helvetica, 14 point, bold"). If the bridge were ever unavailable on a particular system, the same document simply opens converted to editable text with a status message saying so — nothing breaks, nothing is lost, and VoiceOver keeps reading the same native control it always has.
-
-**What we need from you: try it and tell us — good or bad.** Open an .rtf, format something, save it, reopen it. If you use VoiceOver: does the editor still read normally (typing echo, arrow-key review, selection announcements)? Does formatted text — a bold word, a sized heading — read and navigate correctly? Then send what you found through **Help > Report a Bug**, naming your macOS version. "It works perfectly" is exactly as valuable to us as a failure report — real-hardware reports in both directions are the promotion gate, just as your braille reports were for the Windows fix in Beta 2.
+This is the full, friendly companion to the **“0.9.0 Beta 3”** section of `CHANGELOG.md`. The shorter summaries shown under **Help > What's New** and **Check for Updates** come from that changelog. This document tells the complete story: what changed, why it matters, how to use it, and how the community helped make it real.
 
 ---
 
-## Fixes
+## The Heart of Beta 3: One Editor, Every Format
 
-### Portable updates left you with an unopened .zip and no in-app way to use it
+For years, document formats have tried to dictate the experience: one tool for plain text, another for Markdown, another for rich text, another for Word. Beta 3 turns that relationship around. The format now serves the writer. The editor remains familiar.
 
-A community member on Mastodon reported that updating a portable install ended with a dialog offering only "Open folder" or "Close" — no way to actually apply the update — so they had to hit Open Folder, find the downloaded ZIP themselves, and extract it by hand. We dug in and confirmed the underlying portable-vs-installed detection was already working correctly (a portable install does download the portable ZIP, not the Windows installer), but the post-download dialog only ever recognized `.exe`/`.msi` as something it could act on — a `.zip` fell through to the bare "Open folder" path with nothing more helpful on offer. Quill now shows an **Extract now** button for a downloaded portable update, which unzips it into a ready-to-run sibling folder and reveals that instead of the raw archive. Quill still doesn't replace its own running files while it's open — you copy your `data` folder over and swap folders yourself, the same as any portable app update — but the archaeology of finding and unzipping the download is gone.
+### The braille fix graduates — enabled for everyone by default
 
-### Pandoc imports (EPUB and others) could silently produce an empty document
+In Beta 2, we asked braille display users to step into an experimental space, test a proposed correction, and tell us exactly what happened. You did. Your reports confirmed that it works.
 
-A community member reported — and correctly root-caused — a serious one: importing an EPUB via **File > Import > EPUB Book** could leave you with a completely empty document while Quill reported success. The cause was a subtle encoding mismatch: Quill's subprocess helper decoded Pandoc's output using the system's default locale encoding rather than an explicit one, and on a Windows machine whose locale defaults to a legacy code page instead of UTF-8, Pandoc's UTF-8 output could fail to decode — silently leaving Quill with nothing, while still reporting success. Output is now always decoded as UTF-8 (with a safe fallback so even a genuinely non-UTF-8 byte never crashes or blanks the result), and the Pandoc import path now explicitly fails loudly if it ever gets no output, instead of quietly handing you a blank page. This affected every tool that goes through Quill's subprocess helper, not just EPUB import, so this is a broader reliability fix than it first appears.
+Text now begins in **braille cell 1**, eliminating the long-standing “cell two” behavior that RichEdit controls share with Microsoft Word. When text is selected, the display now shows **dots 7-8**, restoring the tactile selection feedback braille users expect.
 
-### Speech and Dictation crashed on open
+In Beta 3, the experiment becomes the standard. There is nothing special to turn on, no Experimental tab to find, and no restart ritual. Every document opens in the same native Windows editor QUILL users already know, now carrying the braille correction automatically.
 
-Four testers independently reported the same crash: opening **Tools > Speech > Speech and Dictation** raised a `TypeError` instead of showing the dialog, on both the Offline and Online tabs. The dialog's constructor had grown two new required arguments (`kokoro_ok`, `kokoro_can_install`) that the one place calling it was never updated to supply. Both are now populated the same way the existing Vosk availability flags already are, and the dialog opens normally again.
+Two straightforward checkboxes under **Preferences > Braille** control the complete behavior, and both are checked by default:
 
-### The Kokoro-unavailable error pointed at a menu item that doesn't exist
+- **Fix braille cell alignment and selection dots (recommended)** — enables the system-edit emulation that starts braille output in cell 1 and exposes selection dots.
+- **Hide editor border (required for braille cell alignment)** — testing revealed that the visible editor border itself shifts braille output away from cell 1. The borderless frame is therefore a functional part of the correction, not merely a visual preference. If you uncheck it, QUILL warns you clearly that braille cell alignment will break before applying the change.
 
-The same tester who hit the Speech and Dictation crash above also found this while checking Kokoro voices: trying to speak with Kokoro before its extra component was installed said "Tools > Speech > Install Kokoro ONNX will fetch it" — but that item was folded into **Help > Download Optional Components** in an earlier release, and the error text never caught up. It now points to the right place.
+Users who experimented with alternate editor surfaces in earlier betas are brought forward automatically. Those retired experimental settings are removed during upgrade, the new default is applied, and QUILL explains once, in plain language, that the editor settings were simplified.
 
-### A rare crash when a keystroke arrived before the first document existed
+This is exactly how a beta should work: the community tests an idea, the evidence guides the decision, and a better default reaches everyone.
 
-On macOS, a very early or very late keystroke — before the first document tab finished setting up, or after the last one closed — could raise `AttributeError: 'MainFrame' object has no attribute 'editor'` from the global keyboard hook. One of the three checks in that code path read the editor directly where its neighbors already defended against exactly this case; all three are now consistent.
+### Rich text becomes real: RTF documents are truly formatted in the editor
 
-### On macOS, the G key stopped typing and opened Find instead
+Open an `.rtf` file in Beta 3 and the formatting is no longer flattened, simulated, or merely described. It is there, alive in the document.
 
-A tester reported the strangest thing: in a completely blank document, pressing G — upper or lower case — opened a Find dialog instead of typing the letter. Every other key worked normally. We traced it to how Quill builds the little keyboard-shortcut hint shown at the right edge of each menu item. Find Next is Cmd+G on macOS, and that hint text is embedded after a literal tab character in the menu label — which wxWidgets (the toolkit Quill is built on) parses as a second, independent keyboard shortcut, entirely separate from Quill's own shortcut handling. wxWidgets recognizes the words "Ctrl", "Alt", and "Shift" in that hint text, but not the word "Cmd" — so instead of rejecting the whole hint as invalid, it silently dropped "Cmd" and kept the bare "G", accidentally registering plain G as a real system-level shortcut for Find Next. That shortcut then intercepted every G keystroke everywhere in the app, before it could ever reach whatever you were typing into. This affected every macOS-only "Cmd+something" shortcut in Quill, not just Find Next — the fix changes how that one hint is built so wxWidgets always sees a modifier word it understands, while the shortcut you actually see on screen still reads "Cmd+G" exactly as before.
+Bold text is genuinely bold. Headings carry real sizes. **Ctrl+B** applies true bold formatting. **Insert > Heading 2** creates an actual heading. **Describe Formatting at Cursor** reads the live document state and can report, for example: “Arial, 14 point, bold, centered.”
 
-### The portable-update "next launch" confusion
+The guiding rule is simple and powerful: **bold means bold — and QUILL speaks the language of the document you are editing.**
 
-A user asked a very reasonable question after downloading an update and restarting: why did Quill still show the old version? The short answer is that a portable update has never applied itself automatically, on any release — the downloaded ZIP has always needed a manual step from you (previously "Open folder" and unzip it yourself; as of the Extract Now button above, Quill now does the unzip for you). If our own wording anywhere implied it happens on the next launch, that was the actual bug — nothing was silently failing, the automatic step just never existed. We've tightened the wording in this document and in Quill's own update dialog so "swap it into place" reads as the manual step it has always been.
+- In Markdown, **Ctrl+B** continues to wrap the selection in `**`, exactly as it always has.
+- In HTML, the same command produces `<strong>`.
+- In RTF, it applies real rich-text bold.
 
-### A shared dialog crash, already fixed before Beta 2 shipped
+One command. One familiar intention. The correct result for the current format.
 
-"Go to Entry in Notebook" and its sibling tree-navigator dialogs could crash with a `wxAssertionError` on open. We traced this to a fix that had already landed on the development branch before Beta 2's code froze but is worth confirming here for anyone who hit it on a Beta 2 build: the dialog no longer tries to expand its (intentionally hidden) root node.
+Rich mode changes presentation, not the trusted foundation beneath it. Search, spell check, AI commands, read aloud, bookmarks, inline notes, and braille continue working with the same document text they always have. Autosave also protects the full rich document: snapshots include formatting as well as text, so crash recovery can restore your bold, headings, and other formatting rather than recovering only the words.
 
-### Narrator becomes a first-class citizen: no more double speech, and QUILL now speaks *through* Narrator
+Plain-text documents remain respectfully plain. The first time you use a formatting command in a `.txt` file, QUILL asks once what you intend:
 
-George Kerscher reported that with Narrator running, QUILL's self-voicing spoke at the same time as Narrator — most audibly in the command palette. Beta 3 fixes this at two levels.
+- Treat the document as Markdown.
+- Convert it to Rich Text.
+- Keep it as plain text.
 
-**Detection, by API.** Alongside its process check, QUILL now reads the marker Windows itself maintains while Narrator runs (the named `NarratorRunning` system event — one cheap call, no process scanning). Narrator can no longer slip past detection under any elevation or timing condition.
+Choose **stay plain**, and QUILL remembers the answer instead of asking repeatedly.
 
-**Speech, directly to Narrator.** QUILL's announcements are now raised as **UI Automation notification events** — the announcement channel Narrator has listened on since Windows 10 1709. That means status changes, palette narration, and all of QUILL's spoken feedback arrive in *your* One Core voice, spoken by Narrator itself, exactly as they arrive in JAWS's or NVDA's voice through their dedicated bridges. If the channel is unavailable on a given system, the message lands in the status bar instead — and the old behavior, QUILL's own SAPI voice talking over your reader, is gone unconditionally: a running screen reader always silences the self-voice, "forced" announcements included.
+### Word documents become editable — without pretending nothing can be lost
 
-One honest caveat: the direct-Narrator channel is verified in code and tests but needs real Narrator listening to confirm the experience end to end. If you use Narrator, please try Beta 3 and tell us — through **Help > Report a Bug** — whether announcements now arrive in One Core, once, in the right voice.
+A `.docx` file can now open for genuine rich editing and save back as a real Word document.
 
-### Install Starter Snippet Packs works properly with a screen reader
+Word files can contain structures QUILL’s editor cannot fully preserve, including tables, images, comments, tracked changes, headers, and footers. Rather than hiding that reality, QUILL meets it with clarity at the moment it matters:
 
-Reported against Beta 2: the pack list needed a Space press on an invisible checkbox — with no feedback — before Enter would do anything. It's now a plain multi-select list: arrow to `daily-writing`, press Enter, it installs. Hold Shift or Ctrl to pick several; your screen reader announces what's selected as you move.
+- A **clean Word file**, containing nothing QUILL cannot carry, opens directly in rich mode.
+- A Word file containing unsupported features identifies those features specifically and asks how you want to proceed: open for reading and plain editing, which is the safe default; edit as Rich Text while understanding exactly what cannot survive a save; or edit a copy while leaving the original untouched.
+- The first rich save over a flagged original automatically creates a **timestamped backup** beside it.
 
-### The Application Status page is navigable again
+QUILL never silently rewrites a complex Word file while asking you to trust that everything survived. The editor gives you meaningful choices, protects the original, and lets you decide.
 
-Reported with exact repro steps that made this an easy fix: open **Help > Status Page**, arrow down through any of its lists, and focus jumped back to the top before you could act on where you'd navigated. The page refreshes itself every two seconds to keep download and task progress current, and that refresh was rebuilding every list from scratch without remembering which row you were on. Each list now holds onto its focused row across a refresh, so you can arrow through the Status, Tasks & Downloads, and Features tabs the way any accessible list should work.
+### One switcher connects the formats
 
-### A macOS crash while creating a Notebook
+The new **Document Format** switcher brings the promise together.
 
-Shannon Dyer hit a hard crash ("SystemError: ActivateEvent returned a result with an exception set") while creating a Notebook on macOS — a window-activation handler ran into a wx assertion while dialogs were tearing down, and the whole app went with it. Window activation only exists to put focus back in your document; it is now fully contained and can never take the process down.
+Open it through any of these paths:
 
-### Crash reports now say which beta you're on
+- **Format > Document Format...**
+- **Ctrl+Shift+Grave, K**
+- The Command Palette
+- The new **Format** cell on the status bar, which displays the current format and opens the switcher when you press Enter on it
 
-Two crash reports arrived this week for a bug that was already fixed in Beta 2 — and they looked like regressions because every 0.9.0 beta reported itself as just "0.9.0." Crash and feedback reports now carry the full version ("0.9.0 Beta 2"), so a report from an older install is recognizable at a glance. If you see the Profiles and Features crash (`_LazyString`), please update to the current beta: it was fixed there.
+From there, the current document can move among:
 
-### Quill no longer offers crash recovery for exits with nothing to diagnose
+- Plain text
+- Markdown
+- HTML
+- Rich Text (RTF)
+- Word (`.docx`)
 
-Two automatic crash-recovery submissions showed logs with only routine background activity right up to the moment QUILL stopped — no exception, no error, nothing actionable. That pattern is consistent with the process being closed externally (a forced shutdown, a killed task) rather than a bug inside QUILL. This is now a real fix, not just an observation: Quill checks the log for genuine error evidence (an `ERROR`, `CRITICAL`, or a traceback) before offering crash recovery at all. An inconclusive exit no longer shows the "Quill detected an unclean exit" dialog — there's simply nothing to prompt you about. A real crash still logs an error and still offers recovery exactly as it always has; only the no-evidence case changed. Your autosave snapshot is never touched by this — it's still on disk either way, this just controls whether Quill asks you about it.
+The conversion is meaningful, not cosmetic. Moving a Markdown draft into Rich Text turns `# headings` into real headings. Moving a rich document into Markdown first produces a specific warning naming anything that will not survive the conversion.
+
+A format change also never silently overwrites the old file. The next save proposes a filename with the correct extension — for example, `notes.md` becomes `notes.rtf` — so the file on disk always tells the truth about the format inside it.
+
+### Rich editing on macOS — ready from the first launch
+
+Rich mode ships ready to use on the Mac. The macOS editor remains the same native text view VoiceOver users already know, and the application now **bundles everything required for rich mode**. There is nothing additional to install and nothing to configure.
+
+Open an `.rtf` or Word document and it appears formatted. **Ctrl+B** applies genuine bold and announces “Bold.” **Insert > Heading 2** applies a real heading. **Describe Formatting at Cursor** reports the live formatting, such as “Helvetica, 14 point, bold.”
+
+If the rich-text bridge is ever unavailable on a particular system, QUILL does not collapse or strand the document. It opens the same content as editable text and places a clear explanation in the status area. Nothing breaks, nothing is discarded, and VoiceOver continues reading the same native control.
+
+#### Mac and VoiceOver testers: your experience is the promotion gate
+
+Please put this through a real workflow:
+
+1. Open an `.rtf` file.
+2. Apply formatting.
+3. Save it.
+4. Close and reopen it.
+5. Confirm that the formatting survived.
+
+For VoiceOver users, please also test whether typing echo, arrow-key review, and selection announcements continue to work normally. Check whether formatted content — such as a bold word or a sized heading — reads and navigates correctly.
+
+Send the result through **Help > Report a Bug** and include your macOS version. A report that says “it works perfectly” is every bit as valuable as a failure report. Real-hardware evidence in both directions is the promotion gate, just as braille users’ Beta 2 reports made the Windows correction ready for everyone.
 
 ---
 
-## GitHub Items grows up: pins, favorites, real search, and local git sync
+## Community Reports, Real Repairs
 
-Beta 2 introduced the read-only GitHub Items viewer. Beta 3 merges the first tranche of the GHManage/fastgh unification into it — four features, all keyboard-first:
+Every bug report is a person encountering friction while trying to create, read, learn, or contribute. Beta 3 treats those reports accordingly: not as loose tickets to close, but as invitations to make QUILL more trustworthy.
 
-- **Pinned repositories.** The **Pinned...** button keeps a short, curated list of the repos you actually work in. Pick one from the menu to load it instantly; pin or unpin the loaded repo from the same menu. No more retyping `owner/repo`.
-- **Favorites.** Press **Ctrl+D** on any selected row — an issue, a PR, a branch, a release — to bookmark it. The **Favorites...** menu lists every bookmark across all your repos and opens any of them in your browser. Bookmarks live only on your machine.
-- **Search with full GitHub syntax.** Press **Ctrl+F**, type any GitHub search query — `label:bug is:open crash`, `author:alice is:pr` — and press Enter. Results are scoped to the loaded repository; clearing the search restores the normal list.
-- **Local git sync.** The repository field now fills itself in when the document you are editing lives inside a git clone whose origin points at GitHub — any file, however you opened it, not just files opened through QUILL's own GitHub commands.
+### Portable updates now offer an actual next step
 
-And the second tranche landed in this same release:
+A community member on Mastodon reported that a portable update finished with only **Open folder** and **Close**. QUILL downloaded the correct portable ZIP, but offered no in-app path to use it. The user had to open the folder, locate the archive, and extract it manually.
 
-- **PR diffs, read the QUILL way.** Select a pull request, press **Diff...**, and browse its changed files in an accessible list. Each file's before-and-after content runs through the same compare engine as **Compare Documents**, so what you hear is a numbered difference walk — "Difference 2 of 5. Text changed at line 41. main: ... this PR: ..." — with the actual changed words described, never a wall of plus and minus signs. A brand-new file reads as its content; a deleted file says exactly that; a binary or oversized file falls back honestly to its change counts.
-- **Batch operations, behind real consent.** Select several rows (the list is multi-select now), press **Batch...**, and close, reopen, or add a label to all of them at once. This is the one deliberate exception to the viewer's read-only rule, and it is fenced accordingly: it only works signed in — the anonymous viewer stays fully read-only — and a confirmation names the exact action and the exact item numbers before anything changes on GitHub. If some items fail, you hear which ones and why; the rest still go through.
-- **AI thread summaries.** A hundred-comment issue at 11 pm is nobody's friend. Press **Summarize** on any issue or PR and QUILL's AI condenses the whole discussion into a short, plain-prose TL;DR — what it's about, where it stands, what's still open, and the apparent next step — read into the details pane and announced. It uses the same AI connection and consent gates as every other QUILL AI feature, and nothing runs until you press the button.
+The underlying detection was already correct: portable installations received the portable ZIP rather than the Windows installer. The problem came afterward. The completion dialog knew how to act on `.exe` and `.msi` files, but a `.zip` fell through to a bare folder-opening path.
 
-The viewer, and the rest of GitHub in QUILL, stays behind the same consent, token, and Safe Mode gates as every other GitHub feature. The rest of the unification review — branch comparison, notifications, a wiki browser, and more — is on the roadmap.
+Beta 3 adds an **Extract now** button for portable updates. QUILL extracts the ZIP into a ready-to-run sibling folder and reveals that folder instead of leaving you at the raw archive.
 
-## GitHub stops being a one-way window
+QUILL still does not replace its own running files while open. You must copy your `data` folder and swap the folders yourself, just as with any portable application update. What disappears is the needless archaeology of locating and unpacking the download.
 
-Up to this release, QUILL's GitHub integration could show you almost anything and change almost nothing: browse a repo, open a file, save exactly that one file back, list issues and PRs, close/reopen/label them in a batch. Creating a repo, opening a pull request, merging one, deleting a stale branch — all of that still meant leaving QUILL for a browser. We wrote up exactly how far we could take this without adding a `gh`-CLI dependency (`docs/planning/github.md`), and this release ships the confident half of that plan — repository administration below, and a second batch (Organizations, Releases, workflow dispatch, notifications, security alerts) right after it.
+### Pandoc imports can no longer “succeed” with an empty document
 
-**Tools > GitHub** is a new submenu with eight commands:
+A community member reported — and correctly identified the root cause of — a serious import failure. Using **File > Import > EPUB Book** could produce an entirely empty document while QUILL announced success.
 
-- **Create Repository...** — name, description, public or private, an optional organization. The moment it's created, QUILL asks if you'd like a local folder synced to it right now — say yes, and you've gone from "no repo" to "a local folder pushing to GitHub" without ever opening a browser.
-- **Fork Repository...** — same local-sync offer afterward.
-- **Rename Repository...**, **Change Repository Visibility...**, **Change Default Branch...**, **Delete Branch...** — the everyday repository admin you'd otherwise reach for github.com to do.
-- **Configure Branch Protection...** — a small wizard: pick a branch, set required approving reviews and required status checks (or check a box to clear existing protection instead).
-- **Commit Multiple Files...** — pick several local files with a file browser and commit all of them to a repository in one atomic commit. Different from the existing **Save to GitHub**, which only ever handles the one document you have open.
+Pandoc emits UTF-8. QUILL’s shared subprocess helper had been decoding that output using the operating system’s default locale encoding. On Windows systems whose locale uses a legacy code page rather than UTF-8, decoding could fail and leave QUILL with no text, yet the import path still reported success.
 
-And the Items viewer (the issues/PRs/branches/commits browser from Beta 2 and earlier this beta) gained an **Actions...** menu alongside the existing **Batch...** menu: **New Issue...**, **New Pull Request...**, **Merge Pull Request...** (on a selected PR), **Delete Branch...** (on a selected branch), **Re-run Workflow** (on a selected run), and — building on the Alt+N/Alt+P comment navigation you already know — **Reply to Thread...**, **Edit This Comment...**, and **Delete This Comment...** on whichever comment you've navigated to.
+Beta 3 makes two important corrections:
 
-None of this works anonymously — every command needs a signed-in account, and if you're not signed in yet, QUILL offers to sign you in right there instead of just refusing. Four actions across the whole integration — renaming a repository, changing its visibility, deleting a branch, and merging a pull request — ask you to retype the exact name or number rather than a plain Yes/No, since those are the ones where an accidental Enter press is genuinely hard to undo. Every other write gets a plain, specific confirmation naming exactly what's about to happen.
+- Subprocess output is always decoded as UTF-8, with a safe fallback so even genuinely non-UTF-8 bytes cannot crash the process or silently blank the result.
+- The Pandoc import path now fails loudly when no output is received instead of handing the user an empty page and calling it success.
 
-All thirteen GitHub commands (the eight new ones, plus the five browsing commands that have been in QUILL since 0.5.0 but never had a keyboard shortcut until now) are in the Command Palette and ship default QUILL Key chords — reassign any of them in Preferences if you'd rather use something else.
+Because many tools share this subprocess helper, the change strengthens far more than EPUB import. It is a broader reliability improvement across every feature that travels through that path.
 
-## Organizations, releases, workflow runs, notifications, and security alerts
+### Speech and Dictation opens again
 
-Five more **Tools > GitHub** commands landed in the same push, rounding out the read-mostly parts of the plan: **Browse Organization Repositories...** (your account's organizations, then that org's repos — Teams stay out of scope on purpose, see below), **Create Release...** (a tag, optional notes or GitHub's own auto-generated notes from merged PRs, draft or published), **Dispatch Workflow...** (run a workflow on a branch or tag, the same as clicking "Run workflow" on github.com), **Notifications...** (a real inbox across every repo, not just the one you have loaded), and **Security Alerts...** (a repository's open Dependabot alerts).
+Four testers independently found the same crash. Opening **Tools > Speech > Speech and Dictation** raised a `TypeError` instead of displaying the dialog, whether the Offline or Online tab was involved.
 
-Before writing any of this we checked, rather than assumed, what PyGithub actually supports — and three things from the original plan didn't make the cut for a good reason, not a missed one. **Discussions** technically has a PyGithub method, but it needs you to hand-write a GraphQL field-selection string, and getting that right without testing it against a live repository felt like shipping a guess. **Projects (v2)** — the modern board GitHub actually wants people using now — has no PyGithub support at all; the library only wraps the classic Projects API GitHub has been sunsetting, so building against it would ship something that doesn't work on most current repos. **Packages** has no PyGithub support whatsoever. All three (plus renaming — sorry, *transferring* — a repository to a different owner, which also has no wrapped method) are real candidates for later, once there's a way to verify them properly.
+The dialog constructor had gained two required arguments — `kokoro_ok` and `kokoro_can_install` — but its caller had not been updated to supply them. Beta 3 now populates both values using the same availability logic already used for Vosk, and the Speech and Dictation dialog opens normally again.
 
-## Local Git: the interactive rebase and merge-conflict tool we don't think exists anywhere else
+### The Kokoro installation message now points to the menu that actually exists
 
-This one isn't about GitHub at all — it's about `git` itself, and it might be the single feature in this beta we're proudest of.
+While investigating Kokoro, the same tester found that selecting it before its optional component was installed produced outdated directions: “Tools > Speech > Install Kokoro ONNX will fetch it.” That menu item had already moved into **Help > Download Optional Components** in an earlier release.
 
-If you've used git for any length of time, you've hit a merge conflict, and you know exactly what a screen reader does with `<<<<<<<`, `=======`, and `>>>>>>>` markers: reads them as line noise, because that's what they look like without eyes on the surrounding structure. Nothing we could find — not the `git` CLI, not GitHub Desktop, not any GUI merge tool — was built with that problem in mind, because none of them are also a text editor a screen-reader user already trusts. QUILL is. So **Tools > Local Git > Resolve Conflicts...** parses a conflicted file into actual structured pieces and walks you through them: "Conflict 1 of 3: your version says X, their version says Y," with keep-yours, keep-theirs, keep-both, or type-something-else as your options, one conflict at a time, in as many files as it takes.
+The message now sends users to the correct place.
 
-Interactive rebase got the same treatment. `git rebase -i` opens a text editor with a list of commits and expects you to reorder and annotate it — pick, squash, reword, drop — by eye, in place, without breaking the syntax. **Interactive Rebase...** is a real list dialog instead: one commit per row, an action you choose from a dropdown, Move Up and Move Down to reorder. Under the hood it's the same trick every GUI git client uses to make this possible at all — git will happily hand its generated todo list to any program you name instead of a text editor, so QUILL names one that hands back the list you actually built in the dialog. If a step in the rebase conflicts, the same conflict walker from above opens automatically; resolve it, and the rebase picks itself back up.
+### A keystroke can no longer arrive before the editor exists and bring down macOS
 
-Rounding it out: **Uncommitted Changes...** (stage/unstage with an accessible diff, not a raw one), **Switch Branch...** (with a guard so you're never surprised by uncommitted changes coming along for the ride), **Stash Changes.../Manage Stashes...**, **Who Wrote This Line...** (blame, spoken), and a guided **Start Bisect.../End Bisect** that turns `git bisect` into a plain "is this version good or bad?" conversation. None of it touches GitHub or the network — it's pure local git, and it works in any repository you point QUILL at.
+On macOS, an extremely early or late keystroke — before the first document tab finished initializing or after the last one closed — could trigger `AttributeError: 'MainFrame' object has no attribute 'editor'` inside the global keyboard hook.
 
-We tested this against real git repositories doing real things — a real merge conflict between two diverging branches, a real interactive rebase that hits a real conflict partway through and has to continue past it — because the only way to trust subprocess orchestration like this is to watch it actually happen, not assume it will.
+Two neighboring checks already guarded against that lifecycle edge case; one still accessed the editor directly. All three checks are now consistent and defensive.
 
-## Headers and footers now live inside your Word and RTF files
+### On macOS, the letter G is a letter again
 
-The Header/Footer Builder from Beta 2 wrote headers and footers when *printing*; the files themselves didn't carry them. Now they do: save as **.docx** and your header/footer becomes a real Word header and footer — with a live page-number field Word keeps renumbering as the document changes — and save as **.rtf** writes the equivalent native header/footer groups. Roman numerals, a custom starting page number, and a different first page all carry through. A blank spec changes nothing, and a header can never be the reason a save fails.
+One of the most surprising reports in this cycle came from a completely blank document: pressing **G**, uppercase or lowercase, opened Find instead of typing the character. Every other letter behaved normally.
 
-## QUILL Sync: carrying your work between devices, without QUILL running a sync service
+The cause lived in the keyboard-shortcut hint shown at the right side of a menu item. **Find Next** uses **Cmd+G** on macOS. QUILL embeds that visible hint after a literal tab in the menu label, and wxWidgets interprets the text after that tab as a second keyboard shortcut, separate from QUILL’s own shortcut system.
 
-We looked hard at building QUILL its own sync engine — a QUILL account, QUILL-hosted storage, the works. We're not doing that. A folder your cloud provider already keeps in sync, and git, both already solve syncing well; QUILL just needed to get out of the way and use them. Two small features ship instead of one big one.
+wxWidgets recognizes modifier words such as “Ctrl,” “Alt,” and “Shift,” but not “Cmd.” Rather than rejecting the unsupported hint, it dropped “Cmd,” retained the bare **G**, and registered that single letter as a system-level shortcut for Find Next. The shortcut then intercepted every G before it could reach the editor.
 
-### Sync your settings via a folder
+This could affect every macOS-only `Cmd+something` hint, not only Find Next. Beta 3 changes how the hint is built so wxWidgets receives a modifier name it understands, while the visible shortcut continues to read **Cmd+G** exactly as Mac users expect.
 
-This isn't new code — it's a feature QUILL already had (the "Where should QUILL store your data?" option, from an earlier release, originally added so you could keep your data off the system drive) that turns out to already be a sync mechanism in disguise. Point it at a folder OneDrive, Dropbox, Google Drive, or iCloud already mirrors across your devices, and your settings, snippets, dictionaries, and keymap travel with it. QUILL just writes to the folder; your sync client does everything else. We just never said so out loud until now — the wizard page explains it plainly, including the one honest caveat: don't run QUILL from two devices pointed at the same synced folder at the same time, since there's no cross-device conflict resolution for this path.
+### Portable updates now describe the manual swap honestly
 
-### Sync a folder with GitHub
+After downloading a portable update and restarting, a user reasonably asked why the old version still appeared.
 
-**Tools > Sync Folder with GitHub...** is new, and it works on any folder — not just notes, a whole writing project, anything. Point it at a folder: if it's already a git repository with a remote, QUILL commits, pulls, and pushes it, in the background. If it isn't set up yet, QUILL tells you exactly what it's about to do — "this runs 'git init', then adds the remote repository you provide as 'origin'" — and waits for you to say yes before touching anything. Paste in a repository URL, and you're syncing. If a file changed in both places, QUILL lists the conflicts by name and stops — never a silent overwrite.
+Portable updates have never installed themselves automatically in any QUILL release. The downloaded ZIP has always required a manual replacement step. Previously, that meant choosing **Open folder** and extracting it yourself. With the new **Extract now** button, QUILL performs the extraction, but you still swap the new folder into place.
 
-If this sounds familiar, it should: it's the exact same engine Accessible Vault's **Sync Vault** command already used, generalized to work on any folder instead of just a vault. QUILL relies entirely on your own git installation and its own saved credentials (an SSH key, or whatever your system's git credential manager already remembers) — the same way `git push` from a terminal already works, with nothing new for QUILL to store. Disabled in Safe Mode, like every other network-touching feature.
+If QUILL’s wording suggested that the update would apply automatically “on next launch,” the wording was the bug. Beta 3 tightens both this document and the in-app dialog so **swap it into place** is unmistakably described as the manual step it has always been.
 
-The full reasoning behind building it this way — including what the bigger, rejected design looked like — is written up in `docs/engineering/sync-engine-history.md` for anyone curious.
+### Tree-navigator dialogs no longer expand a root that is intentionally hidden
 
-## New: eight small, accessibility-first additions
+**Go to Entry in Notebook** and related tree-navigation dialogs could open with a `wxAssertionError`. The underlying correction had already reached the development branch before Beta 2 froze, but it belongs in this record for anyone who encountered the problem on a Beta 2 build.
 
-### The Clipboard Collector went system-wide
+The dialogs no longer attempt to expand their intentionally hidden root node.
 
-Dean Martineau asked for the EdSharp behavior: turn on the collector, then copy anywhere — a browser, an email, a terminal — and it all lands in your QUILL document. That's exactly what it does now. While **Toggle Clipboard Collector** is on, QUILL watches the system clipboard (a single cheap check, about once a second, that touches the clipboard only when something actually changed) and appends each new copy to the open document, saving as it goes. Copies made inside QUILL still collect instantly, and each distinct copy is collected exactly once.
+### Narrator becomes a first-class citizen
 
-### QUILL as Thunderbird's external editor
+George Kerscher reported that QUILL’s self-voice spoke at the same time as Narrator, especially in the Command Palette. Beta 3 addresses both the detection problem and the announcement path.
 
-Martin Courcelles asked to write his email in QUILL. Good news: it already works — QUILL's one-process-per-file behavior is exactly what Thunderbird's "External Editor Revived" add-on expects — and the user guide now has a step-by-step "Using QUILL as an external editor" section: install the add-on, point it at `quill.exe`, press Ctrl+E in a compose window, write with every QUILL feature, save and close, and the text drops back into Thunderbird.
+#### Narrator detection now uses the Windows API marker
 
-### Quill can add itself to your PATH
+In addition to its process check, QUILL now reads the marker Windows maintains while Narrator is active: the named `NarratorRunning` system event. This is one inexpensive API call with no process scan.
 
-The Windows installer now offers an opt-in **"Add Quill to PATH"** task (unchecked by default, next to the existing file-association tasks in the installer's task list). Turn it on and `quill` resolves from any terminal, or from a shortcut's Target field, without typing the full install path. Per-user only — no elevation, no other account touched. If you've already installed Beta 2 or earlier, re-run the installer and tick the box to add it retroactively.
+Narrator can no longer escape detection because of timing, process visibility, or elevation differences.
 
-### Temporary bookmark — one keystroke, no dialog
+#### QUILL announcements now travel through Narrator
 
-Sometimes you just want to mark "right here" and come straight back, without naming anything or picking from a list.
+QUILL now raises announcements as **UI Automation notification events**, the channel Narrator has supported since Windows 10 version 1709.
 
-- **Ctrl+Shift+K** sets a single, unnamed jump point at the cursor. Nothing is asked — you'll hear "Temporary bookmark set" and that's it.
-- **Alt+Shift+K** jumps back to it. No picker, no dialog — you'll hear "Jumped to temporary bookmark."
+Status changes, Command Palette narration, and other QUILL feedback can therefore arrive in the user’s own One Core voice, spoken by Narrator itself — just as dedicated bridges deliver announcements through JAWS or NVDA.
 
-Setting a new one silently replaces the old one — there is only ever one temporary bookmark at a time. It does **not** persist between sessions: closing and reopening Quill forgets it. That's by design, not a bug — it's disposable scratch state for the next few minutes of work, distinct from Quill's existing named bookmarks (**Set Bookmark...**, **Go To Bookmark...**, **List Bookmarks...**, still on their usual keys), which are unlimited and do persist per document across restarts.
+If the notification channel is unavailable on a particular system, the message is placed in the status bar. The old failure mode is removed unconditionally: when any screen reader is running, QUILL’s SAPI self-voice is silenced, including announcements previously marked as “forced.” QUILL will no longer talk over the screen reader.
 
-### Numbered quick bookmarks (0-9) — direct keystrokes, no menu or sub-mode
+One important caveat remains. The direct Narrator path is verified in code and automated tests, but it still needs real Narrator users to confirm the complete experience. Please test Beta 3 and report through **Help > Report a Bug** whether announcements arrive once, through One Core, and in the expected voice.
 
-Ten fixed jump slots, one per digit, each reachable in a single keystroke with nothing in between:
+### Starter Snippet Packs now behave like an accessible list
 
-- **Alt+Shift+0** through **Alt+Shift+9** sets the jump point for that slot at the cursor. You'll hear "Quick bookmark 3 set" (for example).
-- **Ctrl+Alt+Shift+0** through **Ctrl+Alt+Shift+9** jumps straight to that slot. You'll hear "Jumped to quick bookmark 3," or "Quick bookmark 3 is not set" if you haven't set it yet.
+In Beta 2, **Install Starter Snippet Packs** required pressing Space on an invisible checkbox that provided no feedback before Enter would work.
 
-These are direct chords, not a menu item and not a sub-mode you have to enter first — press the keystroke from anywhere in the document and it fires immediately, the same one-step rhythm as the temporary bookmark above. Under the hood they're stored as ordinary named bookmarks (with generated names like "Quick 3"), so they persist per document across restarts exactly like your named bookmarks already do — nothing new to configure, nothing new to lose.
+The interface is now a standard multi-select list. Arrow to `daily-writing` and press Enter to install it. Hold Shift or Ctrl to select several packs, and your screen reader announces the selected state as you move.
 
-### Spell Check Word (Alt+F7) — instant, single-word spelling check
+### The Application Status page remembers where you are
 
-**Alt+F7** checks just the word at your cursor. If it's spelled correctly, Quill says so and nothing else happens. If it's misspelled, a small list opens with the same choices you'd get from the right-click spelling menu: suggested corrections at the top, then **Add to Dictionary**, then **Ignore**. Arrow to your choice and press Enter (or Escape to cancel without changing anything) — you're back to typing in one step, without launching a full-document Spell Check pass.
+A tester supplied precise reproduction steps: open **Help > Status Page**, move down through any list, and watch focus jump back to the first row before you can act.
 
-If you've used the "press F7 on a focused word" workflow in Microsoft Office, this is that, for Quill. Use **F7** (Spelling Review) when you want to work through a whole document systematically; use **Alt+F7** when you just want to check the one word you're looking at right now.
+The page refreshes every two seconds to keep task and download progress current. Each refresh had been rebuilding the lists without preserving the focused row.
 
-### Ranked spelling (Ctrl+Shift+L) — misspellings sorted by how often they recur
+Beta 3 keeps focus anchored across refreshes. You can now navigate the lists under **Status**, **Tasks & Downloads**, and **Features** without being pulled back to the top.
 
-**Ctrl+Shift+L** opens the misspelling list just like **Alt+Shift+L** (the existing **Misspelling List**) already does, but in a different order: instead of the order the words appear in your document, the word that recurs the *most* comes first. Each entry also shows how many times it occurs, e.g. "teh (Ln 12, Col 4, 8 occurrences)."
+### Creating a Notebook on macOS can no longer crash through window activation
 
-This is a Kurzweil-1000-style feature, requested directly by a longtime user: a single OCR misread or a repeated typo (`teh` for `the`, say) is usually the fastest way to clear the bulk of a long misspelling list, since fixing one entry — mentally, or via Add to Dictionary — effectively resolves every occurrence of that word at once. Arrow through the ranked list, press Enter to jump to any occurrence, same as the regular list. The document-order **Misspelling List** on **Alt+Shift+L** is unchanged and stays the default for anyone who prefers reviewing top-to-bottom.
+Shannon Dyer encountered a hard macOS crash while creating a Notebook: `SystemError: ActivateEvent returned a result with an exception set`.
 
-### Ranked Spelling Review (Alt+Shift+F7) — the full guided F7 experience, in ranked order
+A window-activation handler collided with a wx assertion while dialogs were being torn down. That handler exists only to return focus to the document, so it is now fully contained. A focus-restoration attempt can no longer take down the entire application.
 
-Where **Ctrl+Shift+L** above is a quick jump-to-occurrence list, **Alt+Shift+F7** is the other half of the same request: the *entire* guided F7 Spelling Review — **Change**, **Change All**, **Ignore Once**, **Ignore All**, **Add to Dictionary**, **Undo Last**, all of it — but walking issues most-frequent-word-first instead of top-to-bottom.
+### Crash and feedback reports now identify the exact beta
 
-This is the version built for genuinely messy documents — a rough OCR scan, a document with a systematic autocorrect error, or anything with the same handful of mistakes repeated many times. Press **Change All** on the top entry and the ranking re-evaluates immediately: whatever word is now most frequent among what's left rises to the front automatically, so you keep working through the document's worst offenders first instead of hunting for them one at a time in reading order. **F7** (document order) and **Alt+Shift+F7** (ranked order) use the exact same dialog and the exact same set of actions — only the order issues are presented in differs.
+Two reports arrived for a bug already corrected in Beta 2, yet they appeared to be regressions because every 0.9.0 beta identified itself only as “0.9.0.”
 
-### Favorite folders — a short, curated list for instant access
+Reports now include the full version string, such as **0.9.0 Beta 2**, making an older installation immediately recognizable.
 
-Also requested directly, modeled on a feature from Kurzweil 1000: a short list of folders you mark as favorites, distinct from Windows' recent-folders list. Recent folders tracks what you *recently* opened; favorites tracks what you actually want fast access to — a folder you use constantly but haven't touched in months (the classic example: a document your boss might ask about at any moment) belongs in favorites even though it long ago aged out of any recency-based list.
+If you encounter the Profiles and Features crash involving `_LazyString`, update to the current beta; that issue was already fixed there.
 
-- **Ctrl+Alt+Shift+A** — **Add Favorite Folder.** Adds the current document's containing folder to your favorites list. (Save the document first if it's untitled — Quill needs a real folder to add.)
-- **Ctrl+Alt+Shift+R** — **Remove Favorite Folder...** Opens a list of your current favorites; choose one to remove it.
-- **Ctrl+Alt+Shift+O** — **Open From Favorite Folder...** Opens Quick Open (see below) scoped to your favorites.
+### QUILL no longer offers crash recovery when there is no crash evidence
 
-All three are also on the **File** menu, under a new **Favorite Folders** submenu, if you'd rather navigate by menu than remember the chords.
+Two automatic crash-recovery submissions contained only normal background activity until the application stopped. There was no exception, no error, and no actionable trace. That pattern is consistent with an external termination — such as a forced shutdown or killed task — rather than a crash inside QUILL.
 
-### Open From Favorite Folder — a VSCode-style Quick Open, scoped to your favorites
+Beta 3 turns that observation into a real behavior change. Before showing crash recovery, QUILL now looks for genuine evidence in the log: an `ERROR`, a `CRITICAL`, or a traceback.
 
-Press **Ctrl+Alt+Shift+O** and a small dialog opens with a text box already focused. Start typing part of a filename and the list below filters live, case-insensitively, across every one of your favorite folders at once — the same type-to-filter rhythm as VSCode's Ctrl+P. Arrow down to a match (each entry shows which favorite folder it came from, since two favorites can both contain a file with a similar name) and press Enter, or click **OK**, to open it. Escape or **Cancel** backs out with nothing changed.
+An inconclusive exit no longer produces the **“Quill detected an unclean exit”** dialog because there is nothing meaningful to diagnose. A real crash still records an error and offers recovery exactly as before.
 
-By default the scan is **top-level files only** within each favorite folder, not recursive — this keeps the filter instant even if one of your favorites happens to contain a huge nested tree, and it matches the "short, curated list" philosophy favorites are built around. Tick the **Include subfolders** checkbox in the dialog to search every subfolder too, if you need to — it's capped at a few thousand files so even a very large favorite can't hang the dialog. And because Quill doesn't have a single-project-root "workspace" concept the way VSCode does, this Quick Open is intentionally scoped to your favorites rather than searching your whole disk.
+The autosave snapshot is never removed or altered by this decision. It remains on disk either way. The only change is whether QUILL asks you to recover after an exit for which the log contains no evidence of a crash.
 
-### Accessible code folding
+### Insert > Date and Time's submenu now actually opens
 
-Fold a heading section or a fenced code block (the ` ``` `...` ``` ` kind, as in Markdown or a code block inside a document) to reduce clutter while you work — without ever losing access to what's folded.
+Jayson Smith reported it precisely: open the Insert menu, arrow up to **Date and Time**, press Right Arrow to open the submenu, and land in the **Format** menu instead.
 
-- **Ctrl+Alt+Shift+F** — **Toggle Fold.** Folds or unfolds the smallest foldable region containing your cursor. You'll hear exactly what happened: *"Folded: 14 lines under 'Chapter Two'"* when you fold, *"Unfolded: 'Chapter Two'"* when you unfold.
-- **Alt+Shift+]** — **Next Fold.** Jumps to the next foldable region's boundary, whether it's currently folded or not, announcing its label, fold state, and line count on arrival: *"'Chapter Three', expanded, 22 lines."*
-- **Alt+Shift+[** — **Previous Fold.** Same as Next Fold, but backward.
-- **Ctrl+Alt+Shift+L** — **List Folds...** Opens a dialog listing every foldable region in the document at once, each showing its current fold state and line count. Pick one to jump straight to it — the fastest way to get an overview of a long document's structure and fold state without stepping through it region by region.
+The cause was a startup ordering gap, not a keyboard-handling bug. QUILL builds its menu bar before Quillins finish loading — deliberately, so a slow or misbehaving Quillin can never delay the window appearing or bring the whole launch down. But nothing rebuilt the menu bar afterward, so the bundled `insert-tools` Quillin's three contributions (Insert Date, Insert Time, Insert Date and Time) never actually landed inside the **Date and Time** submenu. The submenu itself was still there — created unconditionally — just permanently empty. With nothing inside to open, Right Arrow had nowhere to go but onward to the next top-level menu.
 
-We designed this one carefully, and it's worth explaining why it works differently from folding in most other editors. There, folding hides lines visually, and arrow-key navigation silently skips right over a folded block — a screen reader user has no way to tell whether content vanished or was just collapsed, which is a real, long-standing accessibility complaint about folding in mainstream code editors. Quill's folding never does that: **the document text is never touched, and ordinary arrow-key, word, and line navigation is never intercepted.** Fold state is purely something the four commands above announce and act on — arrow through a folded region character by character and you will read every word in it, exactly as if it weren't folded. Folding only changes what a *jump* command does, never what you can reach by moving normally, so nothing you can reach is ever made silently unreachable.
+QUILL now rebuilds the menu bar once Quillin loading finishes at startup, and again after any enable, disable, install, remove, or reload in the Quillins Manager. The **Date and Time** submenu opens correctly now, and so does every other menu location a Quillin contributes to.
 
 ---
 
-## Offline Edition: genuinely offline now
+## GitHub Grows from a Viewer into a Workspace
 
-A community member testing the Offline Edition installer found that Kokoro's neural voices still asked for an internet connection the first time they were used — on a build whose entire point is "no internet needed." That report turned into an audit of every optional speech component Quill offers, and this release closes the gaps that audit found.
+Beta 2 introduced the read-only GitHub Items viewer. Beta 3 begins unifying the best ideas from GHManage and fastgh and moves QUILL toward something much bigger: a keyboard-first GitHub environment where information can be found, understood, and — with explicit consent — acted upon.
 
-### What "Offline Edition" means, and where it fell short
+### GitHub Items gains pins, favorites, real search, and automatic repository awareness
 
-The Offline Edition installer is meant to be a genuinely self-contained build: everything you might reasonably use, already on your computer, with no internet connection required after install. Kokoro's *voice model files* were already bundled that way. What wasn't bundled was the small piece of software that actually *reads* those files — Kokoro's underlying package, which pulls in a few supporting libraries the first time it's used. That meant selecting a Kokoro voice on a genuinely offline machine still hit a wall: the model was right there, but the program needed to install its "engine" over a connection that, by definition, an offline machine doesn't have.
+The first group of improvements adds four everyday capabilities:
 
-### What's fixed
+- **Pinned repositories.** The **Pinned...** button holds a short, intentional list of the repositories you use most. Select one to load it immediately, or pin and unpin the currently loaded repository from the same menu. You no longer need to retype `owner/repo` every time.
+- **Favorites.** Press **Ctrl+D** on any selected issue, pull request, branch, or release to bookmark it. **Favorites...** lists bookmarks from every repository and opens the selected item in your browser. These bookmarks remain entirely on your machine.
+- **Full GitHub search syntax.** Press **Ctrl+F**, enter a GitHub query such as `label:bug is:open crash` or `author:alice is:pr`, and press Enter. Search is scoped to the loaded repository. Clear the search to restore the normal list.
+- **Local git awareness.** When the document you are editing lives inside a git clone whose `origin` points to GitHub, the repository field fills itself in automatically. This works for any file regardless of how it was opened, not only files reached through QUILL’s GitHub commands.
 
-- **Kokoro neural voices** now install completely from files already on your computer, with the Offline Edition build. No connection needed, the first time or ever.
-- **whisper.cpp — the speech-to-text engine Quill uses by default** — now comes with its starter model already in place. This one mattered most: whisper.cpp isn't an optional extra you might choose, it's the engine Quill reaches for automatically, so a "no internet needed" build that couldn't actually transcribe anything until it fetched a file was the biggest gap of all. That's fixed.
-- **Faster Whisper, Vosk, and MP3 chapter-marker support** — three smaller optional add-ons — get the same treatment. Choosing any of them under the Offline Edition build now works without a connection.
-- **Vosk's install got more reliable as a side effect.** Vosk always needed one small supporting library that, until now, could only come from the internet even when Vosk's own file was already verified and local. That gap closes too.
+### Pull-request differences become something you can understand, not a wall of symbols
 
-- **Piper gets the same treatment in this release**: the Offline Edition now bundles Piper's engine — integrity-checked against the same pinned fingerprint at build time and again at install time — plus a ready-to-speak starter voice (Lessac, US English, medium quality). Pick Piper on an Offline Edition install and it talks without ever touching the network; more voices download from the online catalog whenever you want them.
+Select a pull request and choose **Diff...** to browse its changed files in an accessible list.
 
-### What's still on the list
+QUILL sends each file’s before-and-after content through the same comparison engine used by **Compare Documents**. Instead of forcing you through a dense stream of plus and minus signs, it presents a numbered walk through meaningful changes, such as:
 
-One component doesn't have this treatment yet: **Node.js-based Quillins** still need a connection the first time you use one, even under the Offline Edition. This is a known, tracked gap rather than an oversight.
+> Difference 2 of 5. Text changed at line 41. main: ... this PR: ...
 
-## A note on how this release came together
+The changed words are described directly.
 
-Every fix in this release traces back to a specific community bug report — nine in total, from #939 through #953, every one now closed with an explanation of what was found and (where applicable) what changed. The two "no evidence in the log" reports (#940, #948) turned into a real feature rather than being quietly closed as unreproducible: Quill now recognizes that pattern itself and stops asking about it. And two of the seven new features — ranked spelling and favorite folders — came directly from a tester's side-by-side comparison with a competing product, alongside a third request (an instant single-word spell check) that's also in this release. Keep the reports coming; this is how Quill actually gets built.
+- A newly added file is read as its content.
+- A deleted file is announced as deleted.
+- A binary or oversized file falls back honestly to its available change counts.
 
-## What's next
+### Batch operations are powerful — and deliberately fenced by consent
 
-Beta 3 keeps the beta cycle moving toward 1.0. As always: **Help > Report a Bug** for anything that surprises you, and thank you for testing.
+The GitHub Items list now supports multi-selection. Select several rows, press **Batch...**, and close, reopen, or add a label to all selected items at once.
+
+This is the deliberate exception to the viewer’s read-only foundation, so the boundaries are explicit:
+
+- Batch actions require a signed-in account.
+- Anonymous viewing remains fully read-only.
+- Before anything changes, the confirmation identifies the exact action and the exact item numbers involved.
+- If some items fail, QUILL tells you which ones failed and why, while allowing successful items to complete.
+
+### AI can turn a hundred-comment thread into a useful starting point
+
+A hundred-comment issue late at night is not a humane reading experience.
+
+Press **Summarize** on an issue or pull request and QUILL’s AI creates a brief, plain-prose TL;DR covering:
+
+- What the thread is about
+- Where it currently stands
+- What remains unresolved
+- The apparent next step
+
+The summary appears in the details pane and is announced. It uses the same AI connection, privacy, and consent gates as every other QUILL AI feature. Nothing is transmitted or generated until you choose **Summarize**.
+
+The viewer and every GitHub feature continue to honor QUILL’s token, consent, and Safe Mode controls. Branch comparison, a wiki browser, and additional parts of the broader unification review remain on the roadmap; notifications move from roadmap to reality later in this release.
+
+---
+
+## GitHub Stops Being a One-Way Window
+
+Before Beta 3, QUILL could show you a great deal of GitHub while changing very little. You could browse a repository, open a file, save that one file back, list issues and pull requests, and perform limited batch labeling or state changes. Creating repositories, opening and merging pull requests, or deleting obsolete branches still pushed you into the browser.
+
+The planning document at `docs/planning/github.md` examines how far QUILL can go without adding a dependency on the `gh` CLI. Beta 3 ships the part of that plan we can support confidently: repository administration, richer item actions, organization browsing, releases, workflow dispatch, notifications, and security alerts.
+
+### A new Tools > GitHub command center
+
+**Tools > GitHub** is a new submenu containing eight repository commands:
+
+- **Create Repository...** — provide a name and description, choose public or private visibility, and optionally select an organization. After creation, QUILL offers to synchronize a local folder immediately. Say yes and move directly from “no repository” to “a local folder pushing to GitHub” without opening a browser.
+- **Fork Repository...** — fork the repository and receive the same offer to create or connect a local synchronized folder.
+- **Rename Repository...** — change the repository name from within QUILL.
+- **Change Repository Visibility...** — move between public and private visibility with an explicit confirmation.
+- **Change Default Branch...** — select the branch GitHub should treat as the default.
+- **Delete Branch...** — remove a branch through a guarded workflow.
+- **Configure Branch Protection...** — choose a branch, set the number of required approving reviews, specify required status checks, or select an option to clear existing protection.
+- **Commit Multiple Files...** — choose several local files and commit them together in one atomic commit. This is intentionally different from **Save to GitHub**, which handles only the currently open document.
+
+### The Items viewer gains an Actions menu
+
+Alongside **Batch...**, the Issues, Pull Requests, Branches, and Commits viewer now includes **Actions...** with commands for:
+
+- **New Issue...**
+- **New Pull Request...**
+- **Merge Pull Request...** when a pull request is selected
+- **Delete Branch...** when a branch is selected
+- **Re-run Workflow** when a workflow run is selected
+- **Reply to Thread...**
+- **Edit This Comment...**
+- **Delete This Comment...**
+
+The comment actions build on the existing **Alt+N** and **Alt+P** navigation. Move to the relevant comment, then reply to, edit, or delete that specific comment.
+
+### Signed-in actions remain signed-in actions
+
+None of the write commands operates anonymously. Each requires an authenticated account. When you are not signed in, QUILL offers to begin sign-in from the point of need instead of simply refusing and leaving you to find another route.
+
+Four high-consequence actions require stronger confirmation than an ordinary Yes/No prompt:
+
+- Renaming a repository
+- Changing repository visibility
+- Deleting a branch
+- Merging a pull request
+
+For those operations, you must retype the exact repository name, branch name, or pull-request number. These are the actions for which an accidental Enter can be particularly difficult to reverse.
+
+Every other write action uses a clear confirmation that names precisely what is about to change.
+
+All thirteen GitHub commands — the eight new administration commands plus the five browsing commands present since QUILL 0.5.0 — now appear in the Command Palette and ship with default QUILL Key chords. Every chord can be reassigned in Preferences.
+
+### Organizations, releases, workflows, notifications, and security alerts
+
+Five additional commands complete the read-mostly side of the plan:
+
+- **Browse Organization Repositories...** — choose from the organizations associated with your account and then browse that organization’s repositories. Teams remain intentionally out of scope.
+- **Create Release...** — choose a tag, supply optional release notes or use GitHub’s automatically generated notes from merged pull requests, and create the release as a draft or publish it.
+- **Dispatch Workflow...** — run a workflow against a branch or tag, equivalent to choosing **Run workflow** on GitHub’s website.
+- **Notifications...** — open a genuine inbox spanning all repositories rather than only the repository currently loaded.
+- **Security Alerts...** — review a repository’s open Dependabot alerts.
+
+### What is not included — because confidence matters more than pretending
+
+Before implementing these commands, we checked the actual boundaries of PyGithub instead of assuming that every GitHub capability had a stable wrapper.
+
+Several ideas from the original plan remain out for concrete reasons:
+
+- **Discussions** has a PyGithub entry point, but it requires a hand-written GraphQL field-selection string. Shipping that without live repository validation would mean shipping a guess.
+- **Projects (v2)** has no PyGithub support. The library supports only the classic Projects API that GitHub has been sunsetting, so building against it would produce a feature that fails on many modern repositories.
+- **Packages** has no PyGithub support.
+- **Transferring a repository to another owner** also lacks a wrapped method. This was initially described as renaming in the plan, but transfer is the actual operation.
+
+Discussions, Projects v2, Packages, and repository transfer remain legitimate future candidates when they can be implemented and verified responsibly.
+
+---
+
+## Local Git, Reimagined for Screen Reader Users
+
+This section is not about GitHub. It is about `git` itself — and it may be the capability in Beta 3 of which we are proudest.
+
+Traditional git tools expose complex operations as punctuation-heavy text and visually arranged changes. QUILL starts from a different question: what would these workflows look like if structure, sequence, context, and choice were communicated directly?
+
+### Merge conflicts become a guided conversation
+
+Anyone who has worked with git has eventually encountered conflict markers:
+
+```text
+<<<<<<<
+=======
+>>>>>>>
+```
+
+A screen reader encounters those markers as line noise unless the user manually reconstructs the surrounding structure. The git CLI, GitHub Desktop, and most graphical merge tools were not designed around that experience. None of them is also the trusted editor in which a screen reader user already writes.
+
+QUILL is.
+
+Open **Tools > Local Git > Resolve Conflicts...** and QUILL parses each conflicted file into meaningful parts. It then walks through the conflicts one at a time, announcing language such as:
+
+> Conflict 1 of 3: your version says X; their version says Y.
+
+For each conflict, choose to:
+
+- Keep yours
+- Keep theirs
+- Keep both
+- Enter a different replacement
+
+The process continues through every conflict in every affected file, preserving structure and making the decision explicit.
+
+### Interactive rebase becomes an accessible list instead of editable syntax
+
+`git rebase -i` normally opens a generated text file and expects you to reorder commits and change commands such as `pick`, `squash`, `reword`, or `drop` without damaging the syntax.
+
+**Interactive Rebase...** replaces that fragile visual editing task with a real dialog:
+
+- One commit appears on each row.
+- Each row has an action selected from a dropdown.
+- **Move Up** and **Move Down** reorder commits directly.
+
+Under the hood, QUILL uses the same mechanism employed by graphical git clients: git can send its generated todo list to any program named as the sequence editor. QUILL becomes that program and returns the structured list built in the accessible dialog.
+
+If a rebase step causes a conflict, the same guided conflict resolver opens automatically. Resolve the conflict, and QUILL continues the rebase.
+
+### The rest of the local git toolkit
+
+The new local git experience also includes:
+
+- **Uncommitted Changes...** — stage or unstage work through an accessible comparison rather than a raw diff.
+- **Switch Branch...** — change branches with a guard that prevents uncommitted work from following you unexpectedly.
+- **Stash Changes...** and **Manage Stashes...** — create and manage stashes through guided interfaces.
+- **Who Wrote This Line...** — make git blame useful by speaking the result for the current line.
+- **Start Bisect...** and **End Bisect** — turn `git bisect` into a plain conversation asking whether the current version is good or bad.
+
+These commands do not contact GitHub or any network service. They operate entirely through local git and work with any repository you point QUILL toward.
+
+We tested them against real repositories performing real operations: divergent branches producing a real merge conflict, and an interactive rebase that encountered a conflict partway through and then had to continue. Subprocess orchestration earns trust by surviving the actual workflow, not by looking correct on paper.
+
+Everything across these three GitHub chapters — browsing and saving files, working issues and pull requests, administering a repository, and resolving a merge conflict — is also taught end to end in [Tutorial 8: GitHub inside QUILL](../tutorials/08-github-inside-quill.md).
+
+---
+
+## Headers and Footers Become Part of the Document
+
+Beta 2’s Header/Footer Builder could apply headers and footers during printing, but the saved files themselves did not contain them.
+
+Beta 3 carries them into the document:
+
+- Save as `.docx` and the header or footer becomes a real Word header or footer.
+- Page numbers use a live Word field, so Word continues renumbering them as the document changes.
+- Save as `.rtf` and QUILL writes the equivalent native RTF header and footer groups.
+- Roman numeral numbering carries through.
+- A custom starting page number carries through.
+- A different first page carries through.
+
+An empty header/footer specification changes nothing, and a header can never become the reason a save fails.
+
+---
+
+## QUILL Sync: Let Trusted Tools Carry the Work
+
+We explored what it would mean to build a complete QUILL synchronization service: QUILL accounts, QUILL-hosted storage, a custom synchronization engine, and the operational burden that comes with all of it.
+
+We chose not to build a new cloud merely because we could.
+
+Cloud-synchronized folders and git already solve the essential problems well. Beta 3 lets QUILL work with those systems instead of competing with them. Two focused capabilities deliver practical synchronization without making QUILL a storage provider.
+
+### Synchronize settings through a folder you already trust
+
+The existing **“Where should QUILL store your data?”** option was originally created so users could move their application data away from the system drive. It also serves as a straightforward settings synchronization mechanism.
+
+Point QUILL’s data location to a folder already synchronized by OneDrive, Dropbox, Google Drive, or iCloud. Your settings, snippets, dictionaries, and keymap then travel with that folder across devices. QUILL writes normal files; the provider’s sync client handles transport.
+
+The setup wizard now explains this use clearly and names the important limitation: do not run QUILL simultaneously on two devices that share the same synchronized data folder. This path has no cross-device conflict-resolution system.
+
+### Synchronize any folder with GitHub
+
+**Tools > Sync Folder with GitHub...** works with any folder: notes, a writing project, source code, or an entire body of work.
+
+When the selected folder is already a git repository with a remote, QUILL commits, pulls, and pushes it in the background.
+
+When the folder is not yet configured, QUILL explains exactly what it proposes to do:
+
+> This runs `git init`, then adds the remote repository you provide as `origin`.
+
+Nothing changes until you approve. Provide the repository URL and the folder becomes synchronized.
+
+If the same file changed in both locations, QUILL lists the conflicts by name and stops. It never resolves the situation through a silent overwrite.
+
+The engine is familiar because it is the same foundation used by Accessible Vault’s **Sync Vault** command, generalized from vaults to any folder.
+
+QUILL relies on your installed git and the credentials git already knows — an SSH key or the account stored in your system’s git credential manager. It does not create or store a second set of credentials. The behavior mirrors a normal `git push` from the terminal.
+
+Like every network-touching feature, folder synchronization is disabled in Safe Mode.
+
+The reasoning behind this approach, including the larger synchronization design that was considered and rejected, is preserved in `docs/engineering/sync-engine-history.md`.
+
+---
+
+## Small Features, Enormous Everyday Impact
+
+Some features change an architecture. Others remove one interruption, one unnecessary dialog, one repeated search, or one inaccessible ritual from a person’s day. Beta 3 makes room for both.
+
+These accessibility-first additions came from real workflows and direct requests. They are small enough to feel natural and powerful enough to become habits.
+
+### The Clipboard Collector now reaches beyond QUILL
+
+Dean Martineau asked for the behavior familiar from EdSharp: turn on the collector, copy from anywhere, and let every captured item flow into the active document.
+
+That is now exactly what happens.
+
+While **Toggle Clipboard Collector** is enabled, QUILL watches the system clipboard. Copy text from a browser, an email, a terminal, or another application and QUILL appends it to the open document, saving as it goes.
+
+The implementation is intentionally light. QUILL performs one inexpensive check roughly once per second and touches the clipboard only when its contents have actually changed. Copies made within QUILL still arrive immediately, and each distinct clipboard item is collected exactly once.
+
+### QUILL can become Thunderbird’s external editor
+
+Martin Courcelles asked to write email in QUILL. The happy discovery is that the underlying behavior already works.
+
+QUILL’s one-process-per-file model matches what Thunderbird’s **External Editor Revived** add-on expects. The user guide now includes a complete **Using QUILL as an external editor** walkthrough:
+
+1. Install the Thunderbird add-on.
+2. Point it to `quill.exe`.
+3. Press **Ctrl+E** in a Thunderbird compose window.
+4. Write using the full QUILL editing environment.
+5. Save and close the QUILL document.
+6. The text returns to the Thunderbird message.
+
+### The Windows installer can add QUILL to PATH
+
+The installer now includes an optional **Add Quill to PATH** task. It is unchecked by default and appears beside the existing file-association choices.
+
+Enable it and the command `quill` resolves from any terminal or from a shortcut’s **Target** field without requiring the complete installation path.
+
+The change is per-user only. It requires no elevation and affects no other Windows account.
+
+Already installed Beta 2 or an earlier build? Run the installer again and select the task to add it retroactively.
+
+### A temporary bookmark for “right here, right now”
+
+Sometimes you do not need a named landmark, a list, or a persistent record. You simply need to mark this exact place and return a few moments later.
+
+- **Ctrl+Shift+K** sets one unnamed bookmark at the cursor. There is no dialog. QUILL announces: “Temporary bookmark set.”
+- **Alt+Shift+K** returns to it immediately. There is no picker. QUILL announces: “Jumped to temporary bookmark.”
+
+Setting another temporary bookmark replaces the previous one without prompting. Only one exists at a time.
+
+It does **not** persist across sessions. Closing and reopening QUILL clears it. That is deliberate: this is disposable working memory for the next few minutes, not a replacement for the existing unlimited, persistent **Set Bookmark...**, **Go To Bookmark...**, and **List Bookmarks...** commands.
+
+### Ten numbered quick bookmarks, each one keystroke away
+
+Beta 3 also adds ten fixed bookmark slots numbered 0 through 9.
+
+- **Alt+Shift+0** through **Alt+Shift+9** sets the corresponding slot at the cursor. For example: “Quick bookmark 3 set.”
+- **Ctrl+Alt+Shift+0** through **Ctrl+Alt+Shift+9** jumps directly to that slot. QUILL announces “Jumped to quick bookmark 3,” or “Quick bookmark 3 is not set” when the slot is empty.
+
+These are direct chords. There is no menu to open and no bookmark mode to enter first.
+
+Internally, the slots are stored as normal named bookmarks with generated names such as **Quick 3**. That means they persist per document across restarts just like existing named bookmarks. There is nothing new to configure and no separate storage system to maintain.
+
+### Alt+F7 checks only the word under the cursor
+
+Press **Alt+F7** to run **Spell Check Word** on the current word.
+
+When the word is correct, QUILL says so and returns you immediately to your work.
+
+When the word is misspelled, a compact list opens with the same choices available from the right-click spelling menu:
+
+- Suggested replacements
+- **Add to Dictionary**
+- **Ignore**
+
+Arrow to an option and press Enter, or press Escape to cancel without changing anything.
+
+This is the focused-word spelling workflow familiar from Microsoft Office. Use **F7** for a systematic review of the full document. Use **Alt+F7** when you need an answer about the one word at the cursor.
+
+### Ranked spelling puts the most repeated problem first
+
+Press **Ctrl+Shift+L** to open a misspelling list ranked by frequency.
+
+The existing **Misspelling List** on **Alt+Shift+L** remains unchanged and continues to present words in document order. The new ranked view begins with the misspelling that occurs most often and shows the count in each entry, for example:
+
+> teh (Ln 12, Col 4, 8 occurrences)
+
+This Kurzweil 1000-inspired feature came directly from a longtime user. In an OCR document or a draft containing a repeated typo, correcting the most frequent problem first can eliminate a large portion of the noise immediately.
+
+Arrow through the list and press Enter to jump to an occurrence, exactly as in the regular misspelling list. Users who prefer reviewing from the beginning of the document can continue using **Alt+Shift+L**.
+
+### Ranked Spelling Review brings the full F7 workflow into frequency order
+
+**Alt+Shift+F7** opens the complete guided Spelling Review, but orders issues from most frequent to least frequent.
+
+It includes every action available in the normal F7 dialog:
+
+- **Change**
+- **Change All**
+- **Ignore Once**
+- **Ignore All**
+- **Add to Dictionary**
+- **Undo Last**
+
+This is designed for difficult documents: rough OCR, systematic autocorrect failures, and files containing the same few errors dozens of times.
+
+Choose **Change All** on the first item and the ranking recalculates immediately. The most frequent remaining issue rises to the top, allowing you to keep clearing the largest groups of errors first.
+
+**F7** and **Alt+Shift+F7** use the same dialog and the same actions. Only the presentation order changes: document order for F7, frequency order for Alt+Shift+F7.
+
+### Favorite folders remember what matters, not merely what was recent
+
+Windows recent folders answer one question: what did you open lately?
+
+Favorite folders answer a different and often more useful one: what must always be easy to reach?
+
+A folder holding a document your supervisor might request at any moment may deserve permanent prominence even if you have not opened it in months. Beta 3 adds a short, curated favorites list modeled on a valued Kurzweil 1000 workflow.
+
+- **Ctrl+Alt+Shift+A — Add Favorite Folder.** Adds the folder containing the current document. An untitled document must be saved first because QUILL needs a real folder path.
+- **Ctrl+Alt+Shift+R — Remove Favorite Folder...** Opens the favorites list and lets you choose one to remove.
+- **Ctrl+Alt+Shift+O — Open From Favorite Folder...** Opens the new Quick Open experience scoped to your favorite folders.
+
+All three commands also appear under **File > Favorite Folders** for users who prefer menu navigation.
+
+### Quick Open searches across favorite folders as you type
+
+Press **Ctrl+Alt+Shift+O** and a compact dialog opens with focus already in the search box.
+
+Begin typing any part of a filename. The results below filter live and case-insensitively across every favorite folder, following the same type-to-filter rhythm as **Ctrl+P** in Visual Studio Code.
+
+Each result identifies the favorite folder it came from, which matters when multiple folders contain similarly named files. Arrow to a result and press Enter, or choose **OK**, to open it. Press Escape or **Cancel** to leave everything unchanged.
+
+By default, the search includes only files at the top level of each favorite folder. It does not recurse into subfolders. That keeps results immediate even when a favorite contains a large nested tree and reinforces the intentionally curated nature of the feature.
+
+Enable **Include subfolders** when a deeper search is needed. Recursive results are capped at a few thousand files so a very large favorite cannot freeze the dialog.
+
+QUILL does not impose a single project-root or workspace model like Visual Studio Code, so Quick Open deliberately searches the user’s chosen favorites rather than attempting to scan the entire computer.
+
+### Accessible code folding reduces clutter without hiding content from you
+
+QUILL can now fold heading sections and fenced code blocks — the ```` ``` ```` through ```` ``` ```` structure used in Markdown and embedded code — while preserving complete access to every word.
+
+The commands are:
+
+- **Ctrl+Alt+Shift+F — Toggle Fold.** Folds or unfolds the smallest foldable region containing the cursor. QUILL announces exactly what happened, such as “Folded: 14 lines under ‘Chapter Two’” or “Unfolded: ‘Chapter Two.’”
+- **Alt+Shift+] — Next Fold.** Moves to the next foldable boundary, whether expanded or folded, and announces the label, state, and line count: “‘Chapter Three,’ expanded, 22 lines.”
+- **Alt+Shift+[ — Previous Fold.** Performs the same navigation in reverse.
+- **Ctrl+Alt+Shift+L — List Folds...** Opens a complete list of foldable regions, each with its current state and line count. Select one to jump to it directly.
+
+The accessibility design is intentionally different from folding in most editors.
+
+Mainstream folding generally hides lines visually and makes ordinary arrow navigation skip silently over the collapsed content. A screen reader user may have no reliable way to know whether text was removed, folded, or simply bypassed.
+
+QUILL never creates that uncertainty.
+
+**The document text is never changed, and normal character, word, and line navigation is never intercepted.** Fold state exists for the four folding commands to describe and use. Arrow through a folded region normally and every word remains available exactly as though the region were expanded.
+
+Folding changes the behavior of fold-specific jump commands. It never makes reachable content silently unreachable.
+
+---
+
+## The Offline Edition Is Finally True to Its Name
+
+A community member installed the Offline Edition and discovered that Kokoro neural voices still requested an internet connection on first use — inside a build whose defining promise is that the internet should not be required.
+
+That report did not become a one-line patch. It triggered an audit of every optional speech component QUILL offers. Beta 3 closes every gap found in that audit except one clearly documented remaining limitation.
+
+### What “Offline Edition” is supposed to mean
+
+The Offline Edition should be self-contained: the components a user can reasonably expect to use are already on the computer, and normal operation requires no internet connection after installation.
+
+Kokoro’s voice model files were already included. The missing piece was the software engine that reads those models. Kokoro’s underlying package and several supporting libraries were still being installed the first time the voice was selected.
+
+On a truly offline computer, the model was present but unusable because the engine tried to cross a network connection that did not exist.
+
+### Kokoro now installs and speaks entirely from local files
+
+The Offline Edition now contains everything required to install Kokoro neural voices. No connection is needed during first use or any later use.
+
+### whisper.cpp now includes its starter model
+
+QUILL’s default speech-to-text engine, **whisper.cpp**, now ships with its starter model already present.
+
+This was the most important gap in the audit. whisper.cpp is not merely an optional engine a user might choose later; it is the transcription path QUILL reaches for automatically. An Offline Edition unable to transcribe until it downloaded a model was not genuinely offline. That contradiction is now resolved.
+
+### Faster Whisper, Vosk, and MP3 chapter markers are locally complete
+
+Three smaller optional components receive the same treatment:
+
+- **Faster Whisper**
+- **Vosk**
+- **MP3 chapter-marker support**
+
+Choose any of them in the Offline Edition and installation completes without a network connection.
+
+Vosk also becomes more reliable in the process. It depended on one supporting library that previously came only from the internet even when the verified Vosk package itself was available locally. That final external dependency is now bundled.
+
+### Piper arrives with an engine and a ready-to-speak voice
+
+Piper is now fully prepared for offline use as well.
+
+The Offline Edition bundles:
+
+- Piper’s engine
+- Integrity verification against the same pinned fingerprint at build time and again during installation
+- A ready-to-use starter voice: **Lessac, US English, medium quality**
+
+Select Piper after an Offline Edition installation and it speaks without contacting the network. Additional voices remain available from the online catalog whenever a connection is available and the user chooses to download them.
+
+### The one remaining offline gap
+
+**Node.js-based Quillins** still require an internet connection the first time they are used, even in the Offline Edition.
+
+This is a known and tracked limitation, not an overlooked dependency. It remains on the list for future work.
+
+---
+
+## Built by the Community, Not Merely Released to It
+
+Every fix in Beta 3 traces to a specific community report. Nine reports, spanning issues **#939 through #953**, are now closed with an explanation of what was discovered and, where a change was needed, what was done.
+
+The two reports containing no crash evidence — **#940** and **#948** — were not dismissed as unreproducible. They inspired QUILL to recognize that pattern itself and stop presenting crash recovery when the log contains nothing actionable.
+
+Ranked spelling and favorite folders came directly from a tester’s side-by-side comparison with another product. The same conversation also called for an instant single-word spelling check, and **Alt+F7** arrives in this release alongside them.
+
+The braille correction moved from experiment to default because braille users tested it.
+
+The macOS corrections exist because testers described experiences that sounded improbable until the underlying toolkit behavior made them completely explainable.
+
+The Offline Edition became genuinely offline because a community member tested its promise rather than assuming the label was enough.
+
+This is not simply how QUILL improves. **This is how QUILL is built.**
+
+---
+
+## Toward 1.0 — Together
+
+Beta 3 moves the 0.9.0 cycle closer to 1.0 with a stronger editor, clearer safeguards, deeper accessibility, and a growing set of workflows shaped by the people who use them.
+
+Please keep exploring. Open the formats that matter to you. Try the braille behavior, Narrator announcements, VoiceOver rich editing, portable update flow, local git tools, GitHub commands, spell-checking workflows, folder favorites, folding, speech engines, and offline installation.
+
+When something surprises you — beautifully or badly — use **Help > Report a Bug** and tell us what happened.
+
+A successful report matters. A failure report matters. A strange edge case matters. A feature request grounded in real work matters.
+
+Thank you for testing. Thank you for challenging assumptions. Thank you for helping turn an editor into a community-built place where more people can create, contribute, and belong.
+
+**QUILL 0.9.0 Beta 3 is here. One editor. Every format. Built with you.**
