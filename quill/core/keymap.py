@@ -375,6 +375,20 @@ DEFAULT_KEYMAP: dict[str, str] = {
     "github.configure_branch_protection": "Ctrl+Shift+Grave, Shift+L",  # L = Lock/protect
     "github.delete_branch": "Ctrl+Shift+Grave, Shift+X",  # QUILL-key chord (X = remove)
     "github.commit_multiple_files": "Ctrl+Shift+Grave, Shift+U",  # U = mUltiple files
+    # Local git (Tools > Local Git). No default chords -- the single-letter
+    # leader-chord space is fully claimed (see the github.* block above);
+    # these are reachable via the menu and the Command Palette, and freely
+    # assignable in Preferences > Keyboard Shortcuts like every command.
+    "localgit.uncommitted_changes": "",
+    "localgit.switch_branch": "",
+    "localgit.stash_changes": "",
+    "localgit.manage_stashes": "",
+    "localgit.blame_at_cursor": "",
+    "localgit.bisect_start": "",
+    "localgit.bisect_reset": "",
+    "localgit.resolve_conflicts": "",
+    "localgit.interactive_rebase": "",
+    "localgit.rebase_abort": "",
     "vault.publish_note": "",
     "power.insert_special_character": "Shift+F2",  # §4.22 parity; F2 -> List Studio
     "power.number_lines": "Alt+Shift+N",  # §4.22 Number Items parity

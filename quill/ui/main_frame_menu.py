@@ -1675,6 +1675,16 @@ class MenuBuilderMixin:
         self._id_github_branch_protection = wx.NewIdRef()
         self._id_github_delete_branch = wx.NewIdRef()
         self._id_github_commit_multiple = wx.NewIdRef()
+        self._id_localgit_uncommitted = wx.NewIdRef()
+        self._id_localgit_switch_branch = wx.NewIdRef()
+        self._id_localgit_stash_changes = wx.NewIdRef()
+        self._id_localgit_manage_stashes = wx.NewIdRef()
+        self._id_localgit_blame = wx.NewIdRef()
+        self._id_localgit_bisect_start = wx.NewIdRef()
+        self._id_localgit_bisect_reset = wx.NewIdRef()
+        self._id_localgit_resolve_conflicts = wx.NewIdRef()
+        self._id_localgit_interactive_rebase = wx.NewIdRef()
+        self._id_localgit_rebase_abort = wx.NewIdRef()
         tools_menu = wx.Menu()
         tools_menu.Append(
             self._id_palette,
@@ -1799,6 +1809,52 @@ class MenuBuilderMixin:
             self._menu_label(_("Commit &Multiple Files..."), "github.commit_multiple_files"),
         )
         tools_menu.AppendSubMenu(github_admin_menu, _("&GitHub"))
+        local_git_menu = wx.Menu()
+        local_git_menu.Append(
+            self._id_localgit_uncommitted,
+            self._menu_label(_("&Uncommitted Changes..."), "localgit.uncommitted_changes"),
+        )
+        local_git_menu.Append(
+            self._id_localgit_switch_branch,
+            self._menu_label(_("Switch &Branch..."), "localgit.switch_branch"),
+        )
+        local_git_menu.AppendSeparator()
+        local_git_menu.Append(
+            self._id_localgit_stash_changes,
+            self._menu_label(_("&Stash Changes..."), "localgit.stash_changes"),
+        )
+        local_git_menu.Append(
+            self._id_localgit_manage_stashes,
+            self._menu_label(_("Manage St&ashes..."), "localgit.manage_stashes"),
+        )
+        local_git_menu.AppendSeparator()
+        local_git_menu.Append(
+            self._id_localgit_blame,
+            self._menu_label(_("&Who Wrote This Line..."), "localgit.blame_at_cursor"),
+        )
+        local_git_menu.AppendSeparator()
+        local_git_menu.Append(
+            self._id_localgit_bisect_start,
+            self._menu_label(_("Start &Bisect..."), "localgit.bisect_start"),
+        )
+        local_git_menu.Append(
+            self._id_localgit_bisect_reset,
+            self._menu_label(_("&End Bisect"), "localgit.bisect_reset"),
+        )
+        local_git_menu.AppendSeparator()
+        local_git_menu.Append(
+            self._id_localgit_resolve_conflicts,
+            self._menu_label(_("&Resolve Conflicts..."), "localgit.resolve_conflicts"),
+        )
+        local_git_menu.Append(
+            self._id_localgit_interactive_rebase,
+            self._menu_label(_("&Interactive Rebase..."), "localgit.interactive_rebase"),
+        )
+        local_git_menu.Append(
+            self._id_localgit_rebase_abort,
+            self._menu_label(_("A&bort Rebase"), "localgit.rebase_abort"),
+        )
+        tools_menu.AppendSubMenu(local_git_menu, _("&Local Git"))
         tools_menu.AppendSeparator()
 
         # Writing & Language -----------------------------------------------
@@ -3099,6 +3155,56 @@ class MenuBuilderMixin:
             wx.EVT_MENU,
             lambda _e: self.github_commit_multiple_files(),
             id=self._id_github_commit_multiple,
+        )
+        self.frame.Bind(
+            wx.EVT_MENU,
+            lambda _e: self.local_git_uncommitted_changes(),
+            id=self._id_localgit_uncommitted,
+        )
+        self.frame.Bind(
+            wx.EVT_MENU,
+            lambda _e: self.local_git_switch_branch(),
+            id=self._id_localgit_switch_branch,
+        )
+        self.frame.Bind(
+            wx.EVT_MENU,
+            lambda _e: self.local_git_stash_changes(),
+            id=self._id_localgit_stash_changes,
+        )
+        self.frame.Bind(
+            wx.EVT_MENU,
+            lambda _e: self.local_git_manage_stashes(),
+            id=self._id_localgit_manage_stashes,
+        )
+        self.frame.Bind(
+            wx.EVT_MENU,
+            lambda _e: self.local_git_blame_at_cursor(),
+            id=self._id_localgit_blame,
+        )
+        self.frame.Bind(
+            wx.EVT_MENU,
+            lambda _e: self.local_git_bisect_start(),
+            id=self._id_localgit_bisect_start,
+        )
+        self.frame.Bind(
+            wx.EVT_MENU,
+            lambda _e: self.local_git_bisect_reset(),
+            id=self._id_localgit_bisect_reset,
+        )
+        self.frame.Bind(
+            wx.EVT_MENU,
+            lambda _e: self.local_git_resolve_conflicts(),
+            id=self._id_localgit_resolve_conflicts,
+        )
+        self.frame.Bind(
+            wx.EVT_MENU,
+            lambda _e: self.local_git_interactive_rebase(),
+            id=self._id_localgit_interactive_rebase,
+        )
+        self.frame.Bind(
+            wx.EVT_MENU,
+            lambda _e: self.local_git_rebase_abort(),
+            id=self._id_localgit_rebase_abort,
         )
         self.frame.Bind(
             wx.EVT_MENU, lambda _e: self.open_story_studio(), id=self._id_open_story_studio

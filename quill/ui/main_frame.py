@@ -444,6 +444,7 @@ from quill.ui.main_frame_intellisense import IntellisensePopupMixin
 from quill.ui.main_frame_language_detect import LanguageDetectMixin
 from quill.ui.main_frame_line_commands import LineCommandsMixin
 from quill.ui.main_frame_list_studio import ListStudioMixin
+from quill.ui.main_frame_local_git import LocalGitMixin
 from quill.ui.main_frame_menu import MenuBuilderMixin
 from quill.ui.main_frame_notebook import NotebookUIMixin
 from quill.ui.main_frame_power_tools import PowerToolsActionsMixin
@@ -848,6 +849,7 @@ class MainFrame(
     StoryStudioMixin,
     VaultMixin,
     GitSyncMixin,
+    LocalGitMixin,
     GlowFileMixin,
     DocConvertMixin,
     DictationHotkeysMixin,
@@ -3824,6 +3826,7 @@ class MainFrame(
         self._register_vault_commands()
         self._register_git_sync_commands()
         self._register_github_admin_commands()
+        self._register_local_git_commands()
         self._register_dictation_hotkey_commands()
 
     def _apply_accelerators(self) -> None:

@@ -518,6 +518,17 @@ _REVIEWED_EGRESS: dict[str, str] = {
 #   chosen folder is not yet set up -- only after an explicit confirmation
 #   dialog states exactly what will run. Triggered: Tools > Sync Folder with
 #   GitHub... (explicit user action only). Blocked in Safe Mode.
+#
+# quill/core/local_git.py (Tools > Local Git; 0.9.0 Beta 3, docs/planning/
+# github.md section 4) -- listed here for the same subprocess-boundary
+# auditability, though unlike the two entries above this module makes **no
+# network calls at all**: status, diff, stage/unstage, branch list/switch,
+# stash, blame, bisect, and interactive rebase are all local-only git
+# operations (no push/pull/fetch anywhere in the module). Executable
+# resolution goes through quill/core/git_binaries.py's allowlist
+# (git/git.exe/gh/gh.exe only). Blocked in Safe Mode out of caution
+# (consistent with every other git-touching command), even though nothing
+# here actually reaches the network.
 
 
 def _enclosing_function_name(tree: ast.AST, target: ast.AST) -> str:
