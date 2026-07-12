@@ -176,8 +176,9 @@
   </style>
 </head>
 <body>
-<h1 id="quill-090-beta-3">QUILL 0.9.0 Beta 3</h1>
-<h2 id="one-editor-every-format-a-community-moving-forward-together">One
+<h1 id="quill-0.9.0-beta-3">QUILL 0.9.0 Beta 3</h1>
+<h2
+id="one-editor.-every-format.-a-community-moving-forward-together.">One
 Editor. Every Format. A Community Moving Forward Together.</h2>
 <p><em>From Community Access. Free. Optional by design. Private by
 default. Built with you.</em></p>
@@ -204,7 +205,7 @@ Every limitation is stated honestly. Nothing here asks you to discover
 essential behavior by accident.</p>
 <p>This is the full, friendly companion to the <strong>“0.9.0 Beta
 3”</strong> section of <code>CHANGELOG.md</code>. The shorter summaries
-shown under <strong>Help &gt; What's New</strong> and <strong>Check for
+shown under <strong>Help &gt; What’s New</strong> and <strong>Check for
 Updates</strong> come from that changelog. This document tells the
 complete story: what changed, why it matters, how to use it, and how the
 community helped make it real.</p>
@@ -215,7 +216,7 @@ community helped make it real.</p>
 tool for plain text, another for Markdown, another for rich text,
 another for Word. Beta 3 turns that relationship around. The format now
 serves the writer. The editor remains familiar.</p>
-<h3 id="the-braille-fix-graduates--enabled-for-everyone-by-default">The
+<h3 id="the-braille-fix-graduates-enabled-for-everyone-by-default">The
 braille fix graduates — enabled for everyone by default</h3>
 <p>In Beta 2, we asked braille display users to step into an
 experimental space, test a proposed correction, and tell us exactly what
@@ -291,7 +292,7 @@ what you intend:</p>
 <p>Choose <strong>stay plain</strong>, and QUILL remembers the answer
 instead of asking repeatedly.</p>
 <h3
-id="word-documents-become-editable--without-pretending-nothing-can-be-lost">Word
+id="word-documents-become-editable-without-pretending-nothing-can-be-lost">Word
 documents become editable — without pretending nothing can be lost</h3>
 <p>A <code>.docx</code> file can now open for genuine rich editing and
 save back as a real Word document.</p>
@@ -319,7 +320,7 @@ formats</h3>
 together.</p>
 <p>Open it through any of these paths:</p>
 <ul>
-<li><strong>Format &gt; Document Format...</strong></li>
+<li><strong>Format &gt; Document Format…</strong></li>
 <li><strong>Ctrl+Shift+Grave, K</strong></li>
 <li>The Command Palette</li>
 <li>The new <strong>Format</strong> cell on the status bar, which
@@ -342,7 +343,7 @@ anything that will not survive the conversion.</p>
 save proposes a filename with the correct extension — for example,
 <code>notes.md</code> becomes <code>notes.rtf</code> — so the file on
 disk always tells the truth about the format inside it.</p>
-<h3 id="rich-editing-on-macos--ready-from-the-first-launch">Rich editing
+<h3 id="rich-editing-on-macos-ready-from-the-first-launch">Rich editing
 on macOS — ready from the first launch</h3>
 <p>Rich mode ships ready to use on the Mac. The macOS editor remains the
 same native text view VoiceOver users already know, and the application
@@ -600,8 +601,8 @@ exactly as before.</p>
 It remains on disk either way. The only change is whether QUILL asks you
 to recover after an exit for which the log contains no evidence of a
 crash.</p>
-<h3 id="insert--date-and-times-submenu-now-actually-opens">Insert &gt;
-Date and Time's submenu now actually opens</h3>
+<h3 id="insert-date-and-times-submenu-now-actually-opens">Insert &gt;
+Date and Time’s submenu now actually opens</h3>
 <p>Jayson Smith reported it precisely: open the Insert menu, arrow up to
 <strong>Date and Time</strong>, press Right Arrow to open the submenu,
 and land in the <strong>Format</strong> menu instead.</p>
@@ -609,7 +610,7 @@ and land in the <strong>Format</strong> menu instead.</p>
 QUILL builds its menu bar before Quillins finish loading — deliberately,
 so a slow or misbehaving Quillin can never delay the window appearing or
 bring the whole launch down. But nothing rebuilt the menu bar afterward,
-so the bundled <code>insert-tools</code> Quillin's three contributions
+so the bundled <code>insert-tools</code> Quillin’s three contributions
 (Insert Date, Insert Time, Insert Date and Time) never actually landed
 inside the <strong>Date and Time</strong> submenu. The submenu itself
 was still there — created unconditionally — just permanently empty. With
@@ -642,16 +643,16 @@ instead of per-user, and noticed something specific: startup was several
 seconds faster the first time he ran it as administrator than it was
 running normally afterward.</p>
 <p>The cause was a gap in a fix QUILL already had. comtypes — the
-library behind SAPI speech, Narrator's UIA announcement bridge, and the
+library behind SAPI speech, Narrator’s UIA announcement bridge, and the
 Rich Edit rich-text object model — writes a generated wrapper file to
 disk the first time it touches each of those three COM interfaces. Its
 default location is inside its own package folder, which a per-machine
 install makes read-only without elevation. QUILL already redirected this
 cache to a writable per-user folder, but only did the redirecting once,
-from inside the SAPI code path — Narrator's and Rich Edit's own comtypes
+from inside the SAPI code path — Narrator’s and Rich Edit’s own comtypes
 calls only inherited that redirect if SAPI happened to run first in the
 same session. Whichever one ran first without that accident of ordering
-fell back to comtypes' own read-only default and degraded silently.</p>
+fell back to comtypes’ own read-only default and degraded silently.</p>
 <p>Every comtypes call site now requests the redirect itself before
 touching comtypes, rather than counting on another feature to have
 already done it. None of the three depends on session ordering anymore,
@@ -665,19 +666,19 @@ something much bigger: a keyboard-first GitHub environment where
 information can be found, understood, and — with explicit consent —
 acted upon.</p>
 <h3
-id="github-items-gains-pins-favorites-real-search-and-automatic-repository-awareness">GitHub
-Items gains pins, favorites, real search, and automatic repository
-awareness</h3>
-<p>The first group of improvements adds four everyday capabilities:</p>
+id="github-items-gains-pins-favorites-real-search-automatic-repository-awareness-and-view-upstream">GitHub
+Items gains pins, favorites, real search, automatic repository
+awareness, and View Upstream</h3>
+<p>The first group of improvements adds five everyday capabilities:</p>
 <ul>
-<li><strong>Pinned repositories.</strong> The <strong>Pinned...</strong>
+<li><strong>Pinned repositories.</strong> The <strong>Pinned…</strong>
 button holds a short, intentional list of the repositories you use most.
 Select one to load it immediately, or pin and unpin the currently loaded
 repository from the same menu. You no longer need to retype
 <code>owner/repo</code> every time.</li>
 <li><strong>Favorites.</strong> Press <strong>Ctrl+D</strong> on any
 selected issue, pull request, branch, or release to bookmark it.
-<strong>Favorites...</strong> lists bookmarks from every repository and
+<strong>Favorites…</strong> lists bookmarks from every repository and
 opens the selected item in your browser. These bookmarks remain entirely
 on your machine.</li>
 <li><strong>Full GitHub search syntax.</strong> Press
@@ -690,20 +691,24 @@ editing lives inside a git clone whose <code>origin</code> points to
 GitHub, the repository field fills itself in automatically. This works
 for any file regardless of how it was opened, not only files reached
 through QUILL’s GitHub commands.</li>
+<li><strong>View Upstream.</strong> Load a repository that’s a fork, and
+the <strong>View Upstream</strong> button enables itself the moment
+QUILL confirms it. Press it and the parent repository loads in its place
+— the only path there before was retyping the parent’s name by
+hand.</li>
 </ul>
 <h3
 id="pull-request-differences-become-something-you-can-understand-not-a-wall-of-symbols">Pull-request
 differences become something you can understand, not a wall of
 symbols</h3>
-<p>Select a pull request and choose <strong>Diff...</strong> to browse
-its changed files in an accessible list.</p>
+<p>Select a pull request and choose <strong>Diff…</strong> to browse its
+changed files in an accessible list.</p>
 <p>QUILL sends each file’s before-and-after content through the same
 comparison engine used by <strong>Compare Documents</strong>. Instead of
 forcing you through a dense stream of plus and minus signs, it presents
 a numbered walk through meaningful changes, such as:</p>
 <blockquote>
-<p>Difference 2 of 5. Text changed at line 41. main: ... this PR:
-...</p>
+<p>Difference 2 of 5. Text changed at line 41. main: … this PR: …</p>
 </blockquote>
 <p>The changed words are described directly.</p>
 <ul>
@@ -713,10 +718,10 @@ a numbered walk through meaningful changes, such as:</p>
 change counts.</li>
 </ul>
 <h3
-id="batch-operations-are-powerful--and-deliberately-fenced-by-consent">Batch
+id="batch-operations-are-powerful-and-deliberately-fenced-by-consent">Batch
 operations are powerful — and deliberately fenced by consent</h3>
 <p>The GitHub Items list now supports multi-selection. Select several
-rows, press <strong>Batch...</strong>, and close, reopen, or add a label
+rows, press <strong>Batch…</strong>, and close, reopen, or add a label
 to all selected items at once.</p>
 <p>This is the deliberate exception to the viewer’s read-only
 foundation, so the boundaries are explicit:</p>
@@ -765,55 +770,84 @@ examines how far QUILL can go without adding a dependency on the
 confidently: repository administration, richer item actions,
 organization browsing, releases, workflow dispatch, notifications, and
 security alerts.</p>
-<h3 id="a-new-tools--github-command-center">A new Tools &gt; GitHub
+<h3 id="a-new-tools-github-command-center">A new Tools &gt; GitHub
 command center</h3>
 <p><strong>Tools &gt; GitHub</strong> is a new submenu containing eight
 repository commands:</p>
 <ul>
-<li><strong>Create Repository...</strong> — provide a name and
+<li><strong>Create Repository…</strong> — provide a name and
 description, choose public or private visibility, and optionally select
 an organization. After creation, QUILL offers to synchronize a local
 folder immediately. Say yes and move directly from “no repository” to “a
 local folder pushing to GitHub” without opening a browser.</li>
-<li><strong>Fork Repository...</strong> — fork the repository and
-receive the same offer to create or connect a local synchronized
-folder.</li>
-<li><strong>Rename Repository...</strong> — change the repository name
+<li><strong>Fork Repository…</strong> — fork the repository and receive
+the same offer to create or connect a local synchronized folder.</li>
+<li><strong>Rename Repository…</strong> — change the repository name
 from within QUILL.</li>
-<li><strong>Change Repository Visibility...</strong> — move between
-public and private visibility with an explicit confirmation.</li>
-<li><strong>Change Default Branch...</strong> — select the branch GitHub
+<li><strong>Change Repository Visibility…</strong> — move between public
+and private visibility with an explicit confirmation.</li>
+<li><strong>Change Default Branch…</strong> — select the branch GitHub
 should treat as the default.</li>
-<li><strong>Delete Branch...</strong> — remove a branch through a
-guarded workflow.</li>
-<li><strong>Configure Branch Protection...</strong> — choose a branch,
-set the number of required approving reviews, specify required status
+<li><strong>Delete Branch…</strong> — remove a branch through a guarded
+workflow.</li>
+<li><strong>Configure Branch Protection…</strong> — choose a branch, set
+the number of required approving reviews, specify required status
 checks, or select an option to clear existing protection.</li>
-<li><strong>Commit Multiple Files...</strong> — choose several local
-files and commit them together in one atomic commit. This is
-intentionally different from <strong>Save to GitHub</strong>, which
-handles only the currently open document.</li>
+<li><strong>Commit Multiple Files…</strong> — choose several local files
+and commit them together in one atomic commit. This is intentionally
+different from <strong>Save to GitHub</strong>, which handles only the
+currently open document.</li>
 </ul>
 <h3 id="the-items-viewer-gains-an-actions-menu">The Items viewer gains
 an Actions menu</h3>
-<p>Alongside <strong>Batch...</strong>, the Issues, Pull Requests,
-Branches, and Commits viewer now includes <strong>Actions...</strong>
-with commands for:</p>
+<p>Alongside <strong>Batch…</strong>, the Issues, Pull Requests,
+Branches, and Commits viewer now includes <strong>Actions…</strong> with
+commands for:</p>
 <ul>
-<li><strong>New Issue...</strong></li>
-<li><strong>New Pull Request...</strong></li>
-<li><strong>Merge Pull Request...</strong> when a pull request is
+<li><strong>New Issue…</strong></li>
+<li><strong>New Pull Request…</strong></li>
+<li><strong>Merge Pull Request…</strong> when a pull request is
 selected</li>
-<li><strong>Delete Branch...</strong> when a branch is selected</li>
+<li><strong>Delete Branch…</strong> when a branch is selected</li>
 <li><strong>Re-run Workflow</strong> when a workflow run is
 selected</li>
-<li><strong>Reply to Thread...</strong></li>
-<li><strong>Edit This Comment...</strong></li>
-<li><strong>Delete This Comment...</strong></li>
+<li><strong>View Artifacts…</strong> when a workflow run is
+selected</li>
+<li><strong>Reply to Thread…</strong></li>
+<li><strong>Edit This Comment…</strong></li>
+<li><strong>Delete This Comment…</strong></li>
 </ul>
 <p>The comment actions build on the existing <strong>Alt+N</strong> and
 <strong>Alt+P</strong> navigation. Move to the relevant comment, then
 reply to, edit, or delete that specific comment.</p>
+<h3
+id="download-a-workflow-runs-build-artifacts-without-your-token-leaking-to-a-third-party">Download
+a workflow run’s build artifacts, without your token leaking to a third
+party</h3>
+<p>Choosing <strong>View Artifacts…</strong> on a workflow run opens a
+small list of that run’s build artifacts — name, size, and whether
+GitHub has already let it expire. From there:</p>
+<ul>
+<li><strong>Download Selected…</strong> or <strong>Download
+All…</strong> ask for a destination folder, then save each artifact as a
+zip file.</li>
+<li>If a file of that name already exists, QUILL asks before overwriting
+it.</li>
+<li>A progress dialog with <strong>Cancel</strong> tracks the download;
+you can stop it at any point.</li>
+<li><strong>Open Run in Browser</strong> takes you straight to the run
+on GitHub.</li>
+</ul>
+<p>The download itself needed a deliberate design decision, not a
+default one. GitHub’s artifact download link redirects to a short-lived,
+signed URL hosted elsewhere (Azure Blob Storage in production) — and
+your GitHub token must never travel to that second host. Standard
+redirect-following would send it there anyway, and reaching into
+PyGithub’s private internals to work around that felt like the wrong
+kind of shortcut. QUILL instead follows the redirect itself: it blocks
+the automatic follow, reads the redirect target, and makes exactly one
+more request to that address with no <code>Authorization</code> header
+attached. Your token only ever goes to <code>github.com</code>.</p>
 <h3 id="signed-in-actions-remain-signed-in-actions">Signed-in actions
 remain signed-in actions</h3>
 <p>None of the write commands operates anonymously. Each requires an
@@ -843,23 +877,58 @@ releases, workflows, notifications, and security alerts</h3>
 <p>Five additional commands complete the read-mostly side of the
 plan:</p>
 <ul>
-<li><strong>Browse Organization Repositories...</strong> — choose from
-the organizations associated with your account and then browse that
+<li><strong>Browse Organization Repositories…</strong> — choose from the
+organizations associated with your account and then browse that
 organization’s repositories. Teams remain intentionally out of
 scope.</li>
-<li><strong>Create Release...</strong> — choose a tag, supply optional
+<li><strong>Create Release…</strong> — choose a tag, supply optional
 release notes or use GitHub’s automatically generated notes from merged
 pull requests, and create the release as a draft or publish it.</li>
-<li><strong>Dispatch Workflow...</strong> — run a workflow against a
+<li><strong>Dispatch Workflow…</strong> — run a workflow against a
 branch or tag, equivalent to choosing <strong>Run workflow</strong> on
 GitHub’s website.</li>
-<li><strong>Notifications...</strong> — open a genuine inbox spanning
-all repositories rather than only the repository currently loaded.</li>
-<li><strong>Security Alerts...</strong> — review a repository’s open
+<li><strong>Notifications…</strong> — open a genuine inbox spanning all
+repositories rather than only the repository currently loaded.</li>
+<li><strong>Security Alerts…</strong> — review a repository’s open
 Dependabot alerts.</li>
 </ul>
 <h3
-id="what-is-not-included--because-confidence-matters-more-than-pretending">What
+id="codespaces-and-copilot-cli-needs-your-help-to-confirm-it-actually-works">Codespaces
+and Copilot CLI — needs your help to confirm it actually works</h3>
+<p>Four more Tools &gt; GitHub commands round out this release’s GitHub
+work, and they work a little differently from everything above: instead
+of talking to GitHub’s API directly, they run your own installed
+<code>gh</code> command-line tool.</p>
+<p><strong>Codespaces…</strong> lists your active Codespaces — name,
+repository, current state — and lets you Stop or Delete one from a menu.
+<strong>Create Codespace…</strong> asks for a repository and an optional
+branch and creates a new one. This is the one command in QUILL’s entire
+GitHub integration that carries a real cost: Codespaces consume GitHub
+compute and storage minutes, and the confirmation dialog says exactly
+that before anything happens, rather than the general “this changes
+something on GitHub” wording every other GitHub command uses.</p>
+<p><strong>Ask Copilot for a Command…</strong> and <strong>Explain a
+Command…</strong> are small but genuinely useful: describe what you’re
+trying to do in plain language and get a suggested git or
+<code>gh</code> command back, or paste in a command you don’t recognize
+and get a plain-language explanation of what it does.</p>
+<p>We are asking for your help here specifically. These four commands
+are thoroughly unit-tested against a simulated <code>gh</code> tool —
+the argument-building and response-parsing logic is solid — but none of
+it has been exercised against a real Codespaces-enabled repository or
+real Copilot CLI access on an actual device. If you use Codespaces or
+Copilot CLI, please try these commands and tell us what happened through
+<strong>Help &gt; Report a Bug</strong>, good or bad.</p>
+<p><strong>Don’t have <code>git</code> or <code>gh</code>
+installed?</strong> Both are now available right from <strong>Help &gt;
+Download Optional Components</strong> — a portable copy of Git for
+Windows, and the GitHub CLI for Windows and macOS, each
+checksum-verified the same way every other optional download is. QUILL
+always prefers a copy you already have on your system first; these exist
+purely so Tools &gt; Local Git and these four Codespaces/Copilot
+commands work for someone who has never installed either.</p>
+<h3
+id="what-is-not-included-because-confidence-matters-more-than-pretending">What
 is not included — because confidence matters more than pretending</h3>
 <p>Before implementing these commands, we checked the actual boundaries
 of PyGithub instead of assuming that every GitHub capability had a
@@ -904,7 +973,7 @@ GitHub Desktop, and most graphical merge tools were not designed around
 that experience. None of them is also the trusted editor in which a
 screen reader user already writes.</p>
 <p>QUILL is.</p>
-<p>Open <strong>Tools &gt; Local Git &gt; Resolve Conflicts...</strong>
+<p>Open <strong>Tools &gt; Local Git &gt; Resolve Conflicts…</strong>
 and QUILL parses each conflicted file into meaningful parts. It then
 walks through the conflicts one at a time, announcing language such
 as:</p>
@@ -927,7 +996,7 @@ rebase becomes an accessible list instead of editable syntax</h3>
 expects you to reorder commits and change commands such as
 <code>pick</code>, <code>squash</code>, <code>reword</code>, or
 <code>drop</code> without damaging the syntax.</p>
-<p><strong>Interactive Rebase...</strong> replaces that fragile visual
+<p><strong>Interactive Rebase…</strong> replaces that fragile visual
 editing task with a real dialog:</p>
 <ul>
 <li>One commit appears on each row.</li>
@@ -946,16 +1015,15 @@ rebase.</p>
 toolkit</h3>
 <p>The new local git experience also includes:</p>
 <ul>
-<li><strong>Uncommitted Changes...</strong> — stage or unstage work
+<li><strong>Uncommitted Changes…</strong> — stage or unstage work
 through an accessible comparison rather than a raw diff.</li>
-<li><strong>Switch Branch...</strong> — change branches with a guard
-that prevents uncommitted work from following you unexpectedly.</li>
-<li><strong>Stash Changes...</strong> and <strong>Manage
-Stashes...</strong> — create and manage stashes through guided
-interfaces.</li>
-<li><strong>Who Wrote This Line...</strong> — make git blame useful by
+<li><strong>Switch Branch…</strong> — change branches with a guard that
+prevents uncommitted work from following you unexpectedly.</li>
+<li><strong>Stash Changes…</strong> and <strong>Manage Stashes…</strong>
+— create and manage stashes through guided interfaces.</li>
+<li><strong>Who Wrote This Line…</strong> — make git blame useful by
 speaking the result for the current line.</li>
-<li><strong>Start Bisect...</strong> and <strong>End Bisect</strong> —
+<li><strong>Start Bisect…</strong> and <strong>End Bisect</strong> —
 turn <code>git bisect</code> into a plain conversation asking whether
 the current version is good or bad.</li>
 </ul>
@@ -1021,7 +1089,7 @@ that share the same synchronized data folder. This path has no
 cross-device conflict-resolution system.</p>
 <h3 id="synchronize-any-folder-with-github">Synchronize any folder with
 GitHub</h3>
-<p><strong>Tools &gt; Sync Folder with GitHub...</strong> works with any
+<p><strong>Tools &gt; Sync Folder with GitHub…</strong> works with any
 folder: notes, a writing project, source code, or an entire body of
 work.</p>
 <p>When the selected folder is already a git repository with a remote,
@@ -1118,9 +1186,9 @@ prompting. Only one exists at a time.</p>
 <p>It does <strong>not</strong> persist across sessions. Closing and
 reopening QUILL clears it. That is deliberate: this is disposable
 working memory for the next few minutes, not a replacement for the
-existing unlimited, persistent <strong>Set Bookmark...</strong>,
-<strong>Go To Bookmark...</strong>, and <strong>List
-Bookmarks...</strong> commands.</p>
+existing unlimited, persistent <strong>Set Bookmark…</strong>,
+<strong>Go To Bookmark…</strong>, and <strong>List Bookmarks…</strong>
+commands.</p>
 <h3 id="ten-numbered-quick-bookmarks-each-one-keystroke-away">Ten
 numbered quick bookmarks, each one keystroke away</h3>
 <p>Beta 3 also adds ten fixed bookmark slots numbered 0 through 9.</p>
@@ -1218,11 +1286,10 @@ valued Kurzweil 1000 workflow.</p>
 <li><strong>Ctrl+Alt+Shift+A — Add Favorite Folder.</strong> Adds the
 folder containing the current document. An untitled document must be
 saved first because QUILL needs a real folder path.</li>
-<li><strong>Ctrl+Alt+Shift+R — Remove Favorite Folder...</strong> Opens
+<li><strong>Ctrl+Alt+Shift+R — Remove Favorite Folder…</strong> Opens
 the favorites list and lets you choose one to remove.</li>
-<li><strong>Ctrl+Alt+Shift+O — Open From Favorite Folder...</strong>
-Opens the new Quick Open experience scoped to your favorite
-folders.</li>
+<li><strong>Ctrl+Alt+Shift+O — Open From Favorite Folder…</strong> Opens
+the new Quick Open experience scoped to your favorite folders.</li>
 </ul>
 <p>All three commands also appear under <strong>File &gt; Favorite
 Folders</strong> for users who prefer menu navigation.</p>
@@ -1265,7 +1332,7 @@ boundary, whether expanded or folded, and announces the label, state,
 and line count: “‘Chapter Three,’ expanded, 22 lines.”</li>
 <li><strong>Alt+Shift+[ — Previous Fold.</strong> Performs the same
 navigation in reverse.</li>
-<li><strong>Ctrl+Alt+Shift+L — List Folds...</strong> Opens a complete
+<li><strong>Ctrl+Alt+Shift+L — List Folds…</strong> Opens a complete
 list of foldable regions, each with its current state and line count.
 Select one to jump to it directly.</li>
 </ul>
@@ -1283,6 +1350,113 @@ a folded region normally and every word remains available exactly as
 though the region were expanded.</p>
 <p>Folding changes the behavior of fold-specific jump commands. It never
 makes reachable content silently unreachable.</p>
+<h3
+id="insert-emoji-3781-emoji-findable-by-ear-described-in-words">Insert
+Emoji — 3,781 emoji, findable by ear, described in words</h3>
+<p>QUILL already has Insert Special Character for the case where you
+know exactly which Unicode code point you want. Emoji are the opposite
+problem: you don’t know the code point, you might not even remember the
+exact name, and you cannot see a picture grid to recognize one by eye.
+Every mainstream emoji picker is built around that grid — rows of small
+pictures meant to be scanned visually — which makes the entire category
+of feature effectively unusable without sight. Insert Emoji is built the
+other way around, from the ground up, for browsing and finding by
+ear.</p>
+<p><strong>Insert &gt; Insert Emoji… (Alt+Period)</strong> opens on
+every complete, standard emoji Unicode currently defines — 3,781 of
+them, current as of Unicode’s 16.0 emoji release — organized into the
+same nine categories Unicode itself uses:</p>
+<table>
+<thead>
+<tr>
+<th>Category</th>
+<th>Emoji</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>People &amp; Body</td>
+<td>2,261</td>
+</tr>
+<tr>
+<td>Flags</td>
+<td>270</td>
+</tr>
+<tr>
+<td>Objects</td>
+<td>264</td>
+</tr>
+<tr>
+<td>Symbols</td>
+<td>224</td>
+</tr>
+<tr>
+<td>Travel &amp; Places</td>
+<td>218</td>
+</tr>
+<tr>
+<td>Smileys &amp; Emotion</td>
+<td>169</td>
+</tr>
+<tr>
+<td>Animals &amp; Nature</td>
+<td>159</td>
+</tr>
+<tr>
+<td>Food &amp; Drink</td>
+<td>131</td>
+</tr>
+<tr>
+<td>Activities</td>
+<td>85</td>
+</tr>
+</tbody>
+</table>
+<p><em>(“People &amp; Body” includes every skin-tone and gesture variant
+Unicode defines as its own standalone emoji, which is why it dwarfs the
+others.)</em></p>
+<p>The dialog is two ways into the same list. <strong>Search</strong>,
+at the top, live-filters as you type and matches in order of confidence:
+the emoji symbol itself, if you paste or type one in; a legacy typed
+alias like <code>:)</code>, <code>:D</code>, or <code>&lt;3</code>, for
+the smiley shorthand habit many people already have; a match against the
+emoji’s official Unicode name or one of its keywords; and, as a last
+resort, a match inside the emoji’s own written description — so a
+half-remembered phrase like “melting” or “puddle” can still surface the
+right result even when that word never appears in the emoji’s official
+name or keyword list. <strong>Category</strong>, a list on the left, is
+the browse path: pick a category and its emoji fill the results list,
+for exploring rather than searching.</p>
+<p>Whichever way you got there, arrowing through the results list
+updates a live <strong>description pane</strong> with everything QUILL
+knows about the selected emoji: category and subgroup, official name,
+keywords, any legacy typed alias, and — the piece that makes this
+genuinely usable without sight — a real, original one-to-two-sentence
+description of what the emoji actually looks like: colors, shape,
+expression, pose. Press <strong>Insert</strong>, or press Enter directly
+on a result, and it lands at your cursor; <strong>Cancel</strong> or
+Escape backs out with nothing inserted.</p>
+<p>Two more entries sit at the very top of the category list, ahead of
+Unicode’s nine groupings: <strong>Favorites</strong> and
+<strong>Recent</strong>. Select any emoji and press <strong>Add to
+Favorites</strong> to star it for one-step access from then on — the
+button relabels to <strong>Remove from Favorites</strong> once it is,
+and works from any view, search results included.
+<strong>Recent</strong> fills itself in automatically: the last 30 emoji
+you’ve actually inserted, most-recently-used first, so the ones you
+reach for constantly never need a search or a category dig again.
+Removing something from Favorites, or clearing out Recent, only changes
+what shows up in those two shortcuts — the emoji itself is never touched
+and is still exactly as findable under its normal category or by search
+as it always was.</p>
+<p>Every one of those 3,781 descriptions is text QUILL generated itself,
+purpose-built for this feature — from Unicode’s own official names,
+categories, and keywords, through an AI model, in QUILL’s own words —
+rather than copied or scraped from another picker’s site, which would
+have carried real licensing risk. The whole catalog, descriptions
+included, ships as a single bundled file built entirely offline ahead of
+time; using the picker itself makes no network connection at all, in
+Safe Mode or anywhere else.</p>
 <hr />
 <h2 id="the-offline-edition-is-finally-true-to-its-name">The Offline
 Edition Is Finally True to Its Name</h2>
@@ -1311,7 +1485,7 @@ now installs and speaks entirely from local files</h3>
 <p>The Offline Edition now contains everything required to install
 Kokoro neural voices. No connection is needed during first use or any
 later use.</p>
-<h3 id="whispercpp-now-includes-its-starter-model">whisper.cpp now
+<h3 id="whisper.cpp-now-includes-its-starter-model">whisper.cpp now
 includes its starter model</h3>
 <p>QUILL’s default speech-to-text engine, <strong>whisper.cpp</strong>,
 now ships with its starter model already present.</p>
@@ -1382,7 +1556,7 @@ member tested its promise rather than assuming the label was enough.</p>
 <p>This is not simply how QUILL improves. <strong>This is how QUILL is
 built.</strong></p>
 <hr />
-<h2 id="toward-10--together">Toward 1.0 — Together</h2>
+<h2 id="toward-1.0-together">Toward 1.0 — Together</h2>
 <p>Beta 3 moves the 0.9.0 cycle closer to 1.0 with a stronger editor,
 clearer safeguards, deeper accessibility, and a growing set of workflows
 shaped by the people who use them.</p>

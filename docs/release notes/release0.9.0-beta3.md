@@ -275,14 +275,15 @@ Every comtypes call site now requests the redirect itself before touching comtyp
 
 Beta 2 introduced the read-only GitHub Items viewer. Beta 3 begins unifying the best ideas from GHManage and fastgh and moves QUILL toward something much bigger: a keyboard-first GitHub environment where information can be found, understood, and — with explicit consent — acted upon.
 
-### GitHub Items gains pins, favorites, real search, and automatic repository awareness
+### GitHub Items gains pins, favorites, real search, automatic repository awareness, and View Upstream
 
-The first group of improvements adds four everyday capabilities:
+The first group of improvements adds five everyday capabilities:
 
 - **Pinned repositories.** The **Pinned...** button holds a short, intentional list of the repositories you use most. Select one to load it immediately, or pin and unpin the currently loaded repository from the same menu. You no longer need to retype `owner/repo` every time.
 - **Favorites.** Press **Ctrl+D** on any selected issue, pull request, branch, or release to bookmark it. **Favorites...** lists bookmarks from every repository and opens the selected item in your browser. These bookmarks remain entirely on your machine.
 - **Full GitHub search syntax.** Press **Ctrl+F**, enter a GitHub query such as `label:bug is:open crash` or `author:alice is:pr`, and press Enter. Search is scoped to the loaded repository. Clear the search to restore the normal list.
 - **Local git awareness.** When the document you are editing lives inside a git clone whose `origin` points to GitHub, the repository field fills itself in automatically. This works for any file regardless of how it was opened, not only files reached through QUILL’s GitHub commands.
+- **View Upstream.** Load a repository that's a fork, and the **View Upstream** button enables itself the moment QUILL confirms it. Press it and the parent repository loads in its place — the only path there before was retyping the parent's name by hand.
 
 ### Pull-request differences become something you can understand, not a wall of symbols
 
@@ -354,11 +355,23 @@ Alongside **Batch...**, the Issues, Pull Requests, Branches, and Commits viewer 
 - **Merge Pull Request...** when a pull request is selected
 - **Delete Branch...** when a branch is selected
 - **Re-run Workflow** when a workflow run is selected
+- **View Artifacts...** when a workflow run is selected
 - **Reply to Thread...**
 - **Edit This Comment...**
 - **Delete This Comment...**
 
 The comment actions build on the existing **Alt+N** and **Alt+P** navigation. Move to the relevant comment, then reply to, edit, or delete that specific comment.
+
+### Download a workflow run's build artifacts, without your token leaking to a third party
+
+Choosing **View Artifacts...** on a workflow run opens a small list of that run's build artifacts — name, size, and whether GitHub has already let it expire. From there:
+
+- **Download Selected...** or **Download All...** ask for a destination folder, then save each artifact as a zip file.
+- If a file of that name already exists, QUILL asks before overwriting it.
+- A progress dialog with **Cancel** tracks the download; you can stop it at any point.
+- **Open Run in Browser** takes you straight to the run on GitHub.
+
+The download itself needed a deliberate design decision, not a default one. GitHub's artifact download link redirects to a short-lived, signed URL hosted elsewhere (Azure Blob Storage in production) — and your GitHub token must never travel to that second host. Standard redirect-following would send it there anyway, and reaching into PyGithub's private internals to work around that felt like the wrong kind of shortcut. QUILL instead follows the redirect itself: it blocks the automatic follow, reads the redirect target, and makes exactly one more request to that address with no `Authorization` header attached. Your token only ever goes to `github.com`.
 
 ### Signed-in actions remain signed-in actions
 
@@ -386,6 +399,18 @@ Five additional commands complete the read-mostly side of the plan:
 - **Dispatch Workflow...** — run a workflow against a branch or tag, equivalent to choosing **Run workflow** on GitHub’s website.
 - **Notifications...** — open a genuine inbox spanning all repositories rather than only the repository currently loaded.
 - **Security Alerts...** — review a repository’s open Dependabot alerts.
+
+### Codespaces and Copilot CLI — needs your help to confirm it actually works
+
+Four more Tools > GitHub commands round out this release's GitHub work, and they work a little differently from everything above: instead of talking to GitHub's API directly, they run your own installed `gh` command-line tool.
+
+**Codespaces...** lists your active Codespaces — name, repository, current state — and lets you Stop or Delete one from a menu. **Create Codespace...** asks for a repository and an optional branch and creates a new one. This is the one command in QUILL's entire GitHub integration that carries a real cost: Codespaces consume GitHub compute and storage minutes, and the confirmation dialog says exactly that before anything happens, rather than the general "this changes something on GitHub" wording every other GitHub command uses.
+
+**Ask Copilot for a Command...** and **Explain a Command...** are small but genuinely useful: describe what you're trying to do in plain language and get a suggested git or `gh` command back, or paste in a command you don't recognize and get a plain-language explanation of what it does.
+
+We are asking for your help here specifically. These four commands are thoroughly unit-tested against a simulated `gh` tool — the argument-building and response-parsing logic is solid — but none of it has been exercised against a real Codespaces-enabled repository or real Copilot CLI access on an actual device. If you use Codespaces or Copilot CLI, please try these commands and tell us what happened through **Help > Report a Bug**, good or bad.
+
+**Don't have `git` or `gh` installed?** Both are now available right from **Help > Download Optional Components** — a portable copy of Git for Windows, and the GitHub CLI for Windows and macOS, each checksum-verified the same way every other optional download is. QUILL always prefers a copy you already have on your system first; these exist purely so Tools > Local Git and these four Codespaces/Copilot commands work for someone who has never installed either.
 
 ### What is not included — because confidence matters more than pretending
 
@@ -680,6 +705,34 @@ QUILL never creates that uncertainty.
 **The document text is never changed, and normal character, word, and line navigation is never intercepted.** Fold state exists for the four folding commands to describe and use. Arrow through a folded region normally and every word remains available exactly as though the region were expanded.
 
 Folding changes the behavior of fold-specific jump commands. It never makes reachable content silently unreachable.
+
+### Insert Emoji — 3,781 emoji, findable by ear, described in words
+
+QUILL already has Insert Special Character for the case where you know exactly which Unicode code point you want. Emoji are the opposite problem: you don't know the code point, you might not even remember the exact name, and you cannot see a picture grid to recognize one by eye. Every mainstream emoji picker is built around that grid — rows of small pictures meant to be scanned visually — which makes the entire category of feature effectively unusable without sight. Insert Emoji is built the other way around, from the ground up, for browsing and finding by ear.
+
+**Insert > Insert Emoji... (Alt+Period)** opens on every complete, standard emoji Unicode currently defines — 3,781 of them, current as of Unicode's 16.0 emoji release — organized into the same nine categories Unicode itself uses:
+
+| Category | Emoji |
+| --- | --- |
+| People & Body | 2,261 |
+| Flags | 270 |
+| Objects | 264 |
+| Symbols | 224 |
+| Travel & Places | 218 |
+| Smileys & Emotion | 169 |
+| Animals & Nature | 159 |
+| Food & Drink | 131 |
+| Activities | 85 |
+
+*(“People & Body” includes every skin-tone and gesture variant Unicode defines as its own standalone emoji, which is why it dwarfs the others.)*
+
+The dialog is two ways into the same list. **Search**, at the top, live-filters as you type and matches in order of confidence: the emoji symbol itself, if you paste or type one in; a legacy typed alias like `:)`, `:D`, or `<3`, for the smiley shorthand habit many people already have; a match against the emoji's official Unicode name or one of its keywords; and, as a last resort, a match inside the emoji's own written description — so a half-remembered phrase like “melting” or “puddle” can still surface the right result even when that word never appears in the emoji's official name or keyword list. **Category**, a list on the left, is the browse path: pick a category and its emoji fill the results list, for exploring rather than searching.
+
+Whichever way you got there, arrowing through the results list updates a live **description pane** with everything QUILL knows about the selected emoji: category and subgroup, official name, keywords, any legacy typed alias, and — the piece that makes this genuinely usable without sight — a real, original one-to-two-sentence description of what the emoji actually looks like: colors, shape, expression, pose. Press **Insert**, or press Enter directly on a result, and it lands at your cursor; **Cancel** or Escape backs out with nothing inserted.
+
+Two more entries sit at the very top of the category list, ahead of Unicode's nine groupings: **Favorites** and **Recent**. Select any emoji and press **Add to Favorites** to star it for one-step access from then on — the button relabels to **Remove from Favorites** once it is, and works from any view, search results included. **Recent** fills itself in automatically: the last 30 emoji you've actually inserted, most-recently-used first, so the ones you reach for constantly never need a search or a category dig again. Removing something from Favorites, or clearing out Recent, only changes what shows up in those two shortcuts — the emoji itself is never touched and is still exactly as findable under its normal category or by search as it always was.
+
+Every one of those 3,781 descriptions is text QUILL generated itself, purpose-built for this feature — from Unicode's own official names, categories, and keywords, through an AI model, in QUILL's own words — rather than copied or scraped from another picker's site, which would have carried real licensing risk. The whole catalog, descriptions included, ships as a single bundled file built entirely offline ahead of time; using the picker itself makes no network connection at all, in Safe Mode or anywhere else.
 
 ---
 

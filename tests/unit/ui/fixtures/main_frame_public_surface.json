@@ -269,6 +269,7 @@
   "infer_indent",
   "insert_braille_page_break",
   "insert_citation",
+  "insert_emoji",
   "insert_file_content",
   "insert_html_tag",
   "insert_image",

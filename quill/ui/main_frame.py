@@ -430,6 +430,7 @@ from quill.ui.main_frame_copy_tray import CopyTrayMixin
 from quill.ui.main_frame_devtools import DevToolsMixin
 from quill.ui.main_frame_dictation_hotkeys import DictationHotkeysMixin
 from quill.ui.main_frame_docconvert import DocConvertMixin
+from quill.ui.main_frame_emoji_picker import EmojiPickerMixin
 from quill.ui.main_frame_format_codes import FormatCodesMixin
 from quill.ui.main_frame_gh_bridge import GhBridgeMixin
 from quill.ui.main_frame_git_sync import GitSyncMixin
@@ -826,6 +827,7 @@ _DIGIT_KEY_CODES: dict[int, int] = {ord(str(digit)): digit for digit in range(10
 class MainFrame(
     AbbreviationsMixin,
     AiActionsMixin,
+    EmojiPickerMixin,
     FormatCodesMixin,
     SpeechCommandsMixin,
     VerbosityCommandsMixin,
@@ -3857,6 +3859,7 @@ class MainFrame(
         self._register_gh_bridge_commands()
         self._register_local_git_commands()
         self._register_dictation_hotkey_commands()
+        self._register_emoji_picker_commands()
 
     def _apply_accelerators(self) -> None:
         wx = self._wx

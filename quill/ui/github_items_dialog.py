@@ -52,6 +52,7 @@ from quill.core.github.items_provider import (
     GitHubItem,
     GitHubItemsError,
     GitHubItemsProvider,
+    GitHubRepoForkInfo,
 )
 from quill.ui.dialog_contract import apply_modal_ids, show_modal_dialog
 from quill.ui.github_items_view import (
@@ -116,6 +117,10 @@ class GitHubItemsDialog:
         self._comment_positions: list[tuple[int, int]] = []
         self._current_comment = -1
         self._comment_target: tuple[str, int] | None = None  # (repo, number) loading
+        # Fork/upstream (View Upstream): fetched alongside the items list, not
+        # blocking it -- a separate, small single-repo call, since list-response
+        # rows never carry the parent (only the single-repo GET does).
+        self._fork_info: GitHubRepoForkInfo | None = None
 
         self.dialog = wx.Dialog(
             parent,
@@ -143,10 +148,16 @@ class GitHubItemsDialog:
         self._pinned_btn.SetName("Pinned repositories menu")
         self._favorites_btn = wx.Button(panel, label="Fa&vorites...")
         self._favorites_btn.SetName("Favorited items menu")
+        self._upstream_btn = wx.Button(panel, label="View &Upstream")
+        self._upstream_btn.SetName(
+            "Open the repository this fork was forked from; enabled only for forks"
+        )
+        self._upstream_btn.Enable(False)
         repo_row.Add(self._repo_ctrl, 1, wx.EXPAND | wx.RIGHT, 6)
         repo_row.Add(self._load_btn, 0, wx.RIGHT, 6)
         repo_row.Add(self._pinned_btn, 0, wx.RIGHT, 6)
-        repo_row.Add(self._favorites_btn)
+        repo_row.Add(self._favorites_btn, 0, wx.RIGHT, 6)
+        repo_row.Add(self._upstream_btn)
         root.Add(repo_row, 0, wx.EXPAND | wx.ALL, 10)
 
         # Search row: full GitHub search syntax, scoped to the loaded repo
@@ -292,6 +303,7 @@ class GitHubItemsDialog:
         self._goto_btn.Bind(wx.EVT_BUTTON, self._on_goto)
         self._pinned_btn.Bind(wx.EVT_BUTTON, self._on_pinned_menu)
         self._favorites_btn.Bind(wx.EVT_BUTTON, self._on_favorites_menu)
+        self._upstream_btn.Bind(wx.EVT_BUTTON, self._on_view_upstream)
         self._search_btn.Bind(wx.EVT_BUTTON, self._on_search)
         self._search_ctrl.Bind(wx.EVT_TEXT_ENTER, self._on_search)
         self._diff_btn.Bind(wx.EVT_BUTTON, lambda _e: self._on_diff())
@@ -346,6 +358,43 @@ class GitHubItemsDialog:
         self._repo = full_name
         self._page = 1
         self._reload()
+        self._fetch_fork_info_async(full_name)
+
+    def _fetch_fork_info_async(self, repo: str) -> None:
+        """Fetch fork/parent info off the UI thread -- a separate, small call
+        from the items list (list-response rows never carry the parent), so
+        it must never block or interfere with the main list load."""
+        self._fork_info = None
+        self._upstream_btn.Enable(False)
+        threading.Thread(  # GATE-40-OK: single-repo lookup, bounded, no pagination.
+            target=self._fork_info_worker,
+            args=(repo,),
+            daemon=True,
+        ).start()
+
+    def _fork_info_worker(self, repo: str) -> None:
+        wx = self._wx
+        try:
+            info = self._provider.fetch_fork_info(repo)
+        except Exception:  # noqa: BLE001 - fork info is a nicety, never worth surfacing an error for
+            return
+        wx.CallAfter(self._on_fork_info_loaded, repo, info)
+
+    def _on_fork_info_loaded(self, repo: str, info: GitHubRepoForkInfo) -> None:
+        if repo != self._repo:
+            return  # the user moved on to a different repo before this returned
+        self._fork_info = info
+        self._upstream_btn.Enable(info.is_fork and bool(info.parent_full_name))
+        if info.is_fork and info.parent_full_name:
+            self._announce(
+                f"{repo} is a fork of {info.parent_full_name}. View Upstream is enabled."
+            )
+
+    def _on_view_upstream(self, _event: object) -> None:
+        if self._fork_info is None or not self._fork_info.parent_full_name:
+            return
+        self._repo_ctrl.SetValue(self._fork_info.parent_full_name)
+        self._on_load(None)
 
     def _reload(self) -> None:
         if not self._repo:
@@ -974,6 +1023,7 @@ class GitHubItemsDialog:
             selected = self._selected_indices()
             if len(selected) == 1:
                 _add("Re-run Workflow", self._rerun_selected_workflow)
+                _add("View Artifacts...", self._view_artifacts_for_selected)
 
         if not entries:
             menu.Destroy()
@@ -1160,6 +1210,30 @@ class GitHubItemsDialog:
             wx.CallAfter(self._set_status, f"Re-run started for #{run_number}")
 
         threading.Thread(target=worker, daemon=True).start()  # GATE-40-OK: consented re-run.
+
+    def _view_artifacts_for_selected(self) -> None:
+        selected = self._selected_indices()
+        if len(selected) != 1:
+            return
+        model = self._rows[selected[0]]
+        run_number = getattr(model, "run_number", 0)
+        if not run_number:
+            self._announce("Select a workflow run first.")
+            return
+        run_name = getattr(model, "name", "")
+        run_url = getattr(model, "url", "")
+        from quill.ui.github_artifacts_dialog import ArtifactsDialog
+
+        dlg = ArtifactsDialog(
+            self.dialog,
+            self._provider,
+            repo=self._repo,
+            run_id=run_number,
+            run_label=f"#{run_number} - {run_name}" if run_name else f"#{run_number}",
+            run_url=run_url,
+            announce_cb=self._announce,
+        )
+        dlg.show()
 
     def _reply_to_thread(self) -> None:
         if self._comment_target is None:

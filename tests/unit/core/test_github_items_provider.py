@@ -7,7 +7,10 @@ without wx or network.
 
 from __future__ import annotations
 
+import io
 import sys
+import urllib.error
+import urllib.request
 from datetime import UTC, datetime
 from types import SimpleNamespace
 from typing import Any
@@ -16,8 +19,10 @@ import pytest
 
 from quill.core.github import items_provider
 from quill.core.github.items_provider import (
+    GitHubArtifact,
     GitHubItemsError,
     GitHubItemsProvider,
+    GitHubRepoForkInfo,
     refuse_in_safe_mode,
 )
 
@@ -39,10 +44,17 @@ class _FakeRepo:
     """Records the calls and returns canned paginated results."""
 
     def __init__(
-        self, *, full_name: str = "owner/repo", html_url: str = "https://github.com/owner/repo"
+        self,
+        *,
+        full_name: str = "owner/repo",
+        html_url: str = "https://github.com/owner/repo",
+        fork: bool = False,
+        parent: Any = None,
     ) -> None:
         self.full_name = full_name
         self.html_url = html_url
+        self.fork = fork
+        self.parent = parent
         self.calls: list[tuple[str, dict[str, Any]]] = []
         # Canned iterables per method.
         self._issues: list[Any] = []
@@ -58,6 +70,7 @@ class _FakeRepo:
         self._dispatches: list[tuple[str, str, dict]] = []
         self._dispatch_ok = True
         self._alerts: list[Any] = []
+        self._artifacts: list[Any] = []
 
     def get_issues(self, state: str = "open") -> list[Any]:
         self.calls.append(("get_issues", {"state": state}))
@@ -157,7 +170,11 @@ class _FakeRepo:
     def get_workflow_run(self, run_id: int) -> Any:
         self.calls.append(("get_workflow_run", {"run_id": run_id}))
         reruns: list[int] = self._reruns
-        return SimpleNamespace(rerun=lambda: reruns.append(run_id), jobs=lambda: self._jobs)
+        return SimpleNamespace(
+            rerun=lambda: reruns.append(run_id),
+            jobs=lambda: self._jobs,
+            get_artifacts=lambda: self._artifacts,
+        )
 
     def get_workflow(self, workflow_id: str) -> Any:
         self.calls.append(("get_workflow", {"workflow_id": workflow_id}))
@@ -935,3 +952,237 @@ def test_fetch_security_alerts(provider: GitHubItemsProvider, repo: _FakeRepo) -
     assert alerts[0].severity == "high"
     assert alerts[0].package == "left-pad"
     assert repo.calls[-1] == ("get_dependabot_alerts", {"state": "open"})
+
+
+# ---------------------------------------------------------------------------
+# Fork/upstream info (View Upstream)
+# ---------------------------------------------------------------------------
+
+
+def test_fetch_fork_info_for_a_non_fork(provider: GitHubItemsProvider, repo: _FakeRepo) -> None:
+    assert repo.fork is False
+    info = provider.fetch_fork_info("owner/repo")
+    assert info == GitHubRepoForkInfo(is_fork=False, parent_full_name="")
+
+
+def test_fetch_fork_info_for_a_fork(monkeypatch: pytest.MonkeyPatch) -> None:
+    repo = _FakeRepo(
+        full_name="me/repo", fork=True, parent=SimpleNamespace(full_name="upstream/repo")
+    )
+    _install_fake_github(monkeypatch, repo)
+    provider = GitHubItemsProvider(token="tok")
+
+    info = provider.fetch_fork_info("me/repo")
+    assert info == GitHubRepoForkInfo(is_fork=True, parent_full_name="upstream/repo")
+
+
+def test_fetch_fork_info_fork_with_no_resolvable_parent(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A fork whose parent PyGithub could not resolve (deleted, private, or a
+    transient API gap) must still report is_fork=True with an empty parent
+    name, not raise -- the dialog's View Upstream button simply stays
+    disabled rather than crashing the repo load."""
+    repo = _FakeRepo(full_name="me/repo", fork=True, parent=None)
+    _install_fake_github(monkeypatch, repo)
+    provider = GitHubItemsProvider(token="tok")
+
+    info = provider.fetch_fork_info("me/repo")
+    assert info == GitHubRepoForkInfo(is_fork=True, parent_full_name="")
+
+
+# ---------------------------------------------------------------------------
+# Workflow run artifacts (list + download)
+# ---------------------------------------------------------------------------
+
+
+class _FakeHTTPResponse:
+    """A minimal context-manager response: headers.get() + chunked read()."""
+
+    def __init__(self, data: bytes, headers: dict[str, str]) -> None:
+        self._buf = io.BytesIO(data)
+        self.headers = SimpleNamespace(get=lambda key, default=None: headers.get(key, default))
+
+    def read(self, size: int = -1) -> bytes:
+        return self._buf.read(size)
+
+    def __enter__(self) -> _FakeHTTPResponse:
+        return self
+
+    def __exit__(self, *exc_info: object) -> None:
+        return None
+
+
+def test_fetch_workflow_run_artifacts_maps_rows(
+    provider: GitHubItemsProvider, repo: _FakeRepo
+) -> None:
+    repo._artifacts = [
+        SimpleNamespace(
+            id=1,
+            name="build-output",
+            size_in_bytes=2048,
+            expired=False,
+            archive_download_url="https://api.github.com/artifacts/1/zip",
+        )
+    ]
+    artifacts = provider.fetch_workflow_run_artifacts("owner/repo", 42)
+    assert artifacts == [
+        GitHubArtifact(
+            id=1,
+            name="build-output",
+            size_bytes=2048,
+            expired=False,
+            archive_download_url="https://api.github.com/artifacts/1/zip",
+        )
+    ]
+    assert repo.calls[-1] == ("get_workflow_run", {"run_id": 42})
+
+
+def test_fetch_workflow_run_artifacts_wraps_errors(
+    provider: GitHubItemsProvider, repo: _FakeRepo
+) -> None:
+    def _boom(_run_id: int) -> Any:
+        raise RuntimeError("network gone")
+
+    repo.get_workflow_run = _boom  # type: ignore[method-assign]
+    with pytest.raises(GitHubItemsError, match="Could not list artifacts"):
+        provider.fetch_workflow_run_artifacts("owner/repo", 42)
+
+
+def test_download_artifact_rejects_an_expired_artifact(
+    provider: GitHubItemsProvider, tmp_path: Any
+) -> None:
+    artifact = GitHubArtifact(
+        id=1,
+        name="build-output",
+        size_bytes=10,
+        expired=True,
+        archive_download_url="https://api.github.com/artifacts/1/zip",
+    )
+    with pytest.raises(GitHubItemsError, match="expired"):
+        provider.download_artifact_to_file(artifact, tmp_path / "out.zip")
+
+
+def test_download_artifact_needs_a_signed_in_account(
+    tmp_path: Any, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    repo = _FakeRepo()
+    _install_fake_github(monkeypatch, repo)
+    anonymous_provider = GitHubItemsProvider(token=None)
+    artifact = GitHubArtifact(
+        id=1,
+        name="build-output",
+        size_bytes=10,
+        expired=False,
+        archive_download_url="https://api.github.com/artifacts/1/zip",
+    )
+    with pytest.raises(GitHubItemsError, match="signed-in"):
+        anonymous_provider.download_artifact_to_file(artifact, tmp_path / "out.zip")
+
+
+def test_download_artifact_rejects_a_non_https_url(
+    provider: GitHubItemsProvider, tmp_path: Any
+) -> None:
+    artifact = GitHubArtifact(
+        id=1,
+        name="build-output",
+        size_bytes=10,
+        expired=False,
+        archive_download_url="http://api.github.com/artifacts/1/zip",
+    )
+    with pytest.raises(GitHubItemsError, match="HTTPS"):
+        provider.download_artifact_to_file(artifact, tmp_path / "out.zip")
+
+
+def test_download_artifact_follows_redirect_and_drops_auth_header(
+    provider: GitHubItemsProvider, tmp_path: Any, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The core security property: GitHub's artifact endpoint 302s to a
+    signed URL on a different host (Azure Blob Storage in production), and
+    the Authorization header must not be forwarded to that second request."""
+    artifact = GitHubArtifact(
+        id=1,
+        name="build-output",
+        size_bytes=4,
+        expired=False,
+        archive_download_url="https://api.github.com/artifacts/1/zip",
+    )
+    redirect_target = "https://blob.example.com/signed/1/zip?sig=abc"
+
+    class _FakeOpener:
+        def open(self, request: urllib.request.Request, timeout: int = 60) -> Any:
+            assert request.get_full_url() == artifact.archive_download_url
+            assert request.headers.get("Authorization") == "Bearer tok"
+            raise urllib.error.HTTPError(
+                artifact.archive_download_url, 302, "Found", {"Location": redirect_target}, None
+            )
+
+    captured_final_request: list[urllib.request.Request] = []
+
+    def _fake_urlopen(request: urllib.request.Request, timeout: int = 60) -> _FakeHTTPResponse:
+        captured_final_request.append(request)
+        return _FakeHTTPResponse(b"zipdata", {"Content-Length": "7"})
+
+    monkeypatch.setattr(items_provider.urllib.request, "build_opener", lambda *_h: _FakeOpener())
+    monkeypatch.setattr(items_provider.urllib.request, "urlopen", _fake_urlopen)
+
+    dest = tmp_path / "out.zip"
+    progress_calls: list[tuple[int, int]] = []
+    result = provider.download_artifact_to_file(
+        artifact, dest, progress=lambda done, total: progress_calls.append((done, total))
+    )
+
+    assert result == dest
+    assert dest.read_bytes() == b"zipdata"
+    assert len(captured_final_request) == 1
+    final_request = captured_final_request[0]
+    assert final_request.get_full_url() == redirect_target
+    assert "Authorization" not in final_request.headers
+    assert progress_calls[-1] == (7, 7)
+
+
+def test_download_artifact_rejects_a_non_https_redirect(
+    provider: GitHubItemsProvider, tmp_path: Any, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    artifact = GitHubArtifact(
+        id=1,
+        name="build-output",
+        size_bytes=4,
+        expired=False,
+        archive_download_url="https://api.github.com/artifacts/1/zip",
+    )
+
+    class _FakeOpener:
+        def open(self, request: urllib.request.Request, timeout: int = 60) -> Any:
+            raise urllib.error.HTTPError(
+                artifact.archive_download_url,
+                302,
+                "Found",
+                {"Location": "http://blob.example.com/signed/1/zip"},
+                None,
+            )
+
+    monkeypatch.setattr(items_provider.urllib.request, "build_opener", lambda *_h: _FakeOpener())
+    with pytest.raises(GitHubItemsError, match="HTTPS"):
+        provider.download_artifact_to_file(artifact, tmp_path / "out.zip")
+
+
+def test_download_artifact_honors_should_cancel(
+    provider: GitHubItemsProvider, tmp_path: Any, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    artifact = GitHubArtifact(
+        id=1,
+        name="build-output",
+        size_bytes=4,
+        expired=False,
+        archive_download_url="https://api.github.com/artifacts/1/zip",
+    )
+
+    class _FakeOpener:
+        def open(self, request: urllib.request.Request, timeout: int = 60) -> Any:
+            return _FakeHTTPResponse(b"zipdata", {"Content-Length": "7"})
+
+    monkeypatch.setattr(items_provider.urllib.request, "build_opener", lambda *_h: _FakeOpener())
+
+    with pytest.raises(GitHubItemsError, match="cancelled"):
+        provider.download_artifact_to_file(
+            artifact, tmp_path / "out.zip", should_cancel=lambda: True
+        )

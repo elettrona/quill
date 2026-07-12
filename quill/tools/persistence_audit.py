@@ -135,6 +135,11 @@ _REVIEWED_PERSISTENCE: dict[str, str] = {
     # keyed by owner/repo and URL — user content, tolerant loader (unknown
     # fields ignored, corrupt file degrades to empty).
     "core/github/saved_items.py::save": "content",
+    # Emoji picker recently-used + favorites: same shape and same tolerance as
+    # saved_items.py above (a corrupt file degrades to empty, unknown fields
+    # ignored) -- losing this list is mildly annoying, not data loss, and it
+    # never affects the emoji catalog itself (a separate, read-only file).
+    "core/emoji_usage.py::save": "content",
     "core/inline_notes.py::save": "content",
     "core/macros.py::save": "content",
     "core/notebook_store.py::save_notebook": "content",

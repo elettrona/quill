@@ -7034,6 +7034,17 @@ GHManage + fastgh review):**
   also prefills from the document's own checkout — the nearest `.git`
   (worktree pointers followed) whose `origin` remote parses as a GitHub URL —
   covering files opened from disk, not just through Open-from-GitHub.
+- **View Upstream** (`GitHubItemsProvider.fetch_fork_info`): loading a
+  repository kicks off a small, separate single-repo lookup alongside the
+  main items load (list-response rows never carry the parent — only
+  PyGithub's single-repo `GET` does — so this cannot piggyback on the list
+  fetch) and enables a **View Upstream** button in the repository row only
+  when the loaded repo is a fork. Pressing it repopulates the repository
+  field with the parent's `owner/repo` and reloads through the same path as
+  typing it in manually — previously the only way to reach a fork's
+  upstream. A fork whose parent PyGithub cannot resolve (deleted, private,
+  or a transient API gap) reports `is_fork=True` with an empty parent name
+  rather than raising; the button simply stays disabled.
 
 **Tranche 2 (same release):**
 
@@ -7158,6 +7169,26 @@ clear announcement otherwise.
   (`GitHubItemsProvider.token`) rather than asking the user to sign in again.
 - **Re-run Workflow** — only offered on a single selected run row; a plain
   Yes/No confirm, then `rerun_workflow_run`.
+- **View Artifacts...** — only offered on a single selected run row; opens
+  the new `ArtifactsDialog` (`quill/ui/github_artifacts_dialog.py`) over that
+  run's build artifacts (`GitHubItemsProvider.fetch_workflow_run_artifacts`):
+  name, size, and expired status, with Download Selected, Download All,
+  Refresh, and Open Run in Browser. Downloading asks for a destination
+  folder, confirms before overwriting an existing zip, and runs behind the
+  same `AIProgressDialog` (Cancel + gauge) already used for the TTS engine
+  downloads — no new progress-dialog shape for this feature.
+  `GitHubItemsProvider.download_artifact_to_file` is the one security-
+  sensitive part: GitHub's artifact endpoint 302-redirects to a short-lived
+  signed URL on a different host (Azure Blob Storage in production), and the
+  `Authorization` header must never be forwarded there or the token leaks to
+  a third party. Rather than trust `urllib`'s default cross-host redirect
+  behavior or reach into PyGithub's private `Requester` internals, the
+  redirect is followed manually: a `urllib.request.HTTPRedirectHandler`
+  subclass blocks auto-follow, the resulting `HTTPError` is caught to read
+  `Location`, and exactly one re-request goes to that URL with no
+  `Authorization` header. An expired artifact, a missing token, or a
+  non-HTTPS download/redirect URL all refuse cleanly before any request is
+  made.
 - **Reply to Thread...** — posts another comment on the loaded issue/PR
   (GitHub's comment API is flat, so a "reply" is simply a new comment on the
   same thread); available whenever a thread is loaded, independent of the
@@ -7425,6 +7456,130 @@ repository rather than shipping speculative field-name guesses.
 
 **Feature flag.** All five commands map to `core.github_remote`, same as
 every other GitHub command.
+
+### §25.16 GitHub Tier 3: Codespaces and Copilot CLI (0.9.0 Beta 3, needs live-device verification)
+
+The narrow `gh`-CLI bridge `docs/planning/github.md` section 1 scoped —
+deliberately not a general `gh api` passthrough, just Codespaces lifecycle
+management and `gh copilot`'s two read-only helper commands. Unlike every
+other GitHub command in this PRD (all built on PyGithub against the REST
+API), this tier shells out to the user's own `gh` CLI, because Codespaces
+and Copilot CLI have no REST/PyGithub equivalent — `gh` is the only
+supported client.
+
+**Four new commands (Tools > GitHub):**
+
+- **Codespaces...** — lists the signed-in account's active Codespaces
+  (name, repository, state); selecting one opens a menu to **Stop** or
+  **Delete** it.
+- **Create Codespace...** — prompts for a repository (reusing the same
+  repo-picker helper as the Tier 2 commands) and an optional branch, then
+  creates a new Codespace. **This is the one GitHub command in QUILL with a
+  real dollar cost** — Codespaces consume GitHub compute and storage
+  minutes — so its confirmation dialog says so explicitly, in those words,
+  distinct from every other GitHub command's "this changes something on
+  GitHub" framing.
+- **Ask Copilot for a Command...** — prompts for a plain-language request
+  (e.g. "undo my last commit") and shows `gh copilot suggest`'s answer in a
+  message box.
+- **Explain a Command...** — prompts for a git or `gh` command and shows
+  `gh copilot explain`'s answer.
+
+**Architecture.** `quill/core/github/gh_bridge.py` (wx-free) wraps each `gh`
+subcommand through the same `Runner = Callable[..., object]` injection
+pattern `local_git.py` and `git_sync.py` already use (production:
+`run_subprocess_safely`; tests: a fake runner) — one subprocess-injection
+idiom across every git/gh-adjacent module in the codebase, not a new one for
+this tier. `quill/ui/main_frame_gh_bridge.py` (`GhBridgeMixin`) is the thin
+command layer: gates on Safe Mode and `git_binaries.resolve_gh()` finding a
+`gh` executable (system PATH first, the bundled copy second — see §25.17),
+then dispatches to `gh_bridge.py` on a background task.
+
+**Needs live-device verification.** Both modules carry an explicit
+docstring flag: every command here is wired and unit-tested with a fake
+`gh` runner (argument-building and JSON-parsing correctness are covered),
+but none of it has been exercised against a real `gh` installation, a real
+Codespaces-enabled repository, or real Copilot CLI access. Treat this tier
+as needing a real-device pass before promoting it out of that status —
+matching QUILL's own precedent for other hardware/environment-dependent
+features shipped with the same caveat (e.g. Narrator's direct UIA
+notification channel in §... — see the Beta 3 release notes).
+
+**Feature mapping.** All four commands map to `core.github_remote`, same as
+every other GitHub command; no default keybindings (the leader-chord space
+is fully claimed), reachable via the Tools > GitHub menu and the Command
+Palette.
+
+### §25.17 Packaging: self-hosted git and gh binaries (0.9.0 Beta 3)
+
+`docs/planning/github.md` section 2's packaging plan, shipped: QUILL can
+bundle portable copies of Git (MinGit) and the GitHub CLI so local-git
+accessibility (§25.14) and the Tier 3 `gh` bridge (§25.16) work for a user
+who has never installed either, without QUILL depending on either being
+present.
+
+**Detection and the subprocess allowlist.** `quill/core/git_binaries.py`
+resolves `git`/`gh` by checking the system `PATH` first (`shutil.which`),
+falling back to a QUILL-managed vendor copy (`app_data_dir() / "vendor" /
+"git"`, shared by both tools) second — the system copy is always preferred,
+so an existing install is never duplicated. `validate_executable()`
+enforces a narrow basename allowlist (`git`, `git.exe`, `gh`, `gh.exe`)
+before any resolved path reaches a subprocess call, the same defensive
+pattern `external_engine.py`'s `_ENGINE_EXECUTABLE_BASENAMES` already uses —
+a tampered settings file or a writable vendor directory can never turn a
+git-integration feature into an arbitrary-executable launcher.
+
+**The real, self-hosted, pinned assets.** Three `release_assets.py` `ASSETS`
+entries, uploaded to the `assets-v1` release tag and pinned by real
+SHA-256 (not placeholders — `is_pinned()` fails closed on anything that
+isn't a genuine 64-hex hash):
+
+| Component | Source | Notes |
+|---|---|---|
+| `git-windows` | Git for Windows MinGit (GPL-2.0), portable/no-installer | Repackaged — see below |
+| `gh-windows` | GitHub CLI (MIT, `cli/cli`) | Byte-identical re-publish |
+| `gh-macos` | GitHub CLI (MIT, `cli/cli`) | Byte-identical re-publish |
+
+**MinGit's repackaging problem, and the fix.** `release_assets.fetch_component()`
+extracts the whole zip to a temp directory, then copies only
+`expect_member`'s *immediate parent folder* into the install target — this
+works for a single-folder bundle (e.g. Piper's `piper/piper.exe`, where the
+whole `piper/` folder is what gets copied), but MinGit's official zip
+spreads `cmd/`, `mingw64/`, `etc/`, `usr/` across separate top-level
+folders with no common parent. Naively pointing `expect_member` at
+`cmd/git.exe` would have silently copied only `cmd/` and dropped
+`mingw64/`/`etc/`/`usr/`, which `git.exe` needs at runtime — a real,
+non-obvious packaging bug caught before it shipped, not a hypothetical.
+Fixed by re-zipping MinGit's full extracted tree under one new top-level
+wrapper folder (`git/`), with `expect_member="git/LICENSE.txt"` — a file
+that sits directly beside `cmd/`/`etc/`/`mingw64/`/`usr/` as a sibling
+inside the wrapper, not nested inside one of them. Anchoring on `git.exe`
+itself instead would have resolved to the `cmd/` folder and reproduced the
+exact bug this repackaging exists to avoid. The installed layout is
+therefore `<vendor_dir>/cmd/git.exe` with `etc/`, `mingw64/`, `usr/` as
+siblings — `git_binaries.py`'s `_vendor_candidate("git")` expects exactly
+this nested path. `gh-windows`/`gh-macos` needed no such restructuring:
+their `expect_member`'s parent folder (`bin/`) already contains nothing
+else, so the existing single-folder copy semantics work unmodified.
+
+**Download Optional Components wiring.** Two new rows in Help > Download
+Optional Components (`quill/core/optional_components.py`): **Git** (Windows
+only — no self-hosted asset for other platforms, which typically already
+have a system git) and **GitHub CLI** (Windows + macOS). Each has its own
+`_git_installed`/`_gh_installed` detector (delegating to
+`git_binaries.git_available()`/`gh_available()`), a verify-dispatch entry,
+and dedicated installers — `LocalGitMixin.download_git` and
+`GhBridgeMixin.download_gh` (the latter resolves `gh-windows` vs `gh-macos`
+by `sys.platform`) — following the same `fetch_component` +
+`_run_background_task` pattern as every other on-demand component (e.g.
+`download_mathcat`, `download_libmpv`).
+
+**Removal is deliberately careful.** Because git and gh share one vendor
+directory, a naive "delete the vendor dir" Remove for either component
+would destroy the other's files too. `git`'s remove path deletes only
+MinGit's own top-level entries (`cmd/`, `etc/`, `mingw64/`, `usr/`,
+`LICENSE.txt`) individually; `gh`'s remove path deletes only its own flat
+executable file. Removing one never touches the other's installed files.
 
 ---
 
@@ -8006,6 +8161,226 @@ reads `build/version.toml` for the version, reads the installer filename
 from `installer/quill.iss` for the download URL, and signs the payload.
 The `windows-release.yml` workflow runs it on every tagged release and
 commits the resulting JSON back to `docs/site/updates/`.
+
+---
+
+## §34. Accessible Emoji Picker (0.9.0 Beta 3)
+
+### §34.1 Overview
+
+QUILL already ships **Insert Special Character** for "I know the code point,
+insert this exact character." Emoji need the opposite workflow: "I don't
+know the code point, I might not even know the name, help me find and
+understand one." **Insert > Emoji...** (`Alt+.`) is that workflow — browse
+by Unicode's own category tree or search across every field a catalog entry
+carries (the symbol itself, a legacy ASCII emoticon like `:)` or `<3`, the
+official name, a CLDR keyword, or a phrase that only appears in the entry's
+generated visual description), with a description pane that reads out what
+an emoji actually looks like, not just its Unicode name.
+
+First-party rather than a Quillin: it needs a bundled, structured dataset
+and a richer three-pane dialog than the Quillin capability model
+(`ui.prompt`, `ui.announce`) supports.
+
+### §34.2 What shipped
+
+- **`quill/core/emoji_data.py`** (wx-free, strict-typed): loads the
+  committed catalog once (module-level cache); `EmojiEntry` (`char`, `name`,
+  `category`, `subgroup`, `keywords`, `emoticons`, `description`);
+  `list_categories()` / `list_by_category(category)`; `search(query)`; and
+  `describe(entry)`, which reuses `char_describe.CharacterDescription`'s
+  `(summary, detail)` shape so the UI already knows how to render/announce
+  it.
+- **`quill/ui/main_frame_emoji_picker.py`** (`EmojiPickerMixin` +
+  `EmojiPickerDialog`): a plain custom dialog — every control named,
+  `show_modal_dialog` + `apply_modal_ids`, never raw `ShowModal` — with a
+  live-filtered search box, a category `wx.ListBox`, a results
+  `wx.ListCtrl` (Symbol + Name columns, so arrowing through it reads like
+  any other accessible list instead of leaving the screen reader to guess
+  at a bare glyph), and a read-only multi-line description pane that
+  updates on every selection. Insert writes the character at the caret
+  (`self.editor.WriteText`) and announces `"Inserted <name>"`.
+- **Command**: `edit.insert_emoji`, bound to `Alt+.` by default in both
+  `profile_default.json` and `profile_sr_friendly.json` (checked against
+  both for a conflict before picking it — none found), plus the same entry
+  in `keymap.py`'s base default table. Menu entry: **Insert > Insert
+  Emoji...**, placed after the Date and Time submenu.
+- **Feature mapping**: deliberately left unmapped in
+  `feature_command_map.py` (falls through to the `core.app` default,
+  matching the `localgit.*` precedent) — no account, no network, no
+  feature flag to gate; it works offline and in every install mode.
+
+**Favorites and Recent.** Two additional entries at the top of the category
+list, before Unicode's own nine groupings: **Favorites** (emoji the user has
+explicitly starred) and **Recent** (the last 30 emoji actually inserted,
+most-recent-first, deduplicated on re-use). Backed by a new
+`quill/core/emoji_usage.py` (wx-free), structurally identical to
+`quill.core.github.saved_items.GitHubSavedItems` — atomic JSON writes under
+the app data dir (`emoji_usage.json`), a corrupt file degrades to empty
+rather than crashing. `EmojiUsage.record_used(char)` fires once per
+successful Insert; a dedicated **Add to Favorites** / **Remove from
+Favorites** button (label reflects current state, reusing
+`quill.core.emoji_usage.EmojiUsage.toggle_favorite`) acts on the currently
+selected result regardless of which category or search view it came from.
+Deliberately a separate module from the read-only, shared `emoji_data.py`
+catalog: un-favoriting or clearing Recent is bookkeeping on this small
+per-user store only and can never remove an emoji from the catalog itself —
+it stays exactly as findable by search or its Unicode category either way.
+`emoji_data.entry_by_char`/`entries_by_chars` resolve the stored characters
+back into full `EmojiEntry` rows for display, silently dropping (not
+crashing on) a character that no longer exists in the current catalog
+version.
+
+### §34.3 Search and browse design
+
+`search(query)` matches in four tiers, most-confident first, each
+deduplicated against entries an earlier tier already matched so a result
+never appears twice and stronger matches always sort first:
+
+1. **Direct symbol lookup** — *query* is itself one or more emoji
+   characters someone pasted or typed in.
+2. **Legacy ASCII emoticon alias** — an exact match against `:)`, `<3`,
+   `:-D`, and similar de facto conventions Unicode itself does not define.
+3. **Name or keyword substring** — the official Unicode name or a CLDR
+   annotation keyword.
+4. **Description substring** — the widest, lowest-precision net: a
+   half-remembered phrase that names neither the emoji nor one of its
+   keywords, but does appear in its generated visual description (e.g.
+   "puddle" finds the melting face even though "puddle" is not a CLDR
+   keyword for it).
+
+An empty or all-whitespace query returns no results — the dialog shows the
+category browser instead. Category browsing and search do not fight each
+other: typing in the search box takes over the results list; clearing it
+reverts to whichever category was last selected.
+
+### §34.4 The catalog: data sources and generation
+
+QUILL never fetches emoji data at runtime (`network_egress_audit.py`'s "no
+surprise network calls" rule; the app must work fully offline and in Safe
+Mode). The committed catalog, `quill/data/emoji_catalog.json` (added to
+`pyproject.toml`'s wheel `force-include`, the same convention as the other
+`quill/data/*` bundled files), is generated **offline**, ahead of time, by
+**`quill/tools/generate_emoji_catalog.py`** — a real, permanent, re-runnable
+maintainer tool, not a one-off script — from three tiers of source data,
+most to least authoritative:
+
+1. **Unicode Consortium's `emoji-test.txt`** (pinned to a specific Unicode
+   emoji version, e.g. `16.0`, not `latest`, for reproducible builds) — the
+   category tree, the official short name, and which code points count as
+   standard emoji at all. Only `fully-qualified` lines are kept:
+   `unqualified`/`minimally-qualified` are legacy/alternate encodings of the
+   same emoji, and `component` lines (bare skin-tone modifiers, the ZWJ
+   joiner) are not standalone emoji.
+2. **Unicode CLDR's English annotations** (`common/annotations/en.xml`) —
+   search keywords per emoji. Coverage is real but partial (roughly a third
+   of entries in the Unicode 16.0 catalog) — CLDR does not annotate every
+   modifier/variant combination, and an entry with no CLDR keywords is still
+   findable by its official name or (per §34.3 tier 4) its description.
+3. **`iamcal/emoji-data`** (MIT license) — legacy ASCII emoticon aliases
+   (`:)`, `<3`, `:-D`, ...) that Unicode does not define at all; every major
+   emoji picker (Windows, Slack, Teams, GitHub) maintains its own small
+   hand-curated table of these, and this is the widely-reused reference one.
+
+**The rich visual description has no authoritative source at all.**
+Scraping a picker site like Emojipedia was considered and explicitly
+rejected: it is not an open dataset, and scraping it carries real
+licensing/ToS risk that would violate QUILL's own network-egress and
+licensing discipline. Instead, the generator asks an LLM (OpenAI
+`gpt-4o-mini`, in batches of ~40 emoji per request, structured JSON output)
+to **write an original description** per emoji from its Unicode
+name/category/keywords — "generate, don't scrape," chosen specifically so
+the description text is QUILL's own to redistribute, not lifted from
+anyone else's picker. A maintainer who omits the API key (or has none) still
+gets a usable, if blander, catalog: every entry falls back to a mechanical
+synthesis (`"{category} > {subgroup}. {name}."` plus up to five keywords)
+built with zero network calls.
+
+The generator is resilient by design, not just "best effort":
+
+- **Checkpointing** — the catalog-so-far is written to disk after *every*
+  LLM batch, not once at the very end, so a maintainer can watch
+  descriptions land in a real, inspectable file as a long run progresses,
+  and a run that dies partway through never loses more than one batch's
+  worth of API calls.
+- **Token usage + a cost estimate** — every batch's real `prompt_tokens`/
+  `completion_tokens` (from the API response's own `usage` field, not a
+  guess) accumulate into a running total, printed after every batch and
+  summarized at the end with a rough dollar estimate (`platform.openai.com
+  /usage` remains the authoritative, billed figure).
+- **Automatic retries for stragglers** — after the main pass, any entry
+  still on the mechanical fallback (a batch that failed outright, or one
+  the model silently dropped from its JSON response) is retried in fresh,
+  shrinking batches, up to three rounds, before the run gives up on it.
+- **Built-in validation** — `validate_catalog()` runs at the end of every
+  generation (and every repair pass): every entry has a non-empty
+  char/name/category/subgroup/description, no duplicate characters, both
+  `keywords` and `emoticons` are lists, and the total entry count is at
+  least the expected floor (catching a parser or fetch failure that
+  silently produced a half-empty catalog, before it ships). Problems print
+  to the console; this is the same "catch a bad generator run before it
+  ships" check the original design called for, now a permanent, always-on
+  part of the tool instead of a manual step someone has to remember to run.
+
+### §34.5 Maintenance: updating for a new Unicode emoji version
+
+Unicode publishes a new emoji version roughly annually. When it does:
+
+1. Re-run the generator against the new version:
+   `python -m quill.tools.generate_emoji_catalog --out quill/data/emoji_catalog.json`
+   (set `OPENAI_API_KEY` in the environment, or pass `--api-key`, to get
+   real descriptions rather than the mechanical fallback for newly-added
+   emoji). Bump `_EMOJI_VERSION` at the top of the script first if the new
+   version has a different published path under
+   `unicode.org/Public/emoji/<version>/`.
+2. Review the diff. New emoji only — categories, names, and keywords for
+   *existing* entries essentially never change between Unicode versions, so
+   a diff should be almost entirely additions.
+3. If a prior run left some entries on the mechanical fallback (check the
+   generator's own end-of-run validation report, or search the catalog for
+   a description matching the `"{category} > {subgroup}. {name}."`
+   pattern), repair just those without regenerating everything:
+   `python -m quill.tools.generate_emoji_catalog --out quill/data/emoji_catalog.json --fix-missing`.
+4. Commit the regenerated `quill/data/emoji_catalog.json` like any other
+   data update. No application code changes are needed — `emoji_data.py`
+   reads whatever the catalog contains.
+5. Regenerate the emoji reference table in the user guide (the table is a
+   mechanical dump of the catalog, grouped by category — see the user
+   guide's Accessible Emoji Picker section for the exact generation step)
+   and its `.html`/`.epub` artifacts.
+6. If the run adds a meaningful number of new emoji, mention it in that
+   Beta/point release's CHANGELOG and release notes, matching the pattern
+   this feature's own launch used.
+
+**Adding a one-off hand-curated description** (e.g. touching up a
+description that reads oddly, or overriding the fallback for a specific
+emoji without a full LLM re-run) is a direct edit to the relevant entry's
+`"description"` field in `quill/data/emoji_catalog.json` — the catalog is
+plain, readable JSON, not a binary format, and `emoji_data.py` has no
+separate "curated override" layer to keep in sync; the committed file *is*
+the source of truth the running app reads.
+
+### §34.6 Non-goals (this phase)
+
+- **A visual emoji grid.** Deliberately not built — a picture wall is
+  exactly the pattern that is unusable for screen readers. Browsing is a
+  category list plus a named results list, matching QUILL's other
+  browse/search dialogs.
+- **Skin-tone / gender modifier pickers** as a distinct guided flow. The
+  base modifier sequences that appear in Unicode's own `emoji-test.txt` as
+  fully-qualified entries (e.g. individual skin-tone variants of waving
+  hand) are cataloged like any other emoji and reachable by search/browse;
+  there is no dedicated "pick a skin tone first" wizard step.
+  - **Multi-codepoint paste-to-find** (flags, ZWJ family/profession emoji)
+    beyond what tier 1 of §34.3 already handles via substring containment.
+- **Non-English keywords/descriptions.** The catalog is English-only,
+  matching CLDR's `en.xml` as the only annotation source consumed; a
+  future localized catalog would need a per-language CLDR annotation file
+  and, likely, per-language LLM description generation.
+- **A CI job that auto-regenerates the catalog.** The generator is a
+  manual, maintainer-run tool (§34.5); no scheduled workflow watches for
+  new Unicode emoji versions and opens a PR automatically. A reasonable
+  future addition, not built this phase.
 
 ---
 

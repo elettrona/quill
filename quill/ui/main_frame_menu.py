@@ -1064,6 +1064,7 @@ class MenuBuilderMixin:
         self._id_insert_code_block = wx.NewIdRef()
         self._id_insert_footnote = wx.NewIdRef()
         self._id_insert_table = wx.NewIdRef()
+        self._id_insert_emoji = wx.NewIdRef()
         format_menu = wx.Menu()
 
         # --- Document Format (One Editor, Every Format) ---
@@ -1432,6 +1433,10 @@ class MenuBuilderMixin:
         # ``wx.Menu`` with a single visible item is still a navigable
         # submenu, not a bug.
         insert_menu.AppendSubMenu(date_time_menu, _("Date and &Time"))
+        insert_menu.Append(
+            self._id_insert_emoji,
+            self._menu_label(_("Insert &Emoji..."), "edit.insert_emoji"),
+        )
         self._id_next_document = wx.NewIdRef()
         self._id_previous_document = wx.NewIdRef()
         # Accelerator-only ids for Go to Document 1..10 (Alt+1..Alt+9, Alt+0).
@@ -4235,6 +4240,11 @@ class MenuBuilderMixin:
             wx.EVT_MENU,
             lambda _e: self.format_insert_table(),
             id=self._id_insert_table,
+        )
+        self.frame.Bind(
+            wx.EVT_MENU,
+            lambda _e: self.insert_emoji(),
+            id=self._id_insert_emoji,
         )
         self.frame.Bind(wx.EVT_MENU, lambda _e: self.insert_html_tag(), id=self._id_insert_html_tag)
         self.frame.Bind(

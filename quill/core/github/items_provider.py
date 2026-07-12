@@ -21,15 +21,23 @@ Design (see ``docs`` issue #924 spec):
 - Errors raise :class:`GitHubItemsError` (a :class:`CodedError`) so a pasted
   error message carries a greppable support code (GATE-EC).
 
-No ``wx`` imports. No direct ``urlopen``/``urlretrieve`` -- every call goes
-through PyGithub, which is the single audited transport for GitHub (see
-``quill/tools/network_egress_audit.py``).
+No ``wx`` imports. Every call goes through PyGithub, the audited transport
+for GitHub, with one deliberate exception: ``download_artifact_to_file``
+uses ``urllib.request`` directly for the artifact-download redirect, since
+GitHub's artifact endpoint 302s to a signed URL on a different host and the
+``Authorization`` header must be dropped there by hand rather than relying
+on PyGithub's private ``Requester`` internals or an auto-redirect-following
+opener that could forward it by accident -- see that method's own docstring,
+and ``quill/tools/network_egress_audit.py``.
 """
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+import urllib.error
+import urllib.request
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Any
 
 from quill.core.error_codes import CodedError
@@ -189,6 +197,14 @@ class GitHubPullDiff:
 
 
 @dataclass(frozen=True, slots=True)
+class GitHubRepoForkInfo:
+    """Whether a repository is a fork, and its upstream's full name if so."""
+
+    is_fork: bool
+    parent_full_name: str = ""
+
+
+@dataclass(frozen=True, slots=True)
 class GitHubWorkflowRun:
     """A GitHub Actions workflow run."""
 
@@ -215,6 +231,29 @@ class GitHubWorkflowJob:
     started_at: str = ""
     completed_at: str = ""
     url: str = ""
+
+
+@dataclass(frozen=True, slots=True)
+class GitHubArtifact:
+    """One build artifact from a workflow run -- the "redirect to a zip
+    archive" case ``GitHubWorkflowJob`` above scoped out for logs, now built
+    deliberately (with the redirect's auth-header handling done correctly;
+    see :meth:`GitHubItemsProvider.download_artifact_to_file`)."""
+
+    id: int
+    name: str
+    size_bytes: int
+    expired: bool
+    archive_download_url: str
+
+    @property
+    def size_display(self) -> str:
+        size = float(self.size_bytes)
+        for unit in ("B", "KB", "MB", "GB"):
+            if size < 1024 or unit == "GB":
+                return f"{size:.0f} {unit}" if unit == "B" else f"{size:.1f} {unit}"
+            size /= 1024
+        return f"{size:.1f} GB"
 
 
 @dataclass(frozen=True, slots=True)
@@ -362,6 +401,19 @@ class GitHubItemsProvider:
                 ) from exc
             msg = exc.data.get("message", str(exc)) if hasattr(exc, "data") else str(exc)
             raise GitHubItemsError(f"GitHub error {status}: {msg}") from exc
+
+    def fetch_fork_info(self, full_name: str) -> GitHubRepoForkInfo:
+        """Whether *full_name* is a fork, and its parent's full name if so --
+        the single-repo ``GET`` response is the only one PyGithub's
+        ``Repository.parent`` populates from (a list-response row omits it,
+        so this always needs its own call rather than reusing an already-
+        loaded row -- see ``Repository.get_repo`` vs ``get_repos``)."""
+        repo = self._repo(full_name)
+        if not bool(getattr(repo, "fork", False)):
+            return GitHubRepoForkInfo(is_fork=False)
+        parent = getattr(repo, "parent", None)
+        parent_name = str(getattr(parent, "full_name", "") or "") if parent is not None else ""
+        return GitHubRepoForkInfo(is_fork=True, parent_full_name=parent_name)
 
     # ------------------------------------------------------------------
     # Issues and pull requests (one inbox; is_pr distinguishes)
@@ -882,6 +934,106 @@ class GitHubItemsProvider:
             )
             for row in rows
         ]
+
+    def fetch_workflow_run_artifacts(self, full_name: str, run_id: int) -> list[GitHubArtifact]:
+        """A run's build artifacts -- read-only, no token required for a
+        public repo (a private repo needs one, same as everything else here)."""
+        repo = self._repo(full_name)
+        try:
+            run = repo.get_workflow_run(run_id)
+            rows = _take(run.get_artifacts(), DEFAULT_PAGE_LIMIT)
+        except Exception as exc:  # noqa: BLE001
+            raise GitHubItemsError(f"Could not list artifacts for run {run_id}: {exc}") from exc
+        return [
+            GitHubArtifact(
+                id=int(getattr(row, "id", 0)),
+                name=_safe_str(getattr(row, "name", "")),
+                size_bytes=int(getattr(row, "size_in_bytes", 0) or 0),
+                expired=bool(getattr(row, "expired", False)),
+                archive_download_url=_safe_str(getattr(row, "archive_download_url", "")),
+            )
+            for row in rows
+        ]
+
+    def download_artifact_to_file(
+        self,
+        artifact: GitHubArtifact,
+        dest_path: Path,
+        *,
+        progress: Callable[[int, int], None] | None = None,
+        should_cancel: Callable[[], bool] | None = None,
+    ) -> Path:
+        """Stream *artifact* to *dest_path* (a zip; GitHub always packages
+        artifacts that way), calling ``progress(downloaded_bytes, total_bytes)``
+        as it goes. Raises :class:`GitHubItemsError` for an expired artifact,
+        a missing token, or any download failure.
+
+        GitHub's artifact endpoint 302-redirects to a short-lived signed URL
+        on a *different* host (typically Azure Blob Storage) -- the
+        ``Authorization`` header must never be forwarded there, or the token
+        leaks to a third party. ``urllib`` does not strip it automatically on
+        a cross-host redirect the way ``requests`` does, so the redirect is
+        followed manually here with the header dropped for the second
+        request, rather than relying on default redirect-following behavior
+        or reaching into PyGithub's private ``Requester`` internals.
+        """
+        if artifact.expired:
+            raise GitHubItemsError(
+                f"Artifact {artifact.name!r} has expired and cannot be downloaded."
+            )
+        if not self._token:
+            raise GitHubItemsError("Downloading an artifact needs a signed-in GitHub account.")
+        if not artifact.archive_download_url.lower().startswith("https://"):
+            raise GitHubItemsError("Refusing a non-HTTPS artifact download URL.")
+
+        request = urllib.request.Request(
+            artifact.archive_download_url,
+            headers={
+                "Authorization": f"Bearer {self._token}",
+                "Accept": "application/vnd.github+json",
+                "X-GitHub-Api-Version": "2022-11-28",
+            },
+        )
+
+        class _NoRedirect(urllib.request.HTTPRedirectHandler):
+            def redirect_request(self, *_args: object, **_kwargs: object) -> None:
+                return None  # signal the opener: do not auto-follow
+
+        opener = urllib.request.build_opener(_NoRedirect)
+        try:
+            final_request = request
+            try:
+                probe = opener.open(request, timeout=60)  # noqa: S310 - HTTPS enforced above
+            except urllib.error.HTTPError as exc:
+                if exc.code in (301, 302, 303, 307, 308):
+                    location = exc.headers.get("Location", "")
+                    if not location.lower().startswith("https://"):
+                        raise GitHubItemsError("Artifact redirect target was not HTTPS.") from exc
+                    # Deliberately no Authorization header on the redirect target.
+                    final_request = urllib.request.Request(location)
+                    probe = urllib.request.urlopen(final_request, timeout=60)  # noqa: S310
+                else:
+                    raise GitHubItemsError(f"Could not download artifact: {exc}") from exc
+            with probe as response:
+                total = int(response.headers.get("Content-Length") or artifact.size_bytes or 0)
+                downloaded = 0
+                dest_path.parent.mkdir(parents=True, exist_ok=True)
+                with dest_path.open("wb") as out:
+                    while True:
+                        if should_cancel is not None and should_cancel():
+                            raise GitHubItemsError("Download cancelled.")
+                        chunk = response.read(1024 * 1024)
+                        if not chunk:
+                            break
+                        out.write(chunk)
+                        downloaded += len(chunk)
+                        if progress is not None:
+                            progress(downloaded, total)
+        except GitHubItemsError:
+            raise
+        except Exception as exc:  # noqa: BLE001
+            raise GitHubItemsError(f"Could not download artifact {artifact.name!r}: {exc}") from exc
+        return dest_path
 
     def dispatch_workflow(
         self,

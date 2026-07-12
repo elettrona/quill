@@ -377,6 +377,32 @@ _REVIEWED_EGRESS: dict[str, str] = {
         "Same gating as _fetch_node_zip_url: explicit action, Safe Mode blocked, "
         "Windows-only. QUILL never redistributes the binary."
     ),
+    "tools/generate_emoji_catalog.py::_fetch": (
+        "Dev-only maintainer tool, never imported by the shipped app (quill.core.emoji_data "
+        "reads only the committed quill/data/emoji_catalog.json this script produces offline "
+        "ahead of time -- no runtime network call exists for the emoji picker). Fetches "
+        "Unicode's emoji-test.txt, CLDR's English annotations, and iamcal/emoji-data's "
+        "emoticon table, run by hand by a maintainer regenerating the catalog for a new "
+        "Unicode emoji version (roughly annual). HTTPS-only (enforced by the function itself)."
+    ),
+    "tools/generate_emoji_catalog.py::_openai_batch_descriptions": (
+        "Same dev-only tool as above, same never-shipped-at-runtime boundary. Sends batches "
+        "of emoji names/categories/keywords (no user data, no document content) to the "
+        "OpenAI chat completions API to generate original visual descriptions, only when a "
+        "maintainer explicitly passes --api-key or sets OPENAI_API_KEY while running the "
+        "script by hand; omitting the key skips this call entirely and falls back to a "
+        "mechanical description with zero network calls."
+    ),
+    "core/github/items_provider.py::download_artifact_to_file": (
+        "Reached only from GitHub Items' Actions... > View Artifacts... > Download "
+        "Selected/All (user-initiated, requires a signed-in account -- the same gate as "
+        "every other write/download action in that dialog). The one deliberate exception "
+        "to 'every GitHub call goes through PyGithub': the artifact endpoint 302-redirects "
+        "to a signed URL on a different host, and the Authorization header is dropped by "
+        "hand for that second request (never forwarded to the redirect target) rather than "
+        "trusting an auto-redirect-following opener or PyGithub's private Requester "
+        "internals. HTTPS-enforced on both the initial URL and the redirect target."
+    ),
 }
 
 # ---------------------------------------------------------------------------

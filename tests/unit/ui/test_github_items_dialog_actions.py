@@ -17,7 +17,7 @@ from typing import Any
 import pytest
 import wx
 
-from quill.core.github.items_provider import GitHubItem, GitHubItemsError
+from quill.core.github.items_provider import GitHubItem, GitHubItemsError, GitHubRepoForkInfo
 from quill.ui.github_items_dialog import GitHubItemsDialog
 
 
@@ -34,6 +34,7 @@ class _FakeProvider:
         self.deleted_comments: list[tuple[str, int]] = []
         self.merge_result = "merged-sha-1234567"
         self.raise_on_merge: Exception | None = None
+        self.fork_info = GitHubRepoForkInfo(is_fork=False)
 
     @property
     def is_authenticated(self) -> bool:
@@ -76,6 +77,9 @@ class _FakeProvider:
     def fetch_issue_comments(self, repo: str, number: int) -> list[dict]:
         return []
 
+    def fetch_fork_info(self, repo: str) -> GitHubRepoForkInfo:
+        return self.fork_info
+
 
 @pytest.fixture(scope="module")
 def wx_app():
@@ -85,16 +89,23 @@ def wx_app():
 
 
 class _SyncThread:
-    """Stands in for threading.Thread: runs target() immediately on .start(),
-    so the write actions' worker/CallAfter round trip is deterministic in a
-    test with no real wx event loop pumping CallAfter's queue."""
+    """Stands in for threading.Thread: runs target(*args, **kwargs) immediately
+    on .start(), so the write actions' worker/CallAfter round trip is
+    deterministic in a test with no real wx event loop pumping CallAfter's
+    queue. Every prior caller here happened to use a zero-arg target, so a
+    version that silently dropped args/kwargs went unnoticed until a target
+    that actually takes arguments (_fork_info_worker) exposed it."""
 
-    def __init__(self, target=None, daemon=None, **_kw: Any) -> None:
+    def __init__(
+        self, target=None, args: tuple = (), kwargs: dict | None = None, daemon=None, **_kw: Any
+    ) -> None:
         self._target = target
+        self._args = args
+        self._kwargs = kwargs or {}
 
     def start(self) -> None:
         if self._target is not None:
-            self._target()
+            self._target(*self._args, **self._kwargs)
 
 
 @pytest.fixture
@@ -263,6 +274,61 @@ def test_rerun_declined(dlg) -> None:
 
 
 # ---------------------------------------------------------------------------
+# View Artifacts
+# ---------------------------------------------------------------------------
+
+
+def test_view_artifacts_opens_the_dialog_for_the_selected_run(
+    dlg, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from quill.core.github.items_provider import GitHubWorkflowRun
+
+    run = GitHubWorkflowRun(
+        name="CI",
+        status="completed",
+        run_number=7,
+        url="https://github.com/owner/repo/actions/runs/7",
+    )
+    dlg._rows = [run]
+    dlg._selected_indices = lambda: [0]
+
+    opened: list[dict] = []
+
+    class _FakeArtifactsDialog:
+        def __init__(self, parent, provider, **kwargs) -> None:
+            opened.append(kwargs)
+
+        def show(self) -> None:
+            pass
+
+    monkeypatch.setattr("quill.ui.github_artifacts_dialog.ArtifactsDialog", _FakeArtifactsDialog)
+    dlg._view_artifacts_for_selected()
+
+    assert opened == [
+        {
+            "repo": "owner/repo",
+            "run_id": 7,
+            "run_label": "#7 - CI",
+            "run_url": "https://github.com/owner/repo/actions/runs/7",
+            "announce_cb": dlg._announce,
+        }
+    ]
+
+
+def test_view_artifacts_requires_a_selected_run(dlg, monkeypatch: pytest.MonkeyPatch) -> None:
+    dlg._rows = []
+    dlg._selected_indices = lambda: []
+
+    opened: list[object] = []
+    monkeypatch.setattr(
+        "quill.ui.github_artifacts_dialog.ArtifactsDialog",
+        lambda *a, **k: opened.append((a, k)),
+    )
+    dlg._view_artifacts_for_selected()
+    assert opened == []
+
+
+# ---------------------------------------------------------------------------
 # Comment reply / edit / delete
 # ---------------------------------------------------------------------------
 
@@ -356,3 +422,55 @@ class _FakeRepoAdmin:
 
     def close(self) -> None:
         pass
+
+
+# ---------------------------------------------------------------------------
+# View Upstream (fork navigation)
+# ---------------------------------------------------------------------------
+
+
+def test_upstream_button_disabled_for_a_non_fork(dlg) -> None:
+    dlg._provider.fork_info = GitHubRepoForkInfo(is_fork=False)
+    dlg._fetch_fork_info_async("owner/repo")
+    assert dlg._upstream_btn.IsEnabled() is False
+    assert dlg._fork_info == GitHubRepoForkInfo(is_fork=False)
+
+
+def test_upstream_button_enabled_for_a_fork_and_announces(dlg) -> None:
+    dlg._provider.fork_info = GitHubRepoForkInfo(is_fork=True, parent_full_name="upstream/repo")
+    dlg._fetch_fork_info_async("owner/repo")
+    assert dlg._upstream_btn.IsEnabled() is True
+    assert "fork of upstream/repo" in dlg.announcements[-1]
+
+
+def test_upstream_button_stays_disabled_when_parent_unresolvable(dlg) -> None:
+    dlg._provider.fork_info = GitHubRepoForkInfo(is_fork=True, parent_full_name="")
+    dlg._fetch_fork_info_async("owner/repo")
+    assert dlg._upstream_btn.IsEnabled() is False
+
+
+def test_stale_fork_info_response_is_discarded_if_repo_changed(dlg) -> None:
+    """The user can switch repos before an in-flight fork-info fetch returns
+    -- its result must not clobber state for the repo now actually loaded."""
+    dlg._provider.fork_info = GitHubRepoForkInfo(is_fork=True, parent_full_name="upstream/repo")
+    dlg._on_fork_info_loaded("some-other/repo", dlg._provider.fork_info)
+    assert dlg._upstream_btn.IsEnabled() is False
+    assert dlg._fork_info is None
+
+
+def test_view_upstream_click_reloads_with_parent_repo(dlg) -> None:
+    dlg._fork_info = GitHubRepoForkInfo(is_fork=True, parent_full_name="upstream/repo")
+    dlg._upstream_btn.Enable(True)
+    loaded: list[str] = []
+    dlg._on_load = lambda _e: loaded.append(dlg._repo_ctrl.GetValue())
+    dlg._on_view_upstream(None)
+    assert dlg._repo_ctrl.GetValue() == "upstream/repo"
+    assert loaded == ["upstream/repo"]
+
+
+def test_view_upstream_click_does_nothing_when_no_fork_info(dlg) -> None:
+    dlg._fork_info = None
+    loaded: list[str] = []
+    dlg._on_load = lambda _e: loaded.append("called")
+    dlg._on_view_upstream(None)
+    assert loaded == []
