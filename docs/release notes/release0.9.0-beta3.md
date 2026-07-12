@@ -736,6 +736,50 @@ Every one of those 3,781 descriptions is text QUILL generated itself, purpose-bu
 
 ---
 
+## Introducing the Offline Edition, and Real Polish for the AI Setup Wizard and Audio Studio
+
+### A build for machines with no internet at all
+
+QUILL normally keeps its everyday installer small by downloading its bigger optional pieces — Pandoc, offline speech engines, neural voices, the braille pack, and more — only when you actually reach for them.
+
+The new **Offline Edition** build inverts that: every optional component ships inside the installer and the portable bundle up front. QUILL is fully functional the moment it's installed, with no internet connection ever needed. That makes it the right choice for an air-gapped machine, a locked-down work laptop, or anywhere your first login can't reach the internet.
+
+**Help > Download Optional Components** reflects the difference honestly: under the Offline Edition, each component shows as already **Bundled** — or, for the handful the offline build doesn't carry, **Not included** — instead of offering a Download button that has nothing left to fetch. The regular, smaller installer and portable download are unchanged and remain the default for everyone else.
+
+The section right after this one covers a real gap a community member found in the Offline Edition's first pass, and how it was closed.
+
+### The AI Setup Wizard treats Ollama fairly
+
+A never-configured install's saved settings default to provider "Ollama" — a reasonable default, but the wizard's "remember what you already set up" logic mistook that default for proof you'd deliberately added Ollama. The result: on first run, the wizard silently marked Ollama as already configured, quietly dropped it from the Provider list, and left only key-requiring cloud providers to choose from — even on a machine where Ollama had never been touched.
+
+The wizard now confirms a local Ollama server actually answers before treating it as configured. A related, simpler bug in the AI Hub's Provider tab is fixed alongside it: the API key field stayed active for every provider regardless of whether one was actually needed, making Ollama's key field look required when nothing ever enforced it. It now greys out correctly for Ollama and any other no-key provider.
+
+Two smaller Setup Wizard rough edges are fixed in the same pass. Reaching the Connect step (or removing a provider from the Added list) could land focus straight in an API key field instead of the Provider list — jarring, and easy to misread as "Ollama needs a key too." Focus now always starts on the Provider list itself. The Remove button also used to look clickable the instant anything was added, whether or not you'd actually selected an entry; it now stays disabled until a real selection exists.
+
+### Ollama, wherever it actually runs — and pull a model without a terminal
+
+The Setup Wizard always assumed Ollama lived at `localhost`, even though reaching an Ollama server on another machine on your network was never actually wired up end to end. A new **Ollama server address** field on the Connect step — shown only when Ollama is selected, defaulting to localhost — now genuinely drives the verify, model-list, and Finish steps, so a LAN or self-hosted Ollama is a real, working choice.
+
+Choosing your default model used to mean opening a terminal and typing `ollama pull <model>` yourself. The Model step now shows which recommended models are already installed and offers a **Pull model** button on the rest, with live download progress, selecting the model for you the moment it's ready.
+
+### Preferences lands you on the right control when you switch tabs
+
+Using Ctrl+Tab or Ctrl+Shift+Tab to move between Preferences tabs — or clicking a different one — moved the visible page but left keyboard focus wherever it had been, so a screen reader sometimes announced just "Panel" instead of the new tab's first real field. Switching tabs now always moves focus to that tab's first control, matching the routing every other tabbed dialog in QUILL already uses.
+
+### Audio Studio gets a working Cancel button, an honest log, and a tidier WAV output
+
+Generating audio for a whole folder of documents had no Cancel button at all, and pressing Escape just dinged — there was no way to stop a run short of quitting QUILL outright. Cancel (and Escape) now work properly: whatever file is currently synthesizing finishes normally, so you never end up with a half-written audio file, and the run stops cleanly before starting the next one.
+
+The diagnostics log used to record only which document was up next, not the chunk-by-chunk progress the on-screen dialog already showed — so glancing at the log during (or after) a run told you far less than watching the screen did. The log now mirrors that same chunk-by-chunk detail.
+
+Choosing WAV as your export format used to drop the file right next to your source document, the same place MP3 already lands — awkward for a format that tends to produce large files. WAV output now goes into an **Audio Output** subfolder beside the document it came from; exporting recursively through nested folders gives each subfolder its own Audio Output folder rather than funneling everything into one shared location at the top.
+
+### QUILL warns before Alt+F4 abandons real work in progress
+
+Closing QUILL while an Audio Studio export was running used to exit immediately, mid-job, with no warning at all. QUILL now asks first — close and stop the job now, or leave QUILL open so it can finish — and mentions **File > Send to Tray** as a way to keep it running quietly in the background instead. Routine background activity (search and replace, dictation, downloads) is unaffected; only genuinely hard-to-redo jobs like an Audio Studio export trigger the warning.
+
+---
+
 ## The Offline Edition Is Finally True to Its Name
 
 A community member installed the Offline Edition and discovered that Kokoro neural voices still requested an internet connection on first use — inside a build whose defining promise is that the internet should not be required.

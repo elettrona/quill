@@ -41,6 +41,18 @@ _EGRESS_CALLEES = frozenset({
 # Reviewed, allowed egress sites: "<relative path>::<enclosing function>" mapped
 # to the reason the call is not silent. Update this when adding a network call.
 _REVIEWED_EGRESS: dict[str, str] = {
+    "core/ai/onboarding.py::pull_ollama_model": (
+        "Streams Ollama's own /api/pull endpoint to download a model, the same "
+        "call the 'ollama pull' CLI command makes. Reached only from the AI "
+        "Setup Wizard's explicit Pull button on a curated-but-missing model row "
+        "(Model step, local Ollama path). Defaults to http://localhost:11434 -- "
+        "the same address every other Ollama call in this file already talks "
+        "to -- and is user-overridable to a remote Ollama host via the wizard's "
+        "own server-address field, matching that same existing pattern. Not "
+        "HTTPS-enforced because localhost/LAN Ollama servers are plain HTTP by "
+        "default (no TLS to verify); no secret travels in the request. Absent "
+        "in Safe Mode along with the rest of AI setup."
+    ),
     "core/publish/auphonic.py::_request": (
         "Single egress site for Auphonic post-production: preset list, account/"
         "credit check, production upload/start, status poll, result download. "

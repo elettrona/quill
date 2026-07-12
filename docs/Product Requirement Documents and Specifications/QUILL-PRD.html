@@ -11963,13 +11963,38 @@ local disk (<code>pip install --no-index --find-links</code>) instead of
 PyPI when a bundled wheelhouse is present, and whisper.cpp
 (<code>quill/core/speech/providers/whispercpp.py::_bundled_whisper_model_path</code>)
 transcribes with its bundled model immediately, no download step at all.
-<strong>Known gap, tracked, not yet closed:</strong> Piper voices and
-Node.js-based Quillins have no bundling mechanism
-(<code>--piper-dir</code> does not exist; Node.js is explicitly excluded
-regardless of <code>--bundle-offline</code>) and still require network
-access on first use even under the Offline Edition. No CI workflow
-currently produces an Offline Edition build; it is a manual, ad hoc
-invocation of the build script today.</li>
+Piper is bundled too (<code>_stage_piper_offline</code>): engine zip
+(SHA-256-verified at build time and re-verified at install time) plus a
+starter voice (Lessac, US English, medium), so Piper’s engine and first
+voice both work offline; additional voices still come from the pinned
+HuggingFace catalog when online. <strong>Known gap, tracked, not yet
+closed:</strong> Node.js-based Quillins have no bundling mechanism and
+still require network access on first use even under the Offline
+Edition. No CI workflow currently produces an Offline Edition build; it
+is a manual, ad hoc invocation of the build script today.</li>
+<li><strong>Runtime self-awareness</strong>
+(<code>quill.build_info.is_offline_edition()</code>): the running app
+can tell whether it IS the Offline Edition, not just whether a component
+happens to be present. <code>--bundle-offline</code> writes a gitignored
+<code>quill/_offline_edition.py</code> marker
+(<code>OFFLINE_EDITION = True</code>) into the build;
+<code>is_offline_edition()</code> imports it defensively (absent -&gt;
+<code>False</code>, covering a dev checkout or a slim install built
+before the marker existed).
+<code>quill/core/optional_components.py::download_allowed()</code> uses
+it to gate the Download action: always <code>False</code> under the
+Offline Edition (every component is already bundled or was deliberately
+left out — the target machine is expected to have no internet to fetch
+anything with), and <code>not component.effective_ready</code>
+otherwise, preserving the pre-Offline-Edition behavior exactly for every
+normal install. <code>quill/ui/optional_components_dialog.py</code>
+labels each row <strong>Bundled</strong> or <strong>Not
+included</strong> instead of offering a Download button when
+<code>download_allowed()</code> is <code>False</code> under the Offline
+Edition. <code>quill/core/spellcheck.py::managed_spell_dir</code>
+prefers the Offline Edition’s bundled
+<code>{app}/dictionaries/hunspell</code> over the user-writable app-data
+download location the same way.</li>
 </ul>
 <h3 id="build-and-dev-environment">10.7 Build and dev environment</h3>
 <ul>

@@ -35,7 +35,12 @@ def test_dialog_gates_download_when_installed() -> None:
     # Download/Test key off effective_ready, not installed: most components
     # agree, but the Dictation row is "installed" as soon as its engine binary
     # exists even with no model downloaded yet (#kokoro-focus follow-up).
-    assert "download_btn.Enable(not ready)" in src
+    # Download itself is gated through download_allowed(), not a bare "not
+    # ready" check: the Offline Edition build always disables Download since
+    # every component is already bundled or was never included at build time
+    # (Offline Edition awareness).
+    assert "can_download = download_allowed(comp)" in src
+    assert "download_btn.Enable(can_download)" in src
     assert 'test_btn.Enable(ready or testing["active"])' in src
     assert "comp.effective_ready" in src
 

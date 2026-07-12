@@ -134,6 +134,7 @@
   "quill/ui/main_frame.py::MainFrame._choose_misspelling_with_context::wx.Dialog": "hardened_custom",
   "quill/ui/main_frame.py::MainFrame._choose_searchable_option::wx.Dialog": "hardened_custom",
   "quill/ui/main_frame.py::MainFrame._confirm_beta_channel::wx.MessageDialog": "native",
+  "quill/ui/main_frame.py::MainFrame._confirm_close_with_busy_jobs::wx.MessageDialog": "native",
   "quill/ui/main_frame.py::MainFrame._confirm_restart_for_data_location::wx.MessageDialog": "native",
   "quill/ui/main_frame.py::MainFrame._confirm_show_editor_border::wx.MessageDialog": "native",
   "quill/ui/main_frame.py::MainFrame._html_info::wx.MessageDialog": "native",
