@@ -1,0 +1,1033 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+  <meta charset="utf-8" />
+  <meta name="generator" content="pandoc 3.10" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+  <title>emo</title>
+  <style>
+    /* Default styles provided by pandoc.
+    ** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
+    */
+    html {
+      color: #1a1a1a;
+      background-color: #fdfdfd;
+    }
+    body {
+      margin: 0 auto;
+      max-width: 36em;
+      padding-left: 50px;
+      padding-right: 50px;
+      padding-top: 50px;
+      padding-bottom: 50px;
+      hyphens: auto;
+      overflow-wrap: break-word;
+      text-rendering: optimizeLegibility;
+      font-kerning: normal;
+    }
+    @media (max-width: 600px) {
+      body {
+        font-size: 0.9em;
+        padding: 12px;
+      }
+      h1 {
+        font-size: 1.8em;
+      }
+    }
+    @media print {
+      html {
+        background-color: white;
+      }
+      body {
+        background-color: transparent;
+        color: black;
+        font-size: 12pt;
+      }
+      p, h2, h3 {
+        orphans: 3;
+        widows: 3;
+      }
+      h2, h3, h4 {
+        page-break-after: avoid;
+      }
+    }
+    p {
+      margin: 1em 0;
+    }
+    a {
+      color: #1a1a1a;
+    }
+    a:visited {
+      color: #1a1a1a;
+    }
+    img {
+      max-width: 100%;
+    }
+    svg {
+      height: auto;
+      max-width: 100%;
+    }
+    h1, h2, h3, h4, h5, h6 {
+      margin-top: 1.4em;
+    }
+    h5, h6 {
+      font-size: 1em;
+      font-style: italic;
+    }
+    h6 {
+      font-weight: normal;
+    }
+    ol, ul {
+      padding-left: 1.7em;
+      margin-top: 1em;
+    }
+    li > ol, li > ul {
+      margin-top: 0;
+    }
+    blockquote {
+      margin: 1em 0 1em 1.7em;
+      padding-left: 1em;
+      border-left: 2px solid #e6e6e6;
+      color: #606060;
+    }
+    code {
+      white-space: pre-wrap;
+      font-family: Menlo, Monaco, Consolas, 'Lucida Console', monospace;
+      font-size: 85%;
+      margin: 0;
+      hyphens: manual;
+    }
+    pre {
+      margin: 1em 0;
+      overflow: auto;
+    }
+    pre code {
+      padding: 0;
+      overflow: visible;
+      overflow-wrap: normal;
+    }
+    .sourceCode {
+     background-color: transparent;
+     overflow: visible;
+    }
+    hr {
+      border: none;
+      border-top: 1px solid #1a1a1a;
+      height: 1px;
+      margin: 1em 0;
+    }
+    table {
+      margin: 1em 0;
+      border-collapse: collapse;
+      width: 100%;
+      overflow-x: auto;
+      display: block;
+      font-variant-numeric: lining-nums tabular-nums;
+    }
+    table caption {
+      margin-bottom: 0.75em;
+    }
+    tbody {
+      margin-top: 0.5em;
+      border-top: 1px solid #1a1a1a;
+      border-bottom: 1px solid #1a1a1a;
+    }
+    th {
+      border-top: 1px solid #1a1a1a;
+      padding: 0.25em 0.5em 0.25em 0.5em;
+    }
+    td {
+      padding: 0.125em 0.5em 0.25em 0.5em;
+    }
+    header {
+      margin-bottom: 4em;
+      text-align: center;
+    }
+    #TOC li {
+      list-style: none;
+    }
+    #TOC ul {
+      padding-left: 1.3em;
+    }
+    #TOC > ul {
+      padding-left: 0;
+    }
+    #TOC a:not(:hover) {
+      text-decoration: none;
+    }
+    span.smallcaps{font-variant: small-caps;}
+    div.columns{display: flex; gap: 1.5em;}
+    div.column{flex: auto;}
+    @media screen {
+    div.columns{gap: min(4vw, 1.5em);}
+    div.column{overflow-x: auto;}
+    }
+    div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+    /* The extra [class] is a hack that increases specificity enough to
+       override a similar rule in reveal.js */
+    ul.task-list[class]{list-style: none;}
+    ul.task-list li input[type="checkbox"] {
+      font-size: inherit;
+      width: 0.8em;
+      margin: 0 0.8em 0.2em -1.6em;
+      vertical-align: middle;
+    }
+    .display.math{display: block; text-align: center; margin: 0.5rem auto;}
+    /* CSS for syntax highlighting */
+    html { -webkit-text-size-adjust: 100%; }
+    pre > code.sourceCode { white-space: pre; position: relative; }
+    pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+    pre > code.sourceCode > span:empty { height: 1.2em; }
+    .sourceCode { overflow: visible; }
+    code.sourceCode > span { color: inherit; text-decoration: inherit; }
+    div.sourceCode { margin: 1em 0; }
+    pre.sourceCode { margin: 0; }
+    @media screen {
+    div.sourceCode { overflow: auto; }
+    }
+    @media print {
+    pre > code.sourceCode { white-space: pre-wrap; }
+    pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+    }
+    pre.numberSource code
+      { counter-reset: source-line 0; }
+    pre.numberSource code > span
+      { position: relative; left: -4em; counter-increment: source-line; }
+    pre.numberSource code > span > a:first-child::before
+      { content: counter(source-line);
+        position: relative; left: -1em; text-align: right; vertical-align: baseline;
+        border: none; display: inline-block;
+        -webkit-touch-callout: none; -webkit-user-select: none;
+        -khtml-user-select: none; -moz-user-select: none;
+        -ms-user-select: none; user-select: none;
+        padding: 0 4px; width: 4em;
+        color: #aaaaaa;
+      }
+    pre.numberSource { margin-left: 3em; border-left: 1px solid #aaaaaa;  padding-left: 4px; }
+    div.sourceCode
+      {   }
+    @media screen {
+    pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+    }
+    code span.al { color: #ff0000; font-weight: bold; } /* Alert */
+    code span.an { color: #60a0b0; font-weight: bold; font-style: italic; } /* Annotation */
+    code span.at { color: #7d9029; } /* Attribute */
+    code span.bn { color: #40a070; } /* BaseN */
+    code span.bu { color: #008000; } /* BuiltIn */
+    code span.cf { color: #007020; font-weight: bold; } /* ControlFlow */
+    code span.ch { color: #4070a0; } /* Char */
+    code span.cn { color: #880000; } /* Constant */
+    code span.co { color: #60a0b0; font-style: italic; } /* Comment */
+    code span.cv { color: #60a0b0; font-weight: bold; font-style: italic; } /* CommentVar */
+    code span.do { color: #ba2121; font-style: italic; } /* Documentation */
+    code span.dt { color: #902000; } /* DataType */
+    code span.dv { color: #40a070; } /* DecVal */
+    code span.er { color: #ff0000; font-weight: bold; } /* Error */
+    code span.ex { } /* Extension */
+    code span.fl { color: #40a070; } /* Float */
+    code span.fu { color: #06287e; } /* Function */
+    code span.im { color: #008000; font-weight: bold; } /* Import */
+    code span.in { color: #60a0b0; font-weight: bold; font-style: italic; } /* Information */
+    code span.kw { color: #007020; font-weight: bold; } /* Keyword */
+    code span.op { color: #666666; } /* Operator */
+    code span.ot { color: #007020; } /* Other */
+    code span.pp { color: #bc7a00; } /* Preprocessor */
+    code span.sc { color: #4070a0; } /* SpecialChar */
+    code span.ss { color: #bb6688; } /* SpecialString */
+    code span.st { color: #4070a0; } /* String */
+    code span.va { color: #19177c; } /* Variable */
+    code span.vs { color: #4070a0; } /* VerbatimString */
+    code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warning */
+  </style>
+</head>
+<body>
+<h1 id="quill-accessible-emoji-picker">QUILL Accessible Emoji
+Picker</h1>
+<h2 id="product-requirements-document">Product Requirements
+Document</h2>
+<p><strong>Document status:</strong> Draft for product and engineering
+review <strong>Product:</strong> QUILL <strong>Feature area:</strong>
+Editing / Insert <strong>Document version:</strong> 1.0
+<strong>Date:</strong> July 11, 2026 <strong>Primary platform:</strong>
+Windows 11, wxPython, keyboard-first and screen-reader-first
+<strong>Intended audience:</strong> Product, engineering, accessibility,
+and documentation</p>
+<hr />
+<h2 id="1-executive-summary">1. Executive Summary</h2>
+<p>QUILL will add a first-party <strong>Insert Emoji</strong> dialog
+(Alt+Period) that lets a person browse every standard Unicode emoji by
+category, search for one by name or by a typed symbol/emoticon they
+half-remember, and read a rich, screen-reader-friendly description of
+what the emoji actually looks like before inserting it.</p>
+<p>The feature has two parts that must both be true for it to be worth
+shipping:</p>
+<ol type="1">
+<li><strong>A complete, current catalog.</strong> Every standard emoji,
+correctly categorized, searchable by name and by common ASCII emoticon
+shortcuts, sourced from the Unicode Consortium and CLDR rather than
+hand-maintained.</li>
+<li><strong>A rich description for every single emoji, not a curated
+subset.</strong> A blind or low-vision writer choosing between "slightly
+smiling face," "grinning face," and "smiling face with smiling eyes"
+needs to know what distinguishes them, not just their official names.
+This document commits to full-coverage description generation across the
+whole catalog (see Section 11), replacing an earlier draft's "top 150
+only" scope.</li>
+</ol>
+<p>Both the catalog and its descriptions are generated <strong>offline,
+at development time</strong>, by a dedicated tool, and shipped as a
+static, committed data file. Nothing about this feature calls out to the
+network at runtime; that would conflict with QUILL's offline-first,
+Safe-Mode-compatible architecture and would require a
+<code>network_egress_audit.py</code> entry for no real benefit, since
+emoji data changes roughly once a year.</p>
+<hr />
+<h2 id="2-product-vision">2. Product Vision</h2>
+<h3 id="21-vision-statement">2.1 Vision statement</h3>
+<blockquote>
+<p>Nobody should have to guess what a symbol looks like, or dig through
+a visual grid they can't see, to put an emoji in their writing.</p>
+</blockquote>
+<h3 id="22-core-product-promise">2.2 Core product promise</h3>
+<p>A user should be able to:</p>
+<ul>
+<li>Open the picker from anywhere in the editor with one hotkey.</li>
+<li>Move through emoji by category the same way they move through any
+other accessible list — no picture grid, no mouse-only hover
+states.</li>
+<li>Type a name ("heart"), a partial keyword ("celebrat"), or a
+remembered ASCII emoticon (":)", "&lt;3") and land on the right
+emoji.</li>
+<li>Read a plain-language description of what the emoji looks like
+before committing to it, every time, for every emoji — not just the
+popular ones.</li>
+<li>Insert it at the caret and hear confirmation of what was
+inserted.</li>
+</ul>
+<h3 id="23-experience-principles">2.3 Experience principles</h3>
+<ol type="1">
+<li><strong>Lists, not grids.</strong> Every existing native OS and web
+emoji picker is a visual grid of tiny pictures. QUILL's is a set of
+accessible lists: a category list, a results list, a description pane.
+Nothing here depends on seeing the glyph.</li>
+<li><strong>No dead ends.</strong> If an emoji has a name and a code
+point, it has a description. A picker that describes only the popular
+faces and shrugs at everything else has just moved the guessing problem,
+not solved it.</li>
+<li><strong>Offline and deterministic.</strong> The picker works with no
+network connection and behaves identically from one session to the next;
+the underlying data only changes when a maintainer regenerates it.</li>
+<li><strong>Authoritative data, not vibes.</strong> Categories and names
+come from the Unicode Consortium and CLDR, not a scraped or informally
+maintained list.</li>
+</ol>
+<hr />
+<h2 id="3-background-and-problem-statement">3. Background and Problem
+Statement</h2>
+<p>QUILL already ships <strong>Insert Special Character</strong>
+(<code>quill/quillins_bundled/insert-character/</code>), which solves "I
+know the Unicode code point, insert this exact character," and
+<code>quill/core/char_describe.py</code>, a Reveal-Codes-style inspector
+that describes whatever character is under the caret. Neither solves "I
+want to insert an emoji and either don't know its name or want to know
+what it looks like before I use it."</p>
+<p>Mainstream emoji pickers (Windows <code>Win+.</code>, Slack, Discord,
+GitHub's <code>:shortcode:</code> popup) are built around a visual grid
+of small glyphs grouped by category, with a search box that matches
+names/shortcodes/keywords. That UI is unusable non-visually: the grid
+conveys nothing to a screen reader beyond "here is a character," and
+none of the mainstream pickers attempt a visual description of the glyph
+at all — sighted users don't need one.</p>
+<p>For a screen-reader-first writer, three problems compound:</p>
+<ul>
+<li><strong>Discovery.</strong> Browsing "what emoji exist" by category
+requires an accessible list, not a grid.</li>
+<li><strong>Recall.</strong> Someone may remember an ASCII emoticon
+convention (":)") without remembering that it now maps to "slightly
+smiling face" — the search needs to bridge that gap.</li>
+<li><strong>Disambiguation.</strong> Unicode has dozens of visually
+distinct emoji with similar names ("grinning face," "grinning face with
+big eyes," "beaming face with smiling eyes"). Without sight, the name
+alone often isn't enough to choose correctly; a description of the
+actual visual difference is required, and it has to exist for the whole
+catalog, since there's no way to predict in advance which "obscure"
+emoji a given user will need.</li>
+</ul>
+<hr />
+<h2 id="4-goals">4. Goals</h2>
+<h3 id="41-primary-goals">4.1 Primary goals</h3>
+<ul>
+<li>Ship a first-party <strong>Insert Emoji</strong> dialog bound to
+<strong>Alt+Period</strong>.</li>
+<li>Cover every emoji in the current Unicode emoji standard, organized
+into the official Unicode category/subgroup tree.</li>
+<li>Support search by official name, CLDR keyword, and common ASCII
+emoticon aliases, plus direct lookup when an emoji character itself is
+typed or pasted into the search box.</li>
+<li>Generate a rich, accessible visual description for <strong>100% of
+catalog entries</strong> — no "top N" cutoff.</li>
+<li>Keep the catalog refreshable without changing application code when
+Unicode publishes new emoji.</li>
+</ul>
+<h3 id="42-secondary-goals">4.2 Secondary goals</h3>
+<ul>
+<li>Reuse the existing <code>CharacterDescription</code> (summary +
+detail) shape from <code>char_describe.py</code> so the description pane
+behaves like a pattern the codebase — and screen-reader users of it —
+already knows.</li>
+<li>Keep the feature fully functional in Safe Mode and fully
+offline.</li>
+</ul>
+<h3 id="43-success-outcomes">4.3 Success outcomes</h3>
+<ul>
+<li>A screen-reader user can find and correctly distinguish between
+similar emoji using only the description pane, without sighted
+assistance.</li>
+<li>Typing a common emoticon (":D", "&lt;3", ";)") surfaces the right
+emoji in the top result.</li>
+<li>The catalog survives a Unicode version bump with a single script
+re-run and a reviewable diff, not a rewrite.</li>
+</ul>
+<hr />
+<h2 id="5-non-goals">5. Non-Goals</h2>
+<ul>
+<li><strong>Custom/animated/platform-specific emoji</strong> (Slack
+custom emoji, Apple's "Memoji," animated stickers). Standard Unicode
+emoji only.</li>
+<li><strong>Rendering a custom glyph grid or colored emoji
+font.</strong> Presentation relies on native accessible controls and
+text, not a picture surface.</li>
+<li><strong>Real-time emoji trend data, recently-used ranking, or
+frequency telemetry</strong> — out of scope for v1 (see Section 25, Open
+Questions, for whether a "recently used" category is worth a later
+pass).</li>
+<li><strong>Runtime network calls to Unicode.org, CLDR, or any emoji
+API.</strong> All data is generated ahead of time and shipped as a
+static file.</li>
+<li><strong>Editing or annotating the emoji catalog from within the
+picker UI.</strong> Maintainers update it via the generator tool, not
+end users.</li>
+</ul>
+<hr />
+<h2 id="6-users-and-personas">6. Users and Personas</h2>
+<h3 id="61-screen-reader-first-writer-primary">6.1 Screen-reader-first
+writer (primary)</h3>
+<p>Uses JAWS or NVDA, navigates almost entirely by keyboard, and needs
+every control in the dialog — category list, results list, description
+pane — to be a normal accessible list/text control with sensible names
+and states. This person is the reason the description pane exists at
+all: they cannot fall back on "just look at the picture."</p>
+<h3 id="62-keyboard-first-sighted-power-user">6.2 Keyboard-first sighted
+power user</h3>
+<p>Doesn't use a screen reader but avoids the mouse. Wants the hotkey,
+wants fast type-ahead search, and benefits from the same accessible-list
+layout because it's also fast to arrow through.</p>
+<h3 id="63-low-vision-user">6.3 Low-vision user</h3>
+<p>May be able to see the emoji glyph at high zoom but still benefits
+from the name and description to confirm subtle visual details (skin
+tone, direction a hand or arrow is pointing, small facial differences)
+that are easy to miss even with some vision.</p>
+<hr />
+<h2 id="7-terminology">7. Terminology</h2>
+<ul>
+<li><strong>Base emoji / pictograph</strong> — a single, non-composite
+emoji character, e.g. U+1F600 GRINNING FACE. Unicode's actual count of
+hand-designed, visually distinct pictographs (roughly 1,400-1,600
+depending on version).</li>
+<li><strong>Modifier sequence</strong> — a base emoji plus a skin-tone
+modifier (Fitzpatrick scale, 5 tones) and/or gender sign, e.g. "woman
+raising hand: medium skin tone."</li>
+<li><strong>ZWJ sequence</strong> — multiple code points joined with
+U+200D (zero-width joiner) into one visual glyph, e.g. family and
+profession combinations.</li>
+<li><strong>RGI (Recommended for General Interchange)</strong> —
+Unicode's list of sequences guaranteed broad rendering support; the
+practical definition of "a real emoji" versus an unsupported
+combination.</li>
+<li><strong>Flag sequence</strong> — a pair of Regional Indicator
+Symbols forming a country/region flag (roughly 260 entries), or a
+tag-sequence subdivision flag (England, Scotland, Wales).</li>
+<li><strong>Catalog</strong> — the committed, generated data file this
+feature reads at runtime; never fetched live.</li>
+</ul>
+<hr />
+<h2 id="8-functional-requirements">8. Functional Requirements</h2>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>Requirement</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>FR-1</td>
+<td>Show all standard Unicode emoji, grouped by official category and
+subgroup.</td>
+</tr>
+<tr>
+<td>FR-2</td>
+<td>Search by official Unicode name and CLDR keyword substrings.</td>
+</tr>
+<tr>
+<td>FR-3</td>
+<td>Search by common ASCII emoticon aliases (":)", "&lt;3", ":D",
+etc.).</td>
+</tr>
+<tr>
+<td>FR-4</td>
+<td>Search by pasting/typing the literal emoji character(s) to jump
+directly to that entry.</td>
+</tr>
+<tr>
+<td>FR-5</td>
+<td>Every catalog entry has a non-empty, human-readable visual
+description, not just popular entries.</td>
+</tr>
+<tr>
+<td>FR-6</td>
+<td>Description is shown in a read-only, multi-line,
+screen-reader-friendly text control, updated on selection change.</td>
+</tr>
+<tr>
+<td>FR-7</td>
+<td>Global hotkey <strong>Alt+Period</strong> opens the picker from the
+editor.</td>
+</tr>
+<tr>
+<td>FR-8</td>
+<td>Selecting an emoji inserts it at the caret and announces the
+inserted name.</td>
+</tr>
+<tr>
+<td>FR-9</td>
+<td>Fully functional offline and in Safe Mode.</td>
+</tr>
+<tr>
+<td>FR-10</td>
+<td>Catalog is refreshable by re-running a dev-time tool, with no
+application code changes required for routine annual updates.</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="9-data-sources-and-authority-tiers">9. Data Sources and
+Authority Tiers</h2>
+<p>No single Unicode file supplies category + name + search keywords + a
+rich visual description together. The catalog is built from three tiers,
+most to least authoritative, merged by the generator tool (Section
+12):</p>
+<p><strong>Tier 1 — Unicode Consortium (defines what counts as a
+standard emoji, and its category tree).</strong></p>
+<ul>
+<li><code>https://unicode.org/Public/emoji/latest/emoji-test.txt</code>
+— pin a specific version for reproducible builds, e.g.
+<code>https://unicode.org/Public/emoji/16.0/emoji-test.txt</code>. Gives
+the official group/subgroup/ordering and short name for every RGI
+sequence, and marks which sequences are
+fully-qualified/component/minimally-qualified.</li>
+<li><code>https://unicode.org/emoji/charts/full-emoji-list.html</code> —
+human-browsable equivalent, used for spot-checking during review, not
+for parsing.</li>
+</ul>
+<p><strong>Tier 2 — Unicode CLDR (search keywords).</strong></p>
+<ul>
+<li><code>https://github.com/unicode-org/cldr/blob/main/common/annotations/en.xml</code></li>
+<li><code>https://github.com/unicode-org/cldr/blob/main/common/annotationsDerived/en.xml</code></li>
+<li>Official Unicode i18n project; supplies the keyword tags that power
+keyword search (FR-2).</li>
+</ul>
+<p><strong>Tier 3 — curated convention (ASCII emoticon aliases,
+FR-3).</strong> Unicode does not define ASCII emoticon shortcuts. Every
+mainstream picker maintains its own small table. Rather than inventing
+one from scratch, seed it from existing open data and grow it by
+request:</p>
+<ul>
+<li><code>github/gemoji</code> (MIT) —
+<code>https://github.com/github/gemoji/blob/master/db/emoji.json</code></li>
+<li><code>iamcal/emoji-data</code> (MIT/CC0-style) —
+<code>https://github.com/iamcal/emoji-data/blob/master/emoji.json</code>
+— has a <code>"text"</code> field with legacy ASCII emoticon variants,
+the best available starting point.</li>
+</ul>
+<p><strong>Reference implementation used only inside the offline
+generator, never at runtime:</strong> the <code>emoji</code> PyPI
+package (MIT, <code>https://pypi.org/project/emoji/</code>) already
+parses Tier 1/2 data into an <code>EMOJI_DATA</code> table and tracks
+new Unicode releases. Using it inside
+<code>generate_emoji_catalog.py</code> avoids hand-rolling an
+<code>emoji-test.txt</code>/CLDR-XML parser; it is a dev-tooling
+dependency only and is never imported by <code>quill/core</code> or
+<code>quill/ui</code> at runtime.</p>
+<hr />
+<h2
+id="10-emoji-corpus-breakdown-why-all-of-them-needs-a-strategy-not-just-effort">10.
+Emoji Corpus Breakdown (why "all of them" needs a strategy, not just
+effort)</h2>
+<p>The catalog's ~3,700+ RGI entries are not 3,700 independent visual
+designs; most are combinatorial expansions of a much smaller set of base
+pictographs. Treating every entry as an independent hand-written
+description would be both wasteful and inconsistent. Approximate
+breakdown (varies slightly by Unicode version, confirmed at generation
+time from Tier 1 data):</p>
+<table>
+<thead>
+<tr>
+<th>Group</th>
+<th>Approx. count</th>
+<th>Description strategy</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Base pictographs (no modifiers)</td>
+<td>~1,500</td>
+<td>Full LLM-generated prose, one per entry (Section 11.2).</td>
+</tr>
+<tr>
+<td>Skin-tone modifier sequences</td>
+<td>~600</td>
+<td>Base description + composed skin-tone clause (Section 11.3).</td>
+</tr>
+<tr>
+<td>Gender/role ZWJ sequences (person + profession/role, x gender x skin
+tone)</td>
+<td>~1,300</td>
+<td>Base role description + composed gender/skin-tone clauses.</td>
+</tr>
+<tr>
+<td>Family/couple ZWJ sequences</td>
+<td>~150</td>
+<td>Composed from constituent-person descriptions.</td>
+</tr>
+<tr>
+<td>Flag sequences (regional indicators + a few subdivision flags)</td>
+<td>~260</td>
+<td>Small dedicated LLM/reference batch per Section 11.4, describing the
+actual flag design.</td>
+</tr>
+<tr>
+<td>Keycap sequences (0-9, #, *)</td>
+<td>12</td>
+<td>Trivial template, no generation needed.</td>
+</tr>
+</tbody>
+</table>
+<p>This is why FR-5 ("every entry has a description") is achievable
+without an unbounded hand-authoring effort: the ~1,500 base pictographs
+and ~260 flags are the only truly distinct visual designs requiring
+bespoke generation; everything else is templated composition over that
+base set.</p>
+<hr />
+<h2 id="11-rich-description-generation-pipeline-full-coverage">11. Rich
+Description Generation Pipeline (full coverage)</h2>
+<p>This supersedes the earlier draft's "hand-curate the top 150,
+synthesize a thin fallback for the rest" plan. Full coverage is achieved
+in four passes, all run offline by
+<code>quill/tools/generate_emoji_catalog.py</code> (or a companion
+script it calls), never at runtime:</p>
+<h3 id="111-structured-base-data-pass">11.1 Structured base data
+pass</h3>
+<p>Merge Tier 1 (name, group, subgroup) and Tier 2 (keywords) for every
+entry, plus decompose modifier/ZWJ sequences into their constituent
+parts (base glyph + skin tone + gender + role), so later passes have
+structured input rather than needing to re-parse a code point
+sequence.</p>
+<h3 id="112-base-pictograph-description-generation-1500-entries">11.2
+Base pictograph description generation (~1,500 entries)</h3>
+<p>For each base pictograph, generate one to two sentences of
+plain-language visual description using an LLM, prompted with the
+official name, CLDR keywords, category/subgroup, and — critically —
+instructed to describe what <em>distinguishes</em> this glyph from
+visually similar ones in the same subgroup (e.g. contrast "grinning
+face" vs. "grinning face with big eyes" explicitly by what differs:
+mouth, eyes, eyebrows). Output is plain text, no markup, matching the
+tone of <code>char_describe.py</code>'s existing detail lines.</p>
+<p>This is a one-time (well: once-per-Unicode-version-bump) offline
+batch job. It requires outbound API calls during generation — those
+happen on a maintainer's machine or in CI as part of running the
+generator tool, are scoped to this one tool, and do not touch
+<code>quill/core</code>/<code>quill/ui</code> runtime code, so they
+don't add a runtime network dependency. Per this project's
+network-egress and external-call conventions, actually executing this
+batch (cost, which API key, how many entries) is an implementation-phase
+decision made explicitly when this PRD is approved for build — it is not
+something to kick off silently as a side effect of writing this
+document.</p>
+<h3 id="113-modifierzwj-composition-2050-entries">11.3 Modifier/ZWJ
+composition (~2,050 entries)</h3>
+<p>Skin-tone, gender, and family/couple sequences are
+<strong>not</strong> independently generated. Their description is
+composed programmatically from the base pictograph's description (11.2)
+plus a small fixed set of clause templates:</p>
+<ul>
+<li>Skin tone:
+<code>"{base description} Shown with a {tone} skin tone."</code> (5 tone
+phrases: light, medium-light, medium, medium-dark, dark, matching
+Unicode's Fitzpatriac-scale naming).</li>
+<li>Gender:
+<code>"{base description} Depicted as a {woman/man/person}."</code></li>
+<li>Family/couple: composed by joining the constituent members' short
+descriptions, e.g.
+<code>"A family of four: a man, a woman, and two boys."</code></li>
+</ul>
+<p>This keeps descriptions accurate and consistent across every
+skin-tone/ gender variant of the same base emoji without 2,000+
+near-duplicate LLM calls, and means adding a new base pictograph
+automatically yields correct descriptions for all of its future modifier
+variants for free.</p>
+<h3 id="114-flag-descriptions-260-entries">11.4 Flag descriptions (~260
+entries)</h3>
+<p>Flags are the one place templating doesn't work — each one is a
+genuinely distinct, factual visual design (a specific country or
+region's flag). Generate these as their own small batch, prompted with
+the region name and asked for the flag's actual design (colors, stripes,
+emblem), cross-checked against a reference source during review (e.g.
+Unicode's own flag charts or a standard reference like Wikipedia's flag
+articles) since these are verifiable facts, not subjective
+description.</p>
+<h3 id="115-review-and-quality-gate">11.5 Review and quality gate</h3>
+<p>Full manual review of ~1,750 generated entries (1,500 base + 260
+flags) is not practical per Unicode release, but every generated
+description must pass automated checks before it ships:</p>
+<ul>
+<li>Non-empty, under a maximum length (keeps the description pane
+readable).</li>
+<li>No literal use of "emoji" the word inside its own description in a
+way that's circular ("an emoji of an emoji").</li>
+<li>No banned placeholder text ("TODO", "description pending").</li>
+<li>A random sample (e.g. 5%) plus every entry in the
+most-distinguished-from neighbor subgroups (faces, hand gestures) gets a
+human spot-check pass before each release.</li>
+<li>Only the <em>new</em> entries introduced by a Unicode version bump
+need fresh generation and review — the existing ~3,700 don't change once
+shipped except for corrections filed as issues.</li>
+</ul>
+<h3 id="116-storage">11.6 Storage</h3>
+<p>Generated descriptions are stored in the committed catalog itself
+(see Section 14), not fetched or computed at runtime, and are versioned
+with the Unicode/CLDR version they were generated against so a future
+regeneration can tell which entries are new.</p>
+<hr />
+<h2
+id="12-data-maintenance-and-refresh-keeping-this-current-without-code-changes">12.
+Data Maintenance and Refresh (keeping this current without code
+changes)</h2>
+<p>There is no live "emoji API" — Unicode publishes static, versioned
+files roughly once a year. Given QUILL's offline-first stance and the
+<code>network_egress_audit.py</code> gate on every outbound call site,
+the catalog is never fetched at runtime. Instead:</p>
+<ul>
+<li><code>quill/tools/generate_emoji_catalog.py</code> (new, dev-only,
+same family as <code>quillin_lint.py</code>/<code>agent_lint.py</code>)
+runs Sections 11.1-11.4 end to end and writes
+<code>quill/core/data/emoji_catalog.json</code>.</li>
+<li>When Unicode ships a new emoji version, a maintainer bumps the
+pinned version string in the script, re-runs it, reviews a diff that
+should contain only the new entries (existing entries are stable), and
+commits the updated catalog — a data change, not a code change.</li>
+<li><strong>Stretch, not required for v1:</strong> a scheduled annual CI
+job that runs the generator against the latest published Unicode version
+and opens a PR if the catalog changed, the same shape as an automated
+dependency-bump bot.</li>
+</ul>
+<hr />
+<h2 id="13-architecture-core-data-module">13. Architecture: Core Data
+Module</h2>
+<p><strong><code>quill/core/emoji_data.py</code></strong> — pure logic,
+no <code>wx</code> import, strict-typed, loads the bundled catalog once
+and caches it at module level.</p>
+<pre><code>EmojiEntry:
+    char: str
+    name: str
+    category: str
+    subgroup: str
+    keywords: list[str]
+    emoticons: list[str]
+    description: str</code></pre>
+<p>Public functions:</p>
+<ul>
+<li><code>list_categories() -&gt; list[str]</code></li>
+<li><code>list_by_category(category: str) -&gt; list[EmojiEntry]</code></li>
+<li><code>search(query: str) -&gt; list[EmojiEntry]</code> — ranked
+matching, see Section 16.</li>
+<li><code>describe(entry: EmojiEntry) -&gt; CharacterDescription</code>
+— reuses the existing <code>CharacterDescription(summary, detail)</code>
+dataclass from <code>char_describe.py</code> so the UI layer already
+knows how to render/announce it, and the two "describe a character"
+surfaces in QUILL stay consistent.</li>
+</ul>
+<hr />
+<h2 id="14-architecture-catalog-file-format">14. Architecture: Catalog
+File Format</h2>
+<p><code>quill/core/data/emoji_catalog.json</code> — a single committed
+JSON file, generated, never hand-edited. Sketch:</p>
+<div class="sourceCode" id="cb2"><pre
+class="sourceCode json"><code class="sourceCode json"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="fu">{</span></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&quot;unicode_version&quot;</span><span class="fu">:</span> <span class="st">&quot;16.0&quot;</span><span class="fu">,</span></span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&quot;generated&quot;</span><span class="fu">:</span> <span class="st">&quot;2026-07-11&quot;</span><span class="fu">,</span></span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&quot;entries&quot;</span><span class="fu">:</span> <span class="ot">[</span></span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>    <span class="fu">{</span></span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a>      <span class="dt">&quot;char&quot;</span><span class="fu">:</span> <span class="st">&quot;😀&quot;</span><span class="fu">,</span></span>
+<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a>      <span class="dt">&quot;name&quot;</span><span class="fu">:</span> <span class="st">&quot;grinning face&quot;</span><span class="fu">,</span></span>
+<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a>      <span class="dt">&quot;category&quot;</span><span class="fu">:</span> <span class="st">&quot;Smileys &amp; Emotion&quot;</span><span class="fu">,</span></span>
+<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a>      <span class="dt">&quot;subgroup&quot;</span><span class="fu">:</span> <span class="st">&quot;face-smiling&quot;</span><span class="fu">,</span></span>
+<span id="cb2-10"><a href="#cb2-10" aria-hidden="true" tabindex="-1"></a>      <span class="dt">&quot;keywords&quot;</span><span class="fu">:</span> <span class="ot">[</span><span class="st">&quot;face&quot;</span><span class="ot">,</span> <span class="st">&quot;grin&quot;</span><span class="ot">,</span> <span class="st">&quot;happy&quot;</span><span class="ot">]</span><span class="fu">,</span></span>
+<span id="cb2-11"><a href="#cb2-11" aria-hidden="true" tabindex="-1"></a>      <span class="dt">&quot;emoticons&quot;</span><span class="fu">:</span> <span class="ot">[</span><span class="st">&quot;:D&quot;</span><span class="ot">,</span> <span class="st">&quot;:-D&quot;</span><span class="ot">]</span><span class="fu">,</span></span>
+<span id="cb2-12"><a href="#cb2-12" aria-hidden="true" tabindex="-1"></a>      <span class="dt">&quot;description&quot;</span><span class="fu">:</span> <span class="st">&quot;A yellow face with a wide open smile showing the upper teeth and open, round eyes. The widest, most open-mouthed of the standard grinning faces in this subgroup.&quot;</span></span>
+<span id="cb2-13"><a href="#cb2-13" aria-hidden="true" tabindex="-1"></a>    <span class="fu">}</span></span>
+<span id="cb2-14"><a href="#cb2-14" aria-hidden="true" tabindex="-1"></a>  <span class="ot">]</span></span>
+<span id="cb2-15"><a href="#cb2-15" aria-hidden="true" tabindex="-1"></a><span class="fu">}</span></span></code></pre></div>
+<p>Modifier/ZWJ sequences carry a <code>base_char</code> reference so
+the UI can, if useful later, group variants under their base entry
+rather than listing every skin tone as a fully separate row (see Open
+Questions, Section 25).</p>
+<hr />
+<h2 id="15-architecture-ui">15. Architecture: UI</h2>
+<p><strong><code>quill/ui/main_frame_emoji_picker.py</code></strong>
+(new mixin — new handlers go in a feature mixin per the existing
+<code>main_frame_speech.py</code>/<code>main_frame_vault.py</code>
+decomposition pattern, not into <code>main_frame.py</code>).</p>
+<p><code>EmojiPickerDialog</code>, opened only through
+<code>_show_modal_dialog</code>, IDs applied via
+<code>apply_modal_ids</code>, covered by the
+<code>dialog_inventory.py</code> gate like every other modal. Layout —
+all native accessible controls, deliberately not a visual grid:</p>
+<ol type="1">
+<li><strong>Search box</strong> at the top; live-filters as you type
+with a short debounce; Enter jumps to the first result.</li>
+<li><strong>Category list</strong> (<code>wx.ListBox</code>) on the left
+— "All Results" (while searching) plus the Tier-1 category names.</li>
+<li><strong>Results list</strong> (<code>wx.ListCtrl</code>, report
+view) — glyph + name per row, so arrowing through it behaves like any
+other accessible list; the name is spoken, not left to the screen reader
+to guess at a bare character.</li>
+<li><strong>Description pane</strong> — read-only multi-line
+<code>wx.TextCtrl</code>
+(<code>wx.TE_READONLY | wx.TE_MULTILINE</code>), updated on every
+selection change, showing <code>describe(entry).detail</code>: category,
+official name, keywords, emoticon aliases if any, and the full visual
+description from Section 11. This is the "help pane" shape the original
+request asked for.</li>
+<li>Standard <strong>Insert / Cancel</strong> buttons, same modal button
+contract as every other QUILL dialog.</li>
+</ol>
+<p>Selecting Insert writes the character at the caret and announces
+"Inserted {name}," mirroring the existing <code>insert_character</code>
+Quillin's announce pattern.</p>
+<hr />
+<h2 id="16-search-behavior-specification">16. Search Behavior
+Specification</h2>
+<p><code>search(query)</code> matches in ranked order, returning best
+matches first:</p>
+<ol type="1">
+<li><strong>Symbol paste/typed match (FR-4):</strong> if the query
+itself is one or more emoji characters, look up the exact entry by code
+point sequence.</li>
+<li><strong>Emoticon alias match (FR-3):</strong> exact match against an
+entry's <code>emoticons</code> list.</li>
+<li><strong>Name match (FR-2):</strong> exact match, then prefix match,
+then substring match against <code>name</code>.</li>
+<li><strong>Keyword match (FR-2):</strong> substring match against any
+entry in <code>keywords</code>.</li>
+</ol>
+<p>Empty query shows nothing selected in "All Results" and leaves the
+category list as the primary navigation surface.</p>
+<hr />
+<h2 id="17-command-menu-and-keymap-wiring">17. Command, Menu, and Keymap
+Wiring</h2>
+<ul>
+<li>New command id <code>edit.insert_emoji</code> added to
+<code>feature_command_map.py</code>.</li>
+<li>Keymap default: <code>"edit.insert_emoji": "Alt+."</code> in both
+<code>profile_default.json</code> and
+<code>profile_sr_friendly.json</code>. Checked against both files —
+unused, no conflict with any existing binding.</li>
+<li>Menu entry under <strong>Insert</strong>, alongside the existing
+"Insert Special Character..." Quillin entry — placeholder title "Insert
+Emoji...", finalized in Section 25.</li>
+</ul>
+<hr />
+<h2 id="18-accessibility-requirements">18. Accessibility
+Requirements</h2>
+<ul>
+<li>Every control has an accessible name; the results list exposes glyph
++ name as its accessible label per row, not the bare glyph alone.</li>
+<li>Focus moves predictably: opening the dialog focuses the search box;
+arrowing into the results list updates the description pane without
+moving focus away from the list.</li>
+<li>Description pane content changes are read-only text, not a live
+region that force-interrupts speech — the screen reader announces it
+because focus follows selection into a context where reading the updated
+field is the user's next natural action, consistent with how
+<code>char_describe.py</code>'s detail pane already behaves.</li>
+<li>No color-only signaling anywhere in the dialog.</li>
+<li>Works identically with mouse, keyboard-only, and touch (long term,
+not a v1 requirement given QUILL's current desktop-only scope).</li>
+</ul>
+<hr />
+<h2 id="19-error-handling-and-edge-cases">19. Error Handling and Edge
+Cases</h2>
+<ul>
+<li>Catalog file missing or fails to parse at startup: the Insert Emoji
+command is disabled with a clear "why unavailable" message (matching the
+existing <code>help.why_unavailable</code> pattern), not a crash.</li>
+<li>Query matches nothing: results list shows an explicit "No matches"
+row rather than going silently empty, so screen-reader users get
+positive confirmation the search ran.</li>
+<li>Pasting a multi-emoji string (e.g., copied sentence containing
+several emoji) into search: match only if the entire query is exactly
+one known sequence; otherwise fall through to ordinary text search,
+which will correctly find nothing and show "No matches."</li>
+</ul>
+<hr />
+<h2 id="20-security-privacy-and-licensing">20. Security, Privacy, and
+Licensing</h2>
+<ul>
+<li>No new runtime network egress; no new entry needed in
+<code>network_egress_audit.py</code> for the shipped feature
+itself.</li>
+<li>Unicode and CLDR data are usable under the Unicode Consortium's data
+license (free use with attribution); <code>gemoji</code> and
+<code>iamcal/emoji-data</code> are MIT-licensed. Add attribution for
+these three sources to wherever QUILL already tracks third-party
+data/license notices.</li>
+<li>LLM-generated description text (Section 11) is original prose
+produced from factual Unicode metadata, not reproduced third-party copy;
+no licensing concern beyond normal review for accuracy.</li>
+<li>No user data leaves the machine as part of this feature; the only
+network calls in the entire feature happen inside the offline generator
+tool, run by maintainers, never by end users.</li>
+</ul>
+<hr />
+<h2 id="21-testing-strategy">21. Testing Strategy</h2>
+<ul>
+<li><code>tests/unit/core/test_emoji_data.py</code>: category listing;
+name search; keyword search; emoticon-alias search; symbol-paste lookup;
+a completeness check that every entry in the committed catalog has a
+non-empty <code>description</code> (this is the regression test that
+enforces FR-5 — it fails the build if a future catalog regeneration
+ships an entry without a description).</li>
+<li><code>tests/unit/ui/test_main_frame_emoji_picker.py</code>: dialog
+opens via <code>_show_modal_dialog</code>; selection updates the
+description pane; Insert writes the expected character and announces it
+— same shape as the existing
+<code>test_main_frame_gh_bridge.py</code>/<code>test_optional_components_dialog.py</code>
+UI tests.</li>
+<li>Update <code>tests/unit/ui/fixtures/dialog_inventory.json</code> and
+<code>main_frame_public_surface.json</code> for the new dialog and
+command.</li>
+<li>Generator tool gets its own smoke test asserting the composed
+modifier/ZWJ descriptions (Section 11.3) are well-formed given a small
+fixture set of base descriptions, without needing to call an LLM in
+CI.</li>
+</ul>
+<hr />
+<h2 id="22-quality-gates-and-acceptance-criteria">22. Quality Gates and
+Acceptance Criteria</h2>
+<ul>
+<li>100% of catalog entries have a non-empty description (automated
+gate, Section 21).</li>
+<li>Alt+Period opens the dialog from the main editing surface with no
+conflicting binding.</li>
+<li>All three search modes (name, emoticon, symbol-paste) return the
+expected top result for a fixed regression list of common queries.</li>
+<li>Dialog passes the existing dialog-inventory and
+modal-button-contract gates like every other QUILL dialog.</li>
+<li>Feature is fully usable with <code>QUILL_SAFE_MODE=1</code> and with
+no network connection.</li>
+</ul>
+<hr />
+<h2 id="23-implementation-plan-proposed-waves">23. Implementation Plan
+(proposed waves)</h2>
+<ol type="1">
+<li><strong>Wave 1 — data pipeline.</strong> Build
+<code>generate_emoji_catalog.py</code> through Sections 11.1 and
+11.3-11.4's templates/structure; produce a catalog with correct
+categories, names, keywords, and emoticon aliases but placeholder
+descriptions, to unblock UI work in parallel.</li>
+<li><strong>Wave 2 — description generation.</strong> Run the
+base-pictograph and flag generation batches (Section 11.2, 11.4),
+review, and replace placeholders with real descriptions across the full
+catalog.</li>
+<li><strong>Wave 3 — core module and UI.</strong>
+<code>emoji_data.py</code>, <code>EmojiPickerDialog</code>,
+command/menu/keymap wiring.</li>
+<li><strong>Wave 4 — tests, dialog inventory, docs.</strong> Full test
+coverage, fixture updates, user guide and changelog entries.</li>
+</ol>
+<hr />
+<h2 id="24-risks-and-mitigations">24. Risks and Mitigations</h2>
+<table>
+<thead>
+<tr>
+<th>Risk</th>
+<th>Mitigation</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>LLM-generated descriptions are inaccurate or inconsistent in
+tone.</td>
+<td>Structured prompting per subgroup (Section 11.2), automated quality
+gate (Section 21), human spot-check sample (Section 11.5); corrections
+are a data fix, not a code change.</td>
+</tr>
+<tr>
+<td>Generation batch (~1,750 entries) has real API cost.</td>
+<td>Scoped explicitly as an implementation-phase decision (Section
+11.2), not something this PRD authorizes by itself.</td>
+</tr>
+<tr>
+<td>Unicode ships a new version with structural changes to category
+names.</td>
+<td>Generator diff review catches this; category names are also
+unit-tested against the fixture catalog.</td>
+</tr>
+<tr>
+<td>ASCII emoticon table (Tier 3) is inherently
+incomplete/subjective.</td>
+<td>Documented as a curated, growable list (Section 9); not claimed as
+authoritative.</td>
+</tr>
+<tr>
+<td>Flag descriptions must be factually correct, not just
+plausible-sounding.</td>
+<td>Dedicated small batch with human cross-check against a reference
+source (Section 11.4), not folded into the bulk base-pictograph
+generation.</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="25-open-questions">25. Open Questions</h2>
+<ul>
+<li>Exact final wording/placement of the Insert menu entry.</li>
+<li>Whether skin-tone/gender variants should appear as separate rows in
+the results list or be collapsed under their base entry with a secondary
+"choose variant" step — affects both UI complexity and how large the
+visible results list gets for common searches like "wave."</li>
+<li>Whether a "Recently Used" pseudo-category is worth adding
+post-v1.</li>
+<li>Whether the flag-description review should also cross-check against
+a second reference source given the accuracy bar for factual flag
+design.</li>
+</ul>
+<hr />
+<h2 id="26-definition-of-done">26. Definition of Done</h2>
+<ul>
+<li>Catalog covers 100% of current-version RGI emoji with correct
+category, name, keywords, emoticon aliases (where applicable), and a
+non-empty, reviewed description — enforced by an automated completeness
+test.</li>
+<li>Insert Emoji dialog ships behind the Insert menu and Alt+Period,
+passes the dialog-inventory and modal-button-contract gates, and works
+fully offline and in Safe Mode.</li>
+<li>User guide, changelog, and third-party data attribution
+updated.</li>
+<li>Generator tool and its data-source pins are documented well enough
+that a future maintainer can regenerate the catalog for a new Unicode
+version without re-deriving this design.</li>
+</ul>
+</body>
+</html>
