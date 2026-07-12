@@ -30,16 +30,15 @@ jobs:
           python -m pip install -e ".[ui,spellcheck,macos,dev,feedback]"
 
       - name: Run test suite (excluding slow tests)
-        # NOTE: --forked (pytest-forked) was tried here and reverted -- it uses
-        # os.fork(), which is fundamentally unsafe once AppKit/Cocoa runtime
-        # state exists in the parent process. Nearly every UI test in this
-        # suite constructs a real wx widget backed by native Cocoa objects, so
-        # forking per test crashed ~364 of them with
-        # "objc[...]: +[NSResponder initialize] may have been in progress in
-        # another thread when fork() was called... Crashing instead" -- a
-        # macOS Objective-C runtime safety check, not a QUILL bug, but it made
-        # the suite far worse, not better. Left as plain pytest until a
-        # spawn-based (not fork-based) isolation mechanism is evaluated.
+        # History: this job segfaulted at 99% on every 0.9.0 Beta 2/Beta 3 run.
+        # Root cause was wx.YieldIfNeeded() in test_voice_browser_dialog.py --
+        # the only CI-reachable native-event-loop pump in the suite; dispatching
+        # a session's worth of stale deferred Cocoa events crashed the process.
+        # Fixed by removing the (unneeded) yields from that test file. Do not
+        # "fix" any recurrence with pytest-forked: os.fork() is unsafe once
+        # Cocoa runtime state exists, and trying it here crashed ~364 UI tests
+        # ("+[NSResponder initialize] may have been in progress in another
+        # thread when fork() was called").
         run: pytest -m "not slow" -q
 
   build:

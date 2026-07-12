@@ -1,5 +1,23 @@
 """Voice Browser dialog: Preview button toggles to Stop while a preview is
-generating/playing (Task 5 of the voice-preview-generation-cue plan)."""
+generating/playing (Task 5 of the voice-preview-generation-cue plan).
+
+IMPORTANT: no ``wx.YieldIfNeeded()`` (or ``wx.Yield``/``SafeYield``) here.
+These tests were the only CI-reachable call sites in the whole suite that
+pumped the native event loop (test_voice_preview_generation.py's are skipped
+in CI for the same class of problem: YieldIfNeeded blocks in a native call on
+the headless Windows runner). On the macOS release runner, that first native
+pump -- arriving at 99% of the suite, after dozens of modules have created
+and destroyed their own wx.App and thousands of native widgets -- dispatched
+stale deferred Cocoa events and segfaulted the whole pytest process
+(reproduced identically on the 0.9.0 Beta 2 and Beta 3 release runs; adding
+MORE yields moved the crash earlier, confirming the pump itself was the
+trigger). None of the yields were needed for correctness anyway: the fake
+``preview_fn`` used below invokes ``on_state_change`` synchronously, so the
+button label is already updated when ``_do_preview()`` returns. If a future
+test here genuinely needs to flush ``wx.CallAfter``, use
+``wx_app.ProcessPendingEvents()`` (wx-level queue only, never the native
+loop) like test_ai_progress_dialog_close.py does.
+"""
 
 from __future__ import annotations
 
@@ -36,8 +54,6 @@ def _make_dialog(frame, *, preview_fn, preview_stop_fn=None):
 
 
 def test_preview_button_toggles_to_stop_while_active(wx_app) -> None:
-    import wx
-
     states: list[str] = []
 
     def fake_preview(engine, voice_id, *, live=False, on_state_change=None):
@@ -49,25 +65,12 @@ def test_preview_button_toggles_to_stop_while_active(wx_app) -> None:
     dlg = _make_dialog(frame, preview_fn=fake_preview)
 
     dlg._do_preview()
-    wx.YieldIfNeeded()
 
     assert dlg._preview_btn.GetLabel() == "&Stop Preview"
-    # A deterministic macOS-only native crash (Segmentation fault, reproduced
-    # identically across three separate CI runs -- 0.9.0 Beta 2 and Beta 3 --
-    # always right at this exact boundary): SetLabel() above queues a native
-    # repaint that wx.Cocoa has not necessarily finished delivering by the
-    # time this function returns. Destroying the frame while that repaint is
-    # still pending tears down the native peer out from under it. One more
-    # yield here drains it before Destroy() runs, matching the wx.Toolbook
-    # null-deref precedent (see test_preferences_hub_wiring.py) of native
-    # widget lifecycle bugs on macOS needing an explicit workaround.
-    wx.YieldIfNeeded()
     frame.Destroy()
 
 
 def test_second_click_while_active_stops_preview_and_reverts_label(wx_app) -> None:
-    import wx
-
     stop_calls: list[str] = []
 
     def fake_preview(engine, voice_id, *, live=False, on_state_change=None):
@@ -81,22 +84,17 @@ def test_second_click_while_active_stops_preview_and_reverts_label(wx_app) -> No
     dlg = _make_dialog(frame, preview_fn=fake_preview, preview_stop_fn=fake_preview_stop)
 
     dlg._do_preview()
-    wx.YieldIfNeeded()
     assert dlg._preview_btn.GetLabel() == "&Stop Preview"
 
     # Second click while active: stops the preview instead of starting another.
     dlg._do_preview()
-    wx.YieldIfNeeded()
 
     assert stop_calls == ["stopped"]
     assert dlg._preview_btn.GetLabel() == "&Preview Selected Voice"
-    wx.YieldIfNeeded()  # drain the label-change repaint before Destroy(); see above
     frame.Destroy()
 
 
 def test_on_state_change_idle_reverts_label(wx_app) -> None:
-    import wx
-
     def fake_preview(engine, voice_id, *, live=False, on_state_change=None):
         if on_state_change is not None:
             on_state_change("playing")
@@ -105,7 +103,6 @@ def test_on_state_change_idle_reverts_label(wx_app) -> None:
     dlg = _make_dialog(frame, preview_fn=fake_preview)
 
     dlg._do_preview()
-    wx.YieldIfNeeded()
     assert dlg._preview_btn.GetLabel() == "&Stop Preview"
 
     # Simulates the error-path fix in MainFrame._preview_voice: a preview that
@@ -113,7 +110,6 @@ def test_on_state_change_idle_reverts_label(wx_app) -> None:
     dlg._on_preview_state("idle")
 
     assert dlg._preview_btn.GetLabel() == "&Preview Selected Voice"
-    wx.YieldIfNeeded()  # drain the label-change repaint before Destroy(); see above
     frame.Destroy()
 
 
@@ -122,7 +118,6 @@ def test_preview_button_stays_enabled_after_selecting_a_not_ready_voice(wx_app) 
     a ready voice, then navigating the list to a not-yet-downloaded voice with
     no bundled sample, must not disable the button out from under a running
     preview -- the user needs Stop reachable no matter what is selected."""
-    import wx
 
     def fake_preview(engine, voice_id, *, live=False, on_state_change=None):
         if on_state_change is not None:
@@ -144,7 +139,6 @@ def test_preview_button_stays_enabled_after_selecting_a_not_ready_voice(wx_app) 
 
     dlg._voice_lb.SetSelection(0)
     dlg._do_preview()
-    wx.YieldIfNeeded()
     assert dlg._preview_btn.GetLabel() == "&Stop Preview"
     assert dlg._preview_btn.IsEnabled()
 
@@ -157,8 +151,6 @@ def test_preview_button_stays_enabled_after_selecting_a_not_ready_voice(wx_app) 
 
     # And clicking it still works to stop the preview from the not-ready row.
     dlg._do_preview()
-    wx.YieldIfNeeded()
     assert stop_calls == ["stopped"]
     assert dlg._preview_btn.GetLabel() == "&Preview Selected Voice"
-    wx.YieldIfNeeded()  # drain the label-change repaint before Destroy(); see above
     frame.Destroy()
