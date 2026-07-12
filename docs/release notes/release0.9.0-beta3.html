@@ -620,6 +620,19 @@ startup, and again after any enable, disable, install, remove, or reload
 in the Quillins Manager. The <strong>Date and Time</strong> submenu
 opens correctly now, and so does every other menu location a Quillin
 contributes to.</p>
+<h3
+id="manage-versions-no-longer-renders-as-a-silent-unexplained-blank-list">Manage
+Versions no longer renders as a silent, unexplained blank list</h3>
+<p>While tracking down the Date and Time submenu fix above, we found a
+related rough edge already noted in planning as “Snapshots vs Versions”:
+<strong>File &gt; Notebook &gt; Manage Versions</strong> on a notebook
+that had never had a Version saved showed a genuinely empty list — no
+placeholder, no explanation. Tabbing into it told you nothing about
+whether the feature was working.</p>
+<p>The list now shows <strong>“(No versions saved yet)”</strong> and
+disables Rename and Delete until there is something to act on, matching
+the “(No open documents in workspace)” pattern QUILL already uses in the
+Snapshots menu.</p>
 <hr />
 <h2 id="github-grows-from-a-viewer-into-a-workspace">GitHub Grows from a
 Viewer into a Workspace</h2>
