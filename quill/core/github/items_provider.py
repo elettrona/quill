@@ -295,6 +295,13 @@ class GitHubItemsProvider:
         """True when the session carries a token (batch actions require one)."""
         return bool(self._token)
 
+    @property
+    def token(self) -> str | None:
+        """The token this session was constructed with, for callers that need
+        to spin up a sibling provider (e.g. GitHubRepoAdminProvider for a
+        branch-delete action reached from the items viewer)."""
+        return self._token
+
     def _repo(self, full_name: str) -> Any:
         gh = _get_gh_module()
         try:
@@ -710,8 +717,11 @@ class GitHubItemsProvider:
     def fetch_issue_comments(self, full_name: str, number: int) -> list[dict[str, str]]:
         """Return the comment thread on an issue/PR as plain dicts.
 
-        Each dict has ``author``, ``created_at``, and ``body``. Used by the
-        details pane; the list view only carries the comment count.
+        Each dict has ``id``, ``author``, ``created_at``, and ``body``. Used
+        by the details pane; the list view only carries the comment count.
+        ``id`` is the comment's numeric GitHub id (as a string), needed by
+        :meth:`edit_comment` and :meth:`delete_comment` to address a specific
+        comment in the thread.
         """
         repo = self._repo(full_name)
         try:
@@ -722,11 +732,145 @@ class GitHubItemsProvider:
         out: list[dict[str, str]] = []
         for comment in comments:
             out.append({
+                "id": _safe_str(getattr(comment, "id", "")),
                 "author": _login_of(getattr(comment, "user", None)),
                 "created_at": _iso(getattr(comment, "created_at", None)),
                 "body": _safe_str(getattr(comment, "body", "")),
             })
         return out
+
+    # ------------------------------------------------------------------
+    # Creating issues, pull requests, and comments — and merging/re-running
+
+    def create_issue(
+        self,
+        full_name: str,
+        title: str,
+        body: str = "",
+    ) -> GitHubItem:
+        """File a new issue. Requires an authenticated session."""
+        self._require_write_access("create an issue")
+        repo = self._repo(full_name)
+        try:
+            row = repo.create_issue(title=title, body=body)
+        except Exception as exc:  # noqa: BLE001
+            raise GitHubItemsError(f"Could not create issue: {exc}") from exc
+        return self._map_issue(row, is_pr=False)
+
+    def create_pull_request(
+        self,
+        full_name: str,
+        title: str,
+        body: str,
+        head: str,
+        base: str,
+    ) -> GitHubItem:
+        """Open a new pull request from *head* into *base*."""
+        self._require_write_access("open a pull request")
+        repo = self._repo(full_name)
+        try:
+            row = repo.create_pull(title=title, body=body, head=head, base=base)
+        except Exception as exc:  # noqa: BLE001
+            raise GitHubItemsError(f"Could not open pull request: {exc}") from exc
+        return self._map_issue(row, is_pr=True)
+
+    def merge_pull_request(
+        self,
+        full_name: str,
+        number: int,
+        *,
+        merge_method: str = "squash",
+        commit_title: str = "",
+        commit_message: str = "",
+    ) -> str:
+        """Merge pull request *number*. Returns the merge commit SHA.
+
+        Raises :class:`GitHubItemsError` if the PR is not mergeable (merge
+        conflicts, failing required checks, or already merged/closed) —
+        GitHub reports this as the merge call itself failing rather than as
+        a distinct pre-check, so this call surfaces whatever reason GitHub
+        gives verbatim.
+        """
+        if merge_method not in ("merge", "squash", "rebase"):
+            raise GitHubItemsError(f"Unknown merge method {merge_method!r}.")
+        self._require_write_access("merge a pull request")
+        repo = self._repo(full_name)
+        try:
+            pull = repo.get_pull(number)
+            result = pull.merge(
+                merge_method=merge_method,
+                commit_title=commit_title or None,
+                commit_message=commit_message or None,
+            )
+        except Exception as exc:  # noqa: BLE001
+            raise GitHubItemsError(f"Could not merge #{number}: {exc}") from exc
+        if not getattr(result, "merged", False):
+            raise GitHubItemsError(
+                f"GitHub declined to merge #{number}: "
+                f"{_safe_str(getattr(result, 'message', 'not mergeable'))}"
+            )
+        return _safe_str(getattr(result, "sha", ""))
+
+    def rerun_workflow_run(self, full_name: str, run_id: int) -> None:
+        """Re-run a completed (or failed) GitHub Actions workflow run."""
+        self._require_write_access("re-run a workflow")
+        repo = self._repo(full_name)
+        try:
+            run = repo.get_workflow_run(run_id)
+            run.rerun()
+        except Exception as exc:  # noqa: BLE001
+            raise GitHubItemsError(f"Could not re-run workflow run {run_id}: {exc}") from exc
+
+    def create_comment(self, full_name: str, number: int, body: str) -> dict[str, str]:
+        """Post a comment on issue/PR *number* (also used to reply — GitHub's
+        comment thread is flat, so a reply is simply another comment)."""
+        self._require_write_access("post a comment")
+        repo = self._repo(full_name)
+        try:
+            issue = repo.get_issue(number=number)
+            comment = issue.create_comment(body)
+        except Exception as exc:  # noqa: BLE001
+            raise GitHubItemsError(f"Could not post comment: {exc}") from exc
+        return {
+            "id": _safe_str(getattr(comment, "id", "")),
+            "author": _login_of(getattr(comment, "user", None)),
+            "created_at": _iso(getattr(comment, "created_at", None)),
+            "body": _safe_str(getattr(comment, "body", "")),
+        }
+
+    def edit_comment(self, full_name: str, comment_id: int, body: str) -> dict[str, str]:
+        """Edit an existing comment. GitHub allows this only for its author."""
+        self._require_write_access("edit a comment")
+        repo = self._repo(full_name)
+        try:
+            comment = repo.get_issue_comment(comment_id)
+            comment.edit(body)
+        except Exception as exc:  # noqa: BLE001
+            raise GitHubItemsError(f"Could not edit comment: {exc}") from exc
+        return {
+            "id": _safe_str(getattr(comment, "id", "")),
+            "author": _login_of(getattr(comment, "user", None)),
+            "created_at": _iso(getattr(comment, "created_at", None)),
+            "body": _safe_str(getattr(comment, "body", "")),
+        }
+
+    def delete_comment(self, full_name: str, comment_id: int) -> None:
+        """Delete a comment. GitHub allows this only for its author (or an
+        admin); a non-owner's attempt surfaces GitHub's 403 verbatim."""
+        self._require_write_access("delete a comment")
+        repo = self._repo(full_name)
+        try:
+            comment = repo.get_issue_comment(comment_id)
+            comment.delete()
+        except Exception as exc:  # noqa: BLE001
+            raise GitHubItemsError(f"Could not delete comment: {exc}") from exc
+
+    def _require_write_access(self, action: str) -> None:
+        if not self._token:
+            raise GitHubItemsError(
+                f"To {action} you need a signed-in GitHub account; "
+                "the anonymous viewer is read-only."
+            )
 
     def close(self) -> None:
         """Release the underlying GitHub session."""

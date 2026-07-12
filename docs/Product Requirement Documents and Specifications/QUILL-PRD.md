@@ -6888,6 +6888,8 @@ File > Open from Remote
 ```
 
 All five GitHub commands are also available through the Command Palette.
+(Repository lifecycle commands — create, fork, rename, and more — live in a
+separate **Tools > GitHub** submenu; see §25.13.)
 
 ### §25.3 Feature Flag
 
@@ -6986,6 +6988,9 @@ The tab's `source_label` is set to `GitHub: owner/repo (branch)` and shown in th
 | `quill/ui/main_frame_github_items.py` | `GitHubItemsMixin` — Safe Mode + consent + token gate (#924) |
 | `quill/core/github/saved_items.py` | Pinned repositories + favorited items store (Unified GitHub Management) |
 | `quill/core/github/local_repo.py` | Local git sync: `owner/repo` from the document's own checkout |
+| `quill/core/github/repo_admin.py` | `GitHubRepoAdminProvider` — repository lifecycle actions (§25.13, Beta 3) |
+| `quill/ui/github_repo_admin_dialogs.py` | Typed-confirm, create-repository, branch-protection wizard dialogs (§25.13) |
+| `quill/ui/main_frame_github_admin.py` | `GitHubAdminMixin` — Tools > GitHub command handlers (§25.13) |
 
 ### §25.11 Implementation Status
 
@@ -7001,13 +7006,16 @@ The tab's `source_label` is set to `GitHub: owner/repo (branch)` and shown in th
 
 ### §25.12 GitHub Items Viewer (read-only repository browser, #924)
 
-**File > Open from Remote > GitHub Items...** opens a read-only, screen-reader-first
+**File > Open from Remote > GitHub Items...** opens a screen-reader-first
 browser for a repository's issues, pull requests, branches, commits, tags,
 releases, and workflow runs. It is modeled on the [GHManage](https://github.com/kellylford/GHManage)
 reference viewer (the same field set, list modes, and per-comment navigation),
-adapted to QUILL's PyGithub transport and dialog conventions. **Read-only
-against GitHub**; mutating actions (close / reopen / comment) are out of scope,
-and the only writes are the local pins/favorites store below.
+adapted to QUILL's PyGithub transport and dialog conventions. The anonymous
+(tokenless) session is fully read-only; a signed-in session additionally has
+the **Batch...** menu (below) and the **Actions...** menu (0.9.0 Beta 3,
+§25.12a) for new issues/PRs, merging, branch deletion, workflow re-runs, and
+comment reply/edit/delete — every write is named explicitly in its own
+confirmation before it runs.
 
 **Unified GitHub Management additions (0.9.0 Beta 3, merged from the
 GHManage + fastgh review):**
@@ -7125,6 +7133,133 @@ absent.
 `GitHubItemsError(CodedError)` with the `QUILL-GITHUB-ITEMS-ERROR` code so they
 are greppable and never crash the dialog.
 
+### §25.12a Items Viewer Write Actions (0.9.0 Beta 3)
+
+The **Actions...** button opens a menu whose contents depend on the current
+view and selection — new issue/PR and comment reply/edit/delete in Issues &
+PRs, delete branch in Branches, re-run workflow in Workflow Runs — the same
+shape as the pre-existing **Batch...** menu, and gated the same way: requires
+`GitHubItemsProvider.is_authenticated` (a signed-in token), refuses with a
+clear announcement otherwise.
+
+- **New Issue... / New Pull Request...** — prompts for title (and, for a PR,
+  head/base branches) and an optional body, then `create_issue` /
+  `create_pull_request`. The new item's number is announced and the list
+  reloads to show it.
+- **Merge Pull Request #N...** — only offered when a single, unmerged PR row
+  is selected. Confirmed through `TypedConfirmDialog` (retype the PR number,
+  not a plain Yes/No — one of the four highest-consequence actions across the
+  whole GitHub integration). `merge_pull_request` defaults to squash merge;
+  GitHub's own refusal reason (conflicts, failing required checks) surfaces
+  verbatim if the merge can't complete.
+- **Delete Branch 'name'...** — only offered on a single selected branch row.
+  Also `TypedConfirmDialog`-gated (retype the branch name). Spins up a
+  `GitHubRepoAdminProvider` (§25.13) using the items provider's own token
+  (`GitHubItemsProvider.token`) rather than asking the user to sign in again.
+- **Re-run Workflow** — only offered on a single selected run row; a plain
+  Yes/No confirm, then `rerun_workflow_run`.
+- **Reply to Thread...** — posts another comment on the loaded issue/PR
+  (GitHub's comment API is flat, so a "reply" is simply a new comment on the
+  same thread); available whenever a thread is loaded, independent of the
+  Alt+N/Alt+P cursor position.
+- **Edit This Comment... / Delete This Comment...** — operate on whichever
+  comment Alt+N/Alt+P last navigated to (`self._current_comment`). Edit
+  pre-fills the existing body; Delete is `TypedConfirmDialog`-gated (type
+  "delete"). Both call through to GitHub's own comment API, which enforces
+  author-only edit/delete server-side — a non-owned comment's edit/delete
+  attempt surfaces GitHub's 403 rather than QUILL pre-checking ownership.
+
+All of the above run on a daemon thread with the same `wx.CallAfter` pattern
+as every other fetch in this dialog, and reload the list on success so the
+new/changed item is visible immediately.
+
+### §25.13 Repository Administration (0.9.0 Beta 3)
+
+**Tools > GitHub** is a new submenu (alongside **Tools > Sync Folder with
+GitHub...**) with eight commands covering the repository lifecycle actions
+GitHub's REST API supports but neither the single-file browser (§25.1-§25.11)
+nor the items viewer (§25.12) ever touched: creating and forking repositories,
+renaming, changing visibility and default branch, branch protection, deleting
+a branch, and committing several files in one atomic commit. See
+`docs/planning/github.md` (retired once this section shipped) for the full
+design rationale — extending the existing PyGithub provider rather than
+shelling out to the `gh` CLI, and why repository create/fork/rename never
+existed before this release (the provider was deliberately built narrow, not
+blocked by any scope or API limitation).
+
+Every command in this submenu:
+
+1. Refuses outright in Safe Mode (`QUILL_SAFE_MODE=1`).
+2. Gates on the shared `_ensure_github_ready` consent + PyGithub-installed
+   check (identical to every other GitHub entry point).
+3. Requires a signed-in token — there is no anonymous path for any of these
+   eight commands. A missing token offers to sign in on the spot
+   (`_gh_admin_ready`) rather than just refusing, so starting from Tools >
+   GitHub with no prior GitHub setup still works in one continuous flow.
+4. Prefills the repository field from the current document's GitHub origin or
+   local git checkout, same as the items viewer.
+5. Runs the actual GitHub API call on a background thread via
+   `_run_background_task`; the UI thread is never blocked on the network.
+
+**Commands:**
+
+| Command | What it does | Confirmation |
+|---|---|---|
+| Create Repository... | `GitHubRepoAdminProvider.create_repository` — name, description, private/public, optional org | Dialog fields only |
+| Fork Repository... | `fork_repository`, optional target org | Plain prompt for the org; no separate confirm |
+| Rename Repository... | `rename_repository`; GitHub redirects the old URL automatically | `TypedConfirmDialog` (retype `owner/repo`) |
+| Change Repository Visibility... | Fetches current visibility, then `set_visibility` to the opposite | `TypedConfirmDialog`, with an extra warning line when flipping private -> public |
+| Change Default Branch... | Fetches the branch list, `wx.SingleChoiceDialog`, then `set_default_branch` | Choice dialog only |
+| Configure Branch Protection... | `BranchProtectionDialog` wizard (branch choice, required approving reviews, required status checks, enforce-admins, or a "remove all protection instead" toggle), then `set_branch_protection` / `remove_branch_protection` | Plain Yes/No naming the exact rule change |
+| Delete Branch... | Fetches branches **excluding the repository's default branch** (never offered as a delete target), `wx.SingleChoiceDialog`, then `delete_branch` | `TypedConfirmDialog` (retype the branch name) |
+| Commit Multiple Files... | `wx.FileDialog` (multi-select) reads local files as UTF-8 text, prompts for branch + commit message, then `GitHubRepoAdminProvider.commit_files` builds one atomic git tree/commit and fast-forwards the branch | Plain Yes/No listing the file names |
+
+**Create-repository and fork both end by offering QUILL Sync.** On success,
+a Yes/No asks "Set up a local folder to sync with it now?" — accepting reuses
+the existing folder picker and `init_repo_with_remote` from
+`quill.core.git_sync` (§5.59b) to clone the fresh repository (or fork) into a
+local folder and run the first sync, all in one continuous flow. This is the
+"create a project without leaving QUILL" path described in
+`docs/planning/github.md` section 4: previously, starting a new GitHub-backed
+project meant leaving QUILL, creating the repo in a browser, then coming back
+to set up local sync as two disconnected steps.
+
+**Multi-file commits vs. Save to GitHub (§25.7).** Save to GitHub commits
+exactly one already-open document to its own tracked origin. Commit Multiple
+Files is a separate, standalone command: it reads arbitrary local files (not
+necessarily open in QUILL) chosen via a file picker and commits all of them
+to a chosen repository/branch in a single atomic git commit
+(`create_git_tree` + `create_git_commit` + a fast-forward-only ref update —
+refused, not force-pushed, if the branch has moved since it was read). Binary
+files are rejected with a clear error; this call is UTF-8 text only.
+
+**Command palette + hotkeys.** All eight commands are registered via
+`commands.try_register` (so they appear in the Command Palette) and ship
+default `Ctrl+Shift+` + backtick, second-key` chords (the QUILL Key leader):
+Create = Shift+K, Fork = Shift+F, Rename = Shift+E, Change Visibility =
+Shift+V, Change Default Branch = Shift+B, Configure Branch Protection =
+Shift+L, Delete Branch = Shift+X, Commit Multiple Files = Shift+U. The five
+pre-existing read-only GitHub commands (§25.2), previously unbound, also
+gained default chords in the same release: GitHub Repository = Shift+Y,
+GitHub File URL = Shift+W, Save to GitHub = Shift+Q, Manage GitHub Accounts =
+Shift+Z, GitHub Items = Shift+I. All are freely reassignable in Preferences >
+Keyboard Shortcuts, like every other QUILL command.
+
+**Implementation files:**
+
+| File | Purpose |
+|------|---------|
+| `quill/core/github/repo_admin.py` | `GitHubRepoAdminProvider` — create/fork/rename/visibility/default-branch/protection/delete-branch/commit-files, PyGithub-backed |
+| `quill/ui/github_repo_admin_dialogs.py` | `TypedConfirmDialog`, `CreateRepositoryDialog`, `BranchProtectionDialog` |
+| `quill/ui/main_frame_github_admin.py` | `GitHubAdminMixin` — the eight command handlers, gating, and command-palette registration |
+
+**Feature flag.** All eight commands map to `core.github_remote` (the same
+flag as every other GitHub command) in `feature_command_map.py`; when the
+flag is off, none of them are reachable.
+
+**Network egress.** Every PyGithub call this section makes is documented in
+`quill/tools/network_egress_audit.py`'s PyGithub section (not AST-scannable,
+so it is maintained by hand alongside every other GitHub entry point).
 
 ---
 

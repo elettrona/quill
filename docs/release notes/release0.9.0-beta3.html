@@ -551,10 +551,68 @@ and the apparent next step — read into the details pane and announced.
 It uses the same AI connection and consent gates as every other QUILL AI
 feature, and nothing runs until you press the button.</li>
 </ul>
-<p>The viewer otherwise stays read-only against GitHub, behind the same
+<p>The viewer, and the rest of GitHub in QUILL, stays behind the same
 consent, token, and Safe Mode gates as every other GitHub feature. The
 rest of the unification review — branch comparison, notifications, a
 wiki browser, and more — is on the roadmap.</p>
+<h2 id="github-stops-being-a-one-way-window">GitHub stops being a
+one-way window</h2>
+<p>Up to this release, QUILL's GitHub integration could show you almost
+anything and change almost nothing: browse a repo, open a file, save
+exactly that one file back, list issues and PRs, close/reopen/label them
+in a batch. Creating a repo, opening a pull request, merging one,
+deleting a stale branch — all of that still meant leaving QUILL for a
+browser. We wrote up exactly how far we could take this without adding a
+<code>gh</code>-CLI dependency (<code>docs/planning/github.md</code>,
+retired now that it's shipped), and this release ships the confident
+half of that plan.</p>
+<p><strong>Tools &gt; GitHub</strong> is a new submenu with eight
+commands:</p>
+<ul>
+<li><strong>Create Repository...</strong> — name, description, public or
+private, an optional organization. The moment it's created, QUILL asks
+if you'd like a local folder synced to it right now — say yes, and
+you've gone from "no repo" to "a local folder pushing to GitHub" without
+ever opening a browser.</li>
+<li><strong>Fork Repository...</strong> — same local-sync offer
+afterward.</li>
+<li><strong>Rename Repository...</strong>, <strong>Change Repository
+Visibility...</strong>, <strong>Change Default Branch...</strong>,
+<strong>Delete Branch...</strong> — the everyday repository admin you'd
+otherwise reach for github.com to do.</li>
+<li><strong>Configure Branch Protection...</strong> — a small wizard:
+pick a branch, set required approving reviews and required status checks
+(or check a box to clear existing protection instead).</li>
+<li><strong>Commit Multiple Files...</strong> — pick several local files
+with a file browser and commit all of them to a repository in one atomic
+commit. Different from the existing <strong>Save to GitHub</strong>,
+which only ever handles the one document you have open.</li>
+</ul>
+<p>And the Items viewer (the issues/PRs/branches/commits browser from
+Beta 2 and earlier this beta) gained an <strong>Actions...</strong> menu
+alongside the existing <strong>Batch...</strong> menu: <strong>New
+Issue...</strong>, <strong>New Pull Request...</strong>, <strong>Merge
+Pull Request...</strong> (on a selected PR), <strong>Delete
+Branch...</strong> (on a selected branch), <strong>Re-run
+Workflow</strong> (on a selected run), and — building on the Alt+N/Alt+P
+comment navigation you already know — <strong>Reply to
+Thread...</strong>, <strong>Edit This Comment...</strong>, and
+<strong>Delete This Comment...</strong> on whichever comment you've
+navigated to.</p>
+<p>None of this works anonymously — every command needs a signed-in
+account, and if you're not signed in yet, QUILL offers to sign you in
+right there instead of just refusing. Four actions across the whole
+integration — renaming a repository, changing its visibility, deleting a
+branch, and merging a pull request — ask you to retype the exact name or
+number rather than a plain Yes/No, since those are the ones where an
+accidental Enter press is genuinely hard to undo. Every other write gets
+a plain, specific confirmation naming exactly what's about to
+happen.</p>
+<p>All thirteen GitHub commands (the eight new ones, plus the five
+browsing commands that have been in QUILL since 0.5.0 but never had a
+keyboard shortcut until now) are in the Command Palette and ship default
+QUILL Key chords — reassign any of them in Preferences if you'd rather
+use something else.</p>
 <h2
 id="headers-and-footers-now-live-inside-your-word-and-rtf-files">Headers
 and footers now live inside your Word and RTF files</h2>

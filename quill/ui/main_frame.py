@@ -433,6 +433,7 @@ from quill.ui.main_frame_docconvert import DocConvertMixin
 from quill.ui.main_frame_format_codes import FormatCodesMixin
 from quill.ui.main_frame_git_sync import GitSyncMixin
 from quill.ui.main_frame_github import GitHubRemoteMixin
+from quill.ui.main_frame_github_admin import GitHubAdminMixin
 from quill.ui.main_frame_github_items import GitHubItemsMixin
 from quill.ui.main_frame_glow import GlowFileMixin
 from quill.ui.main_frame_hygiene import HygieneMixin
@@ -860,6 +861,7 @@ class MainFrame(
     SshEditingMixin,
     GitHubRemoteMixin,
     GitHubItemsMixin,
+    GitHubAdminMixin,
     DevToolsMixin,
     PowerToolsActionsMixin,
     ClassicEditorMixin,
@@ -3821,6 +3823,7 @@ class MainFrame(
         self._register_story_studio_commands()
         self._register_vault_commands()
         self._register_git_sync_commands()
+        self._register_github_admin_commands()
         self._register_dictation_hotkey_commands()
 
     def _apply_accelerators(self) -> None:

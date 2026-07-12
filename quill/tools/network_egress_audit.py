@@ -387,17 +387,54 @@ _REVIEWED_EGRESS: dict[str, str] = {
 # urllib/socket/requests calls, so the AST scanner cannot find them.
 # The integration surface is documented here for auditability.
 #
-# Entry points (all in quill/core/github/github_provider.py):
+# Entry points in quill/core/github/github_provider.py (single-file browse/write):
 #   get_identity()    - GitHub API: GET /user
 #   get_repository()  - GitHub API: GET /repos/{owner}/{repo}
 #   list_refs()       - GitHub API: GET branches + tags for a repo
 #   get_file()        - GitHub API: GET /repos/{owner}/{repo}/contents/{path}
 #   save_file()       - GitHub API: PUT /repos/{owner}/{repo}/contents/{path}
 #
+# Entry points in quill/core/github/items_provider.py (issues/PRs/branches/
+# commits/tags/releases/workflow runs viewer, plus its write actions):
+#   fetch_issues/fetch_pulls/fetch_branches/fetch_commits/fetch_tags/
+#   fetch_releases/fetch_workflow_runs/fetch_pull_diff/fetch_file_text/
+#   fetch_issue_comments/search_items - GitHub API: GET (read-only)
+#   update_items()          - GitHub API: PATCH issue state, POST labels
+#   create_issue()          - GitHub API: POST /repos/{owner}/{repo}/issues
+#   create_pull_request()   - GitHub API: POST /repos/{owner}/{repo}/pulls
+#   merge_pull_request()    - GitHub API: PUT .../pulls/{n}/merge
+#   rerun_workflow_run()    - GitHub API: POST .../actions/runs/{id}/rerun
+#   create_comment()        - GitHub API: POST .../issues/{n}/comments
+#   edit_comment()          - GitHub API: PATCH .../issues/comments/{id}
+#   delete_comment()        - GitHub API: DELETE .../issues/comments/{id}
+#
+# Entry points in quill/core/github/repo_admin.py (repository lifecycle;
+# every method requires an authenticated token -- no anonymous path):
+#   create_repository()        - GitHub API: POST /user/repos or /orgs/{org}/repos
+#   fork_repository()          - GitHub API: POST .../forks
+#   rename_repository()        - GitHub API: PATCH /repos/{owner}/{repo} (name)
+#   set_visibility()           - GitHub API: PATCH /repos/{owner}/{repo} (private)
+#   set_default_branch()       - GitHub API: PATCH /repos/{owner}/{repo} (default_branch)
+#   set_branch_protection()    - GitHub API: PUT .../branches/{branch}/protection
+#   remove_branch_protection() - GitHub API: DELETE .../branches/{branch}/protection
+#   delete_branch()            - GitHub API: DELETE .../git/refs/heads/{branch}
+#   commit_files()             - GitHub API: POST .../git/trees, .../git/commits,
+#                                 then PATCH .../git/refs/heads/{branch} (fast-forward
+#                                 only -- refused, not force-pushed, if the branch
+#                                 has moved since it was read)
+#
 # Gating: all calls are triggered by explicit user actions in the GitHub
-# dialogs (File > Open from Remote > GitHub).  A one-time consent dialog fires
-# before any network call on first use.  Tokens are stored in Windows Credential
-# Manager only, never logged.  All PyGithub calls are HTTPS.
+# dialogs (File > Open from Remote > GitHub, the GitHub Items viewer's
+# Batch.../Actions... menus, and Tools > GitHub). A one-time consent dialog
+# fires before any network call on first use. Every write in items_provider.py
+# and every method in repo_admin.py additionally requires a signed-in token --
+# the anonymous/read-only session is refused outright -- and every write is
+# named explicitly in its own confirmation dialog before it runs; the four
+# highest-consequence repo_admin.py actions (rename, delete a branch, and
+# anything else routed through TypedConfirmDialog) require retyping the exact
+# name/number rather than a plain Yes/No. Tokens are stored in the OS secure
+# credential store only (Windows Credential Manager / macOS Keychain), never
+# logged. All PyGithub calls are HTTPS.
 
 # ---------------------------------------------------------------------------
 # pip subprocess egress (on-demand engine installs) — manually documented

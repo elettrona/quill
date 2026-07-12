@@ -70,6 +70,15 @@ DEFAULT_KEYMAP: dict[str, str] = {
     "file.open_from_remote": "Ctrl+Shift+Grave, Shift+O",  # QUILL-key chord (R taken by read-aloud)
     "file.save_to_remote": "Ctrl+Shift+Grave, W",  # QUILL-key chord
     "file.manage_remote_sites": "Ctrl+Shift+Grave, Shift+M",  # QUILL-key chord
+    # GitHub remote (File > Open from Remote submenu). The single-letter
+    # chord space is nearly full (every unshifted A-Z is taken; see the
+    # github.* block below), so these five take the last free Shift+
+    # letters — I for Items is the one strong mnemonic left.
+    "file.open_github_repository": "Ctrl+Shift+Grave, Shift+Y",  # QUILL-key chord
+    "file.open_github_file_url": "Ctrl+Shift+Grave, Shift+W",  # QUILL-key chord
+    "file.github_save_back": "Ctrl+Shift+Grave, Shift+Q",  # QUILL-key chord
+    "file.github_manage_accounts": "Ctrl+Shift+Grave, Shift+Z",  # QUILL-key chord
+    "file.open_github_items": "Ctrl+Shift+Grave, Shift+I",  # QUILL-key chord (I = Items)
     "file.close_document": "Ctrl+W",
     "file.print": "Ctrl+P",
     # Restore points: no default key (assignable); the File menu item is the
@@ -354,6 +363,18 @@ DEFAULT_KEYMAP: dict[str, str] = {
     "vault.sync": "",
     "vault.settings": "",
     "sync.sync_folder": "",
+    # GitHub repository admin (Tools > GitHub). Mnemonic where the alphabet
+    # allows it (F=Fork, V=Visibility, B=Branch default, L=Lock/protect,
+    # X=delete/remove, U=mUltiple); the rest take whatever Shift+ letter was
+    # still free once the read-only GitHub commands above claimed theirs.
+    "github.create_repository": "Ctrl+Shift+Grave, Shift+K",  # QUILL-key chord
+    "github.fork_repository": "Ctrl+Shift+Grave, Shift+F",  # QUILL-key chord (F = Fork)
+    "github.rename_repository": "Ctrl+Shift+Grave, Shift+E",  # QUILL-key chord
+    "github.change_repository_visibility": "Ctrl+Shift+Grave, Shift+V",  # V = Visibility
+    "github.change_default_branch": "Ctrl+Shift+Grave, Shift+B",  # B = Branch
+    "github.configure_branch_protection": "Ctrl+Shift+Grave, Shift+L",  # L = Lock/protect
+    "github.delete_branch": "Ctrl+Shift+Grave, Shift+X",  # QUILL-key chord (X = remove)
+    "github.commit_multiple_files": "Ctrl+Shift+Grave, Shift+U",  # U = mUltiple files
     "vault.publish_note": "",
     "power.insert_special_character": "Shift+F2",  # §4.22 parity; F2 -> List Studio
     "power.number_lines": "Alt+Shift+N",  # §4.22 Number Items parity

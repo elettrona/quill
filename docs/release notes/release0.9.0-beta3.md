@@ -138,7 +138,25 @@ And the second tranche landed in this same release:
 - **Batch operations, behind real consent.** Select several rows (the list is multi-select now), press **Batch...**, and close, reopen, or add a label to all of them at once. This is the one deliberate exception to the viewer's read-only rule, and it is fenced accordingly: it only works signed in — the anonymous viewer stays fully read-only — and a confirmation names the exact action and the exact item numbers before anything changes on GitHub. If some items fail, you hear which ones and why; the rest still go through.
 - **AI thread summaries.** A hundred-comment issue at 11 pm is nobody's friend. Press **Summarize** on any issue or PR and QUILL's AI condenses the whole discussion into a short, plain-prose TL;DR — what it's about, where it stands, what's still open, and the apparent next step — read into the details pane and announced. It uses the same AI connection and consent gates as every other QUILL AI feature, and nothing runs until you press the button.
 
-The viewer otherwise stays read-only against GitHub, behind the same consent, token, and Safe Mode gates as every other GitHub feature. The rest of the unification review — branch comparison, notifications, a wiki browser, and more — is on the roadmap.
+The viewer, and the rest of GitHub in QUILL, stays behind the same consent, token, and Safe Mode gates as every other GitHub feature. The rest of the unification review — branch comparison, notifications, a wiki browser, and more — is on the roadmap.
+
+## GitHub stops being a one-way window
+
+Up to this release, QUILL's GitHub integration could show you almost anything and change almost nothing: browse a repo, open a file, save exactly that one file back, list issues and PRs, close/reopen/label them in a batch. Creating a repo, opening a pull request, merging one, deleting a stale branch — all of that still meant leaving QUILL for a browser. We wrote up exactly how far we could take this without adding a `gh`-CLI dependency (`docs/planning/github.md`, retired now that it's shipped), and this release ships the confident half of that plan.
+
+**Tools > GitHub** is a new submenu with eight commands:
+
+- **Create Repository...** — name, description, public or private, an optional organization. The moment it's created, QUILL asks if you'd like a local folder synced to it right now — say yes, and you've gone from "no repo" to "a local folder pushing to GitHub" without ever opening a browser.
+- **Fork Repository...** — same local-sync offer afterward.
+- **Rename Repository...**, **Change Repository Visibility...**, **Change Default Branch...**, **Delete Branch...** — the everyday repository admin you'd otherwise reach for github.com to do.
+- **Configure Branch Protection...** — a small wizard: pick a branch, set required approving reviews and required status checks (or check a box to clear existing protection instead).
+- **Commit Multiple Files...** — pick several local files with a file browser and commit all of them to a repository in one atomic commit. Different from the existing **Save to GitHub**, which only ever handles the one document you have open.
+
+And the Items viewer (the issues/PRs/branches/commits browser from Beta 2 and earlier this beta) gained an **Actions...** menu alongside the existing **Batch...** menu: **New Issue...**, **New Pull Request...**, **Merge Pull Request...** (on a selected PR), **Delete Branch...** (on a selected branch), **Re-run Workflow** (on a selected run), and — building on the Alt+N/Alt+P comment navigation you already know — **Reply to Thread...**, **Edit This Comment...**, and **Delete This Comment...** on whichever comment you've navigated to.
+
+None of this works anonymously — every command needs a signed-in account, and if you're not signed in yet, QUILL offers to sign you in right there instead of just refusing. Four actions across the whole integration — renaming a repository, changing its visibility, deleting a branch, and merging a pull request — ask you to retype the exact name or number rather than a plain Yes/No, since those are the ones where an accidental Enter press is genuinely hard to undo. Every other write gets a plain, specific confirmation naming exactly what's about to happen.
+
+All thirteen GitHub commands (the eight new ones, plus the five browsing commands that have been in QUILL since 0.5.0 but never had a keyboard shortcut until now) are in the Command Palette and ship default QUILL Key chords — reassign any of them in Preferences if you'd rather use something else.
 
 ## Headers and footers now live inside your Word and RTF files
 

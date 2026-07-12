@@ -1667,6 +1667,14 @@ class MenuBuilderMixin:
         self._id_vault_sync = wx.NewIdRef()
         self._id_vault_settings = wx.NewIdRef()
         self._id_git_sync_folder = wx.NewIdRef()
+        self._id_github_create_repo = wx.NewIdRef()
+        self._id_github_fork_repo = wx.NewIdRef()
+        self._id_github_rename_repo = wx.NewIdRef()
+        self._id_github_change_visibility = wx.NewIdRef()
+        self._id_github_change_default_branch = wx.NewIdRef()
+        self._id_github_branch_protection = wx.NewIdRef()
+        self._id_github_delete_branch = wx.NewIdRef()
+        self._id_github_commit_multiple = wx.NewIdRef()
         tools_menu = wx.Menu()
         tools_menu.Append(
             self._id_palette,
@@ -1755,6 +1763,42 @@ class MenuBuilderMixin:
             self._id_git_sync_folder,
             self._menu_label(_("S&ync Folder with GitHub..."), "sync.sync_folder"),
         )
+        github_admin_menu = wx.Menu()
+        github_admin_menu.Append(
+            self._id_github_create_repo,
+            self._menu_label(_("&Create Repository..."), "github.create_repository"),
+        )
+        github_admin_menu.Append(
+            self._id_github_fork_repo,
+            self._menu_label(_("&Fork Repository..."), "github.fork_repository"),
+        )
+        github_admin_menu.Append(
+            self._id_github_rename_repo,
+            self._menu_label(_("&Rename Repository..."), "github.rename_repository"),
+        )
+        github_admin_menu.Append(
+            self._id_github_change_visibility,
+            self._menu_label(_("Change &Visibility..."), "github.change_repository_visibility"),
+        )
+        github_admin_menu.Append(
+            self._id_github_change_default_branch,
+            self._menu_label(_("Change &Default Branch..."), "github.change_default_branch"),
+        )
+        github_admin_menu.Append(
+            self._id_github_branch_protection,
+            self._menu_label(
+                _("Configure Branch &Protection..."), "github.configure_branch_protection"
+            ),
+        )
+        github_admin_menu.Append(
+            self._id_github_delete_branch,
+            self._menu_label(_("&Delete Branch..."), "github.delete_branch"),
+        )
+        github_admin_menu.Append(
+            self._id_github_commit_multiple,
+            self._menu_label(_("Commit &Multiple Files..."), "github.commit_multiple_files"),
+        )
+        tools_menu.AppendSubMenu(github_admin_menu, _("&GitHub"))
         tools_menu.AppendSeparator()
 
         # Writing & Language -----------------------------------------------
@@ -3015,6 +3059,46 @@ class MenuBuilderMixin:
             wx.EVT_MENU,
             lambda _e: self.sync_folder_with_github(),
             id=self._id_git_sync_folder,
+        )
+        self.frame.Bind(
+            wx.EVT_MENU,
+            lambda _e: self.github_create_repository(),
+            id=self._id_github_create_repo,
+        )
+        self.frame.Bind(
+            wx.EVT_MENU,
+            lambda _e: self.github_fork_repository(),
+            id=self._id_github_fork_repo,
+        )
+        self.frame.Bind(
+            wx.EVT_MENU,
+            lambda _e: self.github_rename_repository(),
+            id=self._id_github_rename_repo,
+        )
+        self.frame.Bind(
+            wx.EVT_MENU,
+            lambda _e: self.github_change_repository_visibility(),
+            id=self._id_github_change_visibility,
+        )
+        self.frame.Bind(
+            wx.EVT_MENU,
+            lambda _e: self.github_change_default_branch(),
+            id=self._id_github_change_default_branch,
+        )
+        self.frame.Bind(
+            wx.EVT_MENU,
+            lambda _e: self.github_configure_branch_protection(),
+            id=self._id_github_branch_protection,
+        )
+        self.frame.Bind(
+            wx.EVT_MENU,
+            lambda _e: self.github_delete_branch(),
+            id=self._id_github_delete_branch,
+        )
+        self.frame.Bind(
+            wx.EVT_MENU,
+            lambda _e: self.github_commit_multiple_files(),
+            id=self._id_github_commit_multiple,
         )
         self.frame.Bind(
             wx.EVT_MENU, lambda _e: self.open_story_studio(), id=self._id_open_story_studio

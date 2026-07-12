@@ -53,6 +53,7 @@ class _FakeRepo:
         self._releases: list[Any] = []
         self._runs: list[Any] = []
         self._issue_comments: dict[int, list[Any]] = {}
+        self._reruns: list[int] = []
 
     def get_issues(self, state: str = "open") -> list[Any]:
         self.calls.append(("get_issues", {"state": state}))
@@ -86,7 +87,101 @@ class _FakeRepo:
         self.calls.append(("get_issue", {"number": number}))
         return SimpleNamespace(
             get_comments=lambda: self._issue_comments.get(number, []),
+            create_comment=lambda body: self._make_comment(number, body),
         )
+
+    def _make_comment(self, number: int, body: str) -> Any:
+        comment = SimpleNamespace(
+            id=len(self._issue_comments.get(number, [])) + 1,
+            user=SimpleNamespace(login="me"),
+            created_at=datetime(2026, 1, 6, tzinfo=UTC),
+            body=body,
+        )
+        self._issue_comments.setdefault(number, []).append(comment)
+        return comment
+
+    def create_issue(self, *, title: str, body: str = "") -> Any:
+        self.calls.append(("create_issue", {"title": title, "body": body}))
+        return SimpleNamespace(
+            number=1,
+            title=title,
+            body=body,
+            state="open",
+            html_url="https://github.com/owner/repo/issues/1",
+            user=SimpleNamespace(login="me"),
+            created_at=datetime(2026, 1, 6, tzinfo=UTC),
+            updated_at=datetime(2026, 1, 6, tzinfo=UTC),
+            labels=[],
+            assignees=[],
+            comments=0,
+            draft=False,
+        )
+
+    def create_pull(self, *, title: str, body: str, head: str, base: str) -> Any:
+        self.calls.append((
+            "create_pull",
+            {"title": title, "body": body, "head": head, "base": base},
+        ))
+        return SimpleNamespace(
+            number=2,
+            title=title,
+            body=body,
+            state="open",
+            html_url="https://github.com/owner/repo/pull/2",
+            user=SimpleNamespace(login="me"),
+            created_at=datetime(2026, 1, 6, tzinfo=UTC),
+            updated_at=datetime(2026, 1, 6, tzinfo=UTC),
+            labels=[],
+            assignees=[],
+            comments=0,
+            draft=False,
+            pull_request=SimpleNamespace(url="pr-url"),
+            merged=False,
+            additions=0,
+            deletions=0,
+            changed_files=0,
+            base=SimpleNamespace(ref=base),
+            head=SimpleNamespace(ref=head),
+        )
+
+    def get_pull(self, number: int) -> Any:
+        self.calls.append(("get_pull", {"number": number}))
+        return SimpleNamespace(
+            merge=lambda **kwargs: SimpleNamespace(merged=True, sha="merged-sha", message="")
+        )
+
+    def get_workflow_run(self, run_id: int) -> Any:
+        self.calls.append(("get_workflow_run", {"run_id": run_id}))
+        reruns: list[int] = self._reruns
+        return SimpleNamespace(rerun=lambda: reruns.append(run_id))
+
+    def get_issue_comment(self, comment_id: int) -> Any:
+        self.calls.append(("get_issue_comment", {"comment_id": comment_id}))
+        store = self._issue_comments
+        found: Any = None
+        for comments in store.values():
+            for comment in comments:
+                if comment.id == comment_id:
+                    found = comment
+                    break
+        if found is None:
+            found = SimpleNamespace(
+                id=comment_id,
+                user=SimpleNamespace(login="me"),
+                created_at=datetime(2026, 1, 6, tzinfo=UTC),
+                body="",
+            )
+
+        def edit(body: str) -> None:
+            found.body = body
+
+        def delete() -> None:
+            for comments in store.values():
+                comments[:] = [c for c in comments if c.id != comment_id]
+
+        found.edit = edit
+        found.delete = delete
+        return found
 
 
 class _FakeGithubClient:
@@ -591,3 +686,111 @@ def test_update_items_applies_state_and_labels_collecting_errors(
 def test_update_items_rejects_unknown_state(provider: GitHubItemsProvider) -> None:
     with pytest.raises(GitHubItemsError, match="Unknown state"):
         provider.update_items("owner/repo", [1], state="merged")
+
+
+# ---------------------------------------------------------------------------
+# Creating issues, pull requests, comments; merging; re-running workflows
+# ---------------------------------------------------------------------------
+
+
+def test_create_issue(provider: GitHubItemsProvider, repo: _FakeRepo) -> None:
+    item = provider.create_issue("owner/repo", "Bug found", "steps to repro")
+    assert item.title == "Bug found"
+    assert item.body == "steps to repro"
+    assert item.is_pr is False
+    assert repo.calls[0] == ("create_issue", {"title": "Bug found", "body": "steps to repro"})
+
+
+def test_create_issue_requires_a_token() -> None:
+    anon_repo = _FakeRepo()
+    fake_module = SimpleNamespace(
+        Github=lambda auth=None: _FakeGithubClient(anon_repo),
+        Auth=SimpleNamespace(Token=lambda token: ("token", token)),
+        GithubException=_FakeGithubException,
+    )
+    import sys as _sys
+
+    _sys.modules["github"] = fake_module
+    try:
+        import quill.core.github.items_provider as ip
+
+        original = ip._get_gh_module
+        ip._get_gh_module = lambda: fake_module
+        try:
+            anonymous = GitHubItemsProvider(token=None)
+            with pytest.raises(GitHubItemsError, match="signed-in"):
+                anonymous.create_issue("owner/repo", "T")
+        finally:
+            ip._get_gh_module = original
+    finally:
+        _sys.modules.pop("github", None)
+
+
+def test_create_pull_request(provider: GitHubItemsProvider, repo: _FakeRepo) -> None:
+    item = provider.create_pull_request("owner/repo", "Fix it", "body", "feature", "main")
+    assert item.is_pr is True
+    assert item.base_branch == "main"
+    assert item.head_branch == "feature"
+    assert repo.calls[0] == (
+        "create_pull",
+        {"title": "Fix it", "body": "body", "head": "feature", "base": "main"},
+    )
+
+
+def test_merge_pull_request_returns_sha(provider: GitHubItemsProvider, repo: _FakeRepo) -> None:
+    sha = provider.merge_pull_request("owner/repo", 42, merge_method="squash")
+    assert sha == "merged-sha"
+    assert repo.calls[0] == ("get_pull", {"number": 42})
+
+
+def test_merge_pull_request_rejects_unknown_method(provider: GitHubItemsProvider) -> None:
+    with pytest.raises(GitHubItemsError, match="Unknown merge method"):
+        provider.merge_pull_request("owner/repo", 42, merge_method="octopus")
+
+
+def test_merge_pull_request_surfaces_github_refusal(
+    provider: GitHubItemsProvider, repo: _FakeRepo
+) -> None:
+    repo.get_pull = lambda number: SimpleNamespace(  # type: ignore[attr-defined]
+        merge=lambda **kwargs: SimpleNamespace(merged=False, sha="", message="not mergeable")
+    )
+    with pytest.raises(GitHubItemsError, match="not mergeable"):
+        provider.merge_pull_request("owner/repo", 42)
+
+
+def test_rerun_workflow_run(provider: GitHubItemsProvider, repo: _FakeRepo) -> None:
+    provider.rerun_workflow_run("owner/repo", 999)
+    assert repo._reruns == [999]
+
+
+def test_create_comment_posts_to_the_thread(provider: GitHubItemsProvider, repo: _FakeRepo) -> None:
+    result = provider.create_comment("owner/repo", 208, "thanks, LGTM")
+    assert result["body"] == "thanks, LGTM"
+    assert result["author"] == "me"
+    assert result["id"]
+    assert len(repo._issue_comments[208]) == 1
+
+
+def test_edit_comment_updates_body(provider: GitHubItemsProvider, repo: _FakeRepo) -> None:
+    posted = provider.create_comment("owner/repo", 208, "typo hree")
+    result = provider.edit_comment("owner/repo", int(posted["id"]), "typo here")
+    assert result["body"] == "typo here"
+
+
+def test_delete_comment_removes_it(provider: GitHubItemsProvider, repo: _FakeRepo) -> None:
+    posted = provider.create_comment("owner/repo", 208, "oops, wrong thread")
+    provider.delete_comment("owner/repo", int(posted["id"]))
+    assert repo._issue_comments[208] == []
+
+
+def test_fetch_issue_comments_includes_id(provider: GitHubItemsProvider, repo: _FakeRepo) -> None:
+    repo._issue_comments[208] = [
+        SimpleNamespace(
+            id=555,
+            user=SimpleNamespace(login="reviewer"),
+            created_at=datetime(2026, 1, 5, tzinfo=UTC),
+            body="looks good",
+        ),
+    ]
+    comments = provider.fetch_issue_comments("owner/repo", 208)
+    assert comments[0]["id"] == "555"

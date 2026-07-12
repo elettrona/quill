@@ -3646,7 +3646,7 @@ Use **File > Open from Remote > Manage GitHub Accounts...** to:
 
 **Browsing a repository's issues, PRs, and history (#924)**
 
-**File > Open from Remote > GitHub Items...** opens a read-only viewer for a repository's issues, pull requests, branches, commits, tags, releases, and workflow runs — the same kind of overview the GitHub website gives you, but keyboard- and screen-reader-first. It is modeled on the open-source [GHManage](https://github.com/kellylford/GHManage) viewer. It stays read-only against GitHub: you can browse and open items in your browser, but you cannot close, reopen, or comment from inside QUILL. (Pins and favorites, below, are saved locally on your machine only.)
+**File > Open from Remote > GitHub Items...** opens a viewer for a repository's issues, pull requests, branches, commits, tags, releases, and workflow runs — the same kind of overview the GitHub website gives you, but keyboard- and screen-reader-first. It is modeled on the open-source [GHManage](https://github.com/kellylford/GHManage) viewer. Browsing works anonymously; signing in additionally unlocks the **Batch...** menu and, as of 0.9.0 Beta 3, the **Actions...** menu covering new issues/PRs, merging, branch deletion, workflow re-runs, and comment reply/edit/delete (see "Doing more from the Items viewer" below). (Pins and favorites, below, are saved locally on your machine only.)
 
 Type a repository in `owner/repo` form and press **Load**. If the document you are editing was itself opened from GitHub — or simply lives inside a git clone whose `origin` remote points at GitHub — the repository is already filled in, so you can review that repo in one step.
 
@@ -3676,6 +3676,30 @@ Pick a **View** — Issues & PRs (the combined inbox), Branches, Commits, Tags, 
 - **View More** loads the next page of results.
 
 The same gates apply as the other GitHub commands: it is disabled in Safe Mode, asks for first-run consent, and works anonymously for public repositories (with a lower rate limit) or with your stored token for private ones.
+
+**Doing more from the Items viewer (0.9.0 Beta 3).** Once you're signed in, the **Actions...** button opens a menu that changes based on what you're looking at:
+
+- In **Issues & PRs**: **New Issue...** and **New Pull Request...** prompt for a title (and, for a PR, the head and base branches) plus an optional body. If exactly one unmerged pull request is selected, **Merge Pull Request #N...** also appears — this is one of the handful of actions QUILL asks you to confirm by retyping the PR number rather than just pressing Yes, since merging changes the target branch for everyone.
+- With a comment thread loaded: **Reply to Thread...** posts a new comment (GitHub's comments aren't threaded, so a "reply" is just another comment in the same conversation). Once you've used **Alt+N**/**Alt+P** to land on a specific comment, **Edit This Comment...** and **Delete This Comment...** also appear — GitHub only allows editing or deleting your own comments, so trying this on someone else's comment comes back with GitHub's own permission error rather than QUILL guessing in advance. Delete asks you to type "delete" to confirm.
+- In **Branches**: select a single branch row and **Delete Branch 'name'...** appears — retype the branch name to confirm. This is permanent from QUILL's side.
+- In **Workflow Runs**: select a single run and **Re-run Workflow** appears, with a plain confirmation.
+
+Every one of these needs a signed-in account (the same as Batch operations); the anonymous, tokenless session stays fully read-only.
+
+**Repository administration (0.9.0 Beta 3).** Beyond browsing and the Items viewer, **Tools > GitHub** has eight commands for the repository itself — the things you'd otherwise have to open a browser for:
+
+- **Create Repository...** — name, description, private or public, and an optional organization. Right after creating it, QUILL offers to set up a local folder synced to the new repository in one step, using the same folder-sync engine as **Sync Folder with GitHub** (see "QUILL Sync" above) — so starting a brand-new project never means leaving QUILL.
+- **Fork Repository...** — forks into your account or an organization you choose, with the same offer to sync it locally afterward.
+- **Rename Repository...** — GitHub automatically redirects the old address, but anything that hardcodes the old name elsewhere will need updating. Confirmed by retyping the repository's current `owner/repo` name.
+- **Change Repository Visibility...** — flips a repository between private and public. QUILL shows you which one it currently is before asking; making something public gets an extra warning line, since that exposes its full history. Confirmed by retyping the repository name.
+- **Change Default Branch...** — loads the branch list and lets you pick the new default from a simple list.
+- **Configure Branch Protection...** — a small wizard: pick a branch, then either set required approving reviews, required status checks, and whether the rules apply to administrators too, or check "Remove all protection from this branch instead" to clear existing rules.
+- **Delete Branch...** — lists branches (the repository's default branch is never offered, so you can't accidentally delete the one everything else depends on), then asks you to retype the branch name to confirm. This can't be undone from inside QUILL.
+- **Commit Multiple Files...** — pick one or more local files with a file browser, choose the branch and write a commit message, and QUILL commits all of them to GitHub in a single atomic commit — different from **Save to GitHub** (above), which only ever commits the one document you currently have open. Only plain text (UTF-8) files are supported.
+
+Every one of these needs a signed-in account; if you're not signed in yet, QUILL offers to sign you in right there instead of just refusing. The four riskiest actions here — renaming, changing visibility, deleting a branch, and (in the Items viewer) merging a pull request — all ask you to retype the exact name or number rather than a simple Yes/No, since a mistaken Enter press on one of these is harder to walk back than most QUILL actions.
+
+All eight commands are in the Command Palette too, and all have default keyboard shortcuts through the QUILL Key (press your QUILL Key, then the second key): Create Repository is Shift+K, Fork is Shift+F, Rename is Shift+E, Change Visibility is Shift+V, Change Default Branch is Shift+B, Configure Branch Protection is Shift+L, Delete Branch is Shift+X, and Commit Multiple Files is Shift+U. Reassign any of them in **Preferences > Keyboard Shortcuts** if you'd rather use something else.
 
 **File size limit**
 

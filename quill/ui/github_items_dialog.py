@@ -15,8 +15,6 @@ A list-over-detail dialog modeled on GHManage (https://github.com/kellylford/GHM
   a screen reader reads a self-describing line; selection announces the row;
   Alt+N/Alt+P jumps between comments in the details box; Enter opens in the
   browser, and on a branch row drills into that branch's commits.
-- Read-only against GitHub itself. Mutating GitHub actions (close/reopen/
-  comment) stay out of scope; the only writes are local bookmarks.
 - Unified GitHub Management additions (merged from the GHManage/fastgh
   review): **Pinned repositories** (the Pinned... menu — pin the loaded repo,
   jump to any pinned one), **Favorites** (Ctrl+D bookmarks the selected row;
@@ -25,6 +23,16 @@ A list-over-detail dialog modeled on GHManage (https://github.com/kellylford/GHM
   full GitHub search syntax — ``label:bug author:x is:pr`` — over Issues &
   PRs), and **local git sync** (the repository field prefills from the
   current document's own git checkout when it has a GitHub origin remote).
+- Batch actions (the Batch... menu: close/reopen/label several checked
+  items at once) and single-item write actions (the Actions... menu: new
+  issue/PR, merge a PR, delete a branch, re-run a workflow run, and reply
+  to/edit/delete a comment on top of the Alt+N/Alt+P navigation) are the
+  only writes this dialog makes against GitHub, and every one requires an
+  authenticated session -- the anonymous viewer stays fully read-only. Each
+  write is named explicitly in its own confirmation before it runs; the
+  four highest-consequence ones (merge, delete a branch, and anything else
+  that goes through :class:`~quill.ui.github_repo_admin_dialogs.TypedConfirmDialog`)
+  require retyping the exact name/number rather than a plain Yes/No.
 
 The wx-free view-model formatting (cells, details, comment positions) lives in
 :mod:`quill.ui.github_items_view` so it is unit-testable without a display;
@@ -240,6 +248,11 @@ class GitHubItemsDialog:
         self._summarize_btn.SetName("Summarize the selected discussion with AI")
         self._batch_btn = wx.Button(panel, label="&Batch...")
         self._batch_btn.SetName("Batch actions on the checked items: close, reopen, add label")
+        self._actions_btn = wx.Button(panel, label="&Actions...")
+        self._actions_btn.SetName(
+            "Write actions for the current view: new issue or pull request, merge, "
+            "delete branch, re-run workflow, reply to or edit or delete a comment"
+        )
         cancel_btn = wx.Button(panel, wx.ID_CANCEL, "Close")
         cancel_btn.SetName("Close dialog")
         for b in (
@@ -250,6 +263,7 @@ class GitHubItemsDialog:
             self._diff_btn,
             self._summarize_btn,
             self._batch_btn,
+            self._actions_btn,
         ):
             btn_row.Add(b, 0, wx.RIGHT, 6)
         btn_row.AddStretchSpacer()
@@ -257,7 +271,9 @@ class GitHubItemsDialog:
         root.Add(btn_row, 0, wx.EXPAND | wx.ALL, 10)
 
         panel.SetSizer(root)
-        self.dialog.SetSizer(root)
+        outer = wx.BoxSizer(wx.VERTICAL)
+        outer.Add(panel, 1, wx.EXPAND)
+        self.dialog.SetSizer(outer)
 
         # Bindings
         self._load_btn.Bind(wx.EVT_BUTTON, self._on_load)
@@ -281,6 +297,7 @@ class GitHubItemsDialog:
         self._diff_btn.Bind(wx.EVT_BUTTON, lambda _e: self._on_diff())
         self._summarize_btn.Bind(wx.EVT_BUTTON, lambda _e: self._on_summarize())
         self._batch_btn.Bind(wx.EVT_BUTTON, self._on_batch_menu)
+        self._actions_btn.Bind(wx.EVT_BUTTON, self._on_actions_menu)
         self.dialog.Bind(wx.EVT_CHAR_HOOK, self._on_char_hook)
         self._apply_filter_enablement()
         self._rebuild_columns()
@@ -908,6 +925,363 @@ class GitHubItemsDialog:
             message += " Failed: " + "; ".join(errors[:5])
         self._set_status(message)
         self._reload()
+
+    # ------------------------------------------------------------------
+    # Write actions: new issue/PR, merge, delete branch, re-run workflow,
+    # and comment reply/edit/delete on top of the Alt+N/Alt+P navigation
+    # above. One context-sensitive menu (mirrors the Batch... menu's shape)
+    # rather than a wall of mostly-disabled buttons -- what's offered
+    # depends on the current view, the selected row, and whether the cursor
+    # is parked on a specific comment.
+
+    def _on_actions_menu(self, _event: object) -> None:
+        wx = self._wx
+        if not self._repo:
+            self._announce("Load a repository first.")
+            return
+        if not self._provider.is_authenticated:
+            self._announce(
+                "Write actions need a signed-in GitHub account; this session is read-only."
+            )
+            return
+        menu = wx.Menu()
+        entries: list[tuple[object, object]] = []
+
+        def _add(label: str, handler: object) -> None:
+            item_id = wx.NewIdRef()
+            menu.Append(item_id, label)
+            entries.append((item_id, handler))
+
+        if self._view == VIEW_ISSUES:
+            _add("New Issue...", self._new_issue)
+            _add("New Pull Request...", self._new_pull_request)
+            selected = self._selected_indices()
+            if len(selected) == 1:
+                model = self._rows[selected[0]]
+                if isinstance(model, GitHubItem) and model.is_pr and not model.is_merged:
+                    _add(f"Merge Pull Request #{model.number}...", self._merge_selected_pr)
+            if self._current_comment >= 0:
+                _add("Edit This Comment...", self._edit_current_comment)
+                _add("Delete This Comment...", self._delete_current_comment)
+            if self._comment_target is not None:
+                _add("Reply to Thread...", self._reply_to_thread)
+        elif self._view == VIEW_BRANCHES:
+            selected = self._selected_indices()
+            if len(selected) == 1 and isinstance(self._rows[selected[0]], GitHubBranch):
+                branch = self._rows[selected[0]]
+                _add(f"Delete Branch {branch.name!r}...", self._delete_selected_branch)
+        elif self._view == VIEW_RUNS:
+            selected = self._selected_indices()
+            if len(selected) == 1:
+                _add("Re-run Workflow", self._rerun_selected_workflow)
+
+        if not entries:
+            menu.Destroy()
+            self._announce("No write actions available here. Select a row first.")
+            return
+
+        def _on_pick(event: object) -> None:
+            picked = event.GetId()
+            for item_id, handler in entries:
+                if int(picked) == int(item_id):
+                    handler()
+                    return
+
+        menu.Bind(wx.EVT_MENU, _on_pick)
+        try:
+            self._actions_btn.PopupMenu(menu)
+        finally:
+            menu.Destroy()
+
+    def _new_issue(self) -> None:
+        self._prompt_and_create(kind="issue")
+
+    def _new_pull_request(self) -> None:
+        self._prompt_and_create(kind="pr")
+
+    def _prompt_and_create(self, *, kind: str) -> None:
+        wx = self._wx
+        title_prompt = "New Issue" if kind == "issue" else "New Pull Request"
+        with wx.TextEntryDialog(self.dialog, "Title:", title_prompt) as dlg:
+            if self._show_modal(dlg, title_prompt) != wx.ID_OK:
+                return
+            title = dlg.GetValue().strip()
+        if not title:
+            return
+        with wx.TextEntryDialog(
+            self.dialog,
+            "Body (optional):",
+            title_prompt,
+            style=wx.OK | wx.CANCEL | wx.CENTRE | wx.TE_MULTILINE,
+        ) as dlg:
+            self._show_modal(dlg, title_prompt)
+            body = dlg.GetValue().strip()
+        head = ""
+        base = ""
+        if kind == "pr":
+            with wx.TextEntryDialog(
+                self.dialog, "Head branch (your changes):", title_prompt
+            ) as dlg:
+                if self._show_modal(dlg, title_prompt) != wx.ID_OK:
+                    return
+                head = dlg.GetValue().strip()
+            with wx.TextEntryDialog(
+                self.dialog, "Base branch (merge into):", title_prompt, value="main"
+            ) as dlg:
+                if self._show_modal(dlg, title_prompt) != wx.ID_OK:
+                    return
+                base = dlg.GetValue().strip()
+            if not head or not base:
+                self._announce("Head and base branches are required for a pull request.")
+                return
+        self._set_status(f"Creating {'issue' if kind == 'issue' else 'pull request'}...")
+
+        def worker() -> None:
+            try:
+                if kind == "issue":
+                    item = self._provider.create_issue(self._repo, title, body)
+                else:
+                    item = self._provider.create_pull_request(self._repo, title, body, head, base)
+            except GitHubItemsError as exc:
+                wx.CallAfter(self._set_status, f"Error: {exc}")
+                return
+            wx.CallAfter(self._on_item_created, item)
+
+        threading.Thread(target=worker, daemon=True).start()  # GATE-40-OK: consented create.
+
+    def _on_item_created(self, item: GitHubItem) -> None:
+        self._set_status(f"Created {item.kind} #{item.number}: {item.title}")
+        self._reload()
+
+    def _merge_selected_pr(self) -> None:
+        selected = self._selected_indices()
+        if len(selected) != 1:
+            return
+        model = self._rows[selected[0]]
+        if not isinstance(model, GitHubItem):
+            return
+        from quill.ui.github_repo_admin_dialogs import TypedConfirmDialog
+
+        if not TypedConfirmDialog(
+            self.dialog,
+            title="Confirm Merge",
+            message=(
+                f"Merge pull request #{model.number} ({model.title!r}) into "
+                f"{model.base_branch!r} in {self._repo}? This changes the target branch "
+                "for everyone."
+            ),
+            expected=str(model.number),
+        ).show():
+            self._announce("Merge cancelled.")
+            return
+        self._set_status(f"Merging #{model.number}...")
+        number = model.number
+
+        def worker() -> None:
+            wx = self._wx
+            try:
+                sha = self._provider.merge_pull_request(self._repo, number)
+            except GitHubItemsError as exc:
+                wx.CallAfter(self._set_status, f"Error: {exc}")
+                return
+            wx.CallAfter(self._on_merge_done, number, sha)
+
+        threading.Thread(target=worker, daemon=True).start()  # GATE-40-OK: consented merge.
+
+    def _on_merge_done(self, number: int, sha: str) -> None:
+        self._set_status(f"Merged #{number} ({sha[:7]})")
+        self._reload()
+
+    def _delete_selected_branch(self) -> None:
+        selected = self._selected_indices()
+        if len(selected) != 1:
+            return
+        model = self._rows[selected[0]]
+        if not isinstance(model, GitHubBranch):
+            return
+        from quill.ui.github_repo_admin_dialogs import TypedConfirmDialog
+
+        if not TypedConfirmDialog(
+            self.dialog,
+            title="Confirm Branch Deletion",
+            message=(
+                f"Delete branch {model.name!r} from {self._repo}? This cannot be undone from QUILL."
+            ),
+            expected=model.name,
+        ).show():
+            self._announce("Branch deletion cancelled.")
+            return
+        self._set_status(f"Deleting {model.name}...")
+        branch_name = model.name
+
+        def worker() -> None:
+            wx = self._wx
+            from quill.core.github.repo_admin import GitHubRepoAdminError, GitHubRepoAdminProvider
+
+            provider = GitHubRepoAdminProvider(self._provider.token or "")
+            try:
+                provider.delete_branch(self._repo, branch_name)
+            except GitHubRepoAdminError as exc:
+                wx.CallAfter(self._set_status, f"Error: {exc}")
+                return
+            finally:
+                provider.close()
+            wx.CallAfter(self._on_branch_deleted, branch_name)
+
+        threading.Thread(target=worker, daemon=True).start()  # GATE-40-OK: consented delete.
+
+    def _on_branch_deleted(self, branch_name: str) -> None:
+        self._set_status(f"Deleted branch {branch_name}")
+        self._reload()
+
+    def _rerun_selected_workflow(self) -> None:
+        selected = self._selected_indices()
+        if len(selected) != 1:
+            return
+        model = self._rows[selected[0]]
+        run_number = getattr(model, "run_number", 0)
+        if not run_number:
+            self._announce("Select a workflow run first.")
+            return
+        if not self._confirm_action(
+            f"Re-run workflow run #{run_number} in {self._repo}?", "Confirm Re-run"
+        ):
+            self._announce("Re-run cancelled.")
+            return
+        self._set_status(f"Re-running #{run_number}...")
+
+        def worker() -> None:
+            wx = self._wx
+            try:
+                self._provider.rerun_workflow_run(self._repo, run_number)
+            except GitHubItemsError as exc:
+                wx.CallAfter(self._set_status, f"Error: {exc}")
+                return
+            wx.CallAfter(self._set_status, f"Re-run started for #{run_number}")
+
+        threading.Thread(target=worker, daemon=True).start()  # GATE-40-OK: consented re-run.
+
+    def _reply_to_thread(self) -> None:
+        if self._comment_target is None:
+            self._announce("Select an issue or pull request first.")
+            return
+        repo, number = self._comment_target
+        wx = self._wx
+        with wx.TextEntryDialog(
+            self.dialog,
+            "Reply:",
+            "Reply to Thread",
+            style=wx.OK | wx.CANCEL | wx.CENTRE | wx.TE_MULTILINE,
+        ) as dlg:
+            if self._show_modal(dlg, "Reply to Thread") != wx.ID_OK:
+                return
+            body = dlg.GetValue().strip()
+        if not body:
+            return
+        self._set_status("Posting reply...")
+
+        def worker() -> None:
+            try:
+                self._provider.create_comment(repo, number, body)
+            except GitHubItemsError as exc:
+                wx.CallAfter(self._set_status, f"Error: {exc}")
+                return
+            wx.CallAfter(self._on_comment_posted, number)
+
+        threading.Thread(target=worker, daemon=True).start()  # GATE-40-OK: consented reply.
+
+    def _on_comment_posted(self, number: int) -> None:
+        self._set_status("Reply posted")
+        idx = self._list.GetFirstSelected()
+        if 0 <= idx < len(self._rows) and isinstance(self._rows[idx], GitHubItem):
+            if self._rows[idx].number == number:
+                self._fetch_comments(idx, self._rows[idx])
+
+    def _edit_current_comment(self) -> None:
+        if self._current_comment < 0 or self._current_comment >= len(self._comments):
+            self._announce("Navigate to a comment first (Alt+N).")
+            return
+        comment = self._comments[self._current_comment]
+        comment_id = comment.get("id", "")
+        if not comment_id:
+            self._announce("This comment cannot be edited.")
+            return
+        wx = self._wx
+        with wx.TextEntryDialog(
+            self.dialog, "Edit comment:", "Edit Comment", value=comment.get("body", "")
+        ) as dlg:
+            if self._show_modal(dlg, "Edit Comment") != wx.ID_OK:
+                return
+            body = dlg.GetValue().strip()
+        if not body:
+            return
+        repo = self._repo
+        self._set_status("Saving comment...")
+
+        def worker() -> None:
+            try:
+                self._provider.edit_comment(repo, int(comment_id), body)
+            except GitHubItemsError as exc:
+                wx.CallAfter(self._set_status, f"Error: {exc}")
+                return
+            wx.CallAfter(self._on_comment_edited)
+
+        threading.Thread(target=worker, daemon=True).start()  # GATE-40-OK: consented edit.
+
+    def _on_comment_edited(self) -> None:
+        self._set_status("Comment updated")
+        idx = self._list.GetFirstSelected()
+        if 0 <= idx < len(self._rows) and isinstance(self._rows[idx], GitHubItem):
+            self._fetch_comments(idx, self._rows[idx])
+
+    def _delete_current_comment(self) -> None:
+        if self._current_comment < 0 or self._current_comment >= len(self._comments):
+            self._announce("Navigate to a comment first (Alt+N).")
+            return
+        comment = self._comments[self._current_comment]
+        comment_id = comment.get("id", "")
+        if not comment_id:
+            self._announce("This comment cannot be deleted.")
+            return
+        from quill.ui.github_repo_admin_dialogs import TypedConfirmDialog
+
+        if not TypedConfirmDialog(
+            self.dialog,
+            title="Confirm Delete Comment",
+            message="Delete this comment? This cannot be undone.",
+            expected="delete",
+        ).show():
+            self._announce("Delete cancelled.")
+            return
+        repo = self._repo
+        wx = self._wx
+        self._set_status("Deleting comment...")
+
+        def worker() -> None:
+            try:
+                self._provider.delete_comment(repo, int(comment_id))
+            except GitHubItemsError as exc:
+                wx.CallAfter(self._set_status, f"Error: {exc}")
+                return
+            wx.CallAfter(self._on_comment_deleted)
+
+        threading.Thread(target=worker, daemon=True).start()  # GATE-40-OK: consented delete.
+
+    def _on_comment_deleted(self) -> None:
+        self._set_status("Comment deleted")
+        idx = self._list.GetFirstSelected()
+        if 0 <= idx < len(self._rows) and isinstance(self._rows[idx], GitHubItem):
+            self._fetch_comments(idx, self._rows[idx])
+
+    def _confirm_action(self, message: str, title: str) -> bool:
+        wx = self._wx
+        dlg = wx.MessageDialog(
+            self.dialog, message, title, wx.YES_NO | wx.NO_DEFAULT | wx.ICON_WARNING
+        )
+        try:
+            return self._show_modal(dlg, title) == wx.ID_YES
+        finally:
+            dlg.Destroy()
 
     # ------------------------------------------------------------------
     # View switching + filter enablement
