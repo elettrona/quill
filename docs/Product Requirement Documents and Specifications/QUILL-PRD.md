@@ -9781,26 +9781,38 @@ safer path is offered.
 
 ## Part One: Native RTF Editing as an Optional Surface
 
-> **What shipped (0.8.1 Beta 1) — hidden-codes first; rich mode followed in
-> 0.9.0 Beta 3.** The plan of record for this work became **hidden-codes
-> formatting** rather than a WYSIWYG editing surface (the planning docs
-> `rtf.md` and `rich-text-formatting-hidden-codes-design.md` are retired; this
-> appendix and "One Editor, Every Format" above are the canonical record, and
-> the deferred P5 clean-on-disk overlay stays a deliberate backlog item,
-> revisited only on field demand). What is delivered: real document
-> formatting (font family/size, colour, highlight, underline, strikethrough,
-> super/subscript; paragraph alignment, line spacing, indent, named styles, page
-> breaks) applied from the **Format** menu and the accessible **Font…** dialog,
-> stored as *invisible* codes over the clean plain-text buffer, interrogated on
-> demand with **Describe Formatting at Cursor** (and an optional announce-on-move),
-> and **materialised at export** to Word (`.docx`, native writer + Pandoc
-> fallback), RTF, and HTML — with honest-fidelity warnings before any lossy save.
-> The plain-text buffer stays the single editing surface, so undo, search, the
-> outline, metrics, read-aloud, and AI keep working unchanged. The **read-only
-> rich-text lens** below remains an opt-in preview gated behind
-> `core.rich_text_lens` (pending the live JAWS/NVDA/Narrator pass), and the fully
-> **editable WYSIWYG surface** described in this Part is **deferred to a future major release**.
-> The vision narrative is retained below for the record.
+> **What shipped: hidden-codes first (0.8.1 Beta 1), then real editable rich
+> mode (0.9.0 Beta 3) — the WYSIWYG surface this Part called out as deferred
+> has now shipped.** The plan of record for the first phase became
+> **hidden-codes formatting** rather than a WYSIWYG editing surface (the
+> planning docs `rtf.md` and `rich-text-formatting-hidden-codes-design.md`
+> are retired; this appendix and "One Editor, Every Format" above are the
+> canonical record, and the deferred P5 clean-on-disk overlay stays a
+> deliberate backlog item, revisited only on field demand). Hidden-codes
+> delivered real document formatting (font family/size, colour, highlight,
+> underline, strikethrough, super/subscript; paragraph alignment, line
+> spacing, indent, named styles, page breaks) applied from the **Format**
+> menu and the accessible **Font…** dialog, stored as *invisible* codes over
+> the clean plain-text buffer, interrogated on demand with **Describe
+> Formatting at Cursor** (and an optional announce-on-move), and
+> **materialised at export** to Word (`.docx`, native writer + Pandoc
+> fallback), RTF, and HTML — with honest-fidelity warnings before any lossy
+> save. The plain-text buffer stayed the single editing surface, so undo,
+> search, the outline, metrics, read-aloud, and AI kept working unchanged.
+>
+> **0.9.0 Beta 3 retired the read-only rich-text lens entirely** (the
+> `core.rich_text_lens` feature flag, `view.switch_editing_lens`, and
+> `quill/ui/rich_text_surface.py` are all gone from the codebase — closing
+> #893, whose whole premise was making that now-retired lens discoverable)
+> **and replaced it with the real thing**: `quill/ui/main_frame_rich_mode.py`
+> makes QuillRichEdit itself the single, always-present editing surface, with
+> genuine in-place bold/italic/headings/alignment/color, native `.rtf`/`.docx`
+> open-and-save, and the **Document Format switcher** (below) as the
+> discoverable, in-context way to move a document into rich mode — exactly
+> the affordance #893 asked for, just built directly into the one editor
+> instead of as a separate lens to find. See "One Editor, Every Format"
+> above for the complete, current design; the vision narrative below is
+> retained for historical record only.
 
 ### The idea in one sentence
 
