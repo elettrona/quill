@@ -23,6 +23,22 @@ def wx_app():
     app.Destroy()
 
 
+@pytest.fixture(autouse=True)
+def _isolated_data_dir(quill_data_dir):
+    # AISetupWizard.__init__ calls _prime_from_existing_config(), which reads
+    # the real connection settings (and, for cloud providers, the OS credential
+    # store) via load_assistant_connection_settings()/configured_cloud_providers()
+    # unless QUILL_DATA_DIR is isolated. Without this, a machine that has ever
+    # configured a real cloud AI provider skips the Ollama-priming ollama_status()
+    # probe entirely (active_cloud_selection() returns non-empty), while a clean
+    # checkout with no settings file hits it -- passing locally on a dev machine
+    # with real QUILL usage history and failing on a fresh CI runner (or vice
+    # versa). quill_data_dir (tests/conftest.py) gives every test in this file a
+    # clean, empty data directory so wizard construction is deterministic
+    # regardless of the host machine's real QUILL state.
+    return quill_data_dir
+
+
 def _wizard(wx_app):
     frame = wx.Frame(None)
     dlg = AISetupWizard(frame)
@@ -332,8 +348,15 @@ def test_ollama_host_field_enabled_only_for_local_and_is_verified_against(wx_app
 
         # Back to local, type a remote address, and verify -- the network call must
         # receive exactly what was typed, not a silently-ignored localhost default.
+        # seen_hosts is cleared first: switching back to "local" itself is not under
+        # test here (wizard construction/provider-selection may have already probed
+        # the default localhost via _prime_from_existing_config's own priming check,
+        # covered separately by test_reachable_ollama_default_is_primed_as_added /
+        # test_never_configured_default_does_not_hide_ollama) -- only the explicit
+        # verify call's host matters for this assertion.
         dlg._provider_choice.SetSelection(local_idx)
         dlg._on_provider_changed(None)
+        seen_hosts.clear()
         dlg._ollama_host_ctrl.SetValue("http://192.168.1.50:11434")
         dlg._consent_cb.SetValue(True)
         dlg._verify_and_add()
