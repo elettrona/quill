@@ -1675,6 +1675,11 @@ class MenuBuilderMixin:
         self._id_github_branch_protection = wx.NewIdRef()
         self._id_github_delete_branch = wx.NewIdRef()
         self._id_github_commit_multiple = wx.NewIdRef()
+        self._id_github_browse_org = wx.NewIdRef()
+        self._id_github_create_release = wx.NewIdRef()
+        self._id_github_dispatch_workflow = wx.NewIdRef()
+        self._id_github_notifications = wx.NewIdRef()
+        self._id_github_security_alerts = wx.NewIdRef()
         self._id_localgit_uncommitted = wx.NewIdRef()
         self._id_localgit_switch_branch = wx.NewIdRef()
         self._id_localgit_stash_changes = wx.NewIdRef()
@@ -1807,6 +1812,29 @@ class MenuBuilderMixin:
         github_admin_menu.Append(
             self._id_github_commit_multiple,
             self._menu_label(_("Commit &Multiple Files..."), "github.commit_multiple_files"),
+        )
+        github_admin_menu.AppendSeparator()
+        github_admin_menu.Append(
+            self._id_github_browse_org,
+            self._menu_label(
+                _("Browse &Organization Repositories..."), "github.browse_organization"
+            ),
+        )
+        github_admin_menu.Append(
+            self._id_github_create_release,
+            self._menu_label(_("Create &Release..."), "github.create_release"),
+        )
+        github_admin_menu.Append(
+            self._id_github_dispatch_workflow,
+            self._menu_label(_("Dispatch &Workflow..."), "github.dispatch_workflow"),
+        )
+        github_admin_menu.Append(
+            self._id_github_notifications,
+            self._menu_label(_("&Notifications..."), "github.view_notifications"),
+        )
+        github_admin_menu.Append(
+            self._id_github_security_alerts,
+            self._menu_label(_("&Security Alerts..."), "github.view_security_alerts"),
         )
         tools_menu.AppendSubMenu(github_admin_menu, _("&GitHub"))
         local_git_menu = wx.Menu()
@@ -3155,6 +3183,31 @@ class MenuBuilderMixin:
             wx.EVT_MENU,
             lambda _e: self.github_commit_multiple_files(),
             id=self._id_github_commit_multiple,
+        )
+        self.frame.Bind(
+            wx.EVT_MENU,
+            lambda _e: self.github_browse_organization(),
+            id=self._id_github_browse_org,
+        )
+        self.frame.Bind(
+            wx.EVT_MENU,
+            lambda _e: self.github_create_release(),
+            id=self._id_github_create_release,
+        )
+        self.frame.Bind(
+            wx.EVT_MENU,
+            lambda _e: self.github_dispatch_workflow(),
+            id=self._id_github_dispatch_workflow,
+        )
+        self.frame.Bind(
+            wx.EVT_MENU,
+            lambda _e: self.github_view_notifications(),
+            id=self._id_github_notifications,
+        )
+        self.frame.Bind(
+            wx.EVT_MENU,
+            lambda _e: self.github_view_security_alerts(),
+            id=self._id_github_security_alerts,
         )
         self.frame.Bind(
             wx.EVT_MENU,

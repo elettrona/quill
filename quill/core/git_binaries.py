@@ -57,9 +57,7 @@ def validate_executable(path: Path) -> Path:
     subprocess command line, so a corrupted or tampered path can never
     silently become "run whatever this string points at"."""
     if path.name not in _GIT_EXECUTABLE_BASENAMES:
-        raise GitBinaryError(
-            f"Refusing to run {path}: not a recognized git/gh executable name."
-        )
+        raise GitBinaryError(f"Refusing to run {path}: not a recognized git/gh executable name.")
     return path
 
 

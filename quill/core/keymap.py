@@ -375,6 +375,14 @@ DEFAULT_KEYMAP: dict[str, str] = {
     "github.configure_branch_protection": "Ctrl+Shift+Grave, Shift+L",  # L = Lock/protect
     "github.delete_branch": "Ctrl+Shift+Grave, Shift+X",  # QUILL-key chord (X = remove)
     "github.commit_multiple_files": "Ctrl+Shift+Grave, Shift+U",  # U = mUltiple files
+    # GitHub Tier 2 (Organizations/Releases/Actions dispatch/Notifications/
+    # Security alerts). No default chords -- the leader-chord space is fully
+    # claimed; reachable via the menu and the Command Palette.
+    "github.browse_organization": "",
+    "github.create_release": "",
+    "github.dispatch_workflow": "",
+    "github.view_notifications": "",
+    "github.view_security_alerts": "",
     # Local git (Tools > Local Git). No default chords -- the single-letter
     # leader-chord space is fully claimed (see the github.* block above);
     # these are reachable via the menu and the Command Palette, and freely

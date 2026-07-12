@@ -345,6 +345,9 @@ class _FakeChoiceDialog:
     def GetStringSelection(self) -> str:
         return self._choice
 
+    def GetSelection(self) -> int:
+        return 0
+
     def __enter__(self) -> _FakeChoiceDialog:
         return self
 

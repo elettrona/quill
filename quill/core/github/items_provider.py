@@ -202,6 +202,48 @@ class GitHubWorkflowRun:
     run_number: int = 0
 
 
+@dataclass(frozen=True, slots=True)
+class GitHubWorkflowJob:
+    """One job within a workflow run -- the practical "Actions log" surface:
+    per-job status/conclusion instead of raw log text (GitHub's log download
+    is a redirect to a zip archive, out of scope for a first pass; job-level
+    status is the same information a glance at the Actions tab gives)."""
+
+    name: str
+    status: str
+    conclusion: str = ""
+    started_at: str = ""
+    completed_at: str = ""
+    url: str = ""
+
+
+@dataclass(frozen=True, slots=True)
+class GitHubNotification:
+    """One entry in the authenticated account's GitHub notifications inbox."""
+
+    id: str
+    repository: str
+    reason: str
+    subject_title: str
+    subject_type: str
+    unread: bool
+    updated_at: str = ""
+    url: str = ""
+
+
+@dataclass(frozen=True, slots=True)
+class GitHubSecurityAlert:
+    """One Dependabot security alert for a repository."""
+
+    number: int
+    state: str
+    severity: str
+    package: str
+    summary: str
+    html_url: str = ""
+    created_at: str = ""
+
+
 # ---------------------------------------------------------------------------
 # Mapping helpers -- defensive per-item so one bad row never blanks the list.
 # ---------------------------------------------------------------------------
@@ -821,6 +863,110 @@ class GitHubItemsProvider:
         except Exception as exc:  # noqa: BLE001
             raise GitHubItemsError(f"Could not re-run workflow run {run_id}: {exc}") from exc
 
+    def fetch_workflow_jobs(self, full_name: str, run_id: int) -> list[GitHubWorkflowJob]:
+        """Per-job status for a workflow run -- read-only, no token required."""
+        repo = self._repo(full_name)
+        try:
+            run = repo.get_workflow_run(run_id)
+            rows = _take(run.jobs(), DEFAULT_PAGE_LIMIT)
+        except Exception as exc:  # noqa: BLE001
+            raise GitHubItemsError(f"Could not list jobs for run {run_id}: {exc}") from exc
+        return [
+            GitHubWorkflowJob(
+                name=_safe_str(getattr(row, "name", "")),
+                status=_safe_str(getattr(row, "status", "")),
+                conclusion=_safe_str(getattr(row, "conclusion", "")),
+                started_at=_iso(getattr(row, "started_at", None)),
+                completed_at=_iso(getattr(row, "completed_at", None)),
+                url=_safe_str(getattr(row, "html_url", "")),
+            )
+            for row in rows
+        ]
+
+    def dispatch_workflow(
+        self,
+        full_name: str,
+        workflow_id: str,
+        ref: str,
+        *,
+        inputs: dict[str, str] | None = None,
+    ) -> None:
+        """Trigger a ``workflow_dispatch`` run. *workflow_id* is the workflow
+        file name (e.g. ``"ci.yml"``) or its numeric id."""
+        self._require_write_access("dispatch a workflow")
+        repo = self._repo(full_name)
+        try:
+            workflow = repo.get_workflow(workflow_id)
+            ok = workflow.create_dispatch(ref, inputs=inputs or {})
+        except Exception as exc:  # noqa: BLE001
+            raise GitHubItemsError(f"Could not dispatch workflow {workflow_id}: {exc}") from exc
+        if not ok:
+            raise GitHubItemsError(
+                f"GitHub declined to dispatch {workflow_id} on {ref!r} "
+                "(check that the workflow accepts workflow_dispatch)."
+            )
+
+    def fetch_notifications(self, *, limit: int = DEFAULT_PAGE_LIMIT) -> list[GitHubNotification]:
+        """The authenticated account's GitHub notifications inbox, across
+        every repository -- a real inbox, not scoped to one repo."""
+        self._require_write_access("read notifications")
+        try:
+            rows = _take(self._gh.get_user().get_notifications(), limit)
+        except Exception as exc:  # noqa: BLE001
+            raise GitHubItemsError(f"Could not list notifications: {exc}") from exc
+        out: list[GitHubNotification] = []
+        for row in rows:
+            subject = getattr(row, "subject", None)
+            repository = getattr(row, "repository", None)
+            out.append(
+                GitHubNotification(
+                    id=_safe_str(getattr(row, "id", "")),
+                    repository=_safe_str(getattr(repository, "full_name", "")),
+                    reason=_safe_str(getattr(row, "reason", "")),
+                    subject_title=_safe_str(getattr(subject, "title", "")) if subject else "",
+                    subject_type=_safe_str(getattr(subject, "type", "")) if subject else "",
+                    unread=bool(getattr(row, "unread", False)),
+                    updated_at=_iso(getattr(row, "updated_at", None)),
+                    url=_safe_str(getattr(row, "url", "")),
+                )
+            )
+        return out
+
+    def mark_notification_read(self, notification_id: str) -> None:
+        self._require_write_access("mark a notification as read")
+        try:
+            notification = self._gh.get_user().get_notification(notification_id)
+            notification.mark_as_read()
+        except Exception as exc:  # noqa: BLE001
+            raise GitHubItemsError(f"Could not mark notification as read: {exc}") from exc
+
+    def fetch_security_alerts(
+        self, full_name: str, *, limit: int = DEFAULT_PAGE_LIMIT
+    ) -> list[GitHubSecurityAlert]:
+        """Open Dependabot security alerts for a repository."""
+        repo = self._repo(full_name)
+        try:
+            rows = _take(repo.get_dependabot_alerts(state="open"), limit)
+        except Exception as exc:  # noqa: BLE001
+            raise GitHubItemsError(f"Could not list security alerts: {exc}") from exc
+        out: list[GitHubSecurityAlert] = []
+        for row in rows:
+            advisory = getattr(row, "security_advisory", None)
+            dependency = getattr(row, "dependency", None)
+            package = getattr(dependency, "package", None) if dependency else None
+            out.append(
+                GitHubSecurityAlert(
+                    number=int(getattr(row, "number", 0) or 0),
+                    state=_safe_str(getattr(row, "state", "")),
+                    severity=_safe_str(getattr(advisory, "severity", "")) if advisory else "",
+                    package=_safe_str(getattr(package, "name", "")) if package else "",
+                    summary=_safe_str(getattr(advisory, "summary", "")) if advisory else "",
+                    html_url=_safe_str(getattr(row, "html_url", "")),
+                    created_at=_iso(getattr(row, "created_at", None)),
+                )
+            )
+        return out
+
     def create_comment(self, full_name: str, number: int, body: str) -> dict[str, str]:
         """Post a comment on issue/PR *number* (also used to reply — GitHub's
         comment thread is flat, so a reply is simply another comment)."""
@@ -887,8 +1033,11 @@ __all__ = [
     "GitHubItem",
     "GitHubItemsError",
     "GitHubItemsProvider",
+    "GitHubNotification",
     "GitHubRelease",
+    "GitHubSecurityAlert",
     "GitHubTag",
+    "GitHubWorkflowJob",
     "GitHubWorkflowRun",
     "refuse_in_safe_mode",
     "require_pygithub",

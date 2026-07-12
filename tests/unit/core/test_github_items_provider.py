@@ -54,6 +54,10 @@ class _FakeRepo:
         self._runs: list[Any] = []
         self._issue_comments: dict[int, list[Any]] = {}
         self._reruns: list[int] = []
+        self._jobs: list[Any] = []
+        self._dispatches: list[tuple[str, str, dict]] = []
+        self._dispatch_ok = True
+        self._alerts: list[Any] = []
 
     def get_issues(self, state: str = "open") -> list[Any]:
         self.calls.append(("get_issues", {"state": state}))
@@ -153,7 +157,21 @@ class _FakeRepo:
     def get_workflow_run(self, run_id: int) -> Any:
         self.calls.append(("get_workflow_run", {"run_id": run_id}))
         reruns: list[int] = self._reruns
-        return SimpleNamespace(rerun=lambda: reruns.append(run_id))
+        return SimpleNamespace(rerun=lambda: reruns.append(run_id), jobs=lambda: self._jobs)
+
+    def get_workflow(self, workflow_id: str) -> Any:
+        self.calls.append(("get_workflow", {"workflow_id": workflow_id}))
+        dispatches: list[tuple[str, str, dict]] = self._dispatches
+
+        def create_dispatch(ref: str, inputs: dict | None = None) -> bool:
+            dispatches.append((workflow_id, ref, inputs or {}))
+            return self._dispatch_ok
+
+        return SimpleNamespace(create_dispatch=create_dispatch)
+
+    def get_dependabot_alerts(self, state: str = "open") -> list[Any]:
+        self.calls.append(("get_dependabot_alerts", {"state": state}))
+        return self._alerts
 
     def get_issue_comment(self, comment_id: int) -> Any:
         self.calls.append(("get_issue_comment", {"comment_id": comment_id}))
@@ -184,14 +202,35 @@ class _FakeRepo:
         return found
 
 
+class _FakeAuthenticatedUser:
+    def __init__(self) -> None:
+        self.notifications: list[Any] = []
+        self.read_ids: list[str] = []
+
+    def get_notifications(self) -> list[Any]:
+        return self.notifications
+
+    def get_notification(self, notification_id: str) -> Any:
+        read_ids = self.read_ids
+
+        def mark_as_read() -> None:
+            read_ids.append(notification_id)
+
+        return SimpleNamespace(mark_as_read=mark_as_read)
+
+
 class _FakeGithubClient:
     def __init__(self, repo: _FakeRepo) -> None:
         self._repo = repo
         self.searches: list[str] = []
         self.search_results: list[Any] = []
+        self._user = _FakeAuthenticatedUser()
 
     def get_repo(self, full_name: str) -> _FakeRepo:
         return self._repo
+
+    def get_user(self) -> _FakeAuthenticatedUser:
+        return self._user
 
     def search_issues(self, query: str) -> list[Any]:
         self.searches.append(query)
@@ -794,3 +833,105 @@ def test_fetch_issue_comments_includes_id(provider: GitHubItemsProvider, repo: _
     ]
     comments = provider.fetch_issue_comments("owner/repo", 208)
     assert comments[0]["id"] == "555"
+
+
+# ---------------------------------------------------------------------------
+# Workflow jobs, dispatch, notifications, security alerts (Tier 2)
+# ---------------------------------------------------------------------------
+
+
+def test_fetch_workflow_jobs(provider: GitHubItemsProvider, repo: _FakeRepo) -> None:
+    repo._jobs = [
+        SimpleNamespace(
+            name="build",
+            status="completed",
+            conclusion="success",
+            started_at=datetime(2026, 1, 1, tzinfo=UTC),
+            completed_at=datetime(2026, 1, 1, 0, 5, tzinfo=UTC),
+            html_url="https://github.com/owner/repo/actions/runs/1/jobs/1",
+        ),
+    ]
+    jobs = provider.fetch_workflow_jobs("owner/repo", 1)
+    assert len(jobs) == 1
+    assert jobs[0].name == "build"
+    assert jobs[0].conclusion == "success"
+
+
+def test_dispatch_workflow(provider: GitHubItemsProvider, repo: _FakeRepo) -> None:
+    provider.dispatch_workflow("owner/repo", "ci.yml", "main", inputs={"env": "prod"})
+    assert repo._dispatches == [("ci.yml", "main", {"env": "prod"})]
+
+
+def test_dispatch_workflow_requires_a_token() -> None:
+    anonymous_repo = _FakeRepo()
+    fake_module = SimpleNamespace(
+        Github=lambda auth=None: _FakeGithubClient(anonymous_repo),
+        Auth=SimpleNamespace(Token=lambda token: ("token", token)),
+        GithubException=_FakeGithubException,
+    )
+    import sys as _sys
+
+    _sys.modules["github"] = fake_module
+    try:
+        import quill.core.github.items_provider as ip
+
+        original = ip._get_gh_module
+        ip._get_gh_module = lambda: fake_module
+        try:
+            anonymous = GitHubItemsProvider(token=None)
+            with pytest.raises(GitHubItemsError, match="signed-in"):
+                anonymous.dispatch_workflow("owner/repo", "ci.yml", "main")
+        finally:
+            ip._get_gh_module = original
+    finally:
+        _sys.modules.pop("github", None)
+
+
+def test_dispatch_workflow_surfaces_a_declined_dispatch(
+    provider: GitHubItemsProvider, repo: _FakeRepo
+) -> None:
+    repo._dispatch_ok = False
+    with pytest.raises(GitHubItemsError, match="declined to dispatch"):
+        provider.dispatch_workflow("owner/repo", "ci.yml", "main")
+
+
+def test_fetch_notifications(provider: GitHubItemsProvider) -> None:
+    provider._gh._user.notifications = [
+        SimpleNamespace(
+            id="1",
+            repository=SimpleNamespace(full_name="owner/repo"),
+            reason="mention",
+            subject=SimpleNamespace(title="Fix the bug", type="Issue"),
+            unread=True,
+            updated_at=datetime(2026, 1, 1, tzinfo=UTC),
+            url="https://api.github.com/notifications/threads/1",
+        ),
+    ]
+    notifications = provider.fetch_notifications()
+    assert len(notifications) == 1
+    assert notifications[0].repository == "owner/repo"
+    assert notifications[0].subject_title == "Fix the bug"
+    assert notifications[0].unread is True
+
+
+def test_mark_notification_read(provider: GitHubItemsProvider) -> None:
+    provider.mark_notification_read("42")
+    assert provider._gh._user.read_ids == ["42"]
+
+
+def test_fetch_security_alerts(provider: GitHubItemsProvider, repo: _FakeRepo) -> None:
+    repo._alerts = [
+        SimpleNamespace(
+            number=1,
+            state="open",
+            security_advisory=SimpleNamespace(severity="high", summary="Bad dep"),
+            dependency=SimpleNamespace(package=SimpleNamespace(name="left-pad")),
+            html_url="https://github.com/owner/repo/security/dependabot/1",
+            created_at=datetime(2026, 1, 1, tzinfo=UTC),
+        ),
+    ]
+    alerts = provider.fetch_security_alerts("owner/repo")
+    assert len(alerts) == 1
+    assert alerts[0].severity == "high"
+    assert alerts[0].package == "left-pad"
+    assert repo.calls[-1] == ("get_dependabot_alerts", {"state": "open"})

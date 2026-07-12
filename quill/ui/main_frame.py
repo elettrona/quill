@@ -434,6 +434,7 @@ from quill.ui.main_frame_format_codes import FormatCodesMixin
 from quill.ui.main_frame_git_sync import GitSyncMixin
 from quill.ui.main_frame_github import GitHubRemoteMixin
 from quill.ui.main_frame_github_admin import GitHubAdminMixin
+from quill.ui.main_frame_github_extras import GitHubExtrasMixin
 from quill.ui.main_frame_github_items import GitHubItemsMixin
 from quill.ui.main_frame_glow import GlowFileMixin
 from quill.ui.main_frame_hygiene import HygieneMixin
@@ -864,6 +865,7 @@ class MainFrame(
     GitHubRemoteMixin,
     GitHubItemsMixin,
     GitHubAdminMixin,
+    GitHubExtrasMixin,
     DevToolsMixin,
     PowerToolsActionsMixin,
     ClassicEditorMixin,
@@ -3826,6 +3828,7 @@ class MainFrame(
         self._register_vault_commands()
         self._register_git_sync_commands()
         self._register_github_admin_commands()
+        self._register_github_extras_commands()
         self._register_local_git_commands()
         self._register_dictation_hotkey_commands()
 

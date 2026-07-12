@@ -119,11 +119,26 @@ class _FakeRepo:
         self.commit_message = message
         return _FakeGitCommit(sha="new-commit-sha")
 
+    def generate_release_notes(self, tag_name: str, **_kwargs: Any) -> Any:
+        return SimpleNamespace(body=f"Generated notes for {tag_name}")
+
+    def create_git_release(self, tag: str, name: Any, body: Any, **kwargs: Any) -> Any:
+        self.release_calls = getattr(self, "release_calls", [])
+        self.release_calls.append({"tag": tag, "name": name, "body": body, **kwargs})
+        return SimpleNamespace(
+            tag_name=tag,
+            title=name if isinstance(name, str) else "",
+            html_url=f"https://github.com/{self.full_name}/releases/tag/{tag}",
+            draft=kwargs.get("draft", False),
+            prerelease=kwargs.get("prerelease", False),
+        )
+
 
 class _FakeUser:
     def __init__(self, repo: _FakeRepo) -> None:
         self._repo = repo
         self.created: dict[str, Any] | None = None
+        self.orgs: list[Any] = []
 
     def create_repo(self, name: str, **kwargs: Any) -> _FakeRepo:
         self.created = {"name": name, **kwargs}
@@ -132,12 +147,16 @@ class _FakeUser:
         self._repo.description = str(kwargs.get("description", ""))
         return self._repo
 
+    def get_orgs(self) -> list[Any]:
+        return self.orgs
+
 
 class _FakeOrg:
     def __init__(self, login: str, repo: _FakeRepo) -> None:
         self.login = login
         self._repo = repo
         self.created: dict[str, Any] | None = None
+        self.repos: list[_FakeRepo] = []
 
     def create_repo(self, name: str, **kwargs: Any) -> _FakeRepo:
         self.created = {"name": name, **kwargs}
@@ -146,11 +165,15 @@ class _FakeOrg:
         self._repo.description = str(kwargs.get("description", ""))
         return self._repo
 
+    def get_repos(self) -> list[_FakeRepo]:
+        return self.repos or [self._repo]
+
 
 class _FakeGithubClient:
     def __init__(self, repo: _FakeRepo) -> None:
         self._repo = repo
         self.user = _FakeUser(repo)
+        self._orgs: dict[str, _FakeOrg] = {}
 
     def get_repo(self, full_name: str) -> _FakeRepo:
         return self._repo
@@ -159,7 +182,9 @@ class _FakeGithubClient:
         return self.user
 
     def get_organization(self, login: str) -> _FakeOrg:
-        return _FakeOrg(login, self._repo)
+        if login not in self._orgs:
+            self._orgs[login] = _FakeOrg(login, self._repo)
+        return self._orgs[login]
 
     def close(self) -> None:
         pass
@@ -170,6 +195,7 @@ def _install_fake_github(monkeypatch: pytest.MonkeyPatch, repo: _FakeRepo) -> No
         Github=lambda auth=None: _FakeGithubClient(repo),
         Auth=SimpleNamespace(Token=lambda token: ("token", token)),
         GithubException=_FakeGithubException,
+        GithubObject=SimpleNamespace(NotSet=None),
     )
     monkeypatch.setitem(sys.modules, "github", fake_module)
     monkeypatch.setattr(repo_admin, "_get_gh_module", lambda: fake_module)
@@ -318,3 +344,50 @@ def test_translates_422_to_name_taken_hint(
 
 def test_close_is_best_effort(provider: GitHubRepoAdminProvider) -> None:
     provider.close()  # must not raise
+
+
+# ---------------------------------------------------------------------------
+# Organizations
+# ---------------------------------------------------------------------------
+
+
+def test_list_organizations(provider: GitHubRepoAdminProvider) -> None:
+    provider._gh.user.orgs = [SimpleNamespace(login="acme"), SimpleNamespace(login="widgets")]
+    assert provider.list_organizations() == ["acme", "widgets"]
+
+
+def test_list_org_repositories(provider: GitHubRepoAdminProvider, repo: _FakeRepo) -> None:
+    other = _FakeRepo(full_name="acme/other")
+    org = provider._gh.get_organization("acme")
+    org.repos = [repo, other]
+    names = [r.full_name for r in provider.list_org_repositories("acme")]
+    assert names == ["owner/repo", "acme/other"]
+
+
+def test_list_org_repositories_respects_limit(
+    provider: GitHubRepoAdminProvider, repo: _FakeRepo
+) -> None:
+    org = provider._gh.get_organization("acme")
+    org.repos = [repo, _FakeRepo(full_name="acme/b"), _FakeRepo(full_name="acme/c")]
+    names = [r.full_name for r in provider.list_org_repositories("acme", limit=2)]
+    assert len(names) == 2
+
+
+# ---------------------------------------------------------------------------
+# Releases
+# ---------------------------------------------------------------------------
+
+
+def test_generate_release_notes(provider: GitHubRepoAdminProvider) -> None:
+    body = provider.generate_release_notes("owner/repo", "v1.0.0")
+    assert body == "Generated notes for v1.0.0"
+
+
+def test_create_release(provider: GitHubRepoAdminProvider, repo: _FakeRepo) -> None:
+    info = provider.create_release(
+        "owner/repo", "v1.0.0", name="Version 1.0.0", body="notes", draft=True
+    )
+    assert info.tag == "v1.0.0"
+    assert info.name == "Version 1.0.0"
+    assert info.draft is True
+    assert repo.release_calls[0]["tag"] == "v1.0.0"

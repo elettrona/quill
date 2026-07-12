@@ -22,10 +22,22 @@ exact repository/branch/action, exactly like the existing
 from __future__ import annotations
 
 from collections.abc import Sequence
+from dataclasses import dataclass
 from typing import Any
 
 from quill.core.github.github_provider import _get_gh_module, require_pygithub
 from quill.core.github.models import RemoteRepository
+
+
+@dataclass(frozen=True, slots=True)
+class ReleaseInfo:
+    """A created (or draft) GitHub release."""
+
+    tag: str
+    name: str
+    html_url: str
+    draft: bool = False
+    prerelease: bool = False
 
 
 class GitHubRepoAdminError(RuntimeError):
@@ -267,6 +279,87 @@ class GitHubRepoAdminProvider:
             raise _translate(exc, context=f"Could not commit files to {full_name}") from exc
         return str(new_commit.sha)
 
+    # ------------------------------------------------------------------
+    # Organizations (Teams are explicitly out of scope -- see
+    # docs/planning/github.md section 1: "Organizations in, Teams out")
+
+    def list_organizations(self) -> list[str]:
+        """Organization logins the authenticated account belongs to."""
+        try:
+            return [org.login for org in self._gh.get_user().get_orgs()]
+        except Exception as exc:  # noqa: BLE001
+            raise _translate(exc, context="Could not list organizations") from exc
+
+    def list_org_repositories(self, org: str, *, limit: int = 100) -> list[RemoteRepository]:
+        """Repositories visible to the authenticated account within *org*."""
+        try:
+            organization = self._gh.get_organization(org)
+            repos = []
+            for i, repo in enumerate(organization.get_repos()):
+                if i >= limit:
+                    break
+                repos.append(_to_repository(repo))
+            return repos
+        except Exception as exc:  # noqa: BLE001
+            raise _translate(exc, context=f"Could not list repositories for {org}") from exc
+
+    # ------------------------------------------------------------------
+    # Releases, authored
+
+    def generate_release_notes(
+        self, full_name: str, tag_name: str, *, previous_tag_name: str = ""
+    ) -> str:
+        """Draft release notes from merged PRs since *previous_tag_name*
+        (or since the last release, when blank) -- GitHub's own
+        auto-generated notes, the same text the web UI's "Generate release
+        notes" button produces."""
+        repo = self._repo(full_name)
+        try:
+            gh = _get_gh_module()
+            result = repo.generate_release_notes(
+                tag_name,
+                previous_tag_name=previous_tag_name or gh.GithubObject.NotSet,
+            )
+        except Exception as exc:  # noqa: BLE001
+            raise _translate(
+                exc, context=f"Could not generate release notes for {tag_name}"
+            ) from exc
+        return str(getattr(result, "body", "") or "")
+
+    def create_release(
+        self,
+        full_name: str,
+        tag: str,
+        *,
+        name: str = "",
+        body: str = "",
+        draft: bool = False,
+        prerelease: bool = False,
+        generate_notes: bool = False,
+        target_commitish: str = "",
+    ) -> ReleaseInfo:
+        repo = self._repo(full_name)
+        try:
+            gh = _get_gh_module()
+            release = repo.create_git_release(
+                tag,
+                name or gh.GithubObject.NotSet,
+                body or gh.GithubObject.NotSet,
+                draft=draft,
+                prerelease=prerelease,
+                generate_release_notes=generate_notes,
+                target_commitish=target_commitish or gh.GithubObject.NotSet,
+            )
+        except Exception as exc:  # noqa: BLE001
+            raise _translate(exc, context=f"Could not create release {tag}") from exc
+        return ReleaseInfo(
+            tag=str(getattr(release, "tag_name", tag)),
+            name=str(getattr(release, "title", "") or getattr(release, "name", "") or ""),
+            html_url=str(getattr(release, "html_url", "") or ""),
+            draft=bool(getattr(release, "draft", draft)),
+            prerelease=bool(getattr(release, "prerelease", prerelease)),
+        )
+
     def close(self) -> None:
         """Release the underlying GitHub session."""
         try:
@@ -275,4 +368,9 @@ class GitHubRepoAdminProvider:
             pass
 
 
-__all__ = ["GitHubRepoAdminError", "GitHubRepoAdminProvider", "require_pygithub"]
+__all__ = [
+    "GitHubRepoAdminError",
+    "GitHubRepoAdminProvider",
+    "ReleaseInfo",
+    "require_pygithub",
+]
