@@ -144,6 +144,22 @@ The viewer otherwise stays read-only against GitHub, behind the same consent, to
 
 The Header/Footer Builder from Beta 2 wrote headers and footers when *printing*; the files themselves didn't carry them. Now they do: save as **.docx** and your header/footer becomes a real Word header and footer — with a live page-number field Word keeps renumbering as the document changes — and save as **.rtf** writes the equivalent native header/footer groups. Roman numerals, a custom starting page number, and a different first page all carry through. A blank spec changes nothing, and a header can never be the reason a save fails.
 
+## QUILL Sync: carrying your work between devices, without QUILL running a sync service
+
+We looked hard at building QUILL its own sync engine — a QUILL account, QUILL-hosted storage, the works. We're not doing that. A folder your cloud provider already keeps in sync, and git, both already solve syncing well; QUILL just needed to get out of the way and use them. Two small features ship instead of one big one.
+
+### Sync your settings via a folder
+
+This isn't new code — it's a feature QUILL already had (the "Where should QUILL store your data?" option, from an earlier release, originally added so you could keep your data off the system drive) that turns out to already be a sync mechanism in disguise. Point it at a folder OneDrive, Dropbox, Google Drive, or iCloud already mirrors across your devices, and your settings, snippets, dictionaries, and keymap travel with it. QUILL just writes to the folder; your sync client does everything else. We just never said so out loud until now — the wizard page explains it plainly, including the one honest caveat: don't run QUILL from two devices pointed at the same synced folder at the same time, since there's no cross-device conflict resolution for this path.
+
+### Sync a folder with GitHub
+
+**Tools > Sync Folder with GitHub...** is new, and it works on any folder — not just notes, a whole writing project, anything. Point it at a folder: if it's already a git repository with a remote, QUILL commits, pulls, and pushes it, in the background. If it isn't set up yet, QUILL tells you exactly what it's about to do — "this runs 'git init', then adds the remote repository you provide as 'origin'" — and waits for you to say yes before touching anything. Paste in a repository URL, and you're syncing. If a file changed in both places, QUILL lists the conflicts by name and stops — never a silent overwrite.
+
+If this sounds familiar, it should: it's the exact same engine Accessible Vault's **Sync Vault** command already used, generalized to work on any folder instead of just a vault. QUILL relies entirely on your own git installation and its own saved credentials (an SSH key, or whatever your system's git credential manager already remembers) — the same way `git push` from a terminal already works, with nothing new for QUILL to store. Disabled in Safe Mode, like every other network-touching feature.
+
+The full reasoning behind building it this way — including what the bigger, rejected design looked like — is written up in `docs/engineering/sync-engine-history.md` for anyone curious.
+
 ## New: eight small, accessibility-first additions
 
 ### The Clipboard Collector went system-wide

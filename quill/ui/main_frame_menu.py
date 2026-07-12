@@ -1666,6 +1666,7 @@ class MenuBuilderMixin:
         self._id_vault_export_site = wx.NewIdRef()
         self._id_vault_sync = wx.NewIdRef()
         self._id_vault_settings = wx.NewIdRef()
+        self._id_git_sync_folder = wx.NewIdRef()
         tools_menu = wx.Menu()
         tools_menu.Append(
             self._id_palette,
@@ -1750,6 +1751,10 @@ class MenuBuilderMixin:
             self._id_vault_settings, self._menu_label(_("Vault Se&ttings..."), "vault.settings")
         )
         tools_menu.AppendSubMenu(vault_menu, _("&Vault"))
+        tools_menu.Append(
+            self._id_git_sync_folder,
+            self._menu_label(_("S&ync Folder with GitHub..."), "sync.sync_folder"),
+        )
         tools_menu.AppendSeparator()
 
         # Writing & Language -----------------------------------------------
@@ -3005,6 +3010,11 @@ class MenuBuilderMixin:
         self.frame.Bind(wx.EVT_MENU, lambda _e: self.sync_vault(), id=self._id_vault_sync)
         self.frame.Bind(
             wx.EVT_MENU, lambda _e: self.configure_vault_settings(), id=self._id_vault_settings
+        )
+        self.frame.Bind(
+            wx.EVT_MENU,
+            lambda _e: self.sync_folder_with_github(),
+            id=self._id_git_sync_folder,
         )
         self.frame.Bind(
             wx.EVT_MENU, lambda _e: self.open_story_studio(), id=self._id_open_story_studio

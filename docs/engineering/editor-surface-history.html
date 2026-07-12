@@ -180,14 +180,14 @@
 id="editor-surface-history-how-quill-ended-up-with-one-editor">Editor
 Surface History: how QUILL ended up with one editor</h1>
 <p>Canonical engineering record, written 2026-07-11 as part of the
-QuillRichEdit promotion (0.9.0-beta3, the “One Editor, Every Format”
+QuillRichEdit promotion (0.9.0-beta3, the "One Editor, Every Format"
 plan). It preserves the verdicts and post-mortems from the
 editor-surface experiments so the deleted code cannot be casually
 reintroduced without this history. The full analysis lived in
 <code>docs/planning/editor-surface-experiments.md</code> (retired with
 the experiment; recoverable from git history).</p>
 <h2 id="the-outcome-what-ships">The outcome (what ships)</h2>
-<p><strong>QuillRichEdit is QUILL’s one editor surface on
+<p><strong>QuillRichEdit is QUILL's one editor surface on
 Windows</strong>: the same native Rich Edit control
 (<code>RICHEDIT50W</code>, a <code>wx.TextCtrl</code> with
 <code>TE_RICH2 | TE_NOHIDESEL</code>) QUILL always shipped, plus a
@@ -214,15 +214,15 @@ PRD (converted rich, then the native NSTextView wrapper).</p>
 <h2 id="the-dead-ends-and-why-they-stay-dead">The dead ends, and why
 they stay dead</h2>
 <h3
-id="scintilla-wx.stc-the-notepad-experiment-nvda-only-jaws-impossible">Scintilla
-/ wx.stc — the “Notepad++ experiment” (NVDA-only; JAWS impossible)</h3>
+id="scintilla--wxstc--the-notepad-experiment-nvda-only-jaws-impossible">Scintilla
+/ wx.stc — the "Notepad++ experiment" (NVDA-only; JAWS impossible)</h3>
 <p>The most instructive failure. Scintilla was attractive (fast on huge
 documents, true multi-level undo/redo), and NVDA read and tracked it
 well. JAWS could not follow the caret. Three bridging rounds all failed
 on live hardware (2026-07-03):</p>
 <ol type="1">
 <li><strong>Caret mirror</strong> — a hidden classic caret positioned to
-match Scintilla’s.</li>
+match Scintilla's.</li>
 <li><strong>Classic message answers</strong> — responding to
 <code>WM_GETTEXT</code> / <code>WM_GETTEXTLENGTH</code> /
 <code>EM_GETSEL</code> / <code>EM_EXGETSEL</code> from the Scintilla
@@ -231,7 +231,7 @@ HWND.</li>
 <code>EM_POSFROMCHAR</code> / <code>EM_CHARFROMPOS</code> so JAWS could
 map offsets to screen positions.</li>
 </ol>
-<p>Verdict: JAWS’s Notepad++ support is script-side and
+<p>Verdict: JAWS's Notepad++ support is script-side and
 window-class-keyed; a foreign app cannot impersonate it by answering
 messages. The bridge was removed, the surface labeled NVDA-only, and the
 negative result pinned in tests while the surface existed. <strong>Do
@@ -239,27 +239,27 @@ not retry a JAWS/Scintilla bridge.</strong></p>
 <h3 id="raw-win32-edit-host-via-pywin32-silent-offset-corruption">Raw
 Win32 EDIT host via pywin32 (silent offset corruption)</h3>
 <p>Hosting the classic EDIT control directly worked for typing and
-selection but kept CRLF line endings in the control while QUILL’s model
+selection but kept CRLF line endings in the control while QUILL's model
 is LF-only. Every offset-anchored feature (search, spell, bookmarks, AI
 ranges) skewed silently past the first line break — the worst failure
 mode: no crash, wrong behavior. Translating at every boundary duplicated
 the whole editor contract for no accessibility win over
 <code>SES_EMULATESYSEDIT</code> on the Rich Edit.</p>
-<h3 id="wx.richtextctrl-invisible-to-screen-readers">wx.RichTextCtrl
+<h3 id="wxrichtextctrl-invisible-to-screen-readers">wx.RichTextCtrl
 (invisible to screen readers)</h3>
-<p>wxWidgets’ own rich-text widget renders its document itself; there is
+<p>wxWidgets' own rich-text widget renders its document itself; there is
 no native text control underneath, so JAWS/NVDA saw nothing they could
 read as a document. API-compatible enough for a demo, unusable for
-QUILL’s audience.</p>
-<h3 id="the-read-only-rich-text-lens-superseded">The read-only “rich
-text lens” (superseded)</h3>
+QUILL's audience.</p>
+<h3 id="the-read-only-rich-text-lens-superseded">The read-only "rich
+text lens" (superseded)</h3>
 <p><code>quill/ui/rich_text_surface.py</code> behind the locked-off
 <code>core.rich_text_lens</code> flag offered a read-only formatted view
 next to the markup editor. Rich mode on the native control delivers
 editable formatting instead; the lens and the
 <code>view.switch_editing_lens</code> command retired with it.</p>
 <h3
-id="em_streamin-em_streamout-ctypes-callback-hard-crash-use-the-tom">EM_STREAMIN
+id="em_streamin--em_streamout-ctypes-callback-hard-crash-use-the-tom">EM_STREAMIN
 / EM_STREAMOUT ctypes callback (hard crash; use the TOM)</h3>
 <p>The first native RTF I/O attempt drove
 <code>EM_STREAMIN</code>/<code>EM_STREAMOUT</code> with a ctypes
@@ -273,7 +273,7 @@ avoids Python callbacks entirely: <code>EM_GETOLEINTERFACE</code> -&gt;
 file. Verified crash-free on-device. <strong>Never wire an EDITSTREAM
 callback from Python.</strong></p>
 <h3 id="the-margin-lever-that-didnt-help-alone">The margin lever that
-didn’t help alone</h3>
+didn't help alone</h3>
 <p><code>editor_zero_richedit_margins</code>
 (<code>EM_SETMARGINS</code>) was tried for the cell-2 offset and removed
 in beta2 (commit <code>094b630</code>) after testing showed it did not

@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="generator" content="pandoc 3.10" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
-  <title>Audio Studio Validation</title>
+  <title>audio-studio-validation</title>
   <style>
     /* Default styles provided by pandoc.
     ** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
@@ -176,21 +176,18 @@
   </style>
 </head>
 <body>
-<header id="title-block-header">
-<h1 class="title">Audio Studio Validation</h1>
-</header>
 <h1 id="audio-studio-the-road-to-feature-complete">Audio Studio: The
 Road to Feature Complete</h1>
 <h2
-id="tier-1-merge-gate-two-items-both-now-scoped-to-what-only-jeff-can-do">Tier
+id="tier-1--merge-gate-two-items-both-now-scoped-to-what-only-jeff-can-do">Tier
 1 — Merge gate: two items, both now scoped to what only Jeff can do</h2>
 <p>Both items below were partially executed 2026-07-05 at the level an
-agent can safely reach on Jeff’s own desktop (never launching the real
-app or sending synthetic keystrokes — see the “no desktop UI automation”
-rule). What’s left in each is now exactly the part that needs a human at
+agent can safely reach on Jeff's own desktop (never launching the real
+app or sending synthetic keystrokes — see the "no desktop UI automation"
+rule). What's left in each is now exactly the part that needs a human at
 the keyboard with a real screen reader.</p>
-<h3 id="real-screen-reader-validation-jaws-then-nvda-needs-jeff">1. Real
-screen-reader validation (JAWS, then NVDA) — needs Jeff</h3>
+<h3 id="1-real-screen-reader-validation-jaws-then-nvda--needs-jeff">1.
+Real screen-reader validation (JAWS, then NVDA) — needs Jeff</h3>
 <p><strong>What:</strong> Walk every new surface with JAWS on real
 hardware: the wizard (focus landing on each page change, step
 announcements, the radio-driven journey switch, Skip to summary), the
@@ -198,18 +195,18 @@ Chapter Workbench (list refresh after each surgery operation, the title
 edit flow, button states), the player (transport labels, spoken position
 slider, chapter-crossing announcements, Where am I?), and the Publish
 dialog. Fix what your ears find.</p>
-<p><strong>Why an agent can’t do this:</strong> it requires launching
+<p><strong>Why an agent can't do this:</strong> it requires launching
 the real <code>quill.exe</code> and driving it with a live JAWS/NVDA
-session — exactly the desktop UI automation that’s off-limits on Jeff’s
+session — exactly the desktop UI automation that's off-limits on Jeff's
 machine (it fights JAWS: focus theft, Dictionary Manager triggered by
 intercepted keystrokes). The <code>tests/uia</code> pywinauto harness
-covers this mechanically in CI/a VM, but “does JAWS announce this well”
+covers this mechanically in CI/a VM, but "does JAWS announce this well"
 is a human judgment call, not a pass/fail an agent can render.</p>
-<p><strong>Outcome:</strong> The feature’s core promise —
+<p><strong>Outcome:</strong> The feature's core promise —
 screen-reader-first audiobook production — is verified by the person it
 was built for, not just by the dialog gates.</p>
 <h3
-id="end-to-end-run-on-real-audio-especially-m4b-playback-core-half-done-one-real-bug-found-and-fixed">2.
+id="2-end-to-end-run-on-real-audio-especially-m4b-playback--core-half-done-one-real-bug-found-and-fixed">2.
 End-to-end run on real audio, especially M4B playback — core half done,
 one real bug found and fixed</h3>
 <p><strong>What:</strong> One complete journey on real files: narrate a
@@ -227,7 +224,7 @@ timestamps; the untouched original file still round-tripped
 afterward.</p>
 <p><strong>Real bug found this way, not by any stubbed-source unit
 test:</strong> the resave step failed against a real Windows-encoded M4B
-with <code>ffmpeg</code>’s “Tag text incompatible with output codec id”
+with <code>ffmpeg</code>'s "Tag text incompatible with output codec id"
 — the source carried a stray
 <code>bin_data</code>/<code>SubtitleHandler</code> data track that
 <code>-map 0</code> blindly copied into the <code>ipod</code> muxer,
@@ -242,12 +239,12 @@ Workbench and listening — loading the file into
 <code>WxMediaEngine</code>/<code>MpvAudioEngine</code> requires a live
 <code>wx.App</code> pumping the Windows message loop, which is the same
 JAWS-hostile territory as item 1. The remaining risk is narrower now:
-whether the WMP backend’s <em>audio playback and seek feel</em>, not the
-file’s correctness, holds up on a real 8-hour book. If it doesn’t, the
+whether the WMP backend's <em>audio playback and seek feel</em>, not the
+file's correctness, holds up on a real 8-hour book. If it doesn't, the
 already-shipped libmpv backend (Help &gt; Download Optional Components
 &gt; mpv player engine) is the fallback.</p>
 <p><strong>Outcome:</strong> File-format correctness is proven
-end-to-end with real tools; only the subjective “does it play and seek
-well by ear” question remains.</p>
+end-to-end with real tools; only the subjective "does it play and seek
+well by ear" question remains.</p>
 </body>
 </html>

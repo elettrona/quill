@@ -698,10 +698,24 @@ A Story project is just a folder of plain-text files plus a small `project.quill
 **Sharing your vault**
 
 - **Export Vault as Website...** — choose an output folder and QUILL writes a small, self-contained website: one accessible page per note, with your `[[links]]` turned into real links between the pages, your `![[embeds]]` filled in, and an index page listing everything. It runs in the background and tells you how many pages it wrote.
-- **Sync Vault** — if your vault folder is a Git repository with a remote you control, this commits your changes, pulls anyone else's, and pushes — all in the background. If the same note changed in both places, QUILL lists the conflicts and stops rather than overwriting anything. (Disabled in Safe Mode.)
+- **Sync Vault** — if your vault folder is a Git repository with a remote you control, this commits your changes, pulls anyone else's, and pushes — all in the background. If the same note changed in both places, QUILL lists the conflicts and stops rather than overwriting anything. (Disabled in Safe Mode.) The same engine works on any folder, not just a vault — see [QUILL Sync](#quill-sync--carrying-your-work-between-devices) below.
 - **Vault Settings...** — choose which folder your templates live in (default `Templates`) and the pattern for daily-note filenames (default `Journal/{{date:YYYY-MM-DD}}.md`). Leave a box empty to keep the default.
 
 Write links by typing `[[Note Title]]` yourself, or use **Insert Link to Note...**. Links are plain text in your file — nothing is hidden — and resolve when you follow them, export, or open a website build. When you **preview** a note that lives in your vault, QUILL shows it resolved — `[[links]]` read as their titles and `![[embeds]]` filled in — and every time you **save** a note in the vault, its links, backlinks, tags, and search are updated right away, no reopening needed. A vault is just a folder of Markdown files plus a small `.quill` cache; delete the cache and nothing is lost. Every command here is on the command palette and can be given a keyboard shortcut in the Keymap Editor.
+
+#### QUILL Sync — carrying your work between devices
+
+QUILL does not run its own sync service — no QUILL cloud account, no QUILL-hosted storage. Instead it leans on two things that already solve syncing well: a folder your cloud provider already mirrors, and git. Two features, both optional:
+
+**Sync your settings via a folder.** Open **Help → Personalise QUILL** (or **Preferences**) and look at "Where should QUILL store your data?" — the same page the first-run wizard shows. Choose **"Choose a folder:"** and pick a folder that OneDrive, Dropbox, Google Drive, or iCloud already keeps in sync across your devices (or a folder on a USB drive you carry between computers). QUILL writes its settings, snippets, dictionaries, and keymap there; your cloud provider or removable drive carries them to your other devices the same way it already carries everything else in that folder. There is nothing new to learn about QUILL for this — it is the existing Data Location setting, now documented as a sync strategy because that is exactly what it already does. One important limit: QUILL has no way to merge changes made on two devices at once, so don't run QUILL from two machines pointed at the same synced folder at the same time — treat it like any shared file, one writer at a time.
+
+**Sync a folder with GitHub.** **Tools → Sync Folder with GitHub...** works on any folder — a writing project, a research folder, anything — not just a Vault. Point it at a folder:
+
+- If the folder is already a git repository with a remote configured, QUILL commits your changes, pulls anyone else's, and pushes, all in the background, and tells you when it's done.
+- If it isn't set up yet, QUILL says so plainly and asks first — for example, *"This folder is not a git repository yet. QUILL can set it up: this runs 'git init' in the folder, then adds the remote repository you provide as 'origin'. Continue?"* Say yes, paste in your repository's URL (for example `https://github.com/you/your-repo.git`), and QUILL sets it up and syncs.
+- If the same file changed in both places, QUILL lists the conflicts and stops rather than guessing — resolve them yourself, then run Sync Folder with GitHub again.
+
+This is the exact same engine **Sync Vault** (above) already uses, opened up to any folder rather than only your vault — if you already use Sync Vault, this will feel identical. Both rely on your own git installation and its own saved credentials (an SSH key, or a login your system's git credential manager already remembers) — QUILL does not ask for or store a separate GitHub password or token for this. Disabled in Safe Mode.
 
 #### Writing and language
 

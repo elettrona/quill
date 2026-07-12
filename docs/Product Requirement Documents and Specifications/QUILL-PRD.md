@@ -3057,6 +3057,81 @@ When Quill detects an autosave snapshot newer than the on-disk file on launch:
 
 **Live-refresh focus loss, fixed 0.9.0 Beta 3 (#969).** `refresh()` rebuilds each `wx.ListCtrl` from scratch (`DeleteAllItems()` then re-`InsertItem()` every row) so the displayed data always matches `_build_help_status_data()` exactly -- but the rebuild silently dropped the list's focused-row marker too. With the timer firing every two seconds, a user arrowing down the list got returned to the top (or to no focused row at all) before they could act on where they had navigated, reported verbatim as "Move down through the list. The focus will be put back at the top of the list." `refresh()` now captures each list's focused row index before the rebuild (`_capture_focus`) and restores it afterward (`_restore_focus`, clamped to the new row count in case it shrank), independently per list -- so a live-update tick can never undo the user's own navigation. Covered by `tests/unit/ui/test_status_dialog.py` against a real `wx.ListCtrl`, not a fake.
 
+### 5.59b QUILL Sync (folders + GitHub, shipped 0.9.0 Beta 3)
+
+**Decision on record: QUILL does not build its own sync engine.** A full
+QUILL-native sync service (a `quill/core/sync/` engine with SQLite state,
+content-addressed version history, and per-provider OAuth adapters for
+OneDrive/Dropbox/Google Drive) was designed in detail in the now-retired
+`docs/planning/quill-sync-plan.md` and explicitly decided against for 0.9.0
+Beta 3. The full reasoning is preserved in
+`docs/engineering/sync-engine-history.md`; the short version is that a
+folder is already a solved sync problem (OneDrive, Dropbox, Google Drive,
+and iCloud already replicate one reliably) and git is already a solved sync
+problem for structured, conflict-aware content — so "QUILL Sync" reuses both
+instead of reinventing either. Two small, honest features ship instead:
+
+**1. Sync via a folder (local or cloud) — `quill/core/data_location.py`
+(pre-existing, #615).** Relocating QUILL's entire settings/snippets/
+dictionaries/keymap directory to a user-chosen folder already shipped for a
+different reason (keeping data off the system drive); it turns out to
+already be exactly the mechanism a lightweight sync story needs. Point that
+folder at one a cloud client (OneDrive, Dropbox, Google Drive, iCloud) or a
+folder-sync tool already mirrors, or at a USB drive, and QUILL's data
+travels with it — QUILL never talks to any cloud provider's API. The
+first-run wizard's "Where should QUILL store your data?" page
+(`_DataLocationPage` in `quill/ui/setup_wizard_pages.py`) now states this
+explicitly, including the honest caveat: QUILL has no cross-device conflict
+resolution for this path, so two devices must not run QUILL against the
+same folder at the same time. No code changed here beyond the wizard's
+description text — the mechanism already worked; only the framing and
+documentation were missing.
+
+**2. Sync Folder with GitHub — new, general-purpose (`quill/core/git_sync.py`
++ `quill/ui/main_frame_git_sync.py`, `GitSyncMixin`).** Accessible Vault's
+"Sync Vault" (`quill/core/vault/sync.py::run_vault_sync`, §Vault Phase 7)
+already implements commit/pull/push over a user's own git remote with
+conflicts surfaced as a spoken, itemized list rather than an auto-merge —
+and has zero Vault-specific logic in it at all; it takes a bare folder path
+and three git-plumbing commands. `quill/core/git_sync.py` gives that exact
+engine a general-purpose home, adding only what Vault didn't need:
+
+- `check_repo_status(root, *, runner) -> GitRepoStatus` — whether *root* is
+  a git repository, has a remote configured, and its current branch. Never
+  raises; every probe tolerates a non-zero exit (not a repo yet, no remote,
+  detached HEAD) by reporting the negative case.
+- `init_repo_with_remote(root, remote_url, *, runner) -> SyncResult` —
+  `git init` (only if needed) then `git remote add origin <url>` (only if
+  no remote exists yet); never overwrites an existing `origin`.
+- `sync_folder_via_git(root, *, runner, ...) -> SyncResult` — delegates to
+  `run_vault_sync` for the actual commit/pull/push (one implementation in
+  the tree, not two), but detects the branch to sync from the repository
+  itself (`git rev-parse --abbrev-ref HEAD`) rather than assuming `"main"`
+  the way Vault's own always-`main` convention does — a general folder may
+  plausibly be on `master` or any other branch name.
+
+**Tools → Sync Folder with GitHub...** (`sync.sync_folder`, empty default
+keymap chord, assignable) prompts for a folder (remembered in
+`Settings.git_sync_last_folder` for next time), checks its status in the
+background, and either syncs directly (already a git repo with a remote) or
+explains exactly what setup is needed and asks first: *"'\<folder>' is not a
+git repository yet. QUILL can set it up: this runs 'git init' in the folder,
+then adds the remote repository you provide as 'origin'. Continue?"* — never
+silently. On confirmation, a plain text field collects the remote URL, then
+`init_repo_with_remote` followed by `sync_folder_via_git` run as background
+tasks. Conflicts (never auto-resolved) are listed via the same accessible
+list dialog (`show_vault_list_modal`) Vault Sync's own conflict report uses.
+
+**Credentials and safety, matching the Vault Sync precedent exactly:**
+relies entirely on the user's own git installation and its own credential
+handling (an SSH key, or a stored HTTPS credential via the system git
+credential manager) — QUILL does not store or inject a separate token for
+these subprocess calls. Blocked outright in Safe Mode. The `git pull`/`git
+push` network calls are subprocess-based (not an `urlopen`/`requests` call
+the AST-based egress scanner can see) and are manually documented in
+`quill/tools/network_egress_audit.py` for auditability, alongside the
+pre-existing (previously undocumented) Vault Sync call sites.
+
 ### 5.60 Read-only document mode
 
 - `View → Read-Only Mode` (`Ctrl+Shift+L` by default) toggles the editor's editability without touching file permissions.

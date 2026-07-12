@@ -621,6 +621,7 @@
   "style_headings",
   "switch_document_format",
   "switch_feature_profile",
+  "sync_folder_with_github",
   "sync_vault",
   "toggle_abbreviation_expansion",
   "toggle_announce_formatting_on_move",

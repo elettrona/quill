@@ -453,6 +453,35 @@ _REVIEWED_EGRESS: dict[str, str] = {
 #   HTTPS-only (the Hub SDK never falls back to plaintext), and sha256-verified
 #   when a hash is known.
 
+# ---------------------------------------------------------------------------
+# git subprocess egress (Vault Sync, Sync Folder with GitHub) — manually documented
+# ---------------------------------------------------------------------------
+# `git pull`/`git push` run in a subprocess (`git -C <root> pull/push ...`);
+# the network call is performed by the user's own git installation reaching
+# their configured remote (typically, but not necessarily, github.com), not
+# by an urlopen in quill/ source, so the AST scanner above cannot see it.
+# QUILL never stores or injects a credential for these calls -- both features
+# rely entirely on the user's own git installation and its own credential
+# handling (an SSH key, or a stored HTTPS credential via the system git
+# credential manager), exactly as running `git push` from a terminal already
+# would outside QUILL. This is the deliberate "reuse git as the sync engine
+# instead of building QUILL's own" design (see quill/core/git_sync.py); the
+# much larger custom-sync-engine design in the retired
+# docs/planning/quill-sync-plan.md was not built.
+#
+# quill/core/vault/sync.py::run_vault_sync
+#   Commits, pulls, and pushes an Accessible Vault over its git remote.
+#   Triggered: Tools > Vault > Sync Vault (explicit user action only).
+#   Blocked in Safe Mode. Conflicts are listed, never auto-resolved.
+#
+# quill/core/git_sync.py::sync_folder_via_git, ::init_repo_with_remote
+#   The general-purpose form: commits, pulls, and pushes *any* folder the
+#   user chooses (delegating to run_vault_sync above for the actual
+#   commit/pull/push), plus `git init`/`git remote add origin <url>` when the
+#   chosen folder is not yet set up -- only after an explicit confirmation
+#   dialog states exactly what will run. Triggered: Tools > Sync Folder with
+#   GitHub... (explicit user action only). Blocked in Safe Mode.
+
 
 def _enclosing_function_name(tree: ast.AST, target: ast.AST) -> str:
     """Return the nearest enclosing def/async-def name for ``target``."""

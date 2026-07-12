@@ -353,7 +353,7 @@
     "quill/core/features.py": 1029,
     "quill/core/format_ops.py": 644,
     "quill/core/glow.py": 810,
-    "quill/core/keymap.py": 910,
+    "quill/core/keymap.py": 911,
     "quill/core/keymap_packs.py": 310,
     "quill/core/language_profile.py": 799,
     "quill/core/markdown_sections.py": 781,
@@ -437,7 +437,7 @@
     "quill/ui/main_frame_braille.py": 789,
     "quill/ui/main_frame_copy_tray.py": 344,
     "quill/ui/main_frame_image.py": 598,
-    "quill/ui/main_frame_menu.py": 4587,
+    "quill/ui/main_frame_menu.py": 4597,
     "quill/ui/main_frame_rich_mode.py": 700,
     "quill/ui/github_items_dialog.py": 1020,
     "quill/core/github/items_provider.py": 780,
@@ -473,7 +473,8 @@
     "_rebaseline_2026_07_08_voice_browser_set_default": "voice_browser_dialog.py 647 -> 675 (+28): a \"Set as Default\" button (dispatches the same 'select' result OK already produces, but without closing the dialog) and a right-click context menu on the voice list (Preview/Set as Default/Download) reaching the same actions without leaving the list.",
     "quill/ui/voice_browser_dialog.py": 729,
     "quill/ui/main_frame_vault.py": 994,
-    "quill/core/speech/batch_export.py": 607
+    "quill/core/speech/batch_export.py": 607,
+    "_rebaseline_2026_07_12_git_sync_folder": "QUILL Sync, folder edition (#893 follow-through / QUILL Sync Beta 3): the new Sync Folder with GitHub command. keymap.py 910->911 (+1): the sync.sync_folder default entry (empty, assignable). main_frame_menu.py 4587->4597 (+10): one NewIdRef, one Tools-menu item (Sync Folder with GitHub...), and one EVT_MENU bind. The command handler and dialog flow live in the new quill/ui/main_frame_git_sync.py (GitSyncMixin, under cap) and the wx-free sync engine in the new quill/core/git_sync.py (under cap), which itself delegates to the existing quill/core/vault/sync.py commit/pull/push implementation -- one sync engine in the tree, not a new one. Same accepted thin-wiring rebaseline pattern used throughout Beta 3."
   },
   "_rebaseline_2026_06_28_ai_library_unify_provider_and_onramp": "AI Library Run unified onto the AI Hub provider (ProviderChatBackend) instead of the older ai_chat path, so setting up AI once (the wizard or the Hub) makes the Library work too; when AI isn't ready the run offers the setup on-ramp (on_setup_ai -> maybe_offer_ai_setup). ai_library_dialog.py 883->899 (+16): _backend/_ai_ready/_ensure_ai helpers + the _offer_ai_setup wiring, net of removing the send_prompt/credential plumbing.",
   "_rebaseline_2026_06_28_listening_companion_action_builder": "Listening Companion Phase B: the guided Action Builder. New quill/ui/action_builder_dialog.py (no-syntax: name + Start-from preset + plain-language instructions -> a saved Skill via transcript_actions.action_to_skill_source + skill_store). ai_library_dialog.py 867->883 (+16): a 'Build Action...' verb on the Skills tab and the skill_build() handler that opens the builder and reveals the new skill. The builder writes into the existing skill store, so it inherits Run/Edit/Enable/Export/Promote for free.",
