@@ -121,4 +121,27 @@ def test_zzz_diag_unshown_vs_shown(wx_app) -> None:
     finally:
         frame_d.Destroy()
 
+    # Scenario E: seed with ChangeValue() (matches the real document-load path
+    # -- main_frame.py always uses ChangeValue, never SetValue, specifically
+    # because ChangeValue does not generate an event or mark modified) instead
+    # of SetValue(). If A/B/C/D's "empty after 1 undo" is really SetValue()
+    # itself getting coalesced into the same undo group as the next edit,
+    # this should NOT reproduce.
+    frame_e = wx.Frame(None)
+    try:
+        ctrl = wx.TextCtrl(frame_e, style=wx.TE_MULTILINE)
+        ctrl.ChangeValue("hello world this is a test")
+        holder = _Holder(ctrl)
+        _dump("E after ChangeValue", ctrl)
+        text = ctrl.GetValue()
+        holder._atomic_replace(0, len(text), text.upper())
+        _dump("E after atomic_replace", ctrl)
+        ctrl.Undo()
+        _dump("E after 1st Undo", ctrl)
+        if ctrl.GetValue() != text:
+            ctrl.Undo()
+            _dump("E after 2nd Undo", ctrl)
+    finally:
+        frame_e.Destroy()
+
     assert True  # this file only exists to print diagnostics
