@@ -606,7 +606,13 @@ def build_windows_distribution(
                 "faster-whisper",
                 FASTER_WHISPER_WHEELHOUSE_REQUIREMENTS,
             )
-            _stage_pip_wheelhouse(portable_dir, python_exe, "vosk", VOSK_WHEELHOUSE_REQUIREMENTS)
+            _stage_pip_wheelhouse(
+                portable_dir,
+                python_exe,
+                "vosk",
+                VOSK_WHEELHOUSE_REQUIREMENTS,
+                exclude=("srt",),
+            )
             _stage_pip_wheelhouse(portable_dir, python_exe, "mp3", MP3_WHEELHOUSE_REQUIREMENTS)
     elif bundle_offline:
         print(
@@ -2334,7 +2340,12 @@ def _stage_piper_offline(
 
 
 def _stage_pip_wheelhouse(
-    portable_dir: Path, python_exe: Path, name: str, requirements: tuple[str, ...]
+    portable_dir: Path,
+    python_exe: Path,
+    name: str,
+    requirements: tuple[str, ...],
+    *,
+    exclude: tuple[str, ...] = (),
 ) -> bool:
     """``pip download`` an on-demand engine's package tree into portable/wheels/<name>/.
 
@@ -2348,6 +2359,17 @@ def _stage_pip_wheelhouse(
     (``pip install --no-index --find-links``) with no PyPI reachability
     required. An already-staged wheelhouse is reused. Returns True when at
     least one wheel is present after staging.
+
+    ``exclude`` names transitive dependencies to strip from normal recursive
+    resolution (e.g. ``vosk``'s ``srt`` -- an unused subtitle-export helper,
+    never imported anywhere in quill/, that publishes no wheel on PyPI at all
+    and so unconditionally fails ``--only-binary=:all:``). When non-empty,
+    resolution runs in two passes: the top-level requirements with
+    ``--no-deps`` (so pip never even looks at the excluded package), then a
+    second pass with ordinary recursive resolution for every *other* runtime
+    dependency, read back from the first pass's own wheel METADATA rather
+    than hand-duplicated here (so this never silently drifts from whatever
+    the pinned version actually declares).
     """
     target = portable_dir / "wheels" / name
     target.mkdir(parents=True, exist_ok=True)
@@ -2355,7 +2377,7 @@ def _stage_pip_wheelhouse(
         print(f"{name} wheelhouse already staged; skipping.")
         return True
 
-    command = [
+    base_command = [
         str(python_exe),
         "-m",
         "pip",
@@ -2365,11 +2387,44 @@ def _stage_pip_wheelhouse(
         "--only-binary=:all:",
         "--dest",
         str(target),
-        *requirements,
     ]
-    print(f"Downloading {name} wheelhouse to {target}...")
-    subprocess.run(command, check=True)
+    if not exclude:
+        print(f"Downloading {name} wheelhouse to {target}...")
+        subprocess.run([*base_command, *requirements], check=True)
+        return any(target.glob("*.whl"))
+
+    print(f"Downloading {name} wheelhouse to {target} (excluding {', '.join(exclude)})...")
+    subprocess.run([*base_command, "--no-deps", *requirements], check=True)
+    deps = _wheel_metadata_dependency_names(target) - {n.lower() for n in exclude}
+    if deps:
+        subprocess.run([*base_command, *sorted(deps)], check=True)
     return any(target.glob("*.whl"))
+
+
+def _wheel_metadata_dependency_names(wheel_dir: Path) -> set[str]:
+    """Read ``Requires-Dist`` package names (no version specifiers) from every
+    wheel already downloaded into ``wheel_dir``, via stdlib zipfile + email
+    parsing -- no extra dependency needed for a one-shot build-time read."""
+    import email
+    import re
+    import zipfile
+
+    names: set[str] = set()
+    for whl in wheel_dir.glob("*.whl"):
+        with zipfile.ZipFile(whl) as zf:
+            metadata_path = next(
+                (n for n in zf.namelist() if n.endswith(".dist-info/METADATA")), None
+            )
+            if metadata_path is None:
+                continue
+            metadata = email.message_from_bytes(zf.read(metadata_path))
+            for raw in metadata.get_all("Requires-Dist", []):
+                # Drop environment markers/extras (e.g. "requests; extra == 'x'")
+                # and version specifiers, keeping just the bare package name.
+                match = re.match(r"[A-Za-z0-9_.-]+", raw.split(";", 1)[0].strip())
+                if match:
+                    names.add(match.group(0).lower())
+    return names
 
 
 def _speech_asset_manifest(

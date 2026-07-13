@@ -36,6 +36,13 @@ def _record_sapi5_synth(monkeypatch) -> list[tuple[str, str]]:
     controller calls ``synthesize_to_file_with_sapi5`` per sentence and then
     plays the file. Recording the synth call and disabling winsound lets tests
     assert what would be spoken without producing sound.
+
+    ``ReadAloudController.start()`` defaults to ``engine_name="sapi5"`` and
+    gates on the real ``sapi5_available()`` (comtypes/SAPI.SpVoice) before ever
+    reaching the synth call patched above -- genuinely unavailable on macOS/
+    Linux. These tests exercise the controller's own sentence-splitting/
+    threading/punctuation logic, not real SAPI5, so the availability check is
+    patched too.
     """
     spoken: list[tuple[str, str]] = []
 
@@ -44,6 +51,7 @@ def _record_sapi5_synth(monkeypatch) -> list[tuple[str, str]]:
         Path(output_path).write_bytes(b"")
 
     monkeypatch.setattr(read_aloud_module, "synthesize_to_file_with_sapi5", fake_synth)
+    monkeypatch.setattr(read_aloud_module, "sapi5_available", lambda: True)
     monkeypatch.setattr(read_aloud_module, "_winsound", None)
     return spoken
 

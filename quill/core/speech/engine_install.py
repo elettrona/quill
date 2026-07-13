@@ -519,7 +519,8 @@ def _maybe_fetch_vosk_wheel(progress: ProgressCallback | None) -> Path | None:
         return None
     try:
         from quill.core.release_assets import ASSETS, fetch_file, is_pinned
-    except Exception:  # noqa: BLE001 - release_assets should always import; be defensive
+    except Exception:
+        _LOG.warning("Could not import release_assets for the Vosk wheel fetch.", exc_info=True)
         return None
     asset = ASSETS.get("vosk")
     if asset is None or not is_pinned(asset):
@@ -528,7 +529,10 @@ def _maybe_fetch_vosk_wheel(progress: ProgressCallback | None) -> Path | None:
         return fetch_file(
             "vosk", _vosk_download_dir(), progress=progress, label="Downloading Vosk..."
         )
-    except Exception:  # noqa: BLE001 - any download/verify failure -> PyPI fallback
+    except Exception:
+        _LOG.warning(
+            "Vosk wheel fetch from assets-v1 failed; falling back to PyPI.", exc_info=True
+        )
         return None
 
 

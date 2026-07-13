@@ -195,12 +195,22 @@ def test_config_step_focus_always_lands_on_provider_combo(wx_app, monkeypatch):
         dlg._path = "cloud"
         dlg._step = _STEP_CONFIG
         dlg._render()
+        # SetFocus() on a wx.Frame that's never been Show()n is a direct native
+        # call (not routed through wx.CallAfter); on macOS Cocoa,
+        # -[NSWindow makeFirstResponder:] can defer taking effect until the
+        # window is actually key, so HasFocus() needs a queued-event flush to
+        # observe it here -- ProcessPendingEvents only touches wx's own event
+        # queue, never the native run loop (unlike wx.Yield/YieldIfNeeded,
+        # which segfaulted this suite elsewhere -- see
+        # test_voice_browser_dialog.py).
+        wx_app.ProcessPendingEvents()
         assert not dlg._key_ctrl.HasFocus()
         assert dlg._provider_choice.HasFocus()
 
         # Same expectation after a remove-triggered re-render.
         dlg._added_list.SetSelection(0)
         dlg._remove_selected()
+        wx_app.ProcessPendingEvents()
         assert dlg._provider_choice.HasFocus()
     finally:
         dlg.close()

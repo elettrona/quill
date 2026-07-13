@@ -50,6 +50,17 @@ def _make_dialog(frame, *, preview_fn, preview_stop_fn=None):
     dlg._displayed_voices = dlg._all_voices
     dlg._voice_lb.Append("Voice 1")
     dlg._voice_lb.SetSelection(0)
+    # __init__ -> _build_ui() -> _refresh_voices() already ran _on_voice_selected()
+    # once, against whatever the REAL list_voices() found on this machine at
+    # construction time (real installed SAPI 5 voices on Windows -- possibly
+    # none at all on macOS/CI, where SAPI 5 doesn't exist). That call may have
+    # disabled _preview_btn (no selection -> Enable(False)) before the fake
+    # single-voice list above was ever injected, and _do_preview() never
+    # touches Enable() itself -- only _on_preview_state() does, which only
+    # runs once a preview has actually started. Re-run it now so the button's
+    # enabled state reflects the test's injected voice, not the real
+    # machine's environment-dependent (and possibly empty) voice list.
+    dlg._on_voice_selected()
     return dlg
 
 

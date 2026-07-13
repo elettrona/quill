@@ -69,7 +69,10 @@ def test_load_malformed_file_returns_empty(tmp_path: Path) -> None:
 
 
 def test_names_uses_folder_basename() -> None:
-    vault = FavoriteFolders(folders=[r"C:\Projects\Reports", r"C:\Projects\Drafts"])
+    # Forward slashes, not backslashes: names() does Path(folder).name, and
+    # pathlib on POSIX doesn't split on "\\" -- forward slashes parse
+    # correctly as a Windows-style path on every platform pytest runs on.
+    vault = FavoriteFolders(folders=["C:/Projects/Reports", "C:/Projects/Drafts"])
     assert vault.names() == ["Reports", "Drafts"]
 
 

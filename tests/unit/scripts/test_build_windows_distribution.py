@@ -109,7 +109,11 @@ version = "2.4.6"
     # Node.js, the braille pack, whisper.cpp, Kokoro, DECtalk, and eSpeak-NG all
     # download on demand, so a default build bundles no optional tools.
     assert sorted(manifest["bundledTools"]) == []
-    assert manifest["docs"] == [r"docs\userguide.md"]
+    # manifest["docs"] is str(path.relative_to(portable_dir)), which uses the
+    # BUILD HOST's os.sep -- always backslash in the real shipped product
+    # (this script only ever really runs on windows-latest CI), but this test
+    # also runs as a plain unit test on macOS CI, where the host is POSIX.
+    assert manifest["docs"] == [str(Path("docs") / "userguide.md")]
     assert manifest["speechAssets"]["dectalk"]["downloadable"] is True
     assert manifest["speechAssets"]["espeak"]["downloadable"] is True
     assert manifest["speechAssets"]["piper"]["downloadable"] is True

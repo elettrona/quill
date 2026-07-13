@@ -188,7 +188,14 @@ def test_keyboard_pack_names_include_default() -> None:
 
 def test_build_keymap_for_pack_applies_overlay() -> None:
     keymap = build_keymap_for_pack("VS Code")
-    assert keymap["file.open"] == "Ctrl+P"
+    # On macOS, _apply_darwin_pack_overrides (#4) correctly rejects the pack's
+    # file.open -> Ctrl+P override: at Mac runtime (Ctrl folds to Cmd) that
+    # collides with the existing file.print -> Ctrl+P default, so file.open
+    # stays at its DEFAULT_KEYMAP value instead of silently stealing Print.
+    if sys.platform == "darwin":
+        assert keymap["file.open"] == DEFAULT_KEYMAP["file.open"]
+    else:
+        assert keymap["file.open"] == "Ctrl+P"
     assert keymap["format.duplicate_line"] == "Shift+Alt+Down"
     assert keymap["file.save"] == DEFAULT_KEYMAP["file.save"]
 
@@ -198,7 +205,10 @@ def test_previous_misspelling_shortcut_is_available() -> None:
 
 
 def test_replace_shortcut_is_available() -> None:
-    assert DEFAULT_KEYMAP["edit.replace"] == "Ctrl+H"
+    # Ctrl+H becomes Cmd+H on macOS (system Hide) -- dead by default, so
+    # DEFAULT_KEYMAP uses a darwin alternate (#4).
+    expected = "Cmd+Alt+F" if sys.platform == "darwin" else "Ctrl+H"
+    assert DEFAULT_KEYMAP["edit.replace"] == expected
 
 
 def test_bundled_profiles_do_not_override_platform_aware_defaults() -> None:
@@ -220,7 +230,10 @@ def test_bundled_profiles_do_not_override_platform_aware_defaults() -> None:
 def test_snippet_shortcuts_are_available() -> None:
     # word_prediction moved to Ctrl+. (§4.22); Ctrl+Space freed for select_chunk
     assert DEFAULT_KEYMAP["edit.word_prediction"] == "Ctrl+."
-    assert DEFAULT_KEYMAP["edit.select_chunk"] == "Ctrl+Space"
+    # Ctrl+Space becomes Cmd+Space on macOS (Spotlight) -- dead by default, so
+    # DEFAULT_KEYMAP uses a darwin alternate (#32).
+    expected_select_chunk = "Cmd+Alt+Space" if sys.platform == "darwin" else "Ctrl+Space"
+    assert DEFAULT_KEYMAP["edit.select_chunk"] == expected_select_chunk
     assert DEFAULT_KEYMAP["format.insert_snippet"] == "Ctrl+Shift+Grave, S"
     assert DEFAULT_KEYMAP["format.manage_snippets"] == "Ctrl+Shift+Grave, Shift+S"
 

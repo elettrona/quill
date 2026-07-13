@@ -39,7 +39,14 @@ jobs:
         # Cocoa runtime state exists, and trying it here crashed ~364 UI tests
         # ("+[NSResponder initialize] may have been in progress in another
         # thread when fork() was called").
-        run: pytest -m "not slow" -q
+        #
+        # --timeout=400 (pyproject.toml's ini default is 30s): this job -- unlike
+        # Windows's, which already excludes tests/unit/tools -- runs the AST/
+        # full-source-scan gate tests (test_dialog_inventory.py,
+        # test_check_banned_patterns.py, tests/unit/tools/*, etc). Those
+        # comfortably clear 30s locally but can exceed it on a loaded shared
+        # runner; matches the same fix already applied to windows-release.yml.
+        run: pytest -m "not slow" -q --timeout=400
 
   build:
     runs-on: macos-26

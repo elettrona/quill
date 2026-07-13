@@ -816,6 +816,8 @@ Choose any of them in the Offline Edition and installation completes without a n
 
 Vosk also becomes more reliable in the process. It depended on one supporting library that previously came only from the internet even when the verified Vosk package itself was available locally. That final external dependency is now bundled.
 
+A second, more fundamental Vosk problem surfaced during this beta's own build process: Vosk also lists a subtitle-file helper library as a dependency that QUILL never actually uses, and that library has never published a ready-to-install package — only its source code. Because the Offline Edition build only ever installs verified, ready-to-install packages (never source code that would need to be compiled), it rejected that one unused dependency every time, which meant the Offline Edition installer could not be built at all until this was found and fixed. It now fetches exactly what Vosk actually needs and skips the one piece it doesn't.
+
 ### Piper arrives with an engine and a ready-to-speak voice
 
 Piper is now fully prepared for offline use as well.

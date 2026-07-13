@@ -238,8 +238,12 @@ def test_every_hosted_release_asset_is_catalogued() -> None:
         "gh-windows": "gh",
         "gh-macos": "gh",
     }
+    # MathCAT ships only a Windows .dll (libmathcat_c.dll), so
+    # gather_optional_components() only offers it on Windows -- advertising it
+    # on macOS would offer a download that could never work (#46).
+    windows_only = {"mathcat"} if not sys.platform.startswith("win") else set()
     for key in ASSETS:
-        if key.startswith("spell-"):
+        if key.startswith("spell-") or key in windows_only:
             continue
         if key in folded_into:
             assert folded_into[key] in ids, f"{key!r}'s hub row {folded_into[key]!r} is missing"

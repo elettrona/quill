@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import sys
+
 import pytest
 
 from quill.core.shell_verbs import default_shell_verbs
@@ -13,6 +15,17 @@ from quill.platform.windows.shell_integration import (
     build_shell_integration_plan,
     context_menu_registry_paths,
     verb_launcher_command,
+)
+
+# This module builds real Windows Registry entries (winreg.HKEY_CURRENT_USER,
+# REG_SZ/REG_NONE type constants, ...) -- quill.platform.windows.shell_integration
+# only degrades winreg to None at import time so the rest of the app can import
+# it safely off-Windows; every plan-building function still dereferences winreg
+# directly and has no non-Windows behavior to verify. winreg itself doesn't
+# exist as a module at all outside Windows, so several tests below import it
+# locally and would fail at collection with ModuleNotFoundError otherwise.
+pytestmark = pytest.mark.skipif(
+    sys.platform != "win32", reason="Windows Registry shell integration; winreg is Windows-only"
 )
 
 
