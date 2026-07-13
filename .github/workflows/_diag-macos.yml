@@ -1,0 +1,21 @@
+name: _diag-macos
+# TEMPORARY: fast one-off diagnostic runner, not part of the release pipeline.
+# Delete this file once tests/unit/ui/test_zzz_diag_undo_atomic.py is removed.
+
+on:
+  workflow_dispatch:
+
+jobs:
+  diag:
+    runs-on: macos-26
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - name: Install test dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e ".[ui,spellcheck,macos,dev,feedback]"
+      - name: Run diagnostic
+        run: pytest tests/unit/ui/test_zzz_diag_undo_atomic.py -q -s
