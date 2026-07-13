@@ -33,6 +33,16 @@ A list-over-detail dialog modeled on GHManage (https://github.com/kellylford/GHM
   four highest-consequence ones (merge, delete a branch, and anything else
   that goes through :class:`~quill.ui.github_repo_admin_dialogs.TypedConfirmDialog`)
   require retyping the exact name/number rather than a plain Yes/No.
+- Further GHManage parity: **Compare Branches** (Com&pare... / Ctrl+Shift+B,
+  Branches view only) shows ahead/behind counts, the commits between two
+  branches, and the changed files -- read-only, so it needs no authenticated
+  session -- rendered by
+  :class:`~quill.ui.github_compare_branches_dialog.GitHubCompareBranchesDialog`.
+  **Column selection** (Colu&mns...) toggles which columns are shown per
+  view. **Backspace** in the Commits view (reached by pressing Enter on a
+  branch) steps back to the Branches list. The repository field accepts a
+  pasted GitHub URL or ``git@github.com:`` remote, not just ``owner/repo``
+  (:func:`~quill.ui.github_items_view.parse_repo_reference`).
 
 The wx-free view-model formatting (cells, details, comment positions) lives in
 :mod:`quill.ui.github_items_view` so it is unit-testable without a display;
@@ -55,6 +65,9 @@ from quill.core.github.items_provider import (
     GitHubRepoForkInfo,
 )
 from quill.ui.dialog_contract import apply_modal_ids, show_modal_dialog
+from quill.ui.github_items_dialog_branches import GitHubBranchActionsMixin
+from quill.ui.github_items_dialog_filter import GitHubQuickFilterMixin
+from quill.ui.github_items_dialog_workflows import GitHubWorkflowsMixin
 from quill.ui.github_items_view import (
     SORT_ORDERS,
     VIEW_BRANCHES,
@@ -64,11 +77,13 @@ from quill.ui.github_items_view import (
     VIEW_RELEASES,
     VIEW_RUNS,
     VIEW_TAGS,
+    VIEW_WORKFLOWS,
     VIEWS,
     item_detail,
     model_detail,
     model_label,
     model_url,
+    parse_repo_reference,
     row_cells,
     sort_items,
     view_label,
@@ -78,7 +93,7 @@ if TYPE_CHECKING:
     from collections.abc import Callable
 
 
-class GitHubItemsDialog:
+class GitHubItemsDialog(GitHubBranchActionsMixin, GitHubQuickFilterMixin, GitHubWorkflowsMixin):
     """Modal list-over-detail viewer for a repository's GitHub items."""
 
     def __init__(
@@ -104,14 +119,23 @@ class GitHubItemsDialog:
         self._state = "open"  # open / closed / all (issues view only)
         self._sort = "number_desc"
         self._list_mode = "quick"  # "quick" or "full" (GHManage parity)
-        self._page = 1  # page cap = page * DEFAULT_PAGE_LIMIT for "View more"
-        self._rows: list[object] = []
-        self._drill_branch: str | None = None
-        self._search_query = ""  # non-empty = issues view shows search results
-        # Pinned repos + favorites (GHManage parity), persisted across sessions.
+        # Pinned repos + favorites + column choices (GHManage parity),
+        # persisted across sessions.
         from quill.core.github.saved_items import GitHubSavedItems
 
         self._saved = GitHubSavedItems.load()
+        # Per-view visible column subset (GHManage parity, Columns... menu);
+        # seeded from the saved store, defaulting to every column visible.
+        self._visible_columns: dict[str, list[str]] = {
+            view: self._saved.get_columns(view, list(cols)) for view, cols in VIEW_COLUMNS.items()
+        }
+        self._page = 1  # page cap = page * DEFAULT_PAGE_LIMIT for "View more"
+        self._rows: list[object] = []
+        # The fetched set; self._rows is its quick-filtered view.
+        self._unfiltered_rows: list[object] = []
+        self._quick_filter_query = ""  # GHManage parity, Ctrl+Shift+F
+        self._drill_branch: str | None = None
+        self._search_query = ""  # non-empty = issues view shows search results
         # Per-selection comment thread + positions for Alt+N/Alt+P navigation.
         self._comments: list[dict[str, str]] = []
         self._comment_positions: list[tuple[int, int]] = []
@@ -177,7 +201,19 @@ class GitHubItemsDialog:
         self._search_btn = wx.Button(panel, label="Search")
         self._search_btn.SetName("Run search")
         search_row.Add(self._search_ctrl, 1, wx.EXPAND | wx.RIGHT, 6)
-        search_row.Add(self._search_btn)
+        search_row.Add(self._search_btn, 0, wx.RIGHT, 12)
+        search_row.Add(
+            wx.StaticText(panel, label="&Quick filter:"),
+            0,
+            wx.ALIGN_CENTER_VERTICAL | wx.RIGHT,
+            6,
+        )
+        self._quick_filter_ctrl = wx.TextCtrl(panel, style=wx.TE_PROCESS_ENTER)
+        self._quick_filter_ctrl.SetName(
+            "Quick filter; narrows the currently loaded list as you type, no network "
+            "request -- Escape clears it"
+        )
+        search_row.Add(self._quick_filter_ctrl, 1, wx.EXPAND)
         root.Add(search_row, 0, wx.EXPAND | wx.LEFT | wx.RIGHT | wx.BOTTOM, 10)
 
         # Filter row: View / Show / State / Sort / List mode
@@ -215,7 +251,11 @@ class GitHubItemsDialog:
         self._mode_choice = wx.Choice(panel, choices=["Quick (compact)", "Full (field names)"])
         self._mode_choice.SetName("List mode")
         self._mode_choice.SetSelection(0)
-        filt.Add(self._mode_choice, 1, wx.EXPAND)
+        filt.Add(self._mode_choice, 1, wx.EXPAND | wx.RIGHT, 10)
+
+        self._columns_btn = wx.Button(panel, label="Colu&mns...")
+        self._columns_btn.SetName("Choose which columns are shown in the list for this view")
+        filt.Add(self._columns_btn, 0)
         root.Add(filt, 0, wx.EXPAND | wx.LEFT | wx.RIGHT | wx.BOTTOM, 10)
 
         # List. Multi-select so batch actions can operate on several checked
@@ -257,6 +297,10 @@ class GitHubItemsDialog:
         )
         self._summarize_btn = wx.Button(panel, label="Summari&ze")
         self._summarize_btn.SetName("Summarize the selected discussion with AI")
+        self._compare_btn = wx.Button(panel, label="Com&pare...")
+        self._compare_btn.SetName(
+            "Compare two branches: ahead/behind counts, commits, and changed files"
+        )
         self._batch_btn = wx.Button(panel, label="&Batch...")
         self._batch_btn.SetName("Batch actions on the checked items: close, reopen, add label")
         self._actions_btn = wx.Button(panel, label="&Actions...")
@@ -273,6 +317,7 @@ class GitHubItemsDialog:
             self._goto_btn,
             self._diff_btn,
             self._summarize_btn,
+            self._compare_btn,
             self._batch_btn,
             self._actions_btn,
         ):
@@ -306,8 +351,11 @@ class GitHubItemsDialog:
         self._upstream_btn.Bind(wx.EVT_BUTTON, self._on_view_upstream)
         self._search_btn.Bind(wx.EVT_BUTTON, self._on_search)
         self._search_ctrl.Bind(wx.EVT_TEXT_ENTER, self._on_search)
+        self._quick_filter_ctrl.Bind(wx.EVT_TEXT, self._on_quick_filter_changed)
         self._diff_btn.Bind(wx.EVT_BUTTON, lambda _e: self._on_diff())
         self._summarize_btn.Bind(wx.EVT_BUTTON, lambda _e: self._on_summarize())
+        self._compare_btn.Bind(wx.EVT_BUTTON, lambda _e: self._on_compare_branches())
+        self._columns_btn.Bind(wx.EVT_BUTTON, self._on_columns_menu)
         self._batch_btn.Bind(wx.EVT_BUTTON, self._on_batch_menu)
         self._actions_btn.Bind(wx.EVT_BUTTON, self._on_actions_menu)
         self.dialog.Bind(wx.EVT_CHAR_HOOK, self._on_char_hook)
@@ -341,20 +389,27 @@ class GitHubItemsDialog:
     # Loading
 
     def _on_load(self, _event: object) -> None:
-        full_name = self._repo_ctrl.GetValue().strip()
-        if not full_name:
+        raw = self._repo_ctrl.GetValue().strip()
+        if not raw:
             self._set_status("Enter a repository name (owner/repo) first.")
             self._repo_ctrl.SetFocus()
             return
-        if "/" not in full_name:
-            self._set_status("Repository must be in owner/repo format.")
+        # Accepts owner/repo, a github.com URL, or a git@github.com: remote --
+        # whatever a user is most likely to have pasted (GHManage parity).
+        full_name = parse_repo_reference(raw)
+        if full_name is None:
+            self._set_status("Repository must be owner/repo, or a GitHub URL.")
             self._repo_ctrl.SetFocus()
             return
+        if full_name != raw:
+            self._repo_ctrl.SetValue(full_name)
         if full_name != self._repo:
-            # A different repository starts clean: a stale search query would
-            # silently filter the new repo's list.
+            # A different repository starts clean: a stale search or quick
+            # filter would silently narrow the new repo's list.
             self._search_query = ""
             self._search_ctrl.SetValue("")
+            self._quick_filter_query = ""
+            self._quick_filter_ctrl.ChangeValue("")
         self._repo = full_name
         self._page = 1
         self._reload()
@@ -441,6 +496,8 @@ class GitHubItemsDialog:
             return self._provider.fetch_tags(repo, limit=limit)
         if view == VIEW_RELEASES:
             return self._provider.fetch_releases(repo, limit=limit)
+        if view == VIEW_WORKFLOWS:
+            return self._provider.fetch_workflows(repo, limit=limit)
         if view == VIEW_RUNS:
             return self._provider.fetch_workflow_runs(repo, limit=limit)
         return []
@@ -448,23 +505,9 @@ class GitHubItemsDialog:
     def _on_rows_loaded(self, rows: list[object], view: str) -> None:
         if view != self._view:
             return  # a stale worker for a view the user already left
-        self._rows = rows
-        self._populate_list()
+        self._unfiltered_rows = rows
         self._set_loading(False)
-        count = len(rows)
-        noun = view_label(self._view)
-        prefix = f"search '{self._search_query}': " if self._search_query else ""
-        self._set_status(
-            f"{self._repo} - {prefix}{count} {noun}{'' if count == 1 else 's'}. "
-            "Enter=open/drill  Ctrl+R=refresh  Ctrl+O=browser  Ctrl+G=go to  "
-            "Ctrl+F=search  Ctrl+D=favorite  "
-            f"Alt+N/Alt+P=comment  List={self._list_mode}"
-        )
-        if count:
-            self._list.SetFocus()
-            self._list.Select(0)
-            self._list.Focus(0)
-            self._show_detail(0)
+        self._apply_quick_filter(move_focus=True)
 
     def _on_load_error(self, message: str) -> None:
         self._set_loading(False)
@@ -480,12 +523,12 @@ class GitHubItemsDialog:
     def _rebuild_columns(self) -> None:
         self._list.DeleteAllItems()
         self._list.DeleteAllColumns()
-        for i, col in enumerate(VIEW_COLUMNS[self._view]):
+        for i, col in enumerate(self._current_columns()):
             self._list.InsertColumn(i, col, width=140 if col == "title" else 90)
 
     def _populate_list(self) -> None:
         self._list.DeleteAllItems()
-        columns = VIEW_COLUMNS[self._view]
+        columns = self._current_columns()
         full = self._list_mode == "full"
         for i, model in enumerate(self._rows):
             cells = row_cells(model, columns, full=full)
@@ -499,6 +542,7 @@ class GitHubItemsDialog:
 
     def _clear_list(self) -> None:
         self._rows = []
+        self._unfiltered_rows = []
         self._list.DeleteAllItems()
         self._details.Clear()
         self._comments = []
@@ -512,7 +556,7 @@ class GitHubItemsDialog:
         idx = getattr(event, "GetIndex", lambda: -1)()
         self._show_detail(idx)
         if self._list_mode == "full" and 0 <= idx < len(self._rows):
-            cells = row_cells(self._rows[idx], VIEW_COLUMNS[self._view], full=True)
+            cells = row_cells(self._rows[idx], self._current_columns(), full=True)
             self._announce(", ".join(c for c in cells if c))
 
     def _show_detail(self, idx: int) -> None:
@@ -614,6 +658,9 @@ class GitHubItemsDialog:
         if self._view == VIEW_BRANCHES and isinstance(model, GitHubBranch):
             self._drill_branch = model.name
             self._switch_view(VIEW_COMMITS)
+            return
+        if self._view == VIEW_WORKFLOWS:
+            self._run_selected_workflow(model)
             return
         url = model_url(model)
         if url:
@@ -1019,6 +1066,14 @@ class GitHubItemsDialog:
             if len(selected) == 1 and isinstance(self._rows[selected[0]], GitHubBranch):
                 branch = self._rows[selected[0]]
                 _add(f"Delete Branch {branch.name!r}...", self._delete_selected_branch)
+        elif self._view == VIEW_WORKFLOWS:
+            selected = self._selected_indices()
+            if len(selected) == 1:
+                workflow = self._rows[selected[0]]
+                _add(
+                    f"Run {workflow.name!r} on Branch...",
+                    lambda: self._run_selected_workflow(workflow),
+                )
         elif self._view == VIEW_RUNS:
             selected = self._selected_indices()
             if len(selected) == 1:
@@ -1141,99 +1196,6 @@ class GitHubItemsDialog:
     def _on_merge_done(self, number: int, sha: str) -> None:
         self._set_status(f"Merged #{number} ({sha[:7]})")
         self._reload()
-
-    def _delete_selected_branch(self) -> None:
-        selected = self._selected_indices()
-        if len(selected) != 1:
-            return
-        model = self._rows[selected[0]]
-        if not isinstance(model, GitHubBranch):
-            return
-        from quill.ui.github_repo_admin_dialogs import TypedConfirmDialog
-
-        if not TypedConfirmDialog(
-            self.dialog,
-            title="Confirm Branch Deletion",
-            message=(
-                f"Delete branch {model.name!r} from {self._repo}? This cannot be undone from QUILL."
-            ),
-            expected=model.name,
-        ).show():
-            self._announce("Branch deletion cancelled.")
-            return
-        self._set_status(f"Deleting {model.name}...")
-        branch_name = model.name
-
-        def worker() -> None:
-            wx = self._wx
-            from quill.core.github.repo_admin import GitHubRepoAdminError, GitHubRepoAdminProvider
-
-            provider = GitHubRepoAdminProvider(self._provider.token or "")
-            try:
-                provider.delete_branch(self._repo, branch_name)
-            except GitHubRepoAdminError as exc:
-                wx.CallAfter(self._set_status, f"Error: {exc}")
-                return
-            finally:
-                provider.close()
-            wx.CallAfter(self._on_branch_deleted, branch_name)
-
-        threading.Thread(target=worker, daemon=True).start()  # GATE-40-OK: consented delete.
-
-    def _on_branch_deleted(self, branch_name: str) -> None:
-        self._set_status(f"Deleted branch {branch_name}")
-        self._reload()
-
-    def _rerun_selected_workflow(self) -> None:
-        selected = self._selected_indices()
-        if len(selected) != 1:
-            return
-        model = self._rows[selected[0]]
-        run_number = getattr(model, "run_number", 0)
-        if not run_number:
-            self._announce("Select a workflow run first.")
-            return
-        if not self._confirm_action(
-            f"Re-run workflow run #{run_number} in {self._repo}?", "Confirm Re-run"
-        ):
-            self._announce("Re-run cancelled.")
-            return
-        self._set_status(f"Re-running #{run_number}...")
-
-        def worker() -> None:
-            wx = self._wx
-            try:
-                self._provider.rerun_workflow_run(self._repo, run_number)
-            except GitHubItemsError as exc:
-                wx.CallAfter(self._set_status, f"Error: {exc}")
-                return
-            wx.CallAfter(self._set_status, f"Re-run started for #{run_number}")
-
-        threading.Thread(target=worker, daemon=True).start()  # GATE-40-OK: consented re-run.
-
-    def _view_artifacts_for_selected(self) -> None:
-        selected = self._selected_indices()
-        if len(selected) != 1:
-            return
-        model = self._rows[selected[0]]
-        run_number = getattr(model, "run_number", 0)
-        if not run_number:
-            self._announce("Select a workflow run first.")
-            return
-        run_name = getattr(model, "name", "")
-        run_url = getattr(model, "url", "")
-        from quill.ui.github_artifacts_dialog import ArtifactsDialog
-
-        dlg = ArtifactsDialog(
-            self.dialog,
-            self._provider,
-            repo=self._repo,
-            run_id=run_number,
-            run_label=f"#{run_number} - {run_name}" if run_name else f"#{run_number}",
-            run_url=run_url,
-            announce_cb=self._announce,
-        )
-        dlg.show()
 
     def _reply_to_thread(self) -> None:
         if self._comment_target is None:
@@ -1370,6 +1332,10 @@ class GitHubItemsDialog:
     def _switch_view(self, view: str) -> None:
         self._view = view
         self._page = 1
+        # A quick filter typed for one view's columns rarely means anything
+        # for another view's -- reset it rather than silently narrowing.
+        self._quick_filter_query = ""
+        self._quick_filter_ctrl.ChangeValue("")
         self._rebuild_columns()
         self._apply_filter_enablement()
         self._reload()
@@ -1380,6 +1346,7 @@ class GitHubItemsDialog:
             ctrl.Enable(issues_view)
         for ctrl in (self._diff_btn, self._summarize_btn, self._batch_btn):
             ctrl.Enable(issues_view)
+        self._compare_btn.Enable(self._view == VIEW_BRANCHES)
 
     # ------------------------------------------------------------------
     # Keyboard
@@ -1390,6 +1357,12 @@ class GitHubItemsDialog:
             self._reload()
         elif key == ord("M"):
             self._cycle_list_mode()
+        elif key == self._wx.WXK_BACK and self._view == VIEW_COMMITS and self._drill_branch:
+            # Step back out of a branch's Commits drill-down (GHManage parity).
+            # Plain Backspace, so this is list-scoped rather than global --
+            # otherwise it would eat Backspace in the repo/search text fields.
+            self._drill_branch = None
+            self._switch_view(VIEW_BRANCHES)
         else:
             event.Skip()
 
@@ -1415,6 +1388,16 @@ class GitHubItemsDialog:
             self._navigate_comment(1)
         elif key == ord("P") and mod == wx.MOD_ALT:
             self._navigate_comment(-1)
+        elif key == ord("B") and mod == (wx.MOD_CONTROL | wx.MOD_SHIFT):
+            self._on_compare_branches()
+        elif key == ord("F") and mod == (wx.MOD_CONTROL | wx.MOD_SHIFT):
+            self._quick_filter_ctrl.SetFocus()
+        elif key == wx.WXK_ESCAPE and self._quick_filter_query and self._quick_filter_has_focus():
+            # ChangeValue (not SetValue) so this doesn't also fire EVT_TEXT
+            # and re-run the filter a second time, silently, with announce=False.
+            self._quick_filter_ctrl.ChangeValue("")
+            self._quick_filter_query = ""
+            self._apply_quick_filter(move_focus=False)
         else:
             event.Skip()
 
@@ -1427,12 +1410,12 @@ class GitHubItemsDialog:
         self._refresh_btn.Enable(not loading)
         self._more_btn.Enable(not loading)
 
-    def _set_status(self, message: str) -> None:
+    def _set_status(self, message: str, *, announce: bool = True) -> None:
         self._status.SetLabel(message)
         parent = self._status.GetParent()
         if parent is not None:
             parent.Layout()
-        if message:
+        if message and announce:
             self._announce(message)
 
 

@@ -48,3 +48,27 @@ def test_corrupt_store_degrades_to_empty(tmp_path: Path) -> None:
     target.write_text("not json at all", encoding="utf-8")
     store = GitHubSavedItems.load(target)
     assert store.pinned == [] and store.favorites == []
+    assert store.get_columns("branches", ["name", "commit"]) == ["name", "commit"]
+
+
+def test_column_prefs_round_trip_and_default_fallback(tmp_path: Path) -> None:
+    store = _store(tmp_path)
+    assert store.get_columns("branches", ["name", "protected"]) == ["name", "protected"]
+    store.set_columns("branches", ["name"])
+
+    reloaded = _store(tmp_path)
+    assert reloaded.get_columns("branches", ["name", "protected"]) == ["name"]
+    # A view never customized still falls back to the caller's default.
+    assert reloaded.get_columns("issues", ["number", "title"]) == ["number", "title"]
+
+
+def test_column_prefs_ignore_malformed_entries(tmp_path: Path) -> None:
+    target = tmp_path / "github_saved_items.json"
+    target.write_text(
+        '{"columns": {"branches": ["name", 5], "bad": "not-a-list", "empty": []}}',
+        encoding="utf-8",
+    )
+    store = GitHubSavedItems.load(target)
+    assert store.get_columns("branches", ["name", "protected"]) == ["name"]
+    assert store.get_columns("bad", ["x"]) == ["x"]
+    assert store.get_columns("empty", ["x"]) == ["x"]

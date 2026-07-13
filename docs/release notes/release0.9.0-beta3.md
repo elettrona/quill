@@ -323,7 +323,21 @@ Press **Summarize** on an issue or pull request and QUILL’s AI creates a brief
 
 The summary appears in the details pane and is announced. It uses the same AI connection, privacy, and consent gates as every other QUILL AI feature. Nothing is transmitted or generated until you choose **Summarize**.
 
-The viewer and every GitHub feature continue to honor QUILL’s token, consent, and Safe Mode controls. Branch comparison, a wiki browser, and additional parts of the broader unification review remain on the roadmap; notifications move from roadmap to reality later in this release.
+### Compare two branches without leaving the list
+
+Switch the Items viewer to the **Branches** view, select one, and press **Compare...** (or **Ctrl+Shift+B**). Unlike Batch and Actions, this needs no signed-in account — it never writes to GitHub. Type a base branch, then the branch to compare against it (the selected row prefills the second prompt), and QUILL reports how far the two have diverged, lists every commit between them, and walks each changed file's differences the same accessible way **Diff...** does on a pull request.
+
+### Run a workflow straight from the list
+
+A new **Workflows** view sits alongside Workflow Runs — it shows the workflow *definitions* in the repository (the `.yml` files) rather than their run history. Select one and press **Enter**, or use **Actions... > Run ... on Branch...**, and QUILL asks for a branch, confirms, and dispatches the run. This needs a signed-in account; if the workflow doesn't accept manual (`workflow_dispatch`) runs, GitHub's own refusal is reported plainly instead of QUILL guessing.
+
+### Filter what you've already loaded, instantly
+
+**Quick filter** (Ctrl+Shift+F) is a second, different kind of narrowing from Search: it filters the rows already sitting in the list, live as you type, with no network round trip. It never steals keyboard focus away from the box you're typing in, and — since re-announcing "12 items" on every keystroke would fight a screen reader's own character echo — it stays silent while you type and only speaks the result count once you stop. Escape clears it.
+
+Three smaller navigation additions round this out: **Columns...** lets you choose which fields appear as list columns for the current view, and remembers your choice the next time you open the viewer; **Backspace** in the Commits view (reached by pressing Enter on a branch) steps straight back to the branch list; and the repository field now accepts a pasted `github.com` URL or `git@github.com:` remote, not just `owner/repo`.
+
+The viewer and every GitHub feature continue to honor QUILL’s token, consent, and Safe Mode controls. A wiki browser and additional parts of the broader unification review remain on the roadmap; notifications move from roadmap to reality later in this release.
 
 ---
 

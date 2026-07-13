@@ -41,7 +41,16 @@ from pathlib import Path
 from typing import Any
 
 from quill.core.error_codes import CodedError
+from quill.core.github.branch_compare import GitHubBranchComparison, fetch_branch_comparison
 from quill.core.github.github_provider import _get_gh_module, require_pygithub
+from quill.core.github.notifications import (
+    GitHubNotification,
+    GitHubSecurityAlert,
+    list_notifications,
+    list_security_alerts,
+)
+from quill.core.github.notifications import mark_notification_read as _mark_notification_read_raw
+from quill.core.github.workflows import GitHubWorkflow, list_workflows
 
 #: Default page cap for a single fetch. The dialog loads this many, then offers
 #: "View more" for the next batch -- mirrors GHManage's 30-at-a-time behaviour.
@@ -254,33 +263,6 @@ class GitHubArtifact:
                 return f"{size:.0f} {unit}" if unit == "B" else f"{size:.1f} {unit}"
             size /= 1024
         return f"{size:.1f} GB"
-
-
-@dataclass(frozen=True, slots=True)
-class GitHubNotification:
-    """One entry in the authenticated account's GitHub notifications inbox."""
-
-    id: str
-    repository: str
-    reason: str
-    subject_title: str
-    subject_type: str
-    unread: bool
-    updated_at: str = ""
-    url: str = ""
-
-
-@dataclass(frozen=True, slots=True)
-class GitHubSecurityAlert:
-    """One Dependabot security alert for a repository."""
-
-    number: int
-    state: str
-    severity: str
-    package: str
-    summary: str
-    html_url: str = ""
-    created_at: str = ""
 
 
 # ---------------------------------------------------------------------------
@@ -590,6 +572,31 @@ class GitHubItemsProvider:
             files_changed=files_changed,
         )
 
+    def compare_branches(
+        self,
+        full_name: str,
+        base: str,
+        head: str,
+        *,
+        limit: int = DEFAULT_PAGE_LIMIT,
+    ) -> GitHubBranchComparison:
+        """Ahead/behind counts, the commits between *base* and *head*, and
+        the changed files -- GHManage's "Compare Branches" (Ctrl+Shift+B).
+        The mapping itself lives in :mod:`quill.core.github.branch_compare`
+        (split out to keep this module under its GATE-11 size budget)."""
+        repo = self._repo(full_name)
+        try:
+            return fetch_branch_comparison(
+                repo,
+                base,
+                head,
+                map_commit=lambda row: self._map_commit(row, repo),
+                take=_take,
+                limit=limit,
+            )
+        except Exception as exc:  # noqa: BLE001
+            raise GitHubItemsError(f"Could not compare {base!r}...{head!r}: {exc}") from exc
+
     # ------------------------------------------------------------------
     # Tags, releases, workflow runs
 
@@ -671,6 +678,17 @@ class GitHubItemsProvider:
                 )
             )
         return out
+
+    def fetch_workflows(
+        self, full_name: str, *, limit: int = DEFAULT_PAGE_LIMIT
+    ) -> list[GitHubWorkflow]:
+        """Workflow *definitions* (not runs) -- GHManage's Workflows view.
+        Mapping lives in :mod:`quill.core.github.workflows` (GATE-11)."""
+        repo = self._repo(full_name)
+        try:
+            return list_workflows(repo, limit=limit, take=_take)
+        except Exception as exc:  # noqa: BLE001
+            raise GitHubItemsError(f"Could not list workflows: {exc}") from exc
 
     # ------------------------------------------------------------------
     # Detail (a single item with its comment thread for the details pane)
@@ -1060,64 +1078,31 @@ class GitHubItemsProvider:
 
     def fetch_notifications(self, *, limit: int = DEFAULT_PAGE_LIMIT) -> list[GitHubNotification]:
         """The authenticated account's GitHub notifications inbox, across
-        every repository -- a real inbox, not scoped to one repo."""
+        every repository -- a real inbox, not scoped to one repo. Mapping
+        lives in :mod:`quill.core.github.notifications` (GATE-11)."""
         self._require_write_access("read notifications")
         try:
-            rows = _take(self._gh.get_user().get_notifications(), limit)
+            return list_notifications(self._gh, limit=limit, take=_take)
         except Exception as exc:  # noqa: BLE001
             raise GitHubItemsError(f"Could not list notifications: {exc}") from exc
-        out: list[GitHubNotification] = []
-        for row in rows:
-            subject = getattr(row, "subject", None)
-            repository = getattr(row, "repository", None)
-            out.append(
-                GitHubNotification(
-                    id=_safe_str(getattr(row, "id", "")),
-                    repository=_safe_str(getattr(repository, "full_name", "")),
-                    reason=_safe_str(getattr(row, "reason", "")),
-                    subject_title=_safe_str(getattr(subject, "title", "")) if subject else "",
-                    subject_type=_safe_str(getattr(subject, "type", "")) if subject else "",
-                    unread=bool(getattr(row, "unread", False)),
-                    updated_at=_iso(getattr(row, "updated_at", None)),
-                    url=_safe_str(getattr(row, "url", "")),
-                )
-            )
-        return out
 
     def mark_notification_read(self, notification_id: str) -> None:
         self._require_write_access("mark a notification as read")
         try:
-            notification = self._gh.get_user().get_notification(notification_id)
-            notification.mark_as_read()
+            _mark_notification_read_raw(self._gh, notification_id)
         except Exception as exc:  # noqa: BLE001
             raise GitHubItemsError(f"Could not mark notification as read: {exc}") from exc
 
     def fetch_security_alerts(
         self, full_name: str, *, limit: int = DEFAULT_PAGE_LIMIT
     ) -> list[GitHubSecurityAlert]:
-        """Open Dependabot security alerts for a repository."""
+        """Open Dependabot security alerts for a repository. Mapping lives in
+        :mod:`quill.core.github.notifications` (GATE-11)."""
         repo = self._repo(full_name)
         try:
-            rows = _take(repo.get_dependabot_alerts(state="open"), limit)
+            return list_security_alerts(repo, limit=limit, take=_take)
         except Exception as exc:  # noqa: BLE001
             raise GitHubItemsError(f"Could not list security alerts: {exc}") from exc
-        out: list[GitHubSecurityAlert] = []
-        for row in rows:
-            advisory = getattr(row, "security_advisory", None)
-            dependency = getattr(row, "dependency", None)
-            package = getattr(dependency, "package", None) if dependency else None
-            out.append(
-                GitHubSecurityAlert(
-                    number=int(getattr(row, "number", 0) or 0),
-                    state=_safe_str(getattr(row, "state", "")),
-                    severity=_safe_str(getattr(advisory, "severity", "")) if advisory else "",
-                    package=_safe_str(getattr(package, "name", "")) if package else "",
-                    summary=_safe_str(getattr(advisory, "summary", "")) if advisory else "",
-                    html_url=_safe_str(getattr(row, "html_url", "")),
-                    created_at=_iso(getattr(row, "created_at", None)),
-                )
-            )
-        return out
 
     def create_comment(self, full_name: str, number: int, body: str) -> dict[str, str]:
         """Post a comment on issue/PR *number* (also used to reply — GitHub's
@@ -1181,6 +1166,7 @@ class GitHubItemsProvider:
 __all__ = [
     "DEFAULT_PAGE_LIMIT",
     "GitHubBranch",
+    "GitHubBranchComparison",
     "GitHubCommit",
     "GitHubItem",
     "GitHubItemsError",
@@ -1189,6 +1175,7 @@ __all__ = [
     "GitHubRelease",
     "GitHubSecurityAlert",
     "GitHubTag",
+    "GitHubWorkflow",
     "GitHubWorkflowJob",
     "GitHubWorkflowRun",
     "refuse_in_safe_mode",

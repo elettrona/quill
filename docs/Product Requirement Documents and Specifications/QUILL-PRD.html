@@ -14220,10 +14220,11 @@ truncation at 24k chars) and runs one bounded completion through
 same <code>_ai_require_connection</code> gate as every keyed AI feature
 — opening the viewer never prompts for AI setup.</li>
 </ul>
-<p>The review’s remaining items (branch comparison, notifications, wiki
-browser, vault linking, a <code>gh</code>-CLI hybrid engine, metadata
+<p>The review’s remaining items (wiki browser, vault linking, metadata
 caching, an in-viewer command palette, context sharing) stay deferred;
-see the roadmap’s “Unified GitHub Management — deferred” list.</p>
+see the roadmap’s “Unified GitHub Management — deferred” list. Branch
+comparison shipped in §25.18; notifications and security alerts shipped
+in §25.15; the <code>gh</code>-CLI hybrid engine shipped in §25.16.</p>
 <p><strong>Views.</strong> A single <strong>View</strong> switcher
 selects one of:</p>
 <table>
@@ -14266,6 +14267,11 @@ selects one of:</p>
 <td>release name, flags, body (release notes)</td>
 </tr>
 <tr>
+<td>Workflows</td>
+<td>name, state, path</td>
+<td>workflow definition; Enter dispatches it on a branch (§25.18)</td>
+</tr>
+<tr>
 <td>Workflow Runs</td>
 <td>name, status, conclusion, branch, event, run_number</td>
 <td>run status + conclusion</td>
@@ -14296,7 +14302,13 @@ bounds.</p>
 document’s GitHub origin when the document was opened from GitHub
 (<code>RemoteOrigin.repository</code>), so a user editing a file from a
 repo can review that repo in one step. Otherwise the user types
-<code>owner/repo</code> and clicks Load.</p>
+<code>owner/repo</code>, pastes an
+<code>https://github.com/owner/repo</code> URL (with or without a
+trailing <code>.git</code>, <code>/tree/...</code>,
+<code>/pull/...</code>, etc.), or pastes a
+<code>git@github.com:owner/repo.git</code> remote, and clicks Load —
+<code>parse_repo_reference</code> (§25.18) normalizes any of those to
+<code>owner/repo</code>.</p>
 <p><strong>Keyboard shortcuts.</strong></p>
 <ul>
 <li><code>Enter</code> on a row: open the item in the browser; on a
@@ -15012,6 +15024,101 @@ remove path deletes only MinGit’s own top-level entries
 <code>usr/</code>, <code>LICENSE.txt</code>) individually;
 <code>gh</code>’s remove path deletes only its own flat executable file.
 Removing one never touches the other’s installed files.</p>
+<h3 id="github-items-ghmanage-parity-completion-0.9.0-beta-3">§25.18
+GitHub Items: GHManage Parity Completion (0.9.0 Beta 3)</h3>
+<p><strong>Attribution.</strong> This section closes out the
+GHManage/fastgh unification review named throughout §25.12–§25.16: every
+remaining feature GHManage (Kelly Ford,
+<code>github.com/kellylford/GHManage</code>) has that QUILL’s Items
+viewer did not yet match. As with the rest of the GHManage-derived work
+in this PRD, each feature is not a straight port — it is extended to fit
+QUILL’s own architecture and to go further where QUILL already has the
+infrastructure to do so (most visibly: Compare Branches routes its file
+diffs through QUILL’s own compare engine instead of a raw patch, and
+Quick Filter is deliberately quieter than GHManage’s own version so it
+does not fight a screen reader’s character echo — see below). GHManage
+remains the reference viewer this entire integration is measured
+against.</p>
+<p><strong>Compare Branches</strong>
+(<code>quill/core/github/branch_compare.py</code>,
+<code>quill/ui/github_compare_branches_dialog.py</code>). In the
+<strong>Branches</strong> view, select a row and press
+<strong>Compare…</strong> or <strong>Ctrl+Shift+B</strong>. Two prompts
+(base branch, then head branch — the selected row prefills the second)
+call <code>GitHubItemsProvider.compare_branches</code>, which wraps
+PyGithub’s <code>Repository.compare(base, head)</code> and maps
+<code>ahead_by</code>/<code>behind_by</code>/<code>status</code>/
+<code>total_commits</code>, the commits between the two refs, and the
+changed files. The result dialog has two tabs: <strong>Commits</strong>
+(a plain list) and <strong>Changed Files</strong> — selecting a file
+fetches both sides at the two branch names as refs (reusing
+<code>fetch_file_text</code>) and renders the difference through
+<code>quill.core.compare_service</code>, the same spoken difference walk
+§25.12’s Tranche 2 PR diff viewer already gives (“Difference 2 of 5.
+Text changed at line 41…”), not a raw unified patch; binary/oversized
+files degrade to their +/- counts and GitHub’s patch text, matching the
+PR diff viewer’s own fallback. This is read-only — unlike Batch and
+Actions, it requires no authenticated session, since
+<code>Repository.compare</code> never writes to GitHub.</p>
+<p><strong>Workflows view</strong>
+(<code>quill/core/github/workflows.py</code>, extending the Views table
+above). A <code>GitHubWorkflow</code> model (<code>id</code>,
+<code>name</code>, <code>path</code>, <code>state</code>,
+<code>url</code>, <code>badge_url</code>) lists workflow
+<em>definitions</em> via <code>fetch_workflows</code> (PyGithub’s
+<code>Repository.get_workflows()</code>) — distinct from the
+pre-existing <strong>Workflow Runs</strong> view (§25.12’s Views table),
+which shows run <em>history</em>. <strong>Enter</strong> on a row, or
+<strong>Actions… &gt; Run <code>&lt;name&gt;</code> on Branch…</strong>,
+calls <code>GitHubWorkflowsMixin._run_selected_workflow</code>: prompts
+for a branch, confirms, and dispatches through the already-shipped
+<code>GitHubItemsProvider.dispatch_workflow</code> (§25.15’s sibling
+<strong>Tools &gt; GitHub &gt; Dispatch Workflow…</strong> command uses
+the same method). Requires a signed-in account; GitHub’s own refusal for
+a workflow that doesn’t accept manual (<code>workflow_dispatch</code>)
+runs is reported verbatim rather than QUILL guessing.</p>
+<p><strong>Quick Filter</strong>
+(<code>quill/ui/github_items_dialog_filter.py</code>,
+<code>GitHubQuickFilterMixin</code>, <code>Ctrl+Shift+F</code>). A
+second, different kind of narrowing from the existing
+<strong>Search</strong> (<code>Ctrl+F</code>, full GitHub search syntax,
+a network call): Quick Filter narrows the rows already sitting in
+<code>self._unfiltered_rows</code> (the last fetch) live as you type,
+entirely locally — it matches the query, case-insensitively, against the
+same rendered cell text <code>row_cells</code> produces for the current
+view’s visible columns, so it always matches what’s actually on screen.
+Two accessibility properties extend GHManage’s own quick-filter idea
+rather than copying it outright: a keystroke never moves keyboard focus
+into the list (<code>move_focus=False</code>), and never triggers a
+status announcement (<code>announce=False</code>) — re-speaking “N
+items” on every character would fight the screen reader’s own typing
+echo. A completed fetch, and Escape-to-clear (only when the filter box
+has focus, and only when there is something to clear), still announce,
+since both are discrete actions rather than per-keystroke noise.
+Switching views or loading a different repository resets the filter,
+matching the existing reset behavior for a stale Search query.</p>
+<p><strong>Column persistence</strong>
+(<code>quill/core/github/saved_items.py</code>,
+<code>GitHubSavedItems.columns</code>). The pre-existing
+<strong>Columns…</strong> menu (per-view column visibility, at least one
+column always stays visible) now persists its choice to the same
+atomic-JSON store as Pinned repositories and Favorites, keyed by view,
+and is re-seeded from that store the next time the dialog opens — a
+session-only preference in earlier betas, matching GHManage’s own column
+toggling, now durable the way QUILL’s other GitHub preferences already
+are.</p>
+<p><strong>Backspace navigation.</strong> In the
+<strong>Commits</strong> view (reached by pressing Enter on a branch
+row, §25.12), Backspace steps back to the <strong>Branches</strong> list
+and clears the drill target — list-scoped (bound in the ListCtrl’s own
+key handler, not the dialog-wide char hook), so it never eats Backspace
+inside the repository or search text fields.</p>
+<p><strong>Repository field URL/remote parsing.</strong> See the
+Repository field paragraph above (§25.12);
+<code>parse_repo_reference</code>
+(<code>quill/ui/github_items_view.py</code>) lives in the wx-free
+view-model module so it is unit-testable without a display, matching
+every other formatting helper in that module.</p>
 <hr />
 <h2 id="braille-mode-brfbrlpefueb">§26. Braille Mode
 (BRF/BRL/PEF/UEB)</h2>

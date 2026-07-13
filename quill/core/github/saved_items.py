@@ -49,11 +49,13 @@ class FavoriteItem:
 
 @dataclass(slots=True)
 class GitHubSavedItems:
-    """One store, two lists: pinned repos and favorited items."""
+    """One store, three things: pinned repos, favorited items, and each
+    view's column-visibility choice (Columns... menu, GHManage parity)."""
 
     path: Path
     pinned: list[str]
     favorites: list[FavoriteItem]
+    columns: dict[str, list[str]]
 
     @classmethod
     def load(cls, path: Path | None = None) -> GitHubSavedItems:
@@ -61,6 +63,7 @@ class GitHubSavedItems:
         raw = read_json(target, default={})
         pinned: list[str] = []
         favorites: list[FavoriteItem] = []
+        columns: dict[str, list[str]] = {}
         if isinstance(raw, dict):
             for entry in raw.get("pinned", []):
                 if isinstance(entry, str) and "/" in entry:
@@ -82,7 +85,14 @@ class GitHubSavedItems:
                         added_at=str(entry.get("added_at", "")),
                     )
                 )
-        return cls(path=target, pinned=pinned, favorites=favorites)
+            raw_columns = raw.get("columns", {})
+            if isinstance(raw_columns, dict):
+                for view, cols in raw_columns.items():
+                    if isinstance(view, str) and isinstance(cols, list):
+                        names = [c for c in cols if isinstance(c, str)]
+                        if names:
+                            columns[view] = names
+        return cls(path=target, pinned=pinned, favorites=favorites, columns=columns)
 
     def save(self) -> None:
         write_json_atomic(
@@ -90,6 +100,7 @@ class GitHubSavedItems:
             {
                 "pinned": list(self.pinned),
                 "favorites": [asdict(entry) for entry in self.favorites],
+                "columns": {view: list(cols) for view, cols in self.columns.items()},
             },
         )
 
@@ -149,3 +160,15 @@ class GitHubSavedItems:
             self.save()
             return True
         return False
+
+    # -- per-view column visibility (Columns... menu) ------------------------ #
+
+    def get_columns(self, view: str, default: list[str]) -> list[str]:
+        """Saved visible columns for *view*, or *default* if never set."""
+        saved = self.columns.get(view)
+        return list(saved) if saved else list(default)
+
+    def set_columns(self, view: str, visible: list[str]) -> None:
+        """Persist *visible* as the chosen columns for *view*."""
+        self.columns[view] = list(visible)
+        self.save()

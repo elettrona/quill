@@ -51,13 +51,22 @@ link and QUILL fetches it directly.
 
 **File > Open from Remote > GitHub Items...** opens a list-over-detail
 browser for one repository's issues, pull requests, branches, commits, tags,
-releases, and workflow runs.
+releases, workflows, and workflow runs. This viewer is built on, and owes
+real credit to, [GHManage](https://github.com/kellylford/GHManage) — Kelly
+Ford's open-source, screen-reader-first GitHub browser, which QUILL has
+used as its reference since this integration began. Every feature below
+with a GHManage ancestor keeps its idea and extends it with something
+specific to QUILL.
 
-1. Type `owner/repo` and press **Load**. (If your current document lives
+1. Type `owner/repo`, an `https://github.com/owner/repo` URL, or a
+   `git@github.com:owner/repo.git` remote, then press **Load** — QUILL
+   normalizes any of those to `owner/repo`. (If your current document lives
    inside a git checkout whose origin points at GitHub, the field is
    already filled in.)
 2. Pick a **View** — start with Issues & PRs. **Show**, **State**, and
-   **Sort** filter that view further.
+   **Sort** filter that view further. **Columns...** picks which fields
+   show as list columns for the current view — uncheck ones you don't need,
+   and the choice is remembered next time you open the viewer.
 3. Select a row; the details pane loads its full text, then its comment
    thread. **Alt+N** / **Alt+P** jump between comments — the navigator
    announces "Comment 2 of 5."
@@ -65,9 +74,22 @@ releases, and workflow runs.
    (every cell spoken as `field: value`).
 
 **Search** (Ctrl+F) takes full GitHub search syntax scoped to the loaded
-repo: try `label:bug is:open`. **Pinned...** keeps a short list of repos you
-jump back to often; **Ctrl+D** favorites the selected row from any repo, and
-**Favorites...** lists everything you've bookmarked across all of them.
+repo: try `label:bug is:open`. **Quick filter** (Ctrl+Shift+F) is different —
+it narrows the list you already loaded as you type, instantly and with no
+network request; Escape clears it. **Pinned...** keeps a short list of repos
+you jump back to often; **Ctrl+D** favorites the selected row from any repo,
+and **Favorites...** lists everything you've bookmarked across all of them.
+
+### Running a workflow
+
+Switch to the **Workflows** view to see the repository's workflow
+definitions (the `.yml` files themselves, not their run history). Select one
+and press **Enter** (or **Actions... > Run ... on Branch...**) to dispatch
+it — QUILL asks for the branch, confirms, and reports whether GitHub
+accepted the run. This needs a signed-in account, and GitHub tells you
+plainly if a workflow doesn't accept manual (`workflow_dispatch`) runs
+rather than QUILL guessing. The separate **Workflow Runs** view still shows
+run history and lets you re-run or inspect artifacts from a past run.
 
 ### Reading a pull request's actual changes
 
@@ -75,6 +97,17 @@ Select a PR row and press **Diff...**. QUILL fetches both sides of every
 changed file and runs them through the same compare engine as **Compare
 Documents**, so you hear a real difference walk — "Difference 2 of 5, text
 changed at line 41" — instead of a raw patch.
+
+### Comparing two branches
+
+Switch to the **Branches** view, select one, and press **Compare...** (or
+**Ctrl+Shift+B**) — this works without signing in, since it never writes to
+GitHub. Type the base branch, then the branch to compare against it (the
+selected row prefills the second prompt). QUILL reports how far the two have
+diverged, lists every commit between them, and — on the **Changed Files**
+tab — walks each file's differences the same accessible way **Diff...**
+does. Enter on a branch drills into its **Commits**; **Backspace** in the
+Commits view steps back out to the branch list.
 
 ### Getting a TL;DR
 

@@ -64,6 +64,7 @@ class _FakeRepo:
         self._tags: list[Any] = []
         self._releases: list[Any] = []
         self._runs: list[Any] = []
+        self._workflows: list[Any] = []
         self._issue_comments: dict[int, list[Any]] = {}
         self._reruns: list[int] = []
         self._jobs: list[Any] = []
@@ -99,6 +100,10 @@ class _FakeRepo:
     def get_workflow_runs(self) -> list[Any]:
         self.calls.append(("get_workflow_runs", {}))
         return self._runs
+
+    def get_workflows(self) -> list[Any]:
+        self.calls.append(("get_workflows", {}))
+        return self._workflows
 
     def get_issue(self, number: int) -> Any:
         self.calls.append(("get_issue", {"number": number}))
@@ -456,6 +461,70 @@ def test_fetch_commits_without_branch_passes_no_sha(
 
 
 # ---------------------------------------------------------------------------
+# Compare Branches (GHManage parity, Ctrl+Shift+B)
+# ---------------------------------------------------------------------------
+
+
+def test_compare_branches_maps_counts_commits_and_files(
+    provider: GitHubItemsProvider, repo: _FakeRepo
+) -> None:
+    commit_row = SimpleNamespace(
+        sha="0123456789abcdef",
+        commit=SimpleNamespace(
+            message="Fix thing",
+            author=SimpleNamespace(name="Bob", date=datetime(2026, 1, 4, tzinfo=UTC)),
+        ),
+        stats=SimpleNamespace(additions=3, deletions=1),
+        files=[SimpleNamespace(filename="a.py")],
+        html_url="https://github.com/owner/repo/commit/0123456789abcdef",
+    )
+    file_row = SimpleNamespace(
+        filename="quill/core/x.py",
+        status="modified",
+        additions=4,
+        deletions=1,
+        changes=5,
+        previous_filename=None,
+        patch="@@ -1 +1 @@",
+    )
+    captured: list[tuple[str, str]] = []
+
+    def _compare(base: str, head: str) -> Any:
+        captured.append((base, head))
+        return SimpleNamespace(
+            ahead_by=3,
+            behind_by=1,
+            status="diverged",
+            total_commits=3,
+            commits=[commit_row],
+            files=[file_row],
+            html_url="https://github.com/owner/repo/compare/main...feature",
+        )
+
+    repo.compare = _compare  # type: ignore[attr-defined]
+    result = provider.compare_branches("owner/repo", "main", "feature")
+
+    assert captured == [("main", "feature")]
+    assert result.base == "main" and result.head == "feature"
+    assert result.ahead_by == 3 and result.behind_by == 1
+    assert result.status == "diverged" and result.total_commits == 3
+    assert result.commits[0].short_sha == "0123456"
+    assert result.files[0].filename == "quill/core/x.py"
+    assert result.permalink_url.endswith("main...feature")
+
+
+def test_compare_branches_wraps_failures_as_coded_errors(
+    provider: GitHubItemsProvider, repo: _FakeRepo
+) -> None:
+    def _boom(base: str, head: str) -> Any:
+        raise RuntimeError("no common ancestor")
+
+    repo.compare = _boom  # type: ignore[attr-defined]
+    with pytest.raises(GitHubItemsError, match="Could not compare"):
+        provider.compare_branches("owner/repo", "main", "feature")
+
+
+# ---------------------------------------------------------------------------
 # Tags / releases / workflow runs
 # ---------------------------------------------------------------------------
 
@@ -516,6 +585,39 @@ def test_fetch_workflow_runs_maps_status_and_conclusion(
     assert run.branch == "main"
     assert run.event == "push"
     assert run.run_number == 42
+
+
+def test_fetch_workflows_maps_id_name_path_state(
+    provider: GitHubItemsProvider, repo: _FakeRepo
+) -> None:
+    repo._workflows = [
+        SimpleNamespace(
+            id=12345,
+            name="CI",
+            path=".github/workflows/ci.yml",
+            state="active",
+            html_url="https://github.com/owner/repo/actions/workflows/ci.yml",
+            badge_url="https://github.com/owner/repo/workflows/CI/badge.svg",
+        ),
+    ]
+    workflows = provider.fetch_workflows("owner/repo")
+    wf = workflows[0]
+    assert wf.id == 12345
+    assert wf.name == "CI"
+    assert wf.path == ".github/workflows/ci.yml"
+    assert wf.state == "active"
+    assert wf.url.endswith("ci.yml")
+
+
+def test_fetch_workflows_wraps_failures_as_coded_errors(
+    provider: GitHubItemsProvider, repo: _FakeRepo
+) -> None:
+    def _boom() -> list[Any]:
+        raise RuntimeError("rate limited")
+
+    repo.get_workflows = _boom  # type: ignore[attr-defined,method-assign]
+    with pytest.raises(GitHubItemsError, match="Could not list workflows"):
+        provider.fetch_workflows("owner/repo")
 
 
 # ---------------------------------------------------------------------------

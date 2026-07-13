@@ -14,6 +14,7 @@ from quill.core.github.items_provider import (
     GitHubItem,
     GitHubRelease,
     GitHubTag,
+    GitHubWorkflow,
     GitHubWorkflowRun,
 )
 from quill.ui.github_items_view import (
@@ -26,6 +27,7 @@ from quill.ui.github_items_view import (
     model_detail,
     model_label,
     model_url,
+    parse_repo_reference,
     row_cells,
     sort_items,
     view_label,
@@ -127,9 +129,23 @@ def test_branch_row_cells() -> None:
     assert cells == ["main", "protected", "Alice", "2026-01-03", "abc1234"]
 
 
+def test_workflow_row_cells() -> None:
+    workflow = GitHubWorkflow(id=1, name="CI", path=".github/workflows/ci.yml", state="active")
+    cells = row_cells(workflow, VIEW_COLUMNS["workflows"], full=False)
+    assert cells == ["CI", "active", ".github/workflows/ci.yml"]
+
+
 def test_views_cover_all_seven() -> None:
     keys = {key for key, _ in VIEWS}
-    assert keys == {VIEW_ISSUES, VIEW_BRANCHES, "commits", "tags", "releases", VIEW_RUNS}
+    assert keys == {
+        VIEW_ISSUES,
+        VIEW_BRANCHES,
+        "commits",
+        "tags",
+        "releases",
+        "workflows",
+        VIEW_RUNS,
+    }
 
 
 def test_view_label_falls_back_to_key() -> None:
@@ -202,6 +218,14 @@ def test_model_detail_workflow_run() -> None:
     assert "Conclusion: success" in detail
 
 
+def test_model_detail_workflow_definition() -> None:
+    workflow = GitHubWorkflow(id=1, name="CI", path=".github/workflows/ci.yml", state="active")
+    detail = model_detail(workflow)
+    assert "Workflow: CI" in detail
+    assert "State: active" in detail
+    assert "Path: .github/workflows/ci.yml" in detail
+
+
 def test_model_url_returns_empty_for_plain_object() -> None:
     assert model_url(object()) == ""
     assert model_url(GitHubTag(name="v1", commit_sha="s", url="https://x")) == "https://x"
@@ -216,6 +240,9 @@ def test_model_label_describes_each_kind() -> None:
     )
     assert model_label(GitHubTag(name="v1", commit_sha="s", url="u")) == "tag v1"
     assert model_label(GitHubRelease(tag="v2", name="R", url="u")) == "release v2"
+    assert (
+        model_label(GitHubWorkflow(id=1, name="CI", path="p", state="active")) == "workflow CI"
+    )
     assert model_label(GitHubWorkflowRun(name="CI", status="completed", url="u")) == "run CI"
 
 
@@ -246,3 +273,37 @@ def test_sort_items_never_raises_on_mixed_state() -> None:
     # Defensive: a sort failure must fall back to the incoming order.
     items = [_item(1), _item(2)]
     assert sort_items(items, "unknown_order") == items
+
+
+# ---------------------------------------------------------------------------
+# parse_repo_reference (Ctrl+Shift+O: open a repo by pasted URL, GHManage parity)
+# ---------------------------------------------------------------------------
+
+
+def test_parse_repo_reference_plain_owner_repo() -> None:
+    assert parse_repo_reference("Community-Access/quill") == "Community-Access/quill"
+
+
+def test_parse_repo_reference_https_url() -> None:
+    assert parse_repo_reference("https://github.com/owner/repo") == "owner/repo"
+
+
+def test_parse_repo_reference_https_url_with_git_suffix_and_path() -> None:
+    assert parse_repo_reference("https://github.com/owner/repo.git") == "owner/repo"
+    assert parse_repo_reference("https://github.com/owner/repo/pull/42") == "owner/repo"
+    assert parse_repo_reference("http://github.com/owner/repo/tree/main") == "owner/repo"
+
+
+def test_parse_repo_reference_ssh_remote() -> None:
+    assert parse_repo_reference("git@github.com:owner/repo.git") == "owner/repo"
+
+
+def test_parse_repo_reference_bare_hostname() -> None:
+    assert parse_repo_reference("github.com/owner/repo") == "owner/repo"
+
+
+def test_parse_repo_reference_rejects_incomplete_input() -> None:
+    assert parse_repo_reference("") is None
+    assert parse_repo_reference("   ") is None
+    assert parse_repo_reference("just-a-name") is None
+    assert parse_repo_reference("https://github.com/owner") is None

@@ -19,6 +19,7 @@ from quill.core.github.items_provider import (
     GitHubItem,
     GitHubRelease,
     GitHubTag,
+    GitHubWorkflow,
     GitHubWorkflowRun,
 )
 
@@ -32,6 +33,7 @@ VIEW_BRANCHES = "branches"
 VIEW_COMMITS = "commits"
 VIEW_TAGS = "tags"
 VIEW_RELEASES = "releases"
+VIEW_WORKFLOWS = "workflows"
 VIEW_RUNS = "runs"
 
 VIEWS: tuple[tuple[str, str], ...] = (
@@ -40,6 +42,7 @@ VIEWS: tuple[tuple[str, str], ...] = (
     (VIEW_COMMITS, "Commits"),
     (VIEW_TAGS, "Tags"),
     (VIEW_RELEASES, "Releases"),
+    (VIEW_WORKFLOWS, "Workflows"),
     (VIEW_RUNS, "Workflow Runs"),
 )
 
@@ -48,6 +51,7 @@ _BRANCH_COLUMNS = ("name", "protected", "author", "date", "commit")
 _COMMIT_COLUMNS = ("short_sha", "author", "date", "message")
 _TAG_COLUMNS = ("name", "commit_sha")
 _RELEASE_COLUMNS = ("tag", "name", "draft", "prerelease", "created")
+_WORKFLOW_COLUMNS = ("name", "state", "path")
 _RUN_COLUMNS = ("name", "status", "conclusion", "branch", "event", "run_number")
 
 VIEW_COLUMNS: dict[str, tuple[str, ...]] = {
@@ -56,6 +60,7 @@ VIEW_COLUMNS: dict[str, tuple[str, ...]] = {
     VIEW_COMMITS: _COMMIT_COLUMNS,
     VIEW_TAGS: _TAG_COLUMNS,
     VIEW_RELEASES: _RELEASE_COLUMNS,
+    VIEW_WORKFLOWS: _WORKFLOW_COLUMNS,
     VIEW_RUNS: _RUN_COLUMNS,
 }
 
@@ -94,6 +99,35 @@ def sort_items(items: list[GitHubItem], order: str) -> list[GitHubItem]:
 
 def view_label(view: str) -> str:
     return next((label for key, label in VIEWS if key == view), view)
+
+
+def parse_repo_reference(text: str) -> str | None:
+    """Normalize a pasted GitHub URL or ``owner/repo`` string to ``owner/repo``.
+
+    Accepts a plain ``owner/repo``, an ``https://github.com/owner/repo`` URL
+    (with or without a trailing ``.git``, ``/tree/...``, ``/pull/...``, etc.),
+    and an ssh ``git@github.com:owner/repo.git`` remote -- the shapes a user
+    is most likely to paste from a browser address bar or ``git remote -v``
+    (GHManage parity, Ctrl+Shift+O). Returns ``None`` when no owner/repo pair
+    can be recovered.
+    """
+    value = text.strip()
+    if not value:
+        return None
+    if value.startswith("git@github.com:"):
+        value = value[len("git@github.com:") :]
+    else:
+        for prefix in ("https://github.com/", "http://github.com/", "github.com/"):
+            if value.lower().startswith(prefix):
+                value = value[len(prefix) :]
+                break
+    if value.endswith(".git"):
+        value = value[: -len(".git")]
+    parts = [p for p in value.split("/") if p]
+    if len(parts) < 2:
+        return None
+    owner, repo = parts[0], parts[1]
+    return f"{owner}/{repo}"
 
 
 # ---------------------------------------------------------------------------
@@ -156,6 +190,13 @@ def _cell(model: object, col: str) -> str:
             return "prerelease" if model.prerelease else ""
         if col == "created":
             return model.created_at[:10]
+    if isinstance(model, GitHubWorkflow):
+        if col == "name":
+            return model.name
+        if col == "state":
+            return model.state
+        if col == "path":
+            return model.path
     if isinstance(model, GitHubWorkflowRun):
         if col == "name":
             return model.name
@@ -266,6 +307,16 @@ def model_detail(model: object) -> str:
             "",
             model.body or "(no release notes)",
         ])
+    if isinstance(model, GitHubWorkflow):
+        return "\n".join([
+            f"Workflow: {model.name}",
+            f"State: {model.state}",
+            f"Path: {model.path}",
+            f"URL: {model.url}",
+            "",
+            "Press Enter (or Actions... > Run on Branch...) to dispatch this "
+            "workflow, if it accepts manual runs.",
+        ])
     if isinstance(model, GitHubWorkflowRun):
         return "\n".join([
             f"Run: {model.name} #{model.run_number}",
@@ -294,6 +345,8 @@ def model_label(model: object) -> str:
         return f"tag {model.name}"
     if isinstance(model, GitHubRelease):
         return f"release {model.tag}"
+    if isinstance(model, GitHubWorkflow):
+        return f"workflow {model.name}"
     if isinstance(model, GitHubWorkflowRun):
         return f"run {model.name}"
     return "item"
@@ -309,10 +362,12 @@ __all__ = [
     "VIEW_RELEASES",
     "VIEW_RUNS",
     "VIEW_TAGS",
+    "VIEW_WORKFLOWS",
     "item_detail",
     "model_detail",
     "model_label",
     "model_url",
+    "parse_repo_reference",
     "row_cells",
     "sort_items",
     "view_label",
