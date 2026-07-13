@@ -1,6 +1,6 @@
 name: _diag-macos
 # TEMPORARY: fast one-off diagnostic runner, not part of the release pipeline.
-# Delete this file once tests/unit/ui/test_zzz_diag_undo_atomic.py is removed.
+# Delete this file once tests/unit/ui/test_zzz_diag_voice_browser.py is removed.
 
 on:
   workflow_dispatch:
@@ -18,4 +18,4 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install -e ".[ui,spellcheck,macos,dev,feedback]"
       - name: Run diagnostic
-        run: pytest tests/unit/ui/test_zzz_diag_undo_atomic.py -q -s
+        run: pytest tests/unit/ui/test_zzz_diag_voice_browser.py -q -s
