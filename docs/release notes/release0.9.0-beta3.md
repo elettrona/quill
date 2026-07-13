@@ -273,7 +273,7 @@ Every comtypes call site now requests the redirect itself before touching comtyp
 
 ## GitHub Grows from a Viewer into a Workspace
 
-Beta 2 introduced the read-only GitHub Items viewer. Beta 3 begins unifying the best ideas from GHManage and fastgh and moves QUILL toward something much bigger: a keyboard-first GitHub environment where information can be found, understood, and — with explicit consent — acted upon.
+Beta 2 introduced the read-only GitHub Items viewer. Beta 3 begins unifying the best ideas from [GHManage](https://github.com/kellylford/GHManage) — Kelly Ford's open-source, screen-reader-first GitHub browser, QUILL's reference viewer for this entire integration — and fastgh, and moves QUILL toward something much bigger: a keyboard-first GitHub environment where information can be found, understood, and — with explicit consent — acted upon. Every feature below with a GHManage ancestor keeps its idea and extends it with something specific to QUILL.
 
 ### GitHub Items gains pins, favorites, real search, automatic repository awareness, and View Upstream
 
@@ -338,6 +338,8 @@ A new **Workflows** view sits alongside Workflow Runs — it shows the workflow 
 Three smaller navigation additions round this out: **Columns...** lets you choose which fields appear as list columns for the current view, and remembers your choice the next time you open the viewer; **Backspace** in the Commits view (reached by pressing Enter on a branch) steps straight back to the branch list; and the repository field now accepts a pasted `github.com` URL or `git@github.com:` remote, not just `owner/repo`.
 
 The viewer and every GitHub feature continue to honor QUILL’s token, consent, and Safe Mode controls. A wiki browser and additional parts of the broader unification review remain on the roadmap; notifications move from roadmap to reality later in this release.
+
+**With thanks.** Every feature in this section traces back to [GHManage](https://github.com/kellylford/GHManage), Kelly Ford's open-source GitHub browser — pinned repositories, favorites, real search, local git awareness, View Upstream, the PR diff viewer, Compare Branches, the Workflows view, and Quick Filter all started as ideas GHManage shipped first. QUILL's job in each case was to extend that idea with something the rest of the app already had to offer — routing differences through QUILL's own compare engine, or keeping Quick Filter quiet enough not to fight a screen reader's character echo — not to reinvent it. This integration would not exist in its current form without GHManage to learn from.
 
 ---
 
