@@ -297,9 +297,10 @@ def test_github_extra_is_bundled_in_the_windows_installer() -> None:
     ``DEFAULT_BUNDLED_DEPENDENCY_GROUPS`` into the embedded runtime. ``github``
     must be among them or the installer ships without PyGithub and the
     Open-from-GitHub menu items die the same way the macOS .app did."""
-    src = (
+    distribution_script = (
         pathlib.Path(__file__).resolve().parents[2] / "scripts" / "build_windows_distribution.py"
-    ).read_text("utf-8")
+    )
+    src = distribution_script.read_text("utf-8")
     groups_line = src.split("DEFAULT_BUNDLED_DEPENDENCY_GROUPS", 1)[1].split(")", 1)[0]
     assert '"github"' in groups_line, (
         "build_windows_distribution.py DEFAULT_BUNDLED_DEPENDENCY_GROUPS must "
